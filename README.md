@@ -1,8 +1,21 @@
-# Phaser React TypeScript Template
+# PhaserActions Studio
 
-This is a Phaser 3 project template that uses the React framework and Vite for bundling. It includes a bridge for React to Phaser game communication, hot-reloading for quick development workflow and scripts to generate production-ready builds.
+A browser-based editor shell using Phaser 3 as the runtime.
 
-**[This Template is also available as a JavaScript version.](https://github.com/phaserjs/template-react)**
+Planned architecture:
+
+- editor UI in React
+- Phaser runtime embedded in the app
+- declarative scene/behavior model
+- compiler from model -> runtime
+- minimal PhaserActions runtime separate from Phaser scene code
+
+Initial focus:
+- formation demo
+- composable actions
+- group behavior
+- live parameter editing
+
 
 ### Versions
 
