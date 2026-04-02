@@ -17,17 +17,6 @@ Initial focus:
 - live parameter editing
 
 
-### Versions
-
-This template has been updated for:
-
-- [Phaser 3.90.0](https://github.com/phaserjs/phaser)
-- [React 19.0.0](https://github.com/facebook/react)
-- [Vite 6.3.1](https://github.com/vitejs/vite)
-- [TypeScript 5.7.2](https://github.com/microsoft/TypeScript)
-
-![screenshot](screenshot.png)
-
 ## Requirements
 
 [Node.js](https://nodejs.org) is required to install dependencies and run scripts via `npm`.
