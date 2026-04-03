@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { EventBus } from './EventBus';
+import { EventBus, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
 import { SceneSpec, BoundsHitConditionSpec } from '../model/types';
 import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
@@ -15,10 +15,12 @@ export class EditorScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor('#0c0f1a');
+    setActiveScene(this);
     EventBus.on('load-scene', this.loadScene, this);
     EventBus.emit('current-scene-ready', this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      setActiveScene(null);
       EventBus.off('load-scene', this.loadScene, this);
     });
   }
