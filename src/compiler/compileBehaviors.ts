@@ -56,7 +56,7 @@ function instantiateAction(
   action: ActionSpec,
   buildAction: (id: string) => Action,
   ctx: CompileContext,
-  callRegistry: Record<string, () => void>
+  callRegistry: Record<string, CallHandler>
 ): Action {
   switch (action.type) {
     case 'Sequence': {

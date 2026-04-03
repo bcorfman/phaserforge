@@ -1,6 +1,6 @@
 import { useEditorStore } from './EditorStore';
 
-export function JsonPanel(): JSX.Element {
+export function JsonPanel() {
   const { state, dispatch } = useEditorStore();
 
   return (
