@@ -169,6 +169,51 @@ body {
   background: rgba(105, 210, 255, 0.15);
 }
 
+.group-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.group-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.group-toggle {
+  width: 30px;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: #0f1424;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.group-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.group-meta {
+  color: var(--muted);
+  font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.group-members {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 36px;
+}
+
+.member-item {
+  font-size: 13px;
+}
+
 .inspector-block {
   background: var(--panel-2);
   border-radius: 10px;
@@ -208,6 +253,23 @@ body {
 .muted {
   color: var(--muted);
   font-size: 12px;
+}
+
+.member-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-button {
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #0f1424;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
 }
 
 .json-panel {

@@ -34,6 +34,10 @@ function AppShell() {
     EventBus.emit('load-scene', state.scene);
   }, [sceneReady, state.scene]);
 
+  useEffect(() => {
+    EventBus.emit('selection-changed', state.selection);
+  }, [state.selection]);
+
   return (
     <div className="app-root">
       <Toolbar />

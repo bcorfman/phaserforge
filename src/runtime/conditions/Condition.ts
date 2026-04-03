@@ -1,7 +1,7 @@
-import { RuntimeEntity } from '../targets/types';
+import { RuntimeEntity, RuntimeTarget } from '../targets/types';
 
 export interface Condition {
   reset(): void;
   update(dtMs: number): void;
-  isMet(targets: RuntimeEntity[]): boolean;
+  isMet(targets: RuntimeTarget | RuntimeEntity[]): boolean;
 }

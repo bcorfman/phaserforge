@@ -1,8 +1,10 @@
 import { useEditorStore } from './EditorStore';
+import { summarizeSceneGroups } from './grouping';
 
 export function EntityList() {
   const { state, dispatch } = useEditorStore();
-  const { scene, selection } = state;
+  const { scene, selection, expandedGroups } = state;
+  const { groups, ungroupedEntities } = summarizeSceneGroups(scene);
 
   const isSelected = (kind: string, id: string): boolean =>
     selection.kind !== 'none' && selection.kind === kind && selection.id === id;
@@ -11,21 +13,48 @@ export function EntityList() {
     <div className="panel">
       <div className="panel-title">Scene</div>
       <div className="panel-section">
-        <div className="panel-heading">Groups</div>
-        {Object.values(scene.groups).map((group) => (
-          <button
-            key={group.id}
-            className={`list-item ${isSelected('group', group.id) ? 'active' : ''}`}
-            onClick={() => dispatch({ type: 'select', selection: { kind: 'group', id: group.id } })}
-            type="button"
-          >
-            {group.name ?? group.id}
-          </button>
+        <div className="panel-heading">Formations</div>
+        {groups.map(({ group, members }) => (
+          <div key={group.id} className="group-block">
+            <div className="group-row">
+              <button
+                className="group-toggle"
+                type="button"
+                onClick={() => dispatch({ type: 'toggle-group-expanded', id: group.id })}
+                aria-label={expandedGroups[group.id] ? 'Collapse group members' : 'Expand group members'}
+              >
+                {expandedGroups[group.id] ? '▾' : '▸'}
+              </button>
+              <button
+                className={`list-item group-item ${isSelected('group', group.id) ? 'active' : ''}`}
+                onClick={() => dispatch({ type: 'select', selection: { kind: 'group', id: group.id } })}
+                type="button"
+              >
+                <span>{group.name ?? group.id}</span>
+                <span className="group-meta">{members.length} members</span>
+              </button>
+            </div>
+            {expandedGroups[group.id] && (
+              <div className="group-members">
+                {members.map((entity) => (
+                  <button
+                    key={entity.id}
+                    className={`list-item member-item ${isSelected('entity', entity.id) ? 'active' : ''}`}
+                    onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: entity.id } })}
+                    type="button"
+                  >
+                    {entity.name ?? entity.id}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </div>
       <div className="panel-section">
-        <div className="panel-heading">Entities</div>
-        {Object.values(scene.entities).map((entity) => (
+        <div className="panel-heading">Ungrouped Entities</div>
+        {ungroupedEntities.length === 0 && <div className="muted">All entities are part of a formation.</div>}
+        {ungroupedEntities.map((entity) => (
           <button
             key={entity.id}
             className={`list-item ${isSelected('entity', entity.id) ? 'active' : ''}`}

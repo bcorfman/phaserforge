@@ -2,6 +2,7 @@ import { SceneSpec } from '../model/types';
 import { validateSceneSpec } from '../model/validation';
 import { ActionManager } from '../runtime/ActionManager';
 import { RuntimeEntity, RuntimeGroup } from '../runtime/targets/types';
+import { createFormationGroup } from '../runtime/targets/createFormationGroup';
 import { compileBehavior, CompileOptions } from './compileBehaviors';
 
 export interface CompiledScene {
@@ -25,15 +26,19 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
       y: entity.y,
       width: entity.width,
       height: entity.height,
+      homeX: entity.x,
+      homeY: entity.y,
+      vx: 0,
+      vy: 0,
     };
   }
 
   const groups: Record<string, RuntimeGroup> = {};
   for (const group of Object.values(scene.groups)) {
-    groups[group.id] = {
-      id: group.id,
-      members: group.members.map((memberId) => entities[memberId]),
-    };
+    groups[group.id] = createFormationGroup(
+      group.id,
+      group.members.map((memberId) => entities[memberId])
+    );
   }
 
   const actionManager = new ActionManager();

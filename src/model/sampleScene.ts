@@ -1,44 +1,36 @@
+import { arrangeGrid } from './formation';
 import { SceneSpec } from './types';
+
+const enemyEntities = arrangeGrid(
+  undefined,
+  {
+    rows: 3,
+    cols: 5,
+    startX: 220,
+    startY: 140,
+    spacingX: 48,
+    spacingY: 40,
+    factory: (index) => ({
+      id: `e${index + 1}`,
+      x: 0,
+      y: 0,
+      width: 28,
+      height: 20,
+    }),
+  }
+);
+
+const entities = Object.fromEntries(enemyEntities.map((entity) => [entity.id, entity]));
+const enemyIds = enemyEntities.map((entity) => entity.id);
 
 export const sampleScene: SceneSpec = {
   id: 'scene-1',
-  entities: {
-    e1: { id: 'e1', x: 220, y: 140, width: 28, height: 20 },
-    e2: { id: 'e2', x: 268, y: 140, width: 28, height: 20 },
-    e3: { id: 'e3', x: 316, y: 140, width: 28, height: 20 },
-    e4: { id: 'e4', x: 364, y: 140, width: 28, height: 20 },
-    e5: { id: 'e5', x: 412, y: 140, width: 28, height: 20 },
-    e6: { id: 'e6', x: 220, y: 180, width: 28, height: 20 },
-    e7: { id: 'e7', x: 268, y: 180, width: 28, height: 20 },
-    e8: { id: 'e8', x: 316, y: 180, width: 28, height: 20 },
-    e9: { id: 'e9', x: 364, y: 180, width: 28, height: 20 },
-    e10: { id: 'e10', x: 412, y: 180, width: 28, height: 20 },
-    e11: { id: 'e11', x: 220, y: 220, width: 28, height: 20 },
-    e12: { id: 'e12', x: 268, y: 220, width: 28, height: 20 },
-    e13: { id: 'e13', x: 316, y: 220, width: 28, height: 20 },
-    e14: { id: 'e14', x: 364, y: 220, width: 28, height: 20 },
-    e15: { id: 'e15', x: 412, y: 220, width: 28, height: 20 },
-  },
+  entities,
   groups: {
     'g-enemies': {
       id: 'g-enemies',
-      members: [
-        'e1',
-        'e2',
-        'e3',
-        'e4',
-        'e5',
-        'e6',
-        'e7',
-        'e8',
-        'e9',
-        'e10',
-        'e11',
-        'e12',
-        'e13',
-        'e14',
-        'e15',
-      ],
+      name: 'Enemy Formation',
+      members: enemyIds,
     },
   },
   behaviors: {
@@ -98,6 +90,8 @@ export const sampleScene: SceneSpec = {
       type: 'BoundsHit',
       bounds: { minX: 80, maxX: 944, minY: 60, maxY: 720 },
       mode: 'any',
+      scope: 'group-extents',
+      behavior: 'limit',
     },
   },
 };
