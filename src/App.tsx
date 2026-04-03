@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { PhaserGame } from './phaser/PhaserHost';
-import { EventBus } from './phaser/EventBus';
+import { EventBus, getActiveScene } from './phaser/EventBus';
 import { EditorProvider, useEditorStore } from './editor/EditorStore';
 import { EntityList } from './editor/EntityList';
 import { Inspector } from './editor/Inspector';
@@ -18,6 +18,11 @@ function AppShell() {
       readyRef.current = true;
       setSceneReady(true);
     };
+
+    if (getActiveScene()) {
+      handleReady();
+    }
+
     EventBus.on('current-scene-ready', handleReady);
     return () => {
       EventBus.off('current-scene-ready', handleReady);
