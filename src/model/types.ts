@@ -89,6 +89,8 @@ export interface BoundsHitConditionSpec {
   type: 'BoundsHit';
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
   mode: 'any' | 'all';
+  scope?: 'member-any' | 'member-all' | 'group-extents';
+  behavior?: 'stop' | 'limit' | 'bounce' | 'wrap';
 }
 
 export interface ElapsedTimeConditionSpec {

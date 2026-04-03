@@ -1,5 +1,5 @@
 import { Condition } from './Condition';
-import { RuntimeEntity } from '../targets/types';
+import { RuntimeEntity, RuntimeTarget } from '../targets/types';
 
 export class ElapsedTime implements Condition {
   private durationMs: number;
@@ -17,7 +17,7 @@ export class ElapsedTime implements Condition {
     this.elapsedMs += dtMs;
   }
 
-  isMet(_targets: RuntimeEntity[]): boolean {
+  isMet(_targets: RuntimeTarget | RuntimeEntity[]): boolean {
     return this.elapsedMs >= this.durationMs;
   }
 }

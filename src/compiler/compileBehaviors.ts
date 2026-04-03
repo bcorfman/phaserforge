@@ -13,7 +13,7 @@ import { Repeat } from '../runtime/actions/Repeat';
 import { BoundsHit } from '../runtime/conditions/BoundsHit';
 import { ElapsedTime } from '../runtime/conditions/ElapsedTime';
 import { Condition } from '../runtime/conditions/Condition';
-import { flattenTarget, resolveTarget, TargetContext } from '../runtime/targets/resolveTarget';
+import { resolveTarget, TargetContext } from '../runtime/targets/resolveTarget';
 import { CallActionSpec } from '../model/types';
 
 export interface CompileOptions {
@@ -78,13 +78,12 @@ function instantiateAction(
     }
     case 'MoveUntil': {
       const target = resolveTarget(action.target, ctx.targets);
-      const targets = flattenTarget(target);
       const conditionSpec = ctx.scene.conditions[action.conditionId];
       if (!conditionSpec) {
         throw new Error(`Unknown condition ${action.conditionId}`);
       }
       const condition = instantiateCondition(conditionSpec);
-      return new MoveUntil(targets, action.velocity, condition);
+      return new MoveUntil(target, action.velocity, condition);
     }
     default:
       throw new Error(`Unknown action type: ${(action as ActionSpec).type}`);
@@ -94,7 +93,10 @@ function instantiateAction(
 function instantiateCondition(condition: ConditionSpec): Condition {
   switch (condition.type) {
     case 'BoundsHit':
-      return new BoundsHit(condition.bounds, condition.mode);
+      return new BoundsHit(condition.bounds, condition.mode, {
+        scope: condition.scope,
+        behavior: condition.behavior,
+      });
     case 'ElapsedTime':
       return new ElapsedTime(condition.durationMs);
     default:

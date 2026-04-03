@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEditorStore } from './EditorStore';
+import { summarizeGridLayout } from './grouping';
 import { ActionSpec, ConditionSpec, MoveUntilActionSpec, CallActionSpec, WaitActionSpec, RepeatActionSpec, SequenceActionSpec, BoundsHitConditionSpec, ElapsedTimeConditionSpec } from '../model/types';
 
 export function Inspector() {
@@ -18,7 +19,7 @@ export function Inspector() {
     if (!action) {
       content = <div className="muted">Action not found.</div>;
     } else {
-      content = renderActionInspector(action, updateAction);
+      content = renderActionInspector(action, scene, updateAction, updateCondition);
     }
   } else if (selection.kind === 'condition') {
     const condition = scene.conditions[selection.id];
@@ -40,10 +41,33 @@ export function Inspector() {
     );
   } else if (selection.kind === 'group') {
     const group = scene.groups[selection.id];
+    const members = group?.members.map((memberId) => scene.entities[memberId]).filter(Boolean) ?? [];
+    const layout = summarizeGridLayout(members);
     content = group ? (
       <div className="inspector-block">
         <div className="inspector-title">{group.name ?? group.id}</div>
         <div className="inspector-row">Members: {group.members.length}</div>
+        <div className="inspector-row">
+          Layout: {layout.kind === 'grid' ? `${layout.rows} x ${layout.cols} grid` : 'Freeform'}
+        </div>
+        {layout.kind === 'grid' && (
+          <div className="inspector-row">
+            Spacing: {layout.spacingX}, {layout.spacingY}
+          </div>
+        )}
+        <div className="inspector-row">Expand the formation in the Scene panel to inspect or select individual members.</div>
+        <div className="member-tags">
+          {members.map((member) => (
+            <button
+              key={member.id}
+              className="tag-button"
+              type="button"
+              onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: member.id } })}
+            >
+              {member.name ?? member.id}
+            </button>
+          ))}
+        </div>
       </div>
     ) : (
       <div className="muted">Group not found.</div>
@@ -71,10 +95,15 @@ export function Inspector() {
   );
 }
 
-function renderActionInspector(action: ActionSpec, onChange: (next: ActionSpec) => void) {
+function renderActionInspector(
+  action: ActionSpec,
+  scene: { conditions: Record<string, ConditionSpec> },
+  onChange: (next: ActionSpec) => void,
+  onConditionChange: (next: ConditionSpec) => void
+) {
   switch (action.type) {
     case 'MoveUntil':
-      return renderMoveUntil(action, onChange);
+      return renderMoveUntil(action, scene, onChange, onConditionChange);
     case 'Wait':
       return renderWait(action, onChange);
     case 'Call':
@@ -88,7 +117,24 @@ function renderActionInspector(action: ActionSpec, onChange: (next: ActionSpec) 
   }
 }
 
-function renderMoveUntil(action: MoveUntilActionSpec, onChange: (next: ActionSpec) => void) {
+export function renderMoveUntilInspector(
+  action: MoveUntilActionSpec,
+  scene: { conditions: Record<string, ConditionSpec> },
+  onChange: (next: ActionSpec) => void,
+  onConditionChange: (next: ConditionSpec) => void
+) {
+  return renderMoveUntil(action, scene, onChange, onConditionChange);
+}
+
+function renderMoveUntil(
+  action: MoveUntilActionSpec,
+  scene: { conditions: Record<string, ConditionSpec> },
+  onChange: (next: ActionSpec) => void,
+  onConditionChange: (next: ConditionSpec) => void
+) {
+  const linkedCondition = scene.conditions[action.conditionId];
+  const boundsCondition = linkedCondition?.type === 'BoundsHit' ? linkedCondition : undefined;
+
   return (
     <div className="inspector-block">
       <div className="inspector-title">{action.name ?? action.id}</div>
@@ -113,6 +159,15 @@ function renderMoveUntil(action: MoveUntilActionSpec, onChange: (next: ActionSpe
         />
       </label>
       <div className="inspector-row">Condition: {action.conditionId}</div>
+      {boundsCondition && (
+        <div className="inline-boundary-editor">
+          <div className="panel-heading">Boundary Limits</div>
+          <div className="inspector-row">
+            {describeBoundaryScope(boundsCondition.scope)} · {describeBoundaryBehavior(boundsCondition.behavior)}
+          </div>
+          {renderBoundsCondition(boundsCondition, onConditionChange)}
+        </div>
+      )}
     </div>
   );
 }
@@ -272,8 +327,69 @@ function renderBoundsCondition(
           <option value="all">All</option>
         </select>
       </label>
+      <label className="field">
+        <span>Scope</span>
+        <select
+          value={condition.scope ?? 'member-any'}
+          onChange={(e) =>
+            onChange({
+              ...condition,
+              scope: e.target.value as BoundsHitConditionSpec['scope'],
+            })
+          }
+        >
+          <option value="member-any">member-any</option>
+          <option value="member-all">member-all</option>
+          <option value="group-extents">group-extents</option>
+        </select>
+      </label>
+      <div className="inspector-row">{describeBoundaryScope(condition.scope)}</div>
+      <label className="field">
+        <span>Behavior</span>
+        <select
+          value={condition.behavior ?? 'stop'}
+          onChange={(e) =>
+            onChange({
+              ...condition,
+              behavior: e.target.value as BoundsHitConditionSpec['behavior'],
+            })
+          }
+        >
+          <option value="stop">stop</option>
+          <option value="limit">limit</option>
+          <option value="bounce">bounce</option>
+          <option value="wrap">wrap</option>
+        </select>
+      </label>
+      <div className="inspector-row">{describeBoundaryBehavior(condition.behavior)}</div>
     </div>
   );
+}
+
+function describeBoundaryScope(scope: BoundsHitConditionSpec['scope']): string {
+  switch (scope ?? 'member-any') {
+    case 'group-extents':
+      return 'Formation Edges';
+    case 'member-all':
+      return 'Every Member';
+    case 'member-any':
+    default:
+      return 'Any Member';
+  }
+}
+
+function describeBoundaryBehavior(behavior: BoundsHitConditionSpec['behavior']): string {
+  switch (behavior ?? 'stop') {
+    case 'limit':
+      return 'Clamp at Edge';
+    case 'bounce':
+      return 'Bounce Back';
+    case 'wrap':
+      return 'Wrap Around';
+    case 'stop':
+    default:
+      return 'Stop on Contact';
+  }
 }
 
 function renderElapsedCondition(

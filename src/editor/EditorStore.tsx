@@ -16,6 +16,7 @@ export type Selection =
 export interface EditorState {
   scene: SceneSpec;
   selection: Selection;
+  expandedGroups: Record<Id, boolean>;
   dirty: boolean;
   jsonText: string;
   error?: string;
@@ -29,7 +30,12 @@ type EditorAction =
   | { type: 'reset-scene' }
   | { type: 'set-scene'; scene: SceneSpec }
   | { type: 'update-action'; id: Id; next: ActionSpec }
-  | { type: 'update-condition'; id: Id; next: ConditionSpec };
+  | { type: 'update-condition'; id: Id; next: ConditionSpec }
+  | { type: 'toggle-group-expanded'; id: Id };
+
+function defaultExpandedGroups(scene: SceneSpec): Record<Id, boolean> {
+  return Object.fromEntries(Object.keys(scene.groups).map((groupId) => [groupId, false]));
+}
 
 const EditorContext = createContext<{
   state: EditorState;
@@ -46,6 +52,7 @@ function initState(): EditorState {
         return {
           scene: parsed,
           selection: { kind: 'behavior', id: Object.keys(parsed.behaviors)[0] ?? '' },
+          expandedGroups: defaultExpandedGroups(parsed),
           dirty: false,
           jsonText: '',
         };
@@ -57,6 +64,7 @@ function initState(): EditorState {
   return {
     scene: sampleScene,
     selection: { kind: 'behavior', id: 'b-formation' },
+    expandedGroups: defaultExpandedGroups(sampleScene),
     dirty: false,
     jsonText: '',
   };
@@ -77,6 +85,7 @@ function reducer(state: EditorState, action: EditorAction): EditorState {
         return {
           ...state,
           scene: parsed,
+          expandedGroups: defaultExpandedGroups(parsed),
           dirty: false,
           error: undefined,
           selection: { kind: 'none' },
@@ -89,6 +98,7 @@ function reducer(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         scene: sampleScene,
+        expandedGroups: defaultExpandedGroups(sampleScene),
         dirty: false,
         error: undefined,
         selection: { kind: 'behavior', id: 'b-formation' },
@@ -125,6 +135,14 @@ function reducer(state: EditorState, action: EditorAction): EditorState {
         error: undefined,
       };
     }
+    case 'toggle-group-expanded':
+      return {
+        ...state,
+        expandedGroups: {
+          ...state.expandedGroups,
+          [action.id]: !state.expandedGroups[action.id],
+        },
+      };
     default:
       return state;
   }

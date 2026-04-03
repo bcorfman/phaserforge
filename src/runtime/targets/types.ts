@@ -4,11 +4,34 @@ export interface RuntimeEntity {
   y: number;
   width: number;
   height: number;
+  homeX?: number;
+  homeY?: number;
+  vx?: number;
+  vy?: number;
+  adapter?: unknown;
 }
 
-export interface RuntimeGroup {
+export interface GroupBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
+export interface FormationGroup {
   id: string;
   members: RuntimeEntity[];
+  homeSlots: Record<string, { x: number; y: number }>;
+  getBounds(): GroupBounds;
+  getHomeBounds(): GroupBounds;
+  translate(dx: number, dy: number): void;
+  setPosition(x: number, y: number): void;
+  setVelocity(vx: number, vy: number): void;
+  stopVelocity(axis?: 'x' | 'y'): void;
+  forEachMember(fn: (member: RuntimeEntity) => void): void;
+  getMember(entityId: string): RuntimeEntity | undefined;
 }
 
-export type RuntimeTarget = RuntimeEntity | RuntimeGroup;
+export type RuntimeGroup = FormationGroup;
+
+export type RuntimeTarget = RuntimeEntity | FormationGroup;
