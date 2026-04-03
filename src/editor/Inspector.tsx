@@ -1,20 +1,58 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
-import { ActionSpec, ConditionSpec, MoveUntilActionSpec, CallActionSpec, WaitActionSpec, RepeatActionSpec, SequenceActionSpec, BoundsHitConditionSpec, ElapsedTimeConditionSpec } from '../model/types';
+import { inferGroupGridLayout, type GroupGridLayout } from './formationLayout';
+import { ActionSpec, ConditionSpec, MoveUntilActionSpec, CallActionSpec, WaitActionSpec, RepeatActionSpec, SequenceActionSpec, BoundsHitConditionSpec, ElapsedTimeConditionSpec, GroupSpec, SceneSpec } from '../model/types';
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
-  const { selection, scene } = state;
+  const { selection, scene, interaction } = state;
 
   const updateAction = (next: ActionSpec) =>
     dispatch({ type: 'update-action', id: next.id, next });
   const updateCondition = (next: ConditionSpec) =>
     dispatch({ type: 'update-condition', id: next.id, next });
+  const updateGroup = (next: GroupSpec) =>
+    dispatch({ type: 'update-group', id: next.id, next });
+  const arrangeGroupGrid = (id: string, layout: GroupGridLayout) =>
+    dispatch({ type: 'arrange-group-grid', id, layout });
 
   let content: ReactNode = null;
 
-  if (selection.kind === 'action') {
+  // Show drag information during interactions
+  if (interaction) {
+    if (interaction.kind === 'entity') {
+      const entity = scene.entities[interaction.id];
+      content = entity ? (
+        <div className="inspector-block">
+          <div className="inspector-title">Dragging: {entity.name ?? entity.id}</div>
+          <div className="inspector-row">Position: {Math.round(entity.x)}, {Math.round(entity.y)}</div>
+          <div className="inspector-row">Size: {entity.width} x {entity.height}</div>
+        </div>
+      ) : null;
+    } else if (interaction.kind === 'group') {
+      const group = scene.groups[interaction.id];
+      content = group ? (
+        <div className="inspector-block">
+          <div className="inspector-title">Dragging: {group.name ?? group.id}</div>
+          <div className="inspector-row">Members: {group.members.length}</div>
+        </div>
+      ) : null;
+    } else if (interaction.kind === 'bounds') {
+      const condition = scene.conditions[interaction.id] as BoundsHitConditionSpec;
+      content = condition ? (
+        <div className="inspector-block">
+          <div className="inspector-title">Dragging: Bounds</div>
+          <div className="inspector-row">Min: {condition.bounds.minX}, {condition.bounds.minY}</div>
+          <div className="inspector-row">Max: {condition.bounds.maxX}, {condition.bounds.maxY}</div>
+        </div>
+      ) : null;
+    }
+  }
+
+  // If no interaction content, show normal selection content
+  if (!content) {
+    if (selection.kind === 'action') {
     const action = scene.actions[selection.id];
     if (!action) {
       content = <div className="muted">Action not found.</div>;
@@ -42,33 +80,14 @@ export function Inspector() {
   } else if (selection.kind === 'group') {
     const group = scene.groups[selection.id];
     const members = group?.members.map((memberId) => scene.entities[memberId]).filter(Boolean) ?? [];
-    const layout = summarizeGridLayout(members);
     content = group ? (
-      <div className="inspector-block">
-        <div className="inspector-title">{group.name ?? group.id}</div>
-        <div className="inspector-row">Members: {group.members.length}</div>
-        <div className="inspector-row">
-          Layout: {layout.kind === 'grid' ? `${layout.rows} x ${layout.cols} grid` : 'Freeform'}
-        </div>
-        {layout.kind === 'grid' && (
-          <div className="inspector-row">
-            Spacing: {layout.spacingX}, {layout.spacingY}
-          </div>
-        )}
-        <div className="inspector-row">Expand the formation in the Scene panel to inspect or select individual members.</div>
-        <div className="member-tags">
-          {members.map((member) => (
-            <button
-              key={member.id}
-              className="tag-button"
-              type="button"
-              onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: member.id } })}
-            >
-              {member.name ?? member.id}
-            </button>
-          ))}
-        </div>
-      </div>
+      <GroupInspector
+        group={group}
+        scene={scene}
+        onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
+        onUpdateGroup={updateGroup}
+        onArrangeGroupGrid={arrangeGroupGrid}
+      />
     ) : (
       <div className="muted">Group not found.</div>
     );
@@ -86,11 +105,161 @@ export function Inspector() {
   } else {
     content = <div className="muted">Select an item to edit.</div>;
   }
+  }
 
   return (
     <div className="panel">
       <div className="panel-title">Inspector</div>
       {content}
+    </div>
+  );
+}
+
+function GroupInspector({
+  group,
+  scene,
+  onSelectMember,
+  onUpdateGroup,
+  onArrangeGroupGrid,
+}: {
+  group: GroupSpec;
+  scene: SceneSpec;
+  onSelectMember: (id: string) => void;
+  onUpdateGroup: (next: GroupSpec) => void;
+  onArrangeGroupGrid: (id: string, layout: GroupGridLayout) => void;
+}) {
+  const members = group.members.map((memberId) => scene.entities[memberId]).filter(Boolean);
+  const layoutSummary = summarizeGridLayout(members);
+  const inferredLayout = inferGroupGridLayout(scene, group.id);
+  const [draft, setDraft] = useState<GroupGridLayout | undefined>(inferredLayout);
+
+  useEffect(() => {
+    setDraft(inferredLayout);
+  }, [inferredLayout?.rows, inferredLayout?.cols, inferredLayout?.startX, inferredLayout?.startY, inferredLayout?.spacingX, inferredLayout?.spacingY, group.id]);
+
+  const canApplyGrid = Boolean(draft);
+
+  return (
+    renderGroupInspector(group, scene, draft, canApplyGrid, {
+      onSelectMember,
+      onUpdateGroup,
+      onArrangeGroupGrid,
+      onDraftChange: setDraft,
+    })
+  );
+}
+
+export function renderGroupInspector(
+  group: GroupSpec,
+  scene: SceneSpec,
+  draft: GroupGridLayout | undefined,
+  canApplyGrid: boolean,
+  handlers: {
+    onSelectMember: (id: string) => void;
+    onUpdateGroup: (next: GroupSpec) => void;
+    onArrangeGroupGrid: (id: string, layout: GroupGridLayout) => void;
+    onDraftChange: (next: GroupGridLayout) => void;
+  }
+) {
+  const members = group.members.map((memberId) => scene.entities[memberId]).filter(Boolean);
+  const layoutSummary = summarizeGridLayout(members);
+
+  return (
+    <div className="inspector-block">
+      <div className="inspector-title">{group.name ?? group.id}</div>
+      <label className="field">
+        <span>Formation Name</span>
+        <input
+          type="text"
+          value={group.name ?? ''}
+          onChange={(e) => handlers.onUpdateGroup({ ...group, name: e.target.value })}
+        />
+      </label>
+      <div className="inspector-row">Members: {group.members.length}</div>
+      <div className="inspector-row">
+        Layout: {layoutSummary.kind === 'grid' ? `${layoutSummary.rows} x ${layoutSummary.cols} grid` : 'Freeform'}
+      </div>
+      {draft ? (
+        <div className="inline-boundary-editor">
+          <div className="panel-heading">Arrange Grid</div>
+          <label className="field">
+            <span>Rows</span>
+            <input
+              type="number"
+              min={1}
+              value={draft.rows}
+              onChange={(e) => handlers.onDraftChange({ ...draft, rows: Math.max(1, Number(e.target.value) || 1) })}
+            />
+          </label>
+          <label className="field">
+            <span>Cols</span>
+            <input
+              type="number"
+              min={1}
+              value={draft.cols}
+              onChange={(e) => handlers.onDraftChange({ ...draft, cols: Math.max(1, Number(e.target.value) || 1) })}
+            />
+          </label>
+          <label className="field">
+            <span>Start X</span>
+            <input
+              type="number"
+              value={draft.startX}
+              onChange={(e) => handlers.onDraftChange({ ...draft, startX: Number(e.target.value) })}
+            />
+          </label>
+          <label className="field">
+            <span>Start Y</span>
+            <input
+              type="number"
+              value={draft.startY}
+              onChange={(e) => handlers.onDraftChange({ ...draft, startY: Number(e.target.value) })}
+            />
+          </label>
+          <label className="field">
+            <span>Spacing X</span>
+            <input
+              type="number"
+              value={draft.spacingX}
+              onChange={(e) => handlers.onDraftChange({ ...draft, spacingX: Number(e.target.value) })}
+            />
+          </label>
+          <label className="field">
+            <span>Spacing Y</span>
+            <input
+              type="number"
+              value={draft.spacingY}
+              onChange={(e) => handlers.onDraftChange({ ...draft, spacingY: Number(e.target.value) })}
+            />
+          </label>
+          <div className="inspector-row">
+            Grid size will become {draft.rows * draft.cols} sprites.
+          </div>
+          <button
+            className="button"
+            disabled={!canApplyGrid}
+            onClick={() => draft && handlers.onArrangeGroupGrid(group.id, draft)}
+            type="button"
+          >
+            Apply Formation Layout
+          </button>
+        </div>
+      ) : (
+        <div className="muted">No editable layout could be inferred for this formation.</div>
+      )}
+      <div className="inspector-row">Member sprites are read-only here. Select one only to inspect it.</div>
+      <div className="member-tags">
+        {members.map((member) => (
+          <button
+            key={member.id}
+            className="tag-button"
+            type="button"
+            onClick={() => handlers.onSelectMember(member.id)}
+          >
+            {member.name ?? member.id}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

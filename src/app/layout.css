@@ -175,6 +175,13 @@ body {
   gap: 4px;
 }
 
+.behavior-block,
+.action-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .group-row {
   display: flex;
   align-items: stretch;
@@ -214,6 +221,25 @@ body {
   font-size: 13px;
 }
 
+.action-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.action-item-label {
+  min-width: 0;
+}
+
+.action-item-meta {
+  color: var(--muted);
+  font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+  white-space: nowrap;
+}
+
 .inspector-block {
   background: var(--panel-2);
   border-radius: 10px;
@@ -248,6 +274,19 @@ body {
   padding: 6px 8px;
   color: var(--ink);
   font-family: 'IBM Plex Mono', monospace;
+}
+
+.inline-boundary-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--muted);
 }
 
 .muted {
