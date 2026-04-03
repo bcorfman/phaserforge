@@ -130,7 +130,7 @@ function reducer(state: EditorState, action: EditorAction): EditorState {
   }
 }
 
-export function EditorProvider({ children }: { children: React.ReactNode }): JSX.Element {
+export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, initState);
 
   useEffect(() => {

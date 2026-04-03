@@ -1,7 +1,8 @@
+import type { ReactNode } from 'react';
 import { useEditorStore } from './EditorStore';
 import { ActionSpec, ConditionSpec, MoveUntilActionSpec, CallActionSpec, WaitActionSpec, RepeatActionSpec, SequenceActionSpec, BoundsHitConditionSpec, ElapsedTimeConditionSpec } from '../model/types';
 
-export function Inspector(): JSX.Element {
+export function Inspector() {
   const { state, dispatch } = useEditorStore();
   const { selection, scene } = state;
 
@@ -10,7 +11,7 @@ export function Inspector(): JSX.Element {
   const updateCondition = (next: ConditionSpec) =>
     dispatch({ type: 'update-condition', id: next.id, next });
 
-  let content: JSX.Element | null = null;
+  let content: ReactNode = null;
 
   if (selection.kind === 'action') {
     const action = scene.actions[selection.id];
@@ -70,7 +71,7 @@ export function Inspector(): JSX.Element {
   );
 }
 
-function renderActionInspector(action: ActionSpec, onChange: (next: ActionSpec) => void): JSX.Element {
+function renderActionInspector(action: ActionSpec, onChange: (next: ActionSpec) => void) {
   switch (action.type) {
     case 'MoveUntil':
       return renderMoveUntil(action, onChange);
@@ -87,7 +88,7 @@ function renderActionInspector(action: ActionSpec, onChange: (next: ActionSpec) 
   }
 }
 
-function renderMoveUntil(action: MoveUntilActionSpec, onChange: (next: ActionSpec) => void): JSX.Element {
+function renderMoveUntil(action: MoveUntilActionSpec, onChange: (next: ActionSpec) => void) {
   return (
     <div className="inspector-block">
       <div className="inspector-title">{action.name ?? action.id}</div>
@@ -116,7 +117,7 @@ function renderMoveUntil(action: MoveUntilActionSpec, onChange: (next: ActionSpe
   );
 }
 
-function renderWait(action: WaitActionSpec, onChange: (next: ActionSpec) => void): JSX.Element {
+function renderWait(action: WaitActionSpec, onChange: (next: ActionSpec) => void) {
   return (
     <div className="inspector-block">
       <div className="inspector-title">{action.name ?? action.id}</div>
@@ -132,7 +133,7 @@ function renderWait(action: WaitActionSpec, onChange: (next: ActionSpec) => void
   );
 }
 
-function renderCall(action: CallActionSpec, onChange: (next: ActionSpec) => void): JSX.Element {
+function renderCall(action: CallActionSpec, onChange: (next: ActionSpec) => void) {
   const dy = action.args?.dy ?? 0;
   return (
     <div className="inspector-block">
@@ -158,7 +159,7 @@ function renderCall(action: CallActionSpec, onChange: (next: ActionSpec) => void
   );
 }
 
-function renderRepeat(action: RepeatActionSpec, onChange: (next: ActionSpec) => void): JSX.Element {
+function renderRepeat(action: RepeatActionSpec, onChange: (next: ActionSpec) => void) {
   return (
     <div className="inspector-block">
       <div className="inspector-title">{action.name ?? action.id}</div>
@@ -178,7 +179,7 @@ function renderRepeat(action: RepeatActionSpec, onChange: (next: ActionSpec) => 
   );
 }
 
-function renderSequence(action: SequenceActionSpec): JSX.Element {
+function renderSequence(action: SequenceActionSpec) {
   return (
     <div className="inspector-block">
       <div className="inspector-title">{action.name ?? action.id}</div>
@@ -191,7 +192,7 @@ function renderSequence(action: SequenceActionSpec): JSX.Element {
 function renderConditionInspector(
   condition: ConditionSpec,
   onChange: (next: ConditionSpec) => void
-): JSX.Element {
+) {
   switch (condition.type) {
     case 'BoundsHit':
       return renderBoundsCondition(condition, onChange);
@@ -205,7 +206,7 @@ function renderConditionInspector(
 function renderBoundsCondition(
   condition: BoundsHitConditionSpec,
   onChange: (next: ConditionSpec) => void
-): JSX.Element {
+) {
   return (
     <div className="inspector-block">
       <div className="inspector-title">{condition.id}</div>
@@ -278,7 +279,7 @@ function renderBoundsCondition(
 function renderElapsedCondition(
   condition: ElapsedTimeConditionSpec,
   onChange: (next: ConditionSpec) => void
-): JSX.Element {
+) {
   return (
     <div className="inspector-block">
       <div className="inspector-title">{condition.id}</div>

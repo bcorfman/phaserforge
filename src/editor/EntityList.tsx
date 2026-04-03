@@ -1,11 +1,11 @@
 import { useEditorStore } from './EditorStore';
 
-export function EntityList(): JSX.Element {
+export function EntityList() {
   const { state, dispatch } = useEditorStore();
   const { scene, selection } = state;
 
   const isSelected = (kind: string, id: string): boolean =>
-    selection.kind === kind && selection.id === id;
+    selection.kind !== 'none' && selection.kind === kind && selection.id === id;
 
   return (
     <div className="panel">

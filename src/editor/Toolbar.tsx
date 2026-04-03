@@ -1,6 +1,6 @@
 import { useEditorStore } from './EditorStore';
 
-export function Toolbar(): JSX.Element {
+export function Toolbar() {
   const { state, dispatch } = useEditorStore();
 
   return (

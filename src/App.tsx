@@ -8,7 +8,7 @@ import { Toolbar } from './editor/Toolbar';
 import { JsonPanel } from './editor/JsonPanel';
 import './app/layout.css';
 
-function AppShell(): JSX.Element {
+function AppShell() {
   const { state } = useEditorStore();
   const [sceneReady, setSceneReady] = useState(false);
   const readyRef = useRef(false);
@@ -52,7 +52,7 @@ function AppShell(): JSX.Element {
   );
 }
 
-export default function App(): JSX.Element {
+export default function App() {
   return (
     <EditorProvider>
       <AppShell />
