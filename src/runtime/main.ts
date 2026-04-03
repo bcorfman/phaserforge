@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Game as EditorScene } from '../phaser/EditorScene';
+import { EditorScene } from '../phaser/EditorScene';
 
 export default function StartGame(container: string): Phaser.Game
 {

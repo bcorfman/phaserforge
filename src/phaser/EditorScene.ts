@@ -1,34 +1,91 @@
-import { Scene } from 'phaser';
+import Phaser from 'phaser';
 import { EventBus } from './EventBus';
+import { compileScene, CompiledScene } from '../compiler/compileScene';
+import { SceneSpec, BoundsHitConditionSpec } from '../model/types';
+import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
 
-export class Game extends Scene
-{
-    constructor ()
-    {
-        super('Game');
+export class EditorScene extends Phaser.Scene {
+  private compiled?: CompiledScene;
+  private sprites = new Map<string, Phaser.GameObjects.Rectangle>();
+  private boundsGraphics?: Phaser.GameObjects.Graphics;
+
+  constructor() {
+    super('EditorScene');
+  }
+
+  create(): void {
+    this.cameras.main.setBackgroundColor('#0c0f1a');
+    EventBus.on('load-scene', this.loadScene, this);
+    EventBus.emit('current-scene-ready', this);
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      EventBus.off('load-scene', this.loadScene, this);
+    });
+  }
+
+  update(_time: number, delta: number): void {
+    if (!this.compiled) return;
+    this.compiled.actionManager.update(delta);
+    for (const entity of Object.values(this.compiled.entities)) {
+      const sprite = this.sprites.get(entity.id);
+      if (!sprite) continue;
+      sprite.setPosition(entity.x, entity.y);
     }
+  }
 
-    preload ()
-    {
-        this.load.setPath('assets');
-        
-        this.load.image('star', 'star.png');
-        this.load.image('background', 'bg.png');
-        this.load.image('logo', 'logo.png');
+  private loadScene(sceneSpec: SceneSpec): void {
+    this.clearScene();
+    this.compiled = compileScene(sceneSpec, {
+      callRegistry: {
+        drop: (action, ctx) => {
+          const dy = action.args?.dy ?? 0;
+          if (!action.target) return;
+          const target = resolveTarget(action.target, ctx.targets);
+          const targets = flattenTarget(target);
+          for (const t of targets) {
+            t.y += dy;
+          }
+        },
+      },
+    });
+
+    this.buildSprites();
+    this.drawBoundsFromSpec(sceneSpec);
+    this.compiled.startAll();
+  }
+
+  private buildSprites(): void {
+    if (!this.compiled) return;
+    for (const entity of Object.values(this.compiled.entities)) {
+      const rect = this.add.rectangle(entity.x, entity.y, entity.width, entity.height, 0x69d2ff, 0.9);
+      rect.setStrokeStyle(2, 0x1a2b4a, 1);
+      this.sprites.set(entity.id, rect);
     }
+  }
 
-    create ()
-    {
-        
-        this.add.image(512, 384, 'background');
-        this.add.image(512, 350, 'logo').setDepth(100);
-        this.add.text(512, 490, 'Make something fun!\nand share it with us:\nsupport@phaser.io', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
-        }).setOrigin(0.5).setDepth(100);
-        
-        EventBus.emit('current-scene-ready', this);
+  private drawBoundsFromSpec(scene: SceneSpec): void {
+    const boundsCondition = Object.values(scene.conditions).find(
+      (c): c is BoundsHitConditionSpec => c.type === 'BoundsHit'
+    );
+    if (!boundsCondition) return;
+    const bounds = boundsCondition.bounds;
+    const graphics = this.add.graphics();
+    graphics.lineStyle(2, 0x3b4f82, 1);
+    graphics.strokeRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
+    this.boundsGraphics = graphics;
+  }
 
+  private clearScene(): void {
+    if (this.compiled) {
+      this.compiled.reset();
     }
+    for (const sprite of this.sprites.values()) {
+      sprite.destroy();
+    }
+    this.sprites.clear();
+    if (this.boundsGraphics) {
+      this.boundsGraphics.destroy();
+      this.boundsGraphics = undefined;
+    }
+  }
 }
