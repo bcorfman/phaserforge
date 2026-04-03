@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { IRefPhaserGame, PhaserGame } from './PhaserGame';
+import { IRefPhaserGame, PhaserGame } from './phaser/PhaserHost';
 
 function App()
 {
