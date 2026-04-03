@@ -1,10 +1,14 @@
 import { useEditorStore } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
+import { buildBehaviorActionTrees, type ActionTreeNode } from './actionTree';
+import { type Selection } from './EditorStore';
+import { type SceneSpec } from '../model/types';
 
 export function EntityList() {
   const { state, dispatch } = useEditorStore();
   const { scene, selection, expandedGroups } = state;
   const { groups, ungroupedEntities } = summarizeSceneGroups(scene);
+  const behaviorActionTrees = buildBehaviorActionTrees(scene);
 
   const isSelected = (kind: string, id: string): boolean =>
     selection.kind !== 'none' && selection.kind === kind && selection.id === id;
@@ -67,29 +71,34 @@ export function EntityList() {
       </div>
       <div className="panel-section">
         <div className="panel-heading">Behaviors</div>
-        {Object.values(scene.behaviors).map((behavior) => (
-          <button
-            key={behavior.id}
-            className={`list-item ${isSelected('behavior', behavior.id) ? 'active' : ''}`}
-            onClick={() => dispatch({ type: 'select', selection: { kind: 'behavior', id: behavior.id } })}
-            type="button"
-          >
-            {behavior.name ?? behavior.id}
-          </button>
-        ))}
-      </div>
-      <div className="panel-section">
-        <div className="panel-heading">Actions</div>
-        {Object.values(scene.actions).map((action) => (
-          <button
-            key={action.id}
-            className={`list-item ${isSelected('action', action.id) ? 'active' : ''}`}
-            onClick={() => dispatch({ type: 'select', selection: { kind: 'action', id: action.id } })}
-            type="button"
-          >
-            {action.name ?? action.id} · {action.type}
-          </button>
-        ))}
+        {behaviorActionTrees.map(({ behaviorId, root }) => {
+          const behavior = scene.behaviors[behaviorId];
+          if (!behavior) return null;
+
+          return (
+            <div key={behavior.id} className="behavior-block">
+              <button
+                className={`list-item ${isSelected('behavior', behavior.id) ? 'active' : ''}`}
+                onClick={() => dispatch({ type: 'select', selection: { kind: 'behavior', id: behavior.id } })}
+                type="button"
+              >
+                {behavior.name ?? behavior.id}
+              </button>
+              {root ? (
+                <div className="action-tree" aria-label={`${behavior.name ?? behavior.id} action hierarchy`}>
+                  <ActionTreeBranch
+                    node={root}
+                    depth={0}
+                    isSelected={isSelected}
+                    onSelect={(id) => dispatch({ type: 'select', selection: { kind: 'action', id } })}
+                  />
+                </div>
+              ) : (
+                <div className="muted">Root action not found.</div>
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="panel-section">
         <div className="panel-heading">Conditions</div>
@@ -106,4 +115,79 @@ export function EntityList() {
       </div>
     </div>
   );
+}
+
+function ActionTreeBranch({
+  node,
+  depth,
+  isSelected,
+  onSelect,
+}: {
+  node: ActionTreeNode;
+  depth: number;
+  isSelected: (kind: string, id: string) => boolean;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <>
+      <button
+        className={`list-item action-item ${isSelected('action', node.id) ? 'active' : ''}`}
+        onClick={() => onSelect(node.id)}
+        style={{ marginLeft: `${depth * 14}px` }}
+        type="button"
+      >
+        <span className="action-item-label">{node.action.name ?? node.id}</span>
+        <span className="action-item-meta">{node.action.type}</span>
+      </button>
+      {node.children.map((child) => (
+        <ActionTreeBranch
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          isSelected={isSelected}
+          onSelect={onSelect}
+        />
+      ))}
+    </>
+  );
+}
+
+export function renderBehaviorHierarchy(
+  scene: SceneSpec,
+  selection: Selection,
+  onSelectBehavior: (id: string) => void,
+  onSelectAction: (id: string) => void
+) {
+  const behaviorActionTrees = buildBehaviorActionTrees(scene);
+  const isSelected = (kind: string, id: string): boolean =>
+    selection.kind !== 'none' && selection.kind === kind && selection.id === id;
+
+  return behaviorActionTrees.map(({ behaviorId, root }) => {
+    const behavior = scene.behaviors[behaviorId];
+    if (!behavior) return null;
+
+    return (
+      <div key={behavior.id} className="behavior-block">
+        <button
+          className={`list-item ${isSelected('behavior', behavior.id) ? 'active' : ''}`}
+          onClick={() => onSelectBehavior(behavior.id)}
+          type="button"
+        >
+          {behavior.name ?? behavior.id}
+        </button>
+        {root ? (
+          <div className="action-tree" aria-label={`${behavior.name ?? behavior.id} action hierarchy`}>
+            <ActionTreeBranch
+              node={root}
+              depth={0}
+              isSelected={isSelected}
+              onSelect={onSelectAction}
+            />
+          </div>
+        ) : (
+          <div className="muted">Root action not found.</div>
+        )}
+      </div>
+    );
+  });
 }
