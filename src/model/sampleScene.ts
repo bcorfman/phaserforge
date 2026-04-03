@@ -20,7 +20,7 @@ export const sampleScene: SceneSpec = {
     e15: { id: 'e15', x: 412, y: 220, width: 28, height: 20 },
   },
   groups: {
-    g-enemies: {
+    'g-enemies': {
       id: 'g-enemies',
       members: [
         'e1',
