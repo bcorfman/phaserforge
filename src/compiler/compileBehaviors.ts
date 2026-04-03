@@ -9,13 +9,15 @@ import { Sequence } from '../runtime/actions/Sequence';
 import { MoveUntil } from '../runtime/actions/MoveUntil';
 import { Wait } from '../runtime/actions/Wait';
 import { Call } from '../runtime/actions/Call';
+import { Repeat } from '../runtime/actions/Repeat';
 import { BoundsHit } from '../runtime/conditions/BoundsHit';
 import { ElapsedTime } from '../runtime/conditions/ElapsedTime';
 import { Condition } from '../runtime/conditions/Condition';
 import { flattenTarget, resolveTarget, TargetContext } from '../runtime/targets/resolveTarget';
+import { CallActionSpec } from '../model/types';
 
 export interface CompileOptions {
-  callRegistry?: Record<string, () => void>;
+  callRegistry?: Record<string, CallHandler>;
 }
 
 export interface CompileContext {
@@ -23,6 +25,8 @@ export interface CompileContext {
   targets: TargetContext;
   options?: CompileOptions;
 }
+
+export type CallHandler = (action: CallActionSpec, ctx: CompileContext) => void;
 
 export function compileBehavior(behavior: BehaviorSpec, ctx: CompileContext): Action {
   const callRegistry = ctx.options?.callRegistry ?? {};
@@ -66,7 +70,11 @@ function instantiateAction(
       if (!callback) {
         throw new Error(`Missing call handler for ${action.callId}`);
       }
-      return new Call(callback);
+      return new Call(() => callback(action, ctx));
+    }
+    case 'Repeat': {
+      const child = buildAction(action.childId);
+      return new Repeat(child, action.count);
     }
     case 'MoveUntil': {
       const target = resolveTarget(action.target, ctx.targets);

@@ -1,41 +1,61 @@
-import { useRef } from 'react';
-import { IRefPhaserGame, PhaserGame } from './phaser/PhaserHost';
+import { useEffect, useRef, useState } from 'react';
+import { PhaserGame } from './phaser/PhaserHost';
+import { EventBus } from './phaser/EventBus';
+import { EditorProvider, useEditorStore } from './editor/EditorStore';
+import { EntityList } from './editor/EntityList';
+import { Inspector } from './editor/Inspector';
+import { Toolbar } from './editor/Toolbar';
+import { JsonPanel } from './editor/JsonPanel';
+import './app/layout.css';
 
-function App()
-{
+function AppShell(): JSX.Element {
+  const { state } = useEditorStore();
+  const [sceneReady, setSceneReady] = useState(false);
+  const readyRef = useRef(false);
 
-    //  References to the PhaserGame component (game and scene are exposed)
-    const phaserRef = useRef<IRefPhaserGame | null>(null);
+  useEffect(() => {
+    const handleReady = () => {
+      readyRef.current = true;
+      setSceneReady(true);
+    };
+    EventBus.on('current-scene-ready', handleReady);
+    return () => {
+      EventBus.off('current-scene-ready', handleReady);
+    };
+  }, []);
 
-    const addSprite = () => {
+  useEffect(() => {
+    if (!sceneReady) return;
+    EventBus.emit('load-scene', state.scene);
+  }, [sceneReady, state.scene]);
 
-        if (phaserRef.current)
-        {
-            const scene = phaserRef.current.scene;
-
-            if (scene)
-            {
-                // Add a new sprite to the current scene at a random position
-                const x = Phaser.Math.Between(64, scene.scale.width - 64);
-                const y = Phaser.Math.Between(64, scene.scale.height - 64);
-    
-                //  `add.sprite` is a Phaser GameObjectFactory method and it returns a Sprite Game Object instance
-                const star = scene.add.sprite(x, y, 'star');
-    
-            }
-        }
-    }
-
-    return (
-        <div id="app">
-            <PhaserGame ref={phaserRef} />
-            <div>
-                <div>
-                    <button className="button" onClick={addSprite}>Add New Sprite</button>
-                </div>
-            </div>
-        </div>
-    )
+  return (
+    <div className="app-root">
+      <Toolbar />
+      <div className="app-body">
+        <aside className="pane pane-left">
+          <EntityList />
+        </aside>
+        <main className="pane pane-center">
+          <div className="phaser-frame">
+            <PhaserGame currentActiveScene={() => {
+              if (!readyRef.current) setSceneReady(true);
+            }} />
+          </div>
+        </main>
+        <aside className="pane pane-right">
+          <Inspector />
+          <JsonPanel />
+        </aside>
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default function App(): JSX.Element {
+  return (
+    <EditorProvider>
+      <AppShell />
+    </EditorProvider>
+  );
+}

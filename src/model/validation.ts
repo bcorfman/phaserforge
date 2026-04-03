@@ -3,6 +3,8 @@ import {
   ActionSpec,
   SequenceActionSpec,
   MoveUntilActionSpec,
+  CallActionSpec,
+  RepeatActionSpec,
   TargetRef,
 } from './types';
 
@@ -73,7 +75,20 @@ function validateActions(scene: SceneSpec): void {
       }
       case 'Wait':
       case 'Call':
+        if (action.type === 'Call') {
+          const call = action as CallActionSpec;
+          if (call.target) {
+            validateTarget(scene, call.target, `Call ${id} target`);
+          }
+        }
         break;
+      case 'Repeat': {
+        const repeat = action as RepeatActionSpec;
+        if (!scene.actions[repeat.childId]) {
+          throw new Error(`Repeat ${id} references unknown action ${repeat.childId}`);
+        }
+        break;
+      }
       default:
         throw new Error(`Unknown action type: ${(action as ActionSpec).type}`);
     }

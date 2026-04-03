@@ -26,11 +26,6 @@ export class MoveUntil extends ActionBase {
 
   update(dtMs: number): void {
     if (this.complete || this.cancelled) return;
-    if (this.condition.isMet(this.targets)) {
-      this.complete = true;
-      return;
-    }
-
     const dtSeconds = dtMs / 1000;
     for (const target of this.targets) {
       target.x += this.velocity.x * dtSeconds;

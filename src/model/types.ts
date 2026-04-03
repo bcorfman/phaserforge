@@ -39,17 +39,20 @@ export type ActionSpec =
   | SequenceActionSpec
   | MoveUntilActionSpec
   | WaitActionSpec
-  | CallActionSpec;
+  | CallActionSpec
+  | RepeatActionSpec;
 
 export interface SequenceActionSpec {
   id: Id;
   type: 'Sequence';
+  name?: string;
   children: Id[]; // action ids
 }
 
 export interface MoveUntilActionSpec {
   id: Id;
   type: 'MoveUntil';
+  name?: string;
   target: TargetRef;
   velocity: { x: number; y: number }; // units per second
   conditionId: Id;
@@ -58,13 +61,25 @@ export interface MoveUntilActionSpec {
 export interface WaitActionSpec {
   id: Id;
   type: 'Wait';
+  name?: string;
   durationMs: number;
 }
 
 export interface CallActionSpec {
   id: Id;
   type: 'Call';
+  name?: string;
   callId: Id;
+  target?: TargetRef;
+  args?: Record<string, number>;
+}
+
+export interface RepeatActionSpec {
+  id: Id;
+  type: 'Repeat';
+  name?: string;
+  childId: Id;
+  count?: number; // undefined = infinite
 }
 
 export type ConditionSpec = BoundsHitConditionSpec | ElapsedTimeConditionSpec;

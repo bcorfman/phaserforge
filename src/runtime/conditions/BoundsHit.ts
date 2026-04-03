@@ -36,8 +36,10 @@ export class BoundsHit implements Condition {
   }
 
   private isOutside(t: RuntimeEntity): boolean {
-    const xHit = t.x <= this.bounds.minX || t.x >= this.bounds.maxX;
-    const yHit = t.y <= this.bounds.minY || t.y >= this.bounds.maxY;
+    const halfW = t.width / 2;
+    const halfH = t.height / 2;
+    const xHit = t.x - halfW <= this.bounds.minX || t.x + halfW >= this.bounds.maxX;
+    const yHit = t.y - halfH <= this.bounds.minY || t.y + halfH >= this.bounds.maxY;
     return xHit || yHit;
   }
 }
