@@ -20,7 +20,7 @@ export const sampleScene: SceneSpec = {
     e15: { id: 'e15', x: 412, y: 220, width: 28, height: 20 },
   },
   groups: {
-    g-enemies: {
+    'g-enemies': {
       id: 'g-enemies',
       members: [
         'e1',
@@ -42,7 +42,7 @@ export const sampleScene: SceneSpec = {
     },
   },
   behaviors: {
-    b-formation: {
+    'b-formation': {
       id: 'b-formation',
       name: 'Formation Patrol',
       target: { type: 'group', groupId: 'g-enemies' },
@@ -50,14 +50,14 @@ export const sampleScene: SceneSpec = {
     },
   },
   actions: {
-    a-root: { id: 'a-root', type: 'Repeat', name: 'Loop', childId: 'a-seq' },
-    a-seq: {
+    'a-root': { id: 'a-root', type: 'Repeat', name: 'Loop', childId: 'a-seq' },
+    'a-seq': {
       id: 'a-seq',
       type: 'Sequence',
       name: 'Sweep + Drop',
       children: ['a-move-right', 'a-drop-right', 'a-wait-right', 'a-move-left', 'a-drop-left', 'a-wait-left'],
     },
-    a-move-right: {
+    'a-move-right': {
       id: 'a-move-right',
       type: 'MoveUntil',
       name: 'Move Right',
@@ -65,7 +65,7 @@ export const sampleScene: SceneSpec = {
       velocity: { x: 80, y: 0 },
       conditionId: 'c-bounds',
     },
-    a-move-left: {
+    'a-move-left': {
       id: 'a-move-left',
       type: 'MoveUntil',
       name: 'Move Left',
@@ -73,7 +73,7 @@ export const sampleScene: SceneSpec = {
       velocity: { x: -80, y: 0 },
       conditionId: 'c-bounds',
     },
-    a-drop-right: {
+    'a-drop-right': {
       id: 'a-drop-right',
       type: 'Call',
       name: 'Drop',
@@ -81,7 +81,7 @@ export const sampleScene: SceneSpec = {
       target: { type: 'group', groupId: 'g-enemies' },
       args: { dy: 24 },
     },
-    a-drop-left: {
+    'a-drop-left': {
       id: 'a-drop-left',
       type: 'Call',
       name: 'Drop',
@@ -89,11 +89,11 @@ export const sampleScene: SceneSpec = {
       target: { type: 'group', groupId: 'g-enemies' },
       args: { dy: 24 },
     },
-    a-wait-right: { id: 'a-wait-right', type: 'Wait', name: 'Pause', durationMs: 150 },
-    a-wait-left: { id: 'a-wait-left', type: 'Wait', name: 'Pause', durationMs: 150 },
+    'a-wait-right': { id: 'a-wait-right', type: 'Wait', name: 'Pause', durationMs: 150 },
+    'a-wait-left': { id: 'a-wait-left', type: 'Wait', name: 'Pause', durationMs: 150 },
   },
   conditions: {
-    c-bounds: {
+    'c-bounds': {
       id: 'c-bounds',
       type: 'BoundsHit',
       bounds: { minX: 80, maxX: 944, minY: 60, maxY: 720 },
