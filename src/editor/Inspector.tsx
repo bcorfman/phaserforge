@@ -7,6 +7,7 @@ import { ActionSpec, ConditionSpec, MoveUntilActionSpec, CallActionSpec, WaitAct
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
   const { selection, scene, interaction } = state;
+  const [pinDuringDrag, setPinDuringDrag] = useState(false);
 
   const updateAction = (next: ActionSpec) =>
     dispatch({ type: 'update-action', id: next.id, next });
@@ -20,7 +21,7 @@ export function Inspector() {
   let content: ReactNode = null;
 
   // Show drag information during interactions
-  if (interaction) {
+  if (interaction && !pinDuringDrag) {
     if (interaction.kind === 'entity') {
       const entity = scene.entities[interaction.id];
       content = entity ? (
@@ -85,6 +86,7 @@ export function Inspector() {
         group={group}
         scene={scene}
         onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
+        onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
         onUpdateGroup={updateGroup}
         onArrangeGroupGrid={arrangeGroupGrid}
       />
@@ -110,6 +112,14 @@ export function Inspector() {
   return (
     <div className="panel">
       <div className="panel-title">Inspector</div>
+      <label className="inspector-toggle">
+        <input
+          type="checkbox"
+          checked={pinDuringDrag}
+          onChange={(e) => setPinDuringDrag(e.target.checked)}
+        />
+        <span>Pin selection while dragging</span>
+      </label>
       {content}
     </div>
   );
@@ -119,17 +129,17 @@ function GroupInspector({
   group,
   scene,
   onSelectMember,
+  onRemoveMember,
   onUpdateGroup,
   onArrangeGroupGrid,
 }: {
   group: GroupSpec;
   scene: SceneSpec;
   onSelectMember: (id: string) => void;
+  onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
   onArrangeGroupGrid: (id: string, layout: GroupGridLayout) => void;
 }) {
-  const members = group.members.map((memberId) => scene.entities[memberId]).filter(Boolean);
-  const layoutSummary = summarizeGridLayout(members);
   const inferredLayout = inferGroupGridLayout(scene, group.id);
   const [draft, setDraft] = useState<GroupGridLayout | undefined>(inferredLayout);
 
@@ -142,6 +152,7 @@ function GroupInspector({
   return (
     renderGroupInspector(group, scene, draft, canApplyGrid, {
       onSelectMember,
+      onRemoveMember,
       onUpdateGroup,
       onArrangeGroupGrid,
       onDraftChange: setDraft,
@@ -156,6 +167,7 @@ export function renderGroupInspector(
   canApplyGrid: boolean,
   handlers: {
     onSelectMember: (id: string) => void;
+    onRemoveMember: (id: string) => void;
     onUpdateGroup: (next: GroupSpec) => void;
     onArrangeGroupGrid: (id: string, layout: GroupGridLayout) => void;
     onDraftChange: (next: GroupGridLayout) => void;
@@ -248,16 +260,24 @@ export function renderGroupInspector(
         <div className="muted">No editable layout could be inferred for this formation.</div>
       )}
       <div className="inspector-row">Member sprites are read-only here. Select one only to inspect it.</div>
-      <div className="member-tags">
+      <div className="member-list">
         {members.map((member) => (
-          <button
-            key={member.id}
-            className="tag-button"
-            type="button"
-            onClick={() => handlers.onSelectMember(member.id)}
-          >
-            {member.name ?? member.id}
-          </button>
+          <div key={member.id} className="member-row">
+            <button
+              className="tag-button"
+              type="button"
+              onClick={() => handlers.onSelectMember(member.id)}
+            >
+              {member.name ?? member.id}
+            </button>
+            <button
+              className="tag-button tag-button-danger"
+              type="button"
+              onClick={() => handlers.onRemoveMember(member.id)}
+            >
+              Remove
+            </button>
+          </div>
         ))}
       </div>
     </div>

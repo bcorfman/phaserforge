@@ -25,12 +25,25 @@ const enemyIds = enemyEntities.map((entity) => entity.id);
 
 export const sampleScene: SceneSpec = {
   id: 'scene-1',
+  world: {
+    width: 1024,
+    height: 768,
+  },
   entities,
   groups: {
     'g-enemies': {
       id: 'g-enemies',
       name: 'Enemy Formation',
       members: enemyIds,
+      layout: {
+        type: 'grid',
+        rows: 3,
+        cols: 5,
+        startX: 220,
+        startY: 140,
+        spacingX: 48,
+        spacingY: 40,
+      },
     },
   },
   behaviors: {

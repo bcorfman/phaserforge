@@ -6,13 +6,24 @@ import { EntityList } from './editor/EntityList';
 import { Inspector } from './editor/Inspector';
 import { Toolbar } from './editor/Toolbar';
 import { JsonPanel } from './editor/JsonPanel';
-import { getPrimaryBoundsConditionId } from './editor/boundsCondition';
+import { getEditableBoundsConditionId } from './editor/boundsCondition';
+import { formatZoomPercent } from './editor/viewport';
+import { getSceneWorld } from './editor/sceneWorld';
 import './app/layout.css';
 
 function AppShell() {
   const { state, dispatch } = useEditorStore();
   const [sceneReady, setSceneReady] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [worldWidthDraft, setWorldWidthDraft] = useState('');
+  const [worldHeightDraft, setWorldHeightDraft] = useState('');
   const readyRef = useRef(false);
+  const world = getSceneWorld(state.scene);
+
+  useEffect(() => {
+    setWorldWidthDraft(String(world.width));
+    setWorldHeightDraft(String(world.height));
+  }, [world.width, world.height]);
 
   useEffect(() => {
     const handleReady = () => {
@@ -38,6 +49,20 @@ function AppShell() {
   useEffect(() => {
     EventBus.emit('selection-changed', state.selection);
   }, [state.selection]);
+
+  useEffect(() => {
+    const handleViewState = (payload: { zoom: number }) => {
+      setZoom(payload.zoom);
+      if (!state.hasSeenViewHint) {
+        dispatch({ type: 'dismiss-view-hint' });
+      }
+    };
+
+    EventBus.on('scene-view-state', handleViewState);
+    return () => {
+      EventBus.off('scene-view-state', handleViewState);
+    };
+  }, [dispatch, state.hasSeenViewHint]);
 
   useEffect(() => {
     // IMPORTANT: Keep event handler function declarations in sync with EventBus.on calls below
@@ -67,7 +92,7 @@ function AppShell() {
     };
 
     const handleCanvasUpdateBounds = (bounds: { minX: number; maxX: number; minY: number; maxY: number }) => {
-      const boundsConditionId = getPrimaryBoundsConditionId(state.scene);
+      const boundsConditionId = getEditableBoundsConditionId(state.scene, state.selection);
       if (!boundsConditionId) return;
       dispatch({ type: 'update-bounds', id: boundsConditionId, bounds });
     };
@@ -119,6 +144,17 @@ function AppShell() {
     };
   }, [dispatch, state.scene]);
 
+  const commitWorldDraft = (dimension: 'width' | 'height') => {
+    const raw = dimension === 'width' ? worldWidthDraft : worldHeightDraft;
+    const parsed = Number(raw);
+    const nextValue = Number.isFinite(parsed) && parsed >= 1 ? Math.round(parsed) : world[dimension];
+    dispatch({
+      type: 'update-scene-world',
+      width: dimension === 'width' ? nextValue : world.width,
+      height: dimension === 'height' ? nextValue : world.height,
+    });
+  };
+
   return (
     <div className="app-root">
       <Toolbar />
@@ -127,7 +163,69 @@ function AppShell() {
           <EntityList />
         </aside>
         <main className="pane pane-center">
+          <div className="viewbar">
+            <div className="viewbar-group">
+              <span className="viewbar-label">View</span>
+              <button className="button" type="button" onClick={() => EventBus.emit('scene-fit-view')}>
+                Fit
+              </button>
+              <button className="button" type="button" onClick={() => EventBus.emit('scene-reset-zoom')}>
+                100%
+              </button>
+              <button className="button" type="button" onClick={() => EventBus.emit('scene-zoom-out')}>
+                -
+              </button>
+              <div className="viewbar-pill">{formatZoomPercent(zoom)}</div>
+              <button className="button" type="button" onClick={() => EventBus.emit('scene-zoom-in')}>
+                +
+              </button>
+            </div>
+            <div className="viewbar-group">
+              <span className="viewbar-label">World</span>
+              <label className="viewbar-field">
+                <span>W</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={worldWidthDraft}
+                  onChange={(e) => setWorldWidthDraft(e.target.value)}
+                  onBlur={() => commitWorldDraft('width')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      commitWorldDraft('width');
+                      e.currentTarget.blur();
+                    }
+                  }}
+                />
+              </label>
+              <label className="viewbar-field">
+                <span>H</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={worldHeightDraft}
+                  onChange={(e) => setWorldHeightDraft(e.target.value)}
+                  onBlur={() => commitWorldDraft('height')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      commitWorldDraft('height');
+                      e.currentTarget.blur();
+                    }
+                  }}
+                />
+              </label>
+            </div>
+          </div>
           <div className="phaser-frame">
+            {!state.hasSeenViewHint && (
+              <div className="view-hint">
+                <div className="view-hint-title">View Controls</div>
+                <div className="view-hint-text">Wheel to zoom, middle-drag or Space-drag to pan, or use Fit/100% above.</div>
+                <button className="button" type="button" onClick={() => dispatch({ type: 'dismiss-view-hint' })}>
+                  Dismiss
+                </button>
+              </div>
+            )}
             <PhaserGame currentActiveScene={() => {
               if (!readyRef.current) setSceneReady(true);
             }} />
