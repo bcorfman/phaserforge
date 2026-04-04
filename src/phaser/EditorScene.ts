@@ -20,7 +20,9 @@ import {
   type DragState,
   type HoverState
 } from '../editor/canvasInteraction';
-import { getPrimaryBoundsConditionId } from '../editor/boundsCondition';
+import { getEditableBoundsConditionId } from '../editor/boundsCondition';
+import { getSceneWorld } from '../editor/sceneWorld';
+import { clampCameraScroll, clampZoom, getFitZoom, getNextZoom, getZoomedScroll } from '../editor/viewport';
 
 export class EditorScene extends Phaser.Scene {
   private compiled?: CompiledScene;
@@ -48,6 +50,12 @@ export class EditorScene extends Phaser.Scene {
   private historyIndex = -1;
   private marqueeGraphics?: Phaser.GameObjects.Graphics;
   private mode: 'edit' | 'play' = 'edit';
+  private activeBoundsConditionId?: string;
+  private worldFrameGraphics?: Phaser.GameObjects.Graphics;
+  private currentZoom = 1;
+  private hasInitializedView = false;
+  private isSpacePanning = false;
+  private panState?: { startPointerX: number; startPointerY: number; startScrollX: number; startScrollY: number };
 
   constructor() {
     super('EditorScene');
@@ -55,10 +63,15 @@ export class EditorScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor('#0c0f1a');
+    this.cameras.main.roundPixels = true;
     setActiveScene(this);
     EventBus.on('load-scene', this.loadScene, this);
     EventBus.on('selection-changed', this.handleSelectionChanged, this);
     EventBus.on('canvas-update-bounds', this.updateBounds, this);
+    EventBus.on('scene-zoom-in', this.zoomIn, this);
+    EventBus.on('scene-zoom-out', this.zoomOut, this);
+    EventBus.on('scene-fit-view', this.fitView, this);
+    EventBus.on('scene-reset-zoom', this.resetZoom, this);
     EventBus.emit('current-scene-ready', this);
 
     // Initialize overlays
@@ -68,19 +81,27 @@ export class EditorScene extends Phaser.Scene {
     this.input.on('pointerdown', this.handlePointerDown, this);
     this.input.on('pointermove', this.handlePointerMove, this);
     this.input.on('pointerup', this.handlePointerUp, this);
+    this.input.on('wheel', this.handleWheel, this);
 
     // Keyboard input for nudging
     this.input.keyboard.on('keydown', this.handleKeyDown, this);
+    this.input.keyboard.on('keyup', this.handleKeyUp, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       setActiveScene(null);
       EventBus.off('load-scene', this.loadScene, this);
       EventBus.off('selection-changed', this.handleSelectionChanged, this);
       EventBus.off('canvas-update-bounds', this.updateBounds, this);
+      EventBus.off('scene-zoom-in', this.zoomIn, this);
+      EventBus.off('scene-zoom-out', this.zoomOut, this);
+      EventBus.off('scene-fit-view', this.fitView, this);
+      EventBus.off('scene-reset-zoom', this.resetZoom, this);
       this.input.off('pointerdown', this.handlePointerDown, this);
       this.input.off('pointermove', this.handlePointerMove, this);
       this.input.off('pointerup', this.handlePointerUp, this);
+      this.input.off('wheel', this.handleWheel, this);
       this.input.keyboard.off('keydown', this.handleKeyDown, this);
+      this.input.keyboard.off('keyup', this.handleKeyUp, this);
     });
   }
 
@@ -114,8 +135,15 @@ export class EditorScene extends Phaser.Scene {
 
     this.buildSprites();
     this.buildGroupFrames(sceneSpec);
-    this.drawBoundsFromSpec(sceneSpec);
+    this.drawWorldFrame(sceneSpec);
+    this.refreshBoundsOverlay(sceneSpec);
     this.applySelectionStyles();
+    if (!this.hasInitializedView) {
+      this.fitView();
+      this.hasInitializedView = true;
+    } else {
+      this.applyZoom(this.currentZoom);
+    }
     if (mode === 'play') {
       this.compiled.startAll();
     }
@@ -135,8 +163,21 @@ export class EditorScene extends Phaser.Scene {
     this.groupLabels.clear();
     this.groupZones.forEach(zone => zone.destroy());
     this.groupZones.clear();
+    this.worldFrameGraphics?.destroy();
+    this.worldFrameGraphics = undefined;
     this.hoverOutline?.clear();
     this.dragOverlay?.setVisible(false);
+    this.activeBoundsConditionId = undefined;
+  }
+
+  private drawWorldFrame(scene: SceneSpec): void {
+    const world = getSceneWorld(scene);
+    const graphics = this.add.graphics();
+    graphics.lineStyle(2, 0x445d8f, 0.95);
+    graphics.strokeRect(0, 0, world.width, world.height);
+    graphics.lineStyle(1, 0x27324d, 0.85);
+    graphics.strokeRect(-1, -1, world.width + 2, world.height + 2);
+    this.worldFrameGraphics = graphics;
   }
 
   private buildSprites(): void {
@@ -221,10 +262,17 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
-  private drawBoundsFromSpec(scene: SceneSpec): void {
-    const boundsCondition = Object.values(scene.conditions).find(
-      (c): c is BoundsHitConditionSpec => c.type === 'BoundsHit'
-    );
+  private refreshBoundsOverlay(scene: SceneSpec): void {
+    this.boundsGraphics?.destroy();
+    this.boundsGraphics = undefined;
+    this.boundsHandles.forEach((handle) => handle.destroy());
+    this.boundsHandles.clear();
+
+    const boundsConditionId = getEditableBoundsConditionId(scene, this.selection);
+    this.activeBoundsConditionId = boundsConditionId;
+    const boundsCondition = boundsConditionId ? scene.conditions[boundsConditionId] : undefined;
+    if (!boundsCondition || boundsCondition.type !== 'BoundsHit') return;
+
     if (!boundsCondition) return;
     const bounds = boundsCondition.bounds;
     const graphics = this.add.graphics();
@@ -245,6 +293,7 @@ export class EditorScene extends Phaser.Scene {
     this.selection = selection;
     this.applySelectionStyles();
     this.updateGroupFrames();
+    if (this.compiled) this.refreshBoundsOverlay(this.compiled.scene);
   }
 
   private applySelectionStyles(): void {
@@ -267,10 +316,20 @@ export class EditorScene extends Phaser.Scene {
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
     if (this.mode !== 'edit') return;
+    if (this.shouldStartPan(pointer)) {
+      this.panState = {
+        startPointerX: pointer.x,
+        startPointerY: pointer.y,
+        startScrollX: this.cameras.main.scrollX,
+        startScrollY: this.cameras.main.scrollY,
+      };
+      this.input.setDefaultCursor('grabbing');
+      return;
+    }
     const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
 
     // Use new hit testing
-    const hitResult = hitTestCanvas(worldPoint, this.compiled?.sceneSpec || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} }, this.sprites, this.groupZones, this.boundsHandles);
+    const hitResult = hitTestCanvas(worldPoint, this.compiled?.scene || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} }, this.sprites, this.groupZones, this.boundsHandles);
 
     if (hitResult.kind === 'none') {
       // Start marquee selection on empty canvas click
@@ -290,10 +349,17 @@ export class EditorScene extends Phaser.Scene {
 
   private handlePointerMove(pointer: Phaser.Input.Pointer): void {
     if (this.mode !== 'edit') return;
+    if (this.panState) {
+      const dx = (pointer.x - this.panState.startPointerX) / this.currentZoom;
+      const dy = (pointer.y - this.panState.startPointerY) / this.currentZoom;
+      this.applyScroll(this.panState.startScrollX - dx, this.panState.startScrollY - dy);
+      this.emitViewState();
+      return;
+    }
     const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
 
     // Update hover state and cursor
-    const hitResult = hitTestCanvas(worldPoint, this.compiled?.sceneSpec || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} }, this.sprites, this.groupZones, this.boundsHandles);
+    const hitResult = hitTestCanvas(worldPoint, this.compiled?.scene || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} }, this.sprites, this.groupZones, this.boundsHandles);
     this.updateHoverState(hitResult);
     this.updateCursor(hitResult);
 
@@ -314,9 +380,7 @@ export class EditorScene extends Phaser.Scene {
           this.createMarqueeRectangle();
         } else if (hitResult.kind === 'bounds-handle') {
           // Record bounds operation
-          const boundsCondition = Object.values(this.compiled?.sceneSpec?.conditions ?? {}).find(
-            (c): c is BoundsHitConditionSpec => c.type === 'BoundsHit'
-          );
+          const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
           if (boundsCondition) {
             this.recordOperation('update-bounds', boundsCondition.id, boundsCondition.bounds);
           }
@@ -399,10 +463,8 @@ export class EditorScene extends Phaser.Scene {
       EventBus.emit('canvas-move-group', { id: this.dragState.id, dx: snappedDx, dy: snappedDy });
     } else if (this.dragState.kind === 'bounds-handle' && this.dragState.handle) {
       // Calculate new bounds based on handle being dragged
-      const boundsCondition = Object.values(this.compiled?.sceneSpec?.conditions ?? {}).find(
-        (c): c is BoundsHitConditionSpec => c.type === 'BoundsHit'
-      );
-      if (boundsCondition) {
+      const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
+      if (boundsCondition?.type === 'BoundsHit') {
         const newBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, this.dragState.handle, snappedDx, snappedDy);
         EventBus.emit('canvas-update-bounds', newBounds);
       }
@@ -410,10 +472,8 @@ export class EditorScene extends Phaser.Scene {
 
     // Update drag overlay
     if (this.dragOverlay) {
-      const boundsCondition = Object.values(this.compiled?.sceneSpec?.conditions ?? {}).find(
-        (c): c is BoundsHitConditionSpec => c.type === 'BoundsHit'
-      );
-      updateDragOverlay(this.dragOverlay, this.dragState, worldPoint, boundsCondition?.bounds);
+      const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
+      updateDragOverlay(this.dragOverlay, this.dragState, worldPoint, boundsCondition?.type === 'BoundsHit' ? boundsCondition.bounds : undefined);
     }
 
     this.dragState.startX = worldPoint.x;
@@ -422,6 +482,11 @@ export class EditorScene extends Phaser.Scene {
 
   private handlePointerUp(): void {
     if (this.mode !== 'edit') return;
+    if (this.panState) {
+      this.panState = undefined;
+      this.input.setDefaultCursor(this.isSpacePanning ? 'grab' : 'default');
+      return;
+    }
     if (this.dragState) {
       if (this.dragState.kind === 'marquee') {
         // Complete marquee selection
@@ -431,6 +496,9 @@ export class EditorScene extends Phaser.Scene {
         EventBus.emit('canvas-select-multiple', { entityIds: selectedEntityIds, additive: false });
         this.destroyMarqueeRectangle();
       }
+      if (this.dragState.hasMoved) {
+        this.finalizeRecordedOperation();
+      }
       EventBus.emit('canvas-interaction-end');
       this.dragState = undefined;
       if (this.dragOverlay) {
@@ -438,6 +506,26 @@ export class EditorScene extends Phaser.Scene {
       }
     }
     this.pendingDrag = undefined;
+  }
+
+  private handleWheel(
+    _pointer: Phaser.Input.Pointer,
+    _gameObjects: Phaser.GameObjects.GameObject[],
+    deltaX: number,
+    deltaY: number
+  ): void {
+    if (!this.compiled || this.dragState || this.panState) return;
+    const pointer = this.input.activePointer;
+    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const dominantDelta = Math.abs(deltaY) >= Math.abs(deltaX) ? deltaY : deltaX;
+    const nextZoom = clampZoom(this.currentZoom + (dominantDelta < 0 ? 0.1 : -0.1));
+    if (nextZoom === this.currentZoom) return;
+
+    const nextScroll = getZoomedScroll(worldPoint.x, worldPoint.y, pointer.x, pointer.y, nextZoom);
+    this.currentZoom = nextZoom;
+    this.cameras.main.setZoom(nextZoom);
+    this.applyScroll(nextScroll.scrollX, nextScroll.scrollY);
+    this.emitViewState();
   }
 
   private updateHoverState(hitResult: HitTestResult): void {
@@ -452,10 +540,10 @@ export class EditorScene extends Phaser.Scene {
         this.hoverState.handle !== newHoverState.handle) {
       this.hoverState = newHoverState;
       if (this.hoverOutline) {
-        const boundsConditionId = this.compiled?.sceneSpec ? getPrimaryBoundsConditionId(this.compiled.sceneSpec) : undefined;
+        const boundsConditionId = this.compiled?.scene ? getEditableBoundsConditionId(this.compiled.scene, this.selection) : undefined;
         const bounds = boundsConditionId
-          ? this.compiled?.sceneSpec.conditions[boundsConditionId]?.type === 'BoundsHit'
-            ? this.compiled.sceneSpec.conditions[boundsConditionId].bounds
+          ? this.compiled?.scene.conditions[boundsConditionId]?.type === 'BoundsHit'
+            ? this.compiled.scene.conditions[boundsConditionId].bounds
             : undefined
           : undefined;
         updateHoverOutline(this.hoverOutline, this.hoverState, this.sprites, this.groupZones, bounds);
@@ -468,8 +556,42 @@ export class EditorScene extends Phaser.Scene {
     this.input.setDefaultCursor(cursor);
   }
 
+  private zoomIn(): void {
+    this.applyZoom(getNextZoom(this.currentZoom, 'in'));
+  }
+
+  private zoomOut(): void {
+    this.applyZoom(getNextZoom(this.currentZoom, 'out'));
+  }
+
+  private resetZoom(): void {
+    this.applyZoom(1);
+  }
+
+  private fitView(): void {
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const zoom = getFitZoom(this.scale.width, this.scale.height, world.width, world.height);
+    this.applyZoom(zoom);
+  }
+
+  private applyZoom(zoom: number): void {
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    this.currentZoom = clampZoom(zoom);
+    this.cameras.main.setZoom(this.currentZoom);
+    const centeredScrollX = world.width / 2 - this.scale.width / (2 * this.currentZoom);
+    const centeredScrollY = world.height / 2 - this.scale.height / (2 * this.currentZoom);
+    this.applyScroll(centeredScrollX, centeredScrollY);
+    this.emitViewState();
+  }
+
   private handleKeyDown(event: KeyboardEvent): void {
     if (this.mode !== 'edit') return;
+    if (event.code === 'Space') {
+      event.preventDefault();
+      this.isSpacePanning = true;
+      if (!this.panState) this.input.setDefaultCursor('grab');
+      return;
+    }
     const nudgeAmount = event.shiftKey ? 10 : 1; // Shift for larger nudges
 
     let dx = 0;
@@ -512,7 +634,7 @@ export class EditorScene extends Phaser.Scene {
           if (event.shiftKey) {
             // Ctrl+Shift+G: Create group from selection
             if (this.selection.kind === 'entities') {
-              const groupName = `Group ${Object.keys(this.compiled?.sceneSpec?.groups ?? {}).length + 1}`;
+              const groupName = `Group ${Object.keys(this.compiled?.scene?.groups ?? {}).length + 1}`;
               EventBus.emit('create-group-from-selection', groupName);
             }
           } else {
@@ -563,6 +685,12 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
+  private handleKeyUp(event: KeyboardEvent): void {
+    if (event.code !== 'Space') return;
+    this.isSpacePanning = false;
+    if (!this.panState) this.input.setDefaultCursor('default');
+  }
+
   private snapToGrid(value: number): number {
     if (!this.gridEnabled) return value;
     return Math.round(value / this.gridSize) * this.gridSize;
@@ -580,6 +708,12 @@ export class EditorScene extends Phaser.Scene {
     // Add new operation
     this.operationHistory.push({ type, id, before: beforeState, after: null });
     this.historyIndex = this.operationHistory.length - 1;
+  }
+
+  private finalizeRecordedOperation(): void {
+    const operation = this.operationHistory[this.historyIndex];
+    if (!operation) return;
+    operation.after = this.captureOperationState(operation.type, operation.id);
   }
 
   private undo(): void {
@@ -630,8 +764,79 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private applyOperationForward(operation: any): void {
-    // For redo, we need the after state, but for now we'll skip this
-    // In a full implementation, we'd store both before and after states
+    switch (operation.type) {
+      case 'move-entity':
+        if (this.compiled?.entities[operation.id] && operation.after) {
+          EventBus.emit('canvas-move-entity', {
+            id: operation.id,
+            dx: operation.after.x - this.compiled.entities[operation.id].x,
+            dy: operation.after.y - this.compiled.entities[operation.id].y,
+          });
+        }
+        break;
+      case 'move-group':
+      case 'move-entities':
+        operation.after?.forEach((memberState: any) => {
+          const currentEntity = this.compiled?.entities[memberState.id];
+          if (currentEntity) {
+            EventBus.emit('canvas-move-entity', {
+              id: memberState.id,
+              dx: memberState.entity.x - currentEntity.x,
+              dy: memberState.entity.y - currentEntity.y,
+            });
+          }
+        });
+        break;
+      case 'update-bounds':
+        if (operation.after) {
+          EventBus.emit('canvas-update-bounds', operation.after);
+        }
+        break;
+    }
+  }
+
+  private captureOperationState(type: 'move-entity' | 'move-group' | 'move-entities' | 'update-bounds', id: string): any {
+    switch (type) {
+      case 'move-entity':
+        return this.compiled?.entities[id] ? { ...this.compiled.entities[id] } : undefined;
+      case 'move-group': {
+        const memberIds = this.compiled?.groups[id]?.members.map((member) => member.id) ?? [];
+        return memberIds.map((memberId) => ({ id: memberId, entity: this.compiled?.entities[memberId] ? { ...this.compiled.entities[memberId] } : undefined }));
+      }
+      case 'move-entities':
+        return id.split(',').map((memberId) => ({ id: memberId, entity: this.compiled?.entities[memberId] ? { ...this.compiled.entities[memberId] } : undefined }));
+      case 'update-bounds': {
+        const condition = id ? this.compiled?.scene.conditions[id] : undefined;
+        return condition?.type === 'BoundsHit' ? { ...condition.bounds } : undefined;
+      }
+    }
+  }
+
+  private applyScroll(scrollX: number, scrollY: number): void {
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const clamped = clampCameraScroll(
+      scrollX,
+      scrollY,
+      this.scale.width,
+      this.scale.height,
+      world.width,
+      world.height,
+      this.currentZoom
+    );
+    this.cameras.main.setScroll(clamped.scrollX, clamped.scrollY);
+  }
+
+  private emitViewState(): void {
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    EventBus.emit('scene-view-state', {
+      zoom: this.currentZoom,
+      worldWidth: world.width,
+      worldHeight: world.height,
+    });
+  }
+
+  private shouldStartPan(pointer: Phaser.Input.Pointer): boolean {
+    return pointer.middleButtonDown() || (this.isSpacePanning && pointer.leftButtonDown());
   }
 
   private createMarqueeRectangle(): void {
@@ -666,7 +871,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private getEntitiesInMarquee(startX: number, startY: number, endX: number, endY: number): string[] {
-    if (!this.compiled?.sceneSpec) return [];
+    if (!this.compiled?.scene) return [];
 
     const x = Math.min(startX, endX);
     const y = Math.min(startY, endY);
@@ -675,7 +880,7 @@ export class EditorScene extends Phaser.Scene {
 
     const selectedEntityIds: string[] = [];
 
-    for (const [entityId, entity] of Object.entries(this.compiled.sceneSpec.entities)) {
+    for (const [entityId, entity] of Object.entries(this.compiled.scene.entities)) {
       if (entity.x >= x && entity.x <= x + width && entity.y >= y && entity.y <= y + height) {
         selectedEntityIds.push(entityId);
       }

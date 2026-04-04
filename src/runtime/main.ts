@@ -1,17 +1,22 @@
 import Phaser from 'phaser';
 import { EditorScene } from '../phaser/EditorScene';
+import { SCENE_HEIGHT, SCENE_WIDTH } from '../editor/viewport';
 
 export default function StartGame(container: string): Phaser.Game
 {
     const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
         parent: container,
-        width: 1024,
-        height: 768,
+        width: SCENE_WIDTH,
+        height: SCENE_HEIGHT,
         backgroundColor: '#000000',
         scene: [EditorScene],
+        antialias: true,
+        autoRound: true,
+        pixelArt: false,
+        resolution: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
         scale: {
-            mode: Phaser.Scale.FIT,
+            mode: Phaser.Scale.RESIZE,
             autoCenter: Phaser.Scale.CENTER_BOTH,
         },
     };

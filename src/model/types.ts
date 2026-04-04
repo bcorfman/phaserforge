@@ -6,11 +6,17 @@ export type TargetRef =
 
 export interface SceneSpec {
   id: Id;
+  world?: WorldSpec;
   entities: Record<Id, EntitySpec>;
   groups: Record<Id, GroupSpec>;
   behaviors: Record<Id, BehaviorSpec>;
   actions: Record<Id, ActionSpec>;
   conditions: Record<Id, ConditionSpec>;
+}
+
+export interface WorldSpec {
+  width: number;
+  height: number;
 }
 
 export interface EntitySpec {
@@ -22,10 +28,15 @@ export interface EntitySpec {
   height: number;
 }
 
+export type GroupLayoutSpec =
+  | { type: 'grid'; rows: number; cols: number; startX: number; startY: number; spacingX: number; spacingY: number }
+  | { type: 'freeform' };
+
 export interface GroupSpec {
   id: Id;
   name?: string;
   members: Id[]; // entity ids
+  layout?: GroupLayoutSpec;
 }
 
 export interface BehaviorSpec {

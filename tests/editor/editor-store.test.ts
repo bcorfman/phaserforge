@@ -103,6 +103,7 @@ describe('EditorStore reducer', () => {
       id: newGroupId,
       name: 'Test Group',
       members: ['e1', 'e2'],
+      layout: { type: 'freeform' },
     });
     expect(next.selection).toEqual({ kind: 'group', id: newGroupId });
     expect(next.expandedGroups[newGroupId!]).toBe(true);
@@ -127,6 +128,7 @@ describe('EditorStore reducer', () => {
     expect(next.scene.groups[groupId]).toBeUndefined();
     expect(next.selection).toEqual({ kind: 'entities', ids: state.scene.groups[groupId].members });
     expect(next.expandedGroups[groupId]).toBeUndefined();
+    expect(next.scene.behaviors['b-formation'].target).toEqual({ type: 'entity', entityId: 'e1' });
     expect(next.dirty).toBe(true);
   });
 
@@ -149,6 +151,45 @@ describe('EditorStore reducer', () => {
 
     expect(next.scene.groups['g-enemies'].name).toBe('Invader Block');
     expect(next.dirty).toBe(true);
+  });
+
+  it('updates scene world size', () => {
+    const state = initState();
+    const next = reducer(state, {
+      type: 'update-scene-world',
+      width: 1600,
+      height: 1200,
+    });
+
+    expect(next.scene.world).toEqual({ width: 1600, height: 1200 });
+    expect(next.scene.conditions['c-bounds'].bounds).toEqual({
+      minX: 80,
+      minY: 60,
+      maxX: 1520,
+      maxY: 1152,
+    });
+    expect(next.dirty).toBe(true);
+  });
+
+  it('dismisses the view hint without dirtying the scene', () => {
+    const state = initState();
+    const next = reducer(state, { type: 'dismiss-view-hint' });
+
+    expect(next.hasSeenViewHint).toBe(true);
+    expect(next.dirty).toBe(state.dirty);
+  });
+
+  it('removes an entity from a group and keeps selection on the group', () => {
+    const state = initState();
+    const next = reducer(state, {
+      type: 'remove-entity-from-group',
+      groupId: 'g-enemies',
+      entityId: 'e3',
+    });
+
+    expect(next.scene.groups['g-enemies'].members).not.toContain('e3');
+    expect(next.scene.groups['g-enemies'].layout).toEqual({ type: 'freeform' });
+    expect(next.selection).toEqual({ kind: 'group', id: 'g-enemies' });
   });
 
   it('reflows a group using grid layout controls', () => {

@@ -1,18 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { getPrimaryBoundsConditionId } from '../../src/editor/boundsCondition';
+import { getEditableBoundsConditionId } from '../../src/editor/boundsCondition';
 import { sampleScene } from '../../src/model/sampleScene';
 
-describe('getPrimaryBoundsConditionId', () => {
-  it('returns the first bounds condition id from the scene', () => {
-    expect(getPrimaryBoundsConditionId(sampleScene)).toBe('c-bounds');
+describe('getEditableBoundsConditionId', () => {
+  it('uses the selected bounds condition when that condition is a BoundsHit', () => {
+    expect(getEditableBoundsConditionId(sampleScene, { kind: 'condition', id: 'c-bounds' })).toBe('c-bounds');
   });
 
-  it('returns undefined when the scene has no bounds condition', () => {
-    expect(
-      getPrimaryBoundsConditionId({
-        ...sampleScene,
-        conditions: {},
-      })
-    ).toBeUndefined();
+  it('uses the selected MoveUntil action linked bounds condition', () => {
+    expect(getEditableBoundsConditionId(sampleScene, { kind: 'action', id: 'a-move-right' })).toBe('c-bounds');
+  });
+
+  it('returns undefined when nothing relevant is selected', () => {
+    expect(getEditableBoundsConditionId(sampleScene, { kind: 'behavior', id: 'b-formation' })).toBeUndefined();
   });
 });

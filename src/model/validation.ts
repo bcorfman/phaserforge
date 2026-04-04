@@ -17,6 +17,9 @@ export function validateSceneSpec(scene: SceneSpec): void {
 }
 
 function validateEntities(scene: SceneSpec): void {
+  if (scene.world && (scene.world.width < 1 || scene.world.height < 1)) {
+    throw new Error('Scene world must have positive width and height');
+  }
   for (const [id, entity] of Object.entries(scene.entities)) {
     if (entity.id !== id) {
       throw new Error(`Entity id mismatch: key=${id} value=${entity.id}`);
@@ -32,6 +35,14 @@ function validateGroups(scene: SceneSpec): void {
     for (const memberId of group.members) {
       if (!scene.entities[memberId]) {
         throw new Error(`Group ${id} references unknown entity ${memberId}`);
+      }
+    }
+    if (group.layout?.type === 'grid') {
+      if (group.layout.rows < 1 || group.layout.cols < 1) {
+        throw new Error(`Group ${id} has invalid grid layout size`);
+      }
+      if (group.layout.rows * group.layout.cols !== group.members.length) {
+        throw new Error(`Group ${id} grid layout does not match member count`);
       }
     }
   }

@@ -1,4 +1,5 @@
 import { arrangeGrid, type GridArrangeOptions } from '../model/formation';
+import { makeGridLayout } from './groupCommands';
 import { type EntitySpec, type Id, type SceneSpec } from '../model/types';
 
 export interface GroupGridLayout {
@@ -13,6 +14,7 @@ export interface GroupGridLayout {
 export function inferGroupGridLayout(scene: SceneSpec, groupId: Id): GroupGridLayout | undefined {
   const group = scene.groups[groupId];
   if (!group) return undefined;
+  if (group.layout?.type === 'grid') return group.layout;
 
   const members = group.members
     .map((memberId) => scene.entities[memberId])
@@ -80,6 +82,7 @@ export function applyGroupGridLayout(
       [groupId]: {
         ...group,
         members: orderedMembers.map((member) => member.id),
+        layout: makeGridLayout(layout.rows, layout.cols, layout.startX, layout.startY, layout.spacingX, layout.spacingY),
       },
     },
     entities: nextEntities,

@@ -3,6 +3,8 @@ import { SceneSpec, ActionSpec, ConditionSpec, GroupSpec, Id } from '../model/ty
 import { sampleScene } from '../model/sampleScene';
 import { validateSceneSpec } from '../model/validation';
 import { applyGroupGridLayout, type GroupGridLayout } from './formationLayout';
+import { dissolveGroup, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
+import { syncBoundsToWorldResize } from './worldBounds';
 
 const STORAGE_KEY = 'phaseractions.sceneSpec.v1';
 
@@ -24,6 +26,7 @@ export interface EditorState {
   error?: string;
   interaction?: { kind: 'entity' | 'group' | 'bounds'; id: string; handle?: 'left' | 'right' | 'top' | 'bottom' | 'tl' | 'tr' | 'bl' | 'br' };
   mode: 'edit' | 'play';
+  hasSeenViewHint: boolean;
 }
 
 type EditorAction =
@@ -34,6 +37,7 @@ type EditorAction =
   | { type: 'load-json' }
   | { type: 'reset-scene' }
   | { type: 'set-scene'; scene: SceneSpec }
+  | { type: 'update-scene-world'; width: number; height: number }
   | { type: 'update-action'; id: Id; next: ActionSpec }
   | { type: 'update-condition'; id: Id; next: ConditionSpec }
   | { type: 'update-group'; id: Id; next: GroupSpec }
@@ -45,8 +49,10 @@ type EditorAction =
   | { type: 'begin-canvas-interaction'; kind: 'entity' | 'group' | 'bounds'; id: string; handle?: string }
   | { type: 'end-canvas-interaction' }
   | { type: 'create-group-from-selection'; name: string }
+  | { type: 'remove-entity-from-group'; groupId: Id; entityId: Id }
   | { type: 'dissolve-group'; id: Id }
-  | { type: 'toggle-mode' };
+  | { type: 'toggle-mode' }
+  | { type: 'dismiss-view-hint' };
 
 function defaultExpandedGroups(scene: SceneSpec): Record<Id, boolean> {
   return Object.fromEntries(Object.keys(scene.groups).map((groupId) => [groupId, false]));
@@ -71,6 +77,7 @@ export function initState(): EditorState {
           dirty: false,
           jsonText: '',
           mode: 'edit',
+          hasSeenViewHint: false,
         };
       } catch {
         // fall through to sample scene
@@ -84,6 +91,7 @@ export function initState(): EditorState {
     dirty: false,
     jsonText: '',
     mode: 'edit',
+    hasSeenViewHint: false,
   };
 }
 
@@ -122,6 +130,16 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       };
     case 'set-scene':
       return { ...state, scene: action.scene, dirty: true };
+    case 'update-scene-world':
+      return {
+        ...state,
+        scene: syncBoundsToWorldResize(state.scene, {
+          width: Math.max(1, action.width),
+          height: Math.max(1, action.height),
+        }),
+        dirty: true,
+        error: undefined,
+      };
     case 'update-action': {
       if (!state.scene.actions[action.id]) return state;
       return {
@@ -214,6 +232,10 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         scene: {
           ...state.scene,
           entities: updatedEntities,
+          groups: {
+            ...state.scene.groups,
+            [action.id]: updateGroupLayoutPosition(group, action.dx, action.dy),
+          },
         },
         dirty: true,
         error: undefined,
@@ -306,6 +328,7 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         id: groupId,
         name: action.name,
         members: state.selection.ids,
+        layout: { type: 'freeform' as const },
       };
 
       return {
@@ -326,21 +349,29 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         error: undefined,
       };
     }
+    case 'remove-entity-from-group': {
+      const nextScene = removeEntityFromGroup(state.scene, action.groupId, action.entityId);
+      if (nextScene === state.scene) return state;
+      const groupStillExists = Boolean(nextScene.groups[action.groupId]);
+      return {
+        ...state,
+        scene: nextScene,
+        selection: groupStillExists ? { kind: 'group', id: action.groupId } : { kind: 'entity', id: action.entityId },
+        expandedGroups: defaultExpandedGroups(nextScene),
+        dirty: true,
+        error: undefined,
+      };
+    }
     case 'dissolve-group': {
       const group = state.scene.groups[action.id];
       if (!group) return state;
-
-      const { [action.id]: removedGroup, ...remainingGroups } = state.scene.groups;
-      const { [action.id]: removedExpanded, ...remainingExpanded } = state.expandedGroups;
+      const nextScene = dissolveGroup(state.scene, action.id);
 
       return {
         ...state,
-        scene: {
-          ...state.scene,
-          groups: remainingGroups,
-        },
+        scene: nextScene,
         selection: { kind: 'entities', ids: group.members },
-        expandedGroups: remainingExpanded,
+        expandedGroups: defaultExpandedGroups(nextScene),
         dirty: true,
         error: undefined,
       };
@@ -349,6 +380,11 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         mode: state.mode === 'edit' ? 'play' : 'edit',
+      };
+    case 'dismiss-view-hint':
+      return {
+        ...state,
+        hasSeenViewHint: true,
       };
     default:
       return state;

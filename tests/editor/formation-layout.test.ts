@@ -5,6 +5,7 @@ import { sampleScene } from '../../src/model/sampleScene';
 describe('formation layout helpers', () => {
   it('infers editable grid layout from a grouped formation', () => {
     expect(inferGroupGridLayout(sampleScene, 'g-enemies')).toEqual({
+      type: 'grid',
       rows: 3,
       cols: 5,
       startX: 220,

@@ -3,6 +3,7 @@ import { SceneSpec } from '../src/model/types';
 export function baseScene(): SceneSpec {
   return {
     id: 'scene-1',
+    world: { width: 1024, height: 768 },
     entities: {
       e1: { id: 'e1', x: 0, y: 0, width: 10, height: 10 },
       e2: { id: 'e2', x: 20, y: 0, width: 10, height: 10 },
