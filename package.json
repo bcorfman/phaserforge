@@ -26,7 +26,11 @@
         "dev-nolog": "vite --config vite/config.dev.mjs",
         "build-nolog": "vite build --config vite/config.prod.mjs",
         "test": "vitest run",
-        "test:watch": "vitest"
+        "test:watch": "vitest",
+        "test:unit": "vitest run",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui",
+        "test:all": "npm run test:unit && npm run test:e2e"
     },
     "dependencies": {
         "phaser": "^3.90.0",
@@ -35,6 +39,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.22.0",
+        "@playwright/test": "^1.59.1",
         "@types/react": "^19.0.10",
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react": "^4.3.4",
@@ -42,10 +47,10 @@
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.0.0",
+        "terser": "^5.28.1",
         "typescript": "~5.7.2",
         "typescript-eslint": "^8.26.1",
         "vite": "^6.3.1",
-        "terser": "^5.28.1",
         "vitest": "^2.1.4"
     }
 }

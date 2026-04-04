@@ -23,6 +23,7 @@ import {
 import { getEditableBoundsConditionId } from '../editor/boundsCondition';
 import { getSceneWorld } from '../editor/sceneWorld';
 import { clampCameraScroll, clampZoom, getFitZoom, getNextZoom, getZoomedScroll } from '../editor/viewport';
+import { getCurrentAppStateSnapshot, registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 
 export class EditorScene extends Phaser.Scene {
   private compiled?: CompiledScene;
@@ -56,6 +57,7 @@ export class EditorScene extends Phaser.Scene {
   private hasInitializedView = false;
   private isSpacePanning = false;
   private panState?: { startPointerX: number; startPointerY: number; startScrollX: number; startScrollY: number };
+  private readonly sceneBridgeGetter = () => this;
 
   constructor() {
     super('EditorScene');
@@ -65,6 +67,7 @@ export class EditorScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#0c0f1a');
     this.cameras.main.roundPixels = true;
     setActiveScene(this);
+    registerSceneGetter(this.sceneBridgeGetter);
     EventBus.on('load-scene', this.loadScene, this);
     EventBus.on('selection-changed', this.handleSelectionChanged, this);
     EventBus.on('canvas-update-bounds', this.updateBounds, this);
@@ -83,12 +86,13 @@ export class EditorScene extends Phaser.Scene {
     this.input.on('pointerup', this.handlePointerUp, this);
     this.input.on('wheel', this.handleWheel, this);
 
-    // Keyboard input for nudging
-    this.input.keyboard.on('keydown', this.handleKeyDown, this);
-    this.input.keyboard.on('keyup', this.handleKeyUp, this);
+    // App-level keyboard shortcuts should not depend on canvas focus.
+    window.addEventListener('keydown', this.handleKeyDownBound);
+    window.addEventListener('keyup', this.handleKeyUpBound);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       setActiveScene(null);
+      unregisterSceneGetter(this.sceneBridgeGetter);
       EventBus.off('load-scene', this.loadScene, this);
       EventBus.off('selection-changed', this.handleSelectionChanged, this);
       EventBus.off('canvas-update-bounds', this.updateBounds, this);
@@ -100,9 +104,181 @@ export class EditorScene extends Phaser.Scene {
       this.input.off('pointermove', this.handlePointerMove, this);
       this.input.off('pointerup', this.handlePointerUp, this);
       this.input.off('wheel', this.handleWheel, this);
-      this.input.keyboard.off('keydown', this.handleKeyDown, this);
-      this.input.keyboard.off('keyup', this.handleKeyUp, this);
+      window.removeEventListener('keydown', this.handleKeyDownBound);
+      window.removeEventListener('keyup', this.handleKeyUpBound);
     });
+  }
+
+  private readonly handleKeyDownBound = (event: KeyboardEvent) => {
+    this.handleKeyDown(event);
+  };
+
+  private readonly handleKeyUpBound = (event: KeyboardEvent) => {
+    this.handleKeyUp(event);
+  };
+
+  public getTestSnapshot(): {
+    ready: boolean;
+    zoom: number;
+    scrollX: number;
+    scrollY: number;
+    viewportWidth: number;
+    viewportHeight: number;
+  } {
+    return {
+      ready: Boolean(this.compiled),
+      zoom: this.currentZoom,
+      scrollX: this.cameras.main.scrollX,
+      scrollY: this.cameras.main.scrollY,
+      viewportWidth: this.scale.width,
+      viewportHeight: this.scale.height,
+    };
+  }
+
+  public getEntityWorldRect(id: string): { minX: number; minY: number; maxX: number; maxY: number; centerX: number; centerY: number } | null {
+    const entity = this.compiled?.entities[id];
+    if (!entity) return null;
+
+    return {
+      minX: entity.x - entity.width / 2,
+      minY: entity.y - entity.height / 2,
+      maxX: entity.x + entity.width / 2,
+      maxY: entity.y + entity.height / 2,
+      centerX: entity.x,
+      centerY: entity.y,
+    };
+  }
+
+  public getGroupWorldBounds(id: string): { minX: number; minY: number; maxX: number; maxY: number } | null {
+    const group = this.compiled?.groups[id];
+    if (!group) return null;
+
+    const bounds = group.getBounds();
+    return {
+      minX: bounds.minX,
+      minY: bounds.minY,
+      maxX: bounds.maxX,
+      maxY: bounds.maxY,
+    };
+  }
+
+  public getEditableBoundsRect(): { minX: number; minY: number; maxX: number; maxY: number } | null {
+    const conditionId = this.activeBoundsConditionId;
+    const condition = conditionId ? this.compiled?.scene.conditions[conditionId] : undefined;
+    if (!condition || condition.type !== 'BoundsHit') return null;
+
+    return {
+      minX: condition.bounds.minX,
+      minY: condition.bounds.minY,
+      maxX: condition.bounds.maxX,
+      maxY: condition.bounds.maxY,
+    };
+  }
+
+  public worldToClient(point: { x: number; y: number }): { x: number; y: number } | null {
+    const canvas = this.game.canvas;
+    if (!canvas) return null;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return null;
+
+    const scaleX = rect.width / this.scale.width;
+    const scaleY = rect.height / this.scale.height;
+
+    return {
+      x: rect.left + (point.x - this.cameras.main.scrollX) * this.currentZoom * scaleX,
+      y: rect.top + (point.y - this.cameras.main.scrollY) * this.currentZoom * scaleY,
+    };
+  }
+
+  public testTapWorld(point: { x: number; y: number }): void {
+    const hitResult = hitTestCanvas(
+      point,
+      this.compiled?.scene || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.sprites,
+      this.groupZones,
+      this.boundsHandles
+    );
+
+    if (hitResult.kind === 'entity' || hitResult.kind === 'group') {
+      EventBus.emit('canvas-select', hitResult);
+    } else if (hitResult.kind === 'none') {
+      EventBus.emit('canvas-select-multiple', { entityIds: [], additive: false });
+    }
+  }
+
+  public testDragWorld(start: { x: number; y: number }, end: { x: number; y: number }): void {
+    const hitResult = hitTestCanvas(
+      start,
+      this.compiled?.scene || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.sprites,
+      this.groupZones,
+      this.boundsHandles
+    );
+    const dx = this.snapDeltaToGrid(end.x - start.x);
+    const dy = this.snapDeltaToGrid(end.y - start.y);
+
+    if (dx === 0 && dy === 0) return;
+
+    switch (hitResult.kind) {
+      case 'entity':
+        this.recordOperation('move-entity', hitResult.id!, this.compiled?.entities[hitResult.id!]);
+        EventBus.emit('canvas-select', hitResult);
+        EventBus.emit('canvas-move-entity', { id: hitResult.id, dx, dy });
+        if (this.operationHistory[this.historyIndex]?.before) {
+          const before = this.operationHistory[this.historyIndex].before;
+          this.operationHistory[this.historyIndex].after = { ...before, x: before.x + dx, y: before.y + dy };
+        }
+        break;
+      case 'group': {
+        const groupMembers = this.compiled?.groups[hitResult.id!]?.members || [];
+        const beforeState = groupMembers.map((member) => ({ id: member.id, entity: this.compiled?.entities[member.id] }));
+        this.recordOperation('move-group', hitResult.id!, beforeState);
+        EventBus.emit('canvas-select', hitResult);
+        EventBus.emit('canvas-move-group', { id: hitResult.id, dx, dy });
+        this.operationHistory[this.historyIndex].after = beforeState.map((memberState) => ({
+          id: memberState.id,
+          entity: memberState.entity ? { ...memberState.entity, x: memberState.entity.x + dx, y: memberState.entity.y + dy } : undefined,
+        }));
+        break;
+      }
+      case 'bounds-handle': {
+        const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
+        if (boundsCondition?.type !== 'BoundsHit' || !hitResult.handle) return;
+        this.recordOperation('update-bounds', boundsCondition.id, boundsCondition.bounds);
+        const nextBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, hitResult.handle, dx, dy);
+        EventBus.emit('canvas-update-bounds', nextBounds);
+        this.operationHistory[this.historyIndex].after = nextBounds;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  public testDragBoundsHandle(handle: string, delta: { x: number; y: number }): void {
+    const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
+    if (boundsCondition?.type !== 'BoundsHit') return;
+
+    this.recordOperation('update-bounds', boundsCondition.id, boundsCondition.bounds);
+    const nextBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, handle, delta.x, delta.y);
+    EventBus.emit('canvas-update-bounds', nextBounds);
+    this.operationHistory[this.historyIndex].after = nextBounds;
+  }
+
+  public testPanByScreenDelta(delta: { x: number; y: number }): void {
+    const dx = delta.x / this.currentZoom;
+    const dy = delta.y / this.currentZoom;
+    this.applyScroll(this.cameras.main.scrollX - dx, this.cameras.main.scrollY - dy);
+    this.emitViewState();
+  }
+
+  public testUndo(): void {
+    this.undo();
+  }
+
+  public testRedo(): void {
+    this.redo();
   }
 
   update(_time: number, delta: number): void {
@@ -414,7 +590,7 @@ export class EditorScene extends Phaser.Scene {
               this.recordOperation('move-entity', hitResult.id!, this.compiled?.entities[hitResult.id!]);
             } else if (hitResult.kind === 'group') {
               const groupMembers = this.compiled?.groups[hitResult.id!]?.members || [];
-              const beforeState = groupMembers.map(id => ({ id, entity: this.compiled?.entities[id] }));
+              const beforeState = groupMembers.map(member => ({ id: member.id, entity: this.compiled?.entities[member.id] }));
               this.recordOperation('move-group', hitResult.id!, beforeState);
             }
 
@@ -503,6 +679,13 @@ export class EditorScene extends Phaser.Scene {
       this.dragState = undefined;
       if (this.dragOverlay) {
         this.dragOverlay.setVisible(false);
+      }
+    } else if (this.pendingDrag) {
+      const { hitResult } = this.pendingDrag;
+      if (hitResult.kind === 'entity' || hitResult.kind === 'group') {
+        EventBus.emit('canvas-select', hitResult);
+      } else if (hitResult.kind === 'none') {
+        EventBus.emit('canvas-select-multiple', { entityIds: [], additive: false });
       }
     }
     this.pendingDrag = undefined;
@@ -673,7 +856,7 @@ export class EditorScene extends Phaser.Scene {
     } else if (this.selection.kind === 'group') {
       // For groups, record all member positions
       const groupMembers = this.compiled?.groups[this.selection.id]?.members || [];
-      const beforeState = groupMembers.map(id => ({ id, entity: this.compiled?.entities[id] }));
+      const beforeState = groupMembers.map(member => ({ id: member.id, entity: this.compiled?.entities[member.id] }));
       this.recordOperation('move-group', this.selection.id, beforeState);
       EventBus.emit('canvas-move-group', { id: this.selection.id, dx, dy });
     } else if (this.selection.kind === 'entities') {
@@ -735,26 +918,31 @@ export class EditorScene extends Phaser.Scene {
   private applyOperationInverse(operation: any): void {
     switch (operation.type) {
       case 'move-entity':
-        if (this.compiled?.entities[operation.id]) {
+        if (operation.before && operation.after) {
           EventBus.emit('canvas-move-entity', {
             id: operation.id,
-            dx: operation.before.x - this.compiled.entities[operation.id].x,
-            dy: operation.before.y - this.compiled.entities[operation.id].y
+            dx: operation.before.x - operation.after.x,
+            dy: operation.before.y - operation.after.y
           });
         }
         break;
       case 'move-group':
-        // Restore all group member positions
-        operation.before.forEach((memberState: any) => {
-          const currentEntity = this.compiled?.entities[memberState.id];
-          if (currentEntity) {
-            EventBus.emit('canvas-move-entity', {
-              id: memberState.id,
-              dx: memberState.entity.x - currentEntity.x,
-              dy: memberState.entity.y - currentEntity.y
-            });
-          }
-        });
+        if (operation.before.length > 0 && operation.after?.length > 0) {
+          EventBus.emit('canvas-move-group', {
+            id: operation.id,
+            dx: operation.before[0].entity.x - operation.after[0].entity.x,
+            dy: operation.before[0].entity.y - operation.after[0].entity.y
+          });
+        }
+        break;
+      case 'move-entities':
+        if (operation.before.length > 0 && operation.after?.length > 0) {
+          EventBus.emit('canvas-move-entities', {
+            entityIds: operation.id.split(','),
+            dx: operation.before[0].entity.x - operation.after[0].entity.x,
+            dy: operation.before[0].entity.y - operation.after[0].entity.y,
+          });
+        }
         break;
       case 'update-bounds':
         // Restore bounds
@@ -766,26 +954,31 @@ export class EditorScene extends Phaser.Scene {
   private applyOperationForward(operation: any): void {
     switch (operation.type) {
       case 'move-entity':
-        if (this.compiled?.entities[operation.id] && operation.after) {
+        if (operation.before && operation.after) {
           EventBus.emit('canvas-move-entity', {
             id: operation.id,
-            dx: operation.after.x - this.compiled.entities[operation.id].x,
-            dy: operation.after.y - this.compiled.entities[operation.id].y,
+            dx: operation.after.x - operation.before.x,
+            dy: operation.after.y - operation.before.y,
           });
         }
         break;
       case 'move-group':
+        if (operation.before.length > 0 && operation.after?.length > 0) {
+          EventBus.emit('canvas-move-group', {
+            id: operation.id,
+            dx: operation.after[0].entity.x - operation.before[0].entity.x,
+            dy: operation.after[0].entity.y - operation.before[0].entity.y,
+          });
+        }
+        break;
       case 'move-entities':
-        operation.after?.forEach((memberState: any) => {
-          const currentEntity = this.compiled?.entities[memberState.id];
-          if (currentEntity) {
-            EventBus.emit('canvas-move-entity', {
-              id: memberState.id,
-              dx: memberState.entity.x - currentEntity.x,
-              dy: memberState.entity.y - currentEntity.y,
-            });
-          }
-        });
+        if (operation.before.length > 0 && operation.after?.length > 0) {
+          EventBus.emit('canvas-move-entities', {
+            entityIds: operation.id.split(','),
+            dx: operation.after[0].entity.x - operation.before[0].entity.x,
+            dy: operation.after[0].entity.y - operation.before[0].entity.y,
+          });
+        }
         break;
       case 'update-bounds':
         if (operation.after) {
@@ -796,17 +989,18 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private captureOperationState(type: 'move-entity' | 'move-group' | 'move-entities' | 'update-bounds', id: string): any {
+    const latestScene = getCurrentAppStateSnapshot()?.scene ?? this.compiled?.scene;
     switch (type) {
       case 'move-entity':
-        return this.compiled?.entities[id] ? { ...this.compiled.entities[id] } : undefined;
+        return latestScene?.entities[id] ? { ...latestScene.entities[id] } : undefined;
       case 'move-group': {
-        const memberIds = this.compiled?.groups[id]?.members.map((member) => member.id) ?? [];
-        return memberIds.map((memberId) => ({ id: memberId, entity: this.compiled?.entities[memberId] ? { ...this.compiled.entities[memberId] } : undefined }));
+        const memberIds = latestScene?.groups[id]?.members ?? [];
+        return memberIds.map((memberId) => ({ id: memberId, entity: latestScene?.entities[memberId] ? { ...latestScene.entities[memberId] } : undefined }));
       }
       case 'move-entities':
-        return id.split(',').map((memberId) => ({ id: memberId, entity: this.compiled?.entities[memberId] ? { ...this.compiled.entities[memberId] } : undefined }));
+        return id.split(',').map((memberId) => ({ id: memberId, entity: latestScene?.entities[memberId] ? { ...latestScene.entities[memberId] } : undefined }));
       case 'update-bounds': {
-        const condition = id ? this.compiled?.scene.conditions[id] : undefined;
+        const condition = id ? latestScene?.conditions[id] : undefined;
         return condition?.type === 'BoundsHit' ? { ...condition.bounds } : undefined;
       }
     }
