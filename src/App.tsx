@@ -9,6 +9,7 @@ import { JsonPanel } from './editor/JsonPanel';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
+import { registerAppStateGetter, unregisterAppStateGetter } from './testing/testBridge';
 import './app/layout.css';
 
 function AppShell() {
@@ -24,6 +25,23 @@ function AppShell() {
     setWorldWidthDraft(String(world.width));
     setWorldHeightDraft(String(world.height));
   }, [world.width, world.height]);
+
+  useEffect(() => {
+    const getStateSnapshot = () => ({
+      scene: state.scene,
+      selection: state.selection,
+      mode: state.mode,
+      dirty: state.dirty,
+      jsonText: state.jsonText,
+      error: state.error,
+      hasSeenViewHint: state.hasSeenViewHint,
+    });
+
+    registerAppStateGetter(getStateSnapshot);
+    return () => {
+      unregisterAppStateGetter(getStateSnapshot);
+    };
+  }, [state]);
 
   useEffect(() => {
     const handleReady = () => {
@@ -142,7 +160,7 @@ function AppShell() {
       EventBus.off('canvas-interaction-end', handleCanvasInteractionEnd);
       EventBus.off('canvas-update-bounds', handleCanvasUpdateBounds);
     };
-  }, [dispatch, state.scene]);
+  }, [dispatch, state.scene, state.selection]);
 
   const commitWorldDraft = (dimension: 'width' | 'height') => {
     const raw = dimension === 'width' ? worldWidthDraft : worldHeightDraft;
@@ -156,27 +174,51 @@ function AppShell() {
   };
 
   return (
-    <div className="app-root">
+    <div className="app-root" data-testid="app-root">
       <Toolbar />
       <div className="app-body">
-        <aside className="pane pane-left">
+        <aside className="pane pane-left" data-testid="entity-list-pane">
           <EntityList />
         </aside>
-        <main className="pane pane-center">
-          <div className="viewbar">
+        <main className="pane pane-center" data-testid="canvas-pane">
+          <div className="viewbar" data-testid="viewbar">
             <div className="viewbar-group">
               <span className="viewbar-label">View</span>
-              <button className="button" type="button" onClick={() => EventBus.emit('scene-fit-view')}>
+              <button
+                aria-label="Fit view"
+                className="button"
+                data-testid="fit-view-button"
+                type="button"
+                onClick={() => EventBus.emit('scene-fit-view')}
+              >
                 Fit
               </button>
-              <button className="button" type="button" onClick={() => EventBus.emit('scene-reset-zoom')}>
+              <button
+                aria-label="Reset zoom"
+                className="button"
+                data-testid="reset-zoom-button"
+                type="button"
+                onClick={() => EventBus.emit('scene-reset-zoom')}
+              >
                 100%
               </button>
-              <button className="button" type="button" onClick={() => EventBus.emit('scene-zoom-out')}>
+              <button
+                aria-label="Zoom out"
+                className="button"
+                data-testid="zoom-out-button"
+                type="button"
+                onClick={() => EventBus.emit('scene-zoom-out')}
+              >
                 -
               </button>
-              <div className="viewbar-pill">{formatZoomPercent(zoom)}</div>
-              <button className="button" type="button" onClick={() => EventBus.emit('scene-zoom-in')}>
+              <div className="viewbar-pill" data-testid="zoom-pill">{formatZoomPercent(zoom)}</div>
+              <button
+                aria-label="Zoom in"
+                className="button"
+                data-testid="zoom-in-button"
+                type="button"
+                onClick={() => EventBus.emit('scene-zoom-in')}
+              >
                 +
               </button>
             </div>
@@ -185,6 +227,8 @@ function AppShell() {
               <label className="viewbar-field">
                 <span>W</span>
                 <input
+                  aria-label="World width"
+                  data-testid="world-width-input"
                   type="text"
                   inputMode="numeric"
                   value={worldWidthDraft}
@@ -201,6 +245,8 @@ function AppShell() {
               <label className="viewbar-field">
                 <span>H</span>
                 <input
+                  aria-label="World height"
+                  data-testid="world-height-input"
                   type="text"
                   inputMode="numeric"
                   value={worldHeightDraft}
@@ -216,12 +262,18 @@ function AppShell() {
               </label>
             </div>
           </div>
-          <div className="phaser-frame">
+          <div className="phaser-frame" data-testid="phaser-frame">
             {!state.hasSeenViewHint && (
-              <div className="view-hint">
+              <div className="view-hint" data-testid="view-hint">
                 <div className="view-hint-title">View Controls</div>
                 <div className="view-hint-text">Wheel to zoom, middle-drag or Space-drag to pan, or use Fit/100% above.</div>
-                <button className="button" type="button" onClick={() => dispatch({ type: 'dismiss-view-hint' })}>
+                <button
+                  aria-label="Dismiss view hint"
+                  className="button"
+                  data-testid="dismiss-view-hint-button"
+                  type="button"
+                  onClick={() => dispatch({ type: 'dismiss-view-hint' })}
+                >
                   Dismiss
                 </button>
               </div>
@@ -231,7 +283,7 @@ function AppShell() {
             }} />
           </div>
         </main>
-        <aside className="pane pane-right">
+        <aside className="pane pane-right" data-testid="inspector-pane">
           <Inspector />
           <JsonPanel />
         </aside>

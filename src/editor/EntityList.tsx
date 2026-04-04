@@ -14,15 +14,16 @@ export function EntityList() {
     selection.kind !== 'none' && selection.kind === kind && selection.id === id;
 
   return (
-    <div className="panel">
+    <div className="panel" data-testid="entity-list">
       <div className="panel-title">Scene</div>
       <div className="panel-section">
         <div className="panel-heading">Formations</div>
         {groups.map(({ group, members }) => (
-          <div key={group.id} className="group-block">
+          <div key={group.id} className="group-block" data-testid={`group-block-${group.id}`}>
             <div className="group-row">
               <button
                 className="group-toggle"
+                data-testid={`group-toggle-${group.id}`}
                 type="button"
                 onClick={() => dispatch({ type: 'toggle-group-expanded', id: group.id })}
                 aria-label={expandedGroups[group.id] ? 'Collapse group members' : 'Expand group members'}
@@ -31,6 +32,7 @@ export function EntityList() {
               </button>
               <button
                 className={`list-item group-item ${isSelected('group', group.id) ? 'active' : ''}`}
+                data-testid={`group-item-${group.id}`}
                 onClick={() => dispatch({ type: 'select', selection: { kind: 'group', id: group.id } })}
                 type="button"
               >
@@ -44,6 +46,7 @@ export function EntityList() {
                   <button
                     key={entity.id}
                     className={`list-item member-item ${isSelected('entity', entity.id) ? 'active' : ''}`}
+                    data-testid={`member-item-${entity.id}`}
                     onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: entity.id } })}
                     type="button"
                   >
@@ -62,6 +65,7 @@ export function EntityList() {
           <button
             key={entity.id}
             className={`list-item ${isSelected('entity', entity.id) ? 'active' : ''}`}
+            data-testid={`ungrouped-entity-${entity.id}`}
             onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: entity.id } })}
             type="button"
           >
@@ -79,6 +83,7 @@ export function EntityList() {
             <div key={behavior.id} className="behavior-block">
               <button
                 className={`list-item ${isSelected('behavior', behavior.id) ? 'active' : ''}`}
+                data-testid={`behavior-item-${behavior.id}`}
                 onClick={() => dispatch({ type: 'select', selection: { kind: 'behavior', id: behavior.id } })}
                 type="button"
               >
@@ -106,6 +111,7 @@ export function EntityList() {
           <button
             key={condition.id}
             className={`list-item ${isSelected('condition', condition.id) ? 'active' : ''}`}
+            data-testid={`condition-item-${condition.id}`}
             onClick={() => dispatch({ type: 'select', selection: { kind: 'condition', id: condition.id } })}
             type="button"
           >
@@ -132,6 +138,7 @@ function ActionTreeBranch({
     <>
       <button
         className={`list-item action-item ${isSelected('action', node.id) ? 'active' : ''}`}
+        data-testid={`action-item-${node.id}`}
         onClick={() => onSelect(node.id)}
         style={{ marginLeft: `${depth * 14}px` }}
         type="button"

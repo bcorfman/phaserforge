@@ -110,10 +110,12 @@ export function Inspector() {
   }
 
   return (
-    <div className="panel">
+    <div className="panel" data-testid="inspector">
       <div className="panel-title">Inspector</div>
       <label className="inspector-toggle">
         <input
+          aria-label="Pin selection while dragging"
+          data-testid="pin-selection-checkbox"
           type="checkbox"
           checked={pinDuringDrag}
           onChange={(e) => setPinDuringDrag(e.target.checked)}
@@ -178,10 +180,12 @@ export function renderGroupInspector(
 
   return (
     <div className="inspector-block">
-      <div className="inspector-title">{group.name ?? group.id}</div>
+      <div className="inspector-title" data-testid="inspector-title">{group.name ?? group.id}</div>
       <label className="field">
         <span>Formation Name</span>
         <input
+          aria-label="Formation Name"
+          data-testid="formation-name-input"
           type="text"
           value={group.name ?? ''}
           onChange={(e) => handlers.onUpdateGroup({ ...group, name: e.target.value })}
@@ -197,6 +201,8 @@ export function renderGroupInspector(
           <label className="field">
             <span>Rows</span>
             <input
+              aria-label="Rows"
+              data-testid="group-layout-rows-input"
               type="number"
               min={1}
               value={draft.rows}
@@ -206,6 +212,8 @@ export function renderGroupInspector(
           <label className="field">
             <span>Cols</span>
             <input
+              aria-label="Cols"
+              data-testid="group-layout-cols-input"
               type="number"
               min={1}
               value={draft.cols}
@@ -215,6 +223,8 @@ export function renderGroupInspector(
           <label className="field">
             <span>Start X</span>
             <input
+              aria-label="Start X"
+              data-testid="group-layout-start-x-input"
               type="number"
               value={draft.startX}
               onChange={(e) => handlers.onDraftChange({ ...draft, startX: Number(e.target.value) })}
@@ -223,6 +233,8 @@ export function renderGroupInspector(
           <label className="field">
             <span>Start Y</span>
             <input
+              aria-label="Start Y"
+              data-testid="group-layout-start-y-input"
               type="number"
               value={draft.startY}
               onChange={(e) => handlers.onDraftChange({ ...draft, startY: Number(e.target.value) })}
@@ -231,6 +243,8 @@ export function renderGroupInspector(
           <label className="field">
             <span>Spacing X</span>
             <input
+              aria-label="Spacing X"
+              data-testid="group-layout-spacing-x-input"
               type="number"
               value={draft.spacingX}
               onChange={(e) => handlers.onDraftChange({ ...draft, spacingX: Number(e.target.value) })}
@@ -239,6 +253,8 @@ export function renderGroupInspector(
           <label className="field">
             <span>Spacing Y</span>
             <input
+              aria-label="Spacing Y"
+              data-testid="group-layout-spacing-y-input"
               type="number"
               value={draft.spacingY}
               onChange={(e) => handlers.onDraftChange({ ...draft, spacingY: Number(e.target.value) })}
@@ -249,6 +265,7 @@ export function renderGroupInspector(
           </div>
           <button
             className="button"
+            data-testid="apply-group-layout-button"
             disabled={!canApplyGrid}
             onClick={() => draft && handlers.onArrangeGroupGrid(group.id, draft)}
             type="button"
@@ -265,6 +282,7 @@ export function renderGroupInspector(
           <div key={member.id} className="member-row">
             <button
               className="tag-button"
+              data-testid={`group-member-select-${member.id}`}
               type="button"
               onClick={() => handlers.onSelectMember(member.id)}
             >
@@ -272,6 +290,7 @@ export function renderGroupInspector(
             </button>
             <button
               className="tag-button tag-button-danger"
+              data-testid={`group-member-remove-${member.id}`}
               type="button"
               onClick={() => handlers.onRemoveMember(member.id)}
             >
@@ -330,6 +349,8 @@ function renderMoveUntil(
       <label className="field">
         <span>Velocity X</span>
         <input
+          aria-label="Velocity X"
+          data-testid="velocity-x-input"
           type="number"
           value={action.velocity.x}
           onChange={(e) =>
@@ -340,6 +361,8 @@ function renderMoveUntil(
       <label className="field">
         <span>Velocity Y</span>
         <input
+          aria-label="Velocity Y"
+          data-testid="velocity-y-input"
           type="number"
           value={action.velocity.y}
           onChange={(e) =>
