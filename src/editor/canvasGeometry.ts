@@ -120,7 +120,7 @@ export function getCursorForHitTest(result: HitTestResult): string {
           return 'pointer';
       }
     case 'bounds-body':
-      return 'move';
+      return 'default';
     default:
       return 'default';
   }

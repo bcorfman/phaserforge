@@ -77,8 +77,8 @@ describe('Canvas Geometry utilities', () => {
       expect(getCursorForHitTest({ kind: 'bounds-handle', handle: 'e' })).toBe('ew-resize');
     });
 
-    it('returns move cursor for bounds body', () => {
-      expect(getCursorForHitTest({ kind: 'bounds-body' })).toBe('move');
+    it('returns default cursor for bounds body', () => {
+      expect(getCursorForHitTest({ kind: 'bounds-body' })).toBe('default');
     });
 
     it('returns default cursor for none', () => {

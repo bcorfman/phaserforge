@@ -1,20 +1,21 @@
 import { expect, test } from '@playwright/test';
 import {
   dragBoundsHandle,
+  dismissViewHint,
   dragWorld,
   expectSelection,
   getEditableBoundsRect,
-  getEntityWorldRect,
   getSceneSnapshot,
   getState,
   gotoStudio,
-  panByScreenDelta,
   tapWorld,
   triggerRedo,
   triggerUndo,
 } from './helpers';
 
 test.beforeEach(async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => window.localStorage.removeItem('phaseractions.sceneSpec.v1'));
   await gotoStudio(page);
 });
 
@@ -79,20 +80,79 @@ test('resizes editable bounds from the canvas handle', async ({ page }) => {
   });
 });
 
-test('supports wheel zoom and space-drag panning in the canvas viewport', async ({ page }) => {
+test('supports wheel zoom and real middle-drag panning once the camera can scroll', async ({ page }) => {
+  await dismissViewHint(page);
   const canvas = page.locator('#game-container canvas');
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error('Canvas bounding box unavailable');
+  const zoomAnchorWorld = { x: 512, y: 250 };
+  const leftAnchorWorld = { x: 256, y: 250 };
+  const rightAnchorWorld = { x: 768, y: 250 };
+  const idlePoint = await page.evaluate(
+    () => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient({ x: 120, y: 120 })
+  );
+  if (!idlePoint) throw new Error('Idle world point unavailable');
+  const zoomAnchorPoint = await page.evaluate(
+    (point) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(point),
+    zoomAnchorWorld
+  );
+  if (!zoomAnchorPoint) throw new Error('Zoom anchor point unavailable');
+
+  await page.mouse.move(idlePoint.x, idlePoint.y);
+  await expect.poll(() => canvas.evaluate((node) => getComputedStyle(node).cursor)).toBe('default');
 
   const before = await getSceneSnapshot<{ zoom: number; scrollX: number }>(page);
-  await canvas.hover();
+  await page.mouse.move(zoomAnchorPoint.x, zoomAnchorPoint.y);
   await page.mouse.wheel(0, -320);
   await expect.poll(async () => (await getSceneSnapshot<{ zoom: number }>(page)).zoom).toBeGreaterThan(before.zoom);
+  await expect.poll(async () => {
+    const point = await page.evaluate(
+      (worldPoint) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(worldPoint),
+      zoomAnchorWorld
+    );
+    if (!point) throw new Error('Zoom anchor point unavailable after wheel');
+    return Math.abs(point.x - zoomAnchorPoint.x) <= 2 && Math.abs(point.y - zoomAnchorPoint.y) <= 2;
+  }).toBe(true);
+  await page.mouse.wheel(0, -320);
+  await expect.poll(async () => {
+    const point = await page.evaluate(
+      (worldPoint) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(worldPoint),
+      zoomAnchorWorld
+    );
+    if (!point) throw new Error('Zoom anchor point unavailable after second wheel');
+    return Math.abs(point.x - zoomAnchorPoint.x) <= 2 && Math.abs(point.y - zoomAnchorPoint.y) <= 2;
+  }).toBe(true);
 
   const beforePan = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
-  await panByScreenDelta(page, { x: -80, y: -40 });
+  await page.mouse.move(idlePoint.x, idlePoint.y);
+  await page.mouse.down({ button: 'middle' });
+  await expect.poll(() => canvas.evaluate((node) => getComputedStyle(node).cursor)).toBe('grabbing');
+  await page.mouse.move(idlePoint.x - 80, idlePoint.y - 40, { steps: 12 });
+  await page.mouse.up({ button: 'middle' });
+  await expect.poll(() => canvas.evaluate((node) => getComputedStyle(node).cursor)).toBe('default');
   await expect.poll(async () => {
     const snapshot = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
     return { scrollX: snapshot.scrollX, scrollY: snapshot.scrollY };
   }).not.toEqual({ scrollX: beforePan.scrollX, scrollY: beforePan.scrollY });
+
+  await page.getByTestId('reset-zoom-button').click();
+  const leftAnchorPoint = await page.evaluate(
+    (point) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(point),
+    leftAnchorWorld
+  );
+  if (!leftAnchorPoint) throw new Error('Left zoom anchor point unavailable');
+  await page.mouse.move(leftAnchorPoint.x, leftAnchorPoint.y);
+  await page.mouse.wheel(0, -320);
+  const leftScroll = await getSceneSnapshot<{ scrollX: number }>(page);
+
+  await page.getByTestId('reset-zoom-button').click();
+  const rightAnchorPoint = await page.evaluate(
+    (point) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(point),
+    rightAnchorWorld
+  );
+  if (!rightAnchorPoint) throw new Error('Right zoom anchor point unavailable');
+  await page.mouse.move(rightAnchorPoint.x, rightAnchorPoint.y);
+  await page.mouse.wheel(0, -320);
+  await expect.poll(async () => {
+    const snapshot = await getSceneSnapshot<{ scrollX: number }>(page);
+    return Math.round(snapshot.scrollX - leftScroll.scrollX);
+  }).toBeGreaterThan(30);
 });

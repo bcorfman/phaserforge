@@ -22,7 +22,7 @@ import {
 } from '../editor/canvasInteraction';
 import { getEditableBoundsConditionId } from '../editor/boundsCondition';
 import { getSceneWorld } from '../editor/sceneWorld';
-import { clampCameraScroll, clampZoom, getFitZoom, getNextZoom, getZoomedScroll } from '../editor/viewport';
+import { canPanCamera, clampCameraScroll, clampZoom, getFitZoom, getNextZoom, getZoomedScroll } from '../editor/viewport';
 import { getCurrentAppStateSnapshot, registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 
 export class EditorScene extends Phaser.Scene {
@@ -56,6 +56,8 @@ export class EditorScene extends Phaser.Scene {
   private currentZoom = 1;
   private hasInitializedView = false;
   private isSpacePanning = false;
+  private isMiddleMouseDown = false;
+  private wheelZoomAnchor?: { pointerX: number; pointerY: number; worldX: number; worldY: number };
   private panState?: { startPointerX: number; startPointerY: number; startScrollX: number; startScrollY: number };
   private readonly sceneBridgeGetter = () => this;
 
@@ -89,6 +91,8 @@ export class EditorScene extends Phaser.Scene {
     // App-level keyboard shortcuts should not depend on canvas focus.
     window.addEventListener('keydown', this.handleKeyDownBound);
     window.addEventListener('keyup', this.handleKeyUpBound);
+    window.addEventListener('mousedown', this.handleMouseDownBound);
+    window.addEventListener('mouseup', this.handleMouseUpBound);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       setActiveScene(null);
@@ -106,6 +110,8 @@ export class EditorScene extends Phaser.Scene {
       this.input.off('wheel', this.handleWheel, this);
       window.removeEventListener('keydown', this.handleKeyDownBound);
       window.removeEventListener('keyup', this.handleKeyUpBound);
+      window.removeEventListener('mousedown', this.handleMouseDownBound);
+      window.removeEventListener('mouseup', this.handleMouseUpBound);
     });
   }
 
@@ -115,6 +121,20 @@ export class EditorScene extends Phaser.Scene {
 
   private readonly handleKeyUpBound = (event: KeyboardEvent) => {
     this.handleKeyUp(event);
+  };
+
+  private readonly handleMouseDownBound = (event: MouseEvent) => {
+    if (event.button === 1) {
+      event.preventDefault();
+      this.isMiddleMouseDown = true;
+    }
+  };
+
+  private readonly handleMouseUpBound = (event: MouseEvent) => {
+    if (event.button === 1) {
+      event.preventDefault();
+      this.isMiddleMouseDown = false;
+    }
   };
 
   public getTestSnapshot(): {
@@ -184,10 +204,12 @@ export class EditorScene extends Phaser.Scene {
 
     const scaleX = rect.width / this.scale.width;
     const scaleY = rect.height / this.scale.height;
+    const viewportCenterX = this.scale.width / 2;
+    const viewportCenterY = this.scale.height / 2;
 
     return {
-      x: rect.left + (point.x - this.cameras.main.scrollX) * this.currentZoom * scaleX,
-      y: rect.top + (point.y - this.cameras.main.scrollY) * this.currentZoom * scaleY,
+      x: rect.left + (((point.x - this.cameras.main.scrollX - viewportCenterX) * this.currentZoom) + viewportCenterX) * scaleX,
+      y: rect.top + (((point.y - this.cameras.main.scrollY - viewportCenterY) * this.currentZoom) + viewportCenterY) * scaleY,
     };
   }
 
@@ -525,6 +547,7 @@ export class EditorScene extends Phaser.Scene {
 
   private handlePointerMove(pointer: Phaser.Input.Pointer): void {
     if (this.mode !== 'edit') return;
+    this.wheelZoomAnchor = undefined;
     if (this.panState) {
       const dx = (pointer.x - this.panState.startPointerX) / this.currentZoom;
       const dy = (pointer.y - this.panState.startPointerY) / this.currentZoom;
@@ -658,6 +681,7 @@ export class EditorScene extends Phaser.Scene {
 
   private handlePointerUp(): void {
     if (this.mode !== 'edit') return;
+    this.wheelZoomAnchor = undefined;
     if (this.panState) {
       this.panState = undefined;
       this.input.setDefaultCursor(this.isSpacePanning ? 'grab' : 'default');
@@ -692,22 +716,38 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private handleWheel(
-    _pointer: Phaser.Input.Pointer,
+    pointer: Phaser.Input.Pointer,
     _gameObjects: Phaser.GameObjects.GameObject[],
     deltaX: number,
     deltaY: number
   ): void {
     if (!this.compiled || this.dragState || this.panState) return;
-    const pointer = this.input.activePointer;
-    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const rawEvent = pointer.event;
+    const canvasRect = this.game.canvas.getBoundingClientRect();
+    const pointerX = rawEvent && 'clientX' in rawEvent ? rawEvent.clientX - canvasRect.left : this.input.activePointer.x;
+    const pointerY = rawEvent && 'clientY' in rawEvent ? rawEvent.clientY - canvasRect.top : this.input.activePointer.y;
+    if (!this.wheelZoomAnchor
+      || Math.abs(this.wheelZoomAnchor.pointerX - pointerX) > 0.5
+      || Math.abs(this.wheelZoomAnchor.pointerY - pointerY) > 0.5) {
+      const worldPoint = this.cameras.main.getWorldPoint(pointerX, pointerY);
+      this.wheelZoomAnchor = { pointerX, pointerY, worldX: worldPoint.x, worldY: worldPoint.y };
+    }
     const dominantDelta = Math.abs(deltaY) >= Math.abs(deltaX) ? deltaY : deltaX;
     const nextZoom = clampZoom(this.currentZoom + (dominantDelta < 0 ? 0.1 : -0.1));
     if (nextZoom === this.currentZoom) return;
 
-    const nextScroll = getZoomedScroll(worldPoint.x, worldPoint.y, pointer.x, pointer.y, nextZoom);
+    const nextScroll = getZoomedScroll(
+      this.wheelZoomAnchor.worldX,
+      this.wheelZoomAnchor.worldY,
+      this.wheelZoomAnchor.pointerX,
+      this.wheelZoomAnchor.pointerY,
+      nextZoom,
+      this.scale.width,
+      this.scale.height
+    );
     this.currentZoom = nextZoom;
     this.cameras.main.setZoom(nextZoom);
-    this.applyScroll(nextScroll.scrollX, nextScroll.scrollY);
+    this.applyScroll(nextScroll.scrollX, nextScroll.scrollY, false);
     this.emitViewState();
   }
 
@@ -1006,7 +1046,11 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
-  private applyScroll(scrollX: number, scrollY: number): void {
+  private applyScroll(scrollX: number, scrollY: number, clamp = true): void {
+    if (!clamp) {
+      this.cameras.main.setScroll(scrollX, scrollY);
+      return;
+    }
     const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
     const clamped = clampCameraScroll(
       scrollX,
@@ -1030,7 +1074,9 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private shouldStartPan(pointer: Phaser.Input.Pointer): boolean {
-    return pointer.middleButtonDown() || (this.isSpacePanning && pointer.leftButtonDown());
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    return canPanCamera(this.scale.width, this.scale.height, world.width, world.height, this.currentZoom)
+      && (this.isMiddleMouseDown || pointer.button === 1 || (this.isSpacePanning && pointer.leftButtonDown()));
   }
 
   private createMarqueeRectangle(): void {

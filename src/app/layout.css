@@ -85,6 +85,11 @@ body {
   color: var(--accent);
 }
 
+.button-compact {
+  min-width: 32px;
+  padding: 4px 8px;
+}
+
 .app-body {
   flex: 1;
   display: grid;
