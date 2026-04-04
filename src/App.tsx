@@ -200,11 +200,11 @@ function AppShell() {
                 type="button"
                 onClick={() => EventBus.emit('scene-reset-zoom')}
               >
-                100%
+                Reset
               </button>
               <button
                 aria-label="Zoom out"
-                className="button"
+                className="button button-compact"
                 data-testid="zoom-out-button"
                 type="button"
                 onClick={() => EventBus.emit('scene-zoom-out')}
@@ -214,7 +214,7 @@ function AppShell() {
               <div className="viewbar-pill" data-testid="zoom-pill">{formatZoomPercent(zoom)}</div>
               <button
                 aria-label="Zoom in"
-                className="button"
+                className="button button-compact"
                 data-testid="zoom-in-button"
                 type="button"
                 onClick={() => EventBus.emit('scene-zoom-in')}

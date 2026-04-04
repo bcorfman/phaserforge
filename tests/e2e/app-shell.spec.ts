@@ -89,6 +89,8 @@ test('resizing the world keeps the formation patrol bounded by the resized limit
 test('drives zoom controls and play mode from the toolbar', async ({ page }) => {
   await dismissViewHint(page);
 
+  await expect(page.getByTestId('reset-zoom-button')).toHaveText('Reset');
+
   const before = await getSceneSnapshot<{ zoom: number }>(page);
   await page.getByTestId('zoom-in-button').click();
   await expect.poll(async () => (await getSceneSnapshot<{ zoom: number }>(page)).zoom).toBeGreaterThan(before.zoom);

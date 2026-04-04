@@ -16,6 +16,7 @@ interface IProps
 export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame({ currentActiveScene }, ref)
 {
     const game = useRef<Phaser.Game | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
 
     useLayoutEffect(() =>
     {
@@ -49,6 +50,29 @@ export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame
 
     useEffect(() =>
     {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const preventMiddleMouseDefault = (event: MouseEvent) =>
+        {
+            if (event.button === 1)
+            {
+                event.preventDefault();
+            }
+        };
+
+        container.addEventListener('mousedown', preventMiddleMouseDefault);
+        container.addEventListener('auxclick', preventMiddleMouseDefault);
+
+        return () =>
+        {
+            container.removeEventListener('mousedown', preventMiddleMouseDefault);
+            container.removeEventListener('auxclick', preventMiddleMouseDefault);
+        };
+    }, []);
+
+    useEffect(() =>
+    {
         const handler = (scene_instance: Phaser.Scene) =>
         {
             if (currentActiveScene && typeof currentActiveScene === 'function')
@@ -75,7 +99,7 @@ export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame
     }, [currentActiveScene, ref]);
 
     return (
-        <div id="game-container" data-testid="game-container"></div>
+        <div id="game-container" data-testid="game-container" ref={containerRef}></div>
     );
 
 });

@@ -30,11 +30,15 @@ export function getZoomedScroll(
   worldY: number,
   pointerX: number,
   pointerY: number,
-  nextZoom: number
+  nextZoom: number,
+  viewportWidth: number,
+  viewportHeight: number
 ): { scrollX: number; scrollY: number } {
+  const viewportCenterX = viewportWidth / 2;
+  const viewportCenterY = viewportHeight / 2;
   return {
-    scrollX: worldX - pointerX / nextZoom,
-    scrollY: worldY - pointerY / nextZoom,
+    scrollX: worldX - viewportCenterX - (pointerX - viewportCenterX) / nextZoom,
+    scrollY: worldY - viewportCenterY - (pointerY - viewportCenterY) / nextZoom,
   };
 }
 
@@ -49,18 +53,25 @@ export function clampCameraScroll(
 ): { scrollX: number; scrollY: number } {
   const visibleWidth = viewportWidth / zoom;
   const visibleHeight = viewportHeight / zoom;
-  if (visibleWidth >= worldWidth && visibleHeight >= worldHeight) {
-    return {
-      scrollX: (worldWidth - visibleWidth) / 2,
-      scrollY: (worldHeight - visibleHeight) / 2,
-    };
-  }
-
+  const minScrollX = Math.min(0, worldWidth - visibleWidth);
   const maxScrollX = Math.max(0, worldWidth - visibleWidth);
+  const minScrollY = Math.min(0, worldHeight - visibleHeight);
   const maxScrollY = Math.max(0, worldHeight - visibleHeight);
 
   return {
-    scrollX: visibleWidth >= worldWidth ? (worldWidth - visibleWidth) / 2 : Math.min(maxScrollX, Math.max(0, scrollX)),
-    scrollY: visibleHeight >= worldHeight ? (worldHeight - visibleHeight) / 2 : Math.min(maxScrollY, Math.max(0, scrollY)),
+    scrollX: Math.min(maxScrollX, Math.max(minScrollX, scrollX)),
+    scrollY: Math.min(maxScrollY, Math.max(minScrollY, scrollY)),
   };
+}
+
+export function canPanCamera(
+  viewportWidth: number,
+  viewportHeight: number,
+  worldWidth: number,
+  worldHeight: number,
+  zoom: number
+): boolean {
+  const visibleWidth = viewportWidth / zoom;
+  const visibleHeight = viewportHeight / zoom;
+  return Math.abs(worldWidth - visibleWidth) > 0.5 || Math.abs(worldHeight - visibleHeight) > 0.5;
 }

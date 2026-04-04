@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canPanCamera,
   clampCameraScroll,
   clampZoom,
   formatZoomPercent,
@@ -30,9 +31,9 @@ describe('viewport helpers', () => {
   });
 
   it('keeps the pointer world position stable when zooming', () => {
-    expect(getZoomedScroll(400, 300, 200, 150, 2)).toEqual({
-      scrollX: 300,
-      scrollY: 225,
+    expect(getZoomedScroll(400, 300, 200, 150, 2, 800, 600)).toEqual({
+      scrollX: 100,
+      scrollY: 75,
     });
   });
 
@@ -43,10 +44,15 @@ describe('viewport helpers', () => {
     });
   });
 
-  it('centers the world when the viewport is larger than the scene', () => {
-    expect(clampCameraScroll(0, 0, 1600, 1200, 1024, 768, 1)).toEqual({
-      scrollX: -288,
-      scrollY: -216,
+  it('allows offset scroll when the viewport is larger than the scene', () => {
+    expect(clampCameraScroll(-999, 999, 1600, 1200, 1024, 768, 1)).toEqual({
+      scrollX: -576,
+      scrollY: 0,
     });
+  });
+
+  it('reports when the current zoom actually allows panning', () => {
+    expect(canPanCamera(682, 768, 1024, 768, 0.57)).toBe(true);
+    expect(canPanCamera(682, 768, 1024, 768, 0.77)).toBe(true);
   });
 });
