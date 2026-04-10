@@ -2,7 +2,7 @@
 
 A browser-based editor shell using Phaser 3 as the runtime.
 
-<img src="gfx/mainwindow.png?raw=true" style="width: 800px"/>
+<img src="res/images/mainwindow.png?raw=true" style="width: 800px"/>
 
 Planned architecture:
 
