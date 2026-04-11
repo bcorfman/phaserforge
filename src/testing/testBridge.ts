@@ -1,7 +1,6 @@
 import type { Selection } from '../editor/EditorStore';
-import type { SceneSpec } from '../model/types';
-
-const STORAGE_KEY = 'phaseractions.sceneSpec.v1';
+import type { SceneSpec, StartupMode } from '../model/types';
+import { SCENE_STORAGE_KEY } from '../editor/EditorStore';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number };
@@ -11,9 +10,11 @@ export interface AppStateSnapshot {
   selection: Selection;
   mode: 'edit' | 'play';
   dirty: boolean;
-  jsonText: string;
+  yamlText: string;
   error?: string;
   hasSeenViewHint: boolean;
+  startupMode: StartupMode;
+  initialized: boolean;
 }
 
 export interface SceneBridge {
@@ -47,6 +48,7 @@ function clone<T>(value: T): T {
 
 let appStateGetter: (() => AppStateSnapshot) | null = null;
 let sceneGetter: (() => SceneBridge | null) | null = null;
+let selectionSetter: ((selection: Selection) => void) | null = null;
 
 function ensureBridge(): void {
   if (!isBridgeEnabled() || typeof window === 'undefined') return;
@@ -54,13 +56,15 @@ function ensureBridge(): void {
   window.__PHASER_ACTIONS_STUDIO_TEST__ = {
     isEnabled: true,
     clearStoredScene() {
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(SCENE_STORAGE_KEY);
     },
     getState() {
       return appStateGetter ? clone(appStateGetter()) : null;
     },
     isSceneReady() {
-      return Boolean(sceneGetter?.());
+      const scene = sceneGetter?.();
+      const appState = appStateGetter?.();
+      return Boolean(scene && appState?.initialized && scene.getTestSnapshot().ready);
     },
     getSceneSnapshot() {
       const scene = sceneGetter?.();
@@ -106,6 +110,9 @@ function ensureBridge(): void {
       const scene = sceneGetter?.();
       scene?.testRedo();
     },
+    select(selection: Selection) {
+      selectionSetter?.(selection);
+    },
   };
 }
 
@@ -132,5 +139,16 @@ export function registerSceneGetter(getter: () => SceneBridge | null): void {
 export function unregisterSceneGetter(getter: () => SceneBridge | null): void {
   if (sceneGetter === getter) {
     sceneGetter = null;
+  }
+}
+
+export function registerSelectionSetter(setter: (selection: Selection) => void): void {
+  selectionSetter = setter;
+  ensureBridge();
+}
+
+export function unregisterSelectionSetter(setter: (selection: Selection) => void): void {
+  if (selectionSetter === setter) {
+    selectionSetter = null;
   }
 }

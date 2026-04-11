@@ -24,26 +24,27 @@ export class MoveUntil extends ActionBase {
     if (this.started) return;
     super.start();
     this.condition.reset();
+    this.setTargetVelocity(this.velocity);
+    if (this.condition instanceof BoundsHit) {
+      this.condition.validateTarget(this.target);
+    }
   }
 
   update(dtMs: number): void {
     if (this.complete || this.cancelled) return;
     const dtSeconds = dtMs / 1000;
-
-    if ('members' in this.target) {
-      this.target.setVelocity(this.velocity.x, this.velocity.y);
-      this.target.translate(this.velocity.x * dtSeconds, this.velocity.y * dtSeconds);
-    } else {
-      this.target.vx = this.velocity.x;
-      this.target.vy = this.velocity.y;
-      this.target.x += this.velocity.x * dtSeconds;
-      this.target.y += this.velocity.y * dtSeconds;
-    }
+    this.translateTarget(dtSeconds);
 
     this.condition.update(dtMs);
-    const hitBoundary = this.condition instanceof BoundsHit ? this.condition.apply(this.target).hit : false;
+    if (this.condition instanceof BoundsHit) {
+      this.condition.apply(this.target);
+      if (this.condition.isMet(this.target) && this.isTerminalBoundaryBehavior()) {
+        this.complete = true;
+      }
+      return;
+    }
 
-    if (hitBoundary || this.condition.isMet(this.target)) {
+    if (this.condition.isMet(this.target)) {
       this.complete = true;
     }
   }
@@ -51,5 +52,27 @@ export class MoveUntil extends ActionBase {
   reset(): void {
     super.reset();
     this.condition.reset();
+  }
+
+  private setTargetVelocity(velocity: { x: number; y: number }): void {
+    if ('members' in this.target) {
+      this.target.setVelocity(velocity.x, velocity.y);
+      return;
+    }
+
+    this.target.vx = velocity.x;
+    this.target.vy = velocity.y;
+  }
+
+  private translateTarget(dtSeconds: number): void {
+    const targets = 'members' in this.target ? this.target.members : [this.target];
+    for (const target of targets) {
+      target.x += (target.vx ?? 0) * dtSeconds;
+      target.y += (target.vy ?? 0) * dtSeconds;
+    }
+  }
+
+  private isTerminalBoundaryBehavior(): boolean {
+    return this.condition.behavior === 'stop' || this.condition.behavior === 'limit';
   }
 }

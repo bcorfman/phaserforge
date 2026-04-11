@@ -1,5 +1,6 @@
 import { coerceTarget, flattenTarget, isFormationGroup } from '../targets/resolveTarget';
 import { GroupBounds, RuntimeEntity, RuntimeTarget } from '../targets/types';
+import { getRotatedEntityBounds, getRectSpan } from '../geometry';
 
 export type BoundaryScope = 'member-any' | 'member-all' | 'group-extents';
 export type BoundaryBehavior = 'stop' | 'limit' | 'bounce' | 'wrap';
@@ -18,12 +19,7 @@ export interface BoundaryResult {
 }
 
 function entityBounds(entity: RuntimeEntity): GroupBounds {
-  return {
-    minX: entity.x - entity.width / 2,
-    maxX: entity.x + entity.width / 2,
-    minY: entity.y - entity.height / 2,
-    maxY: entity.y + entity.height / 2,
-  };
+  return getRotatedEntityBounds(entity);
 }
 
 function targetKey(target: RuntimeTarget): string {
@@ -52,6 +48,25 @@ export class BoundaryEngine {
   isMet(targetLike: RuntimeTarget | RuntimeEntity[]): boolean {
     const target = coerceTarget(targetLike);
     return this.detect(target).hit;
+  }
+
+  validateTargetSpan(targetLike: RuntimeTarget | RuntimeEntity[]): void {
+    const target = coerceTarget(targetLike);
+    const targets = this.scope === 'group-extents' && isFormationGroup(target)
+      ? target.members
+      : flattenTarget(target);
+
+    for (const member of targets) {
+      const span = getRectSpan(entityBounds(member));
+      const xSpan = this.bounds.maxX - this.bounds.minX;
+      const ySpan = this.bounds.maxY - this.bounds.minY;
+      if (xSpan < span.width) {
+        throw new Error(`Horizontal patrol span (${xSpan.toFixed(1)}px) must be >= rotated sprite width (${span.width.toFixed(1)}px)`);
+      }
+      if (ySpan < span.height) {
+        throw new Error(`Vertical patrol span (${ySpan.toFixed(1)}px) must be >= rotated sprite height (${span.height.toFixed(1)}px)`);
+      }
+    }
   }
 
   apply(targetLike: RuntimeTarget | RuntimeEntity[]): BoundaryResult {

@@ -16,6 +16,16 @@ const enemyEntities = arrangeGrid(
       y: 0,
       width: 28,
       height: 20,
+      scaleX: 1,
+      scaleY: 1,
+      originX: 0.5,
+      originY: 0.5,
+      alpha: 1,
+      visible: true,
+      depth: 0,
+      flipX: false,
+      flipY: false,
+      rotationDeg: 0,
     }),
   }
 );

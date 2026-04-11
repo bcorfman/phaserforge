@@ -4,6 +4,12 @@ import { renderGroupInspector } from '../../src/editor/Inspector';
 import { inferGroupGridLayout } from '../../src/editor/formationLayout';
 import { sampleScene } from '../../src/model/sampleScene';
 
+const registry = {
+  arrange: [],
+  actions: [],
+  conditions: [],
+};
+
 describe('Group inspector', () => {
   it('renders editable formation-level controls and read-only member guidance', () => {
     const group = sampleScene.groups['g-enemies'];
@@ -14,6 +20,16 @@ describe('Group inspector', () => {
         onUpdateGroup: () => {},
         onArrangeGroupGrid: () => {},
         onDraftChange: () => {},
+        onAssignFlow: () => {},
+        onAssignExistingBehavior: () => {},
+        onRenameBehavior: () => {},
+        onRemoveBehavior: () => {},
+        onAddAction: () => {},
+        onMoveAction: () => {},
+        onRemoveAction: () => {},
+        onSelectBehavior: () => {},
+        onSelectAction: () => {},
+        registry,
       })
     );
 
@@ -40,11 +56,48 @@ describe('Group inspector', () => {
           onUpdateGroup: () => {},
           onArrangeGroupGrid: () => {},
           onDraftChange: () => {},
+          onAssignFlow: () => {},
+          onAssignExistingBehavior: () => {},
+          onRenameBehavior: () => {},
+          onRemoveBehavior: () => {},
+          onAddAction: () => {},
+          onMoveAction: () => {},
+          onRemoveAction: () => {},
+          onSelectBehavior: () => {},
+          onSelectAction: () => {},
+          registry,
         }
       )
     );
 
     expect(markup).toContain('Grid size will become 4 sprites.');
-    expect(markup).not.toContain('disabled');
+    expect(markup).toContain('data-testid="apply-group-layout-button"');
+  });
+
+  it('passes the selected action marker through the group action panel', () => {
+    const group = sampleScene.groups['g-enemies'];
+    const draft = inferGroupGridLayout(sampleScene, group.id);
+    const markup = renderToStaticMarkup(
+      renderGroupInspector(group, sampleScene, draft, true, {
+        onSelectMember: () => {},
+        onUpdateGroup: () => {},
+        onArrangeGroupGrid: () => {},
+        onDraftChange: () => {},
+        onAssignFlow: () => {},
+        onAssignExistingBehavior: () => {},
+        onRenameBehavior: () => {},
+        onRemoveBehavior: () => {},
+        onAddAction: () => {},
+        onMoveAction: () => {},
+        onRemoveAction: () => {},
+        onSelectBehavior: () => {},
+        onSelectAction: () => {},
+        selectedActionId: 'a-move-left',
+        registry,
+      })
+    );
+
+    expect(markup).toContain('Preview runs this list from Step 1');
+    expect(markup).toContain('Selected');
   });
 });

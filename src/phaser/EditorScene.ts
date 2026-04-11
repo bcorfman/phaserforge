@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { EventBus, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
-import { SceneSpec, BoundsHitConditionSpec } from '../model/types';
+import { SceneSpec, BoundsHitConditionSpec, SpriteAssetSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
 import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
+import { getRotatedEntityBounds } from '../runtime/geometry';
 import {
   hitTestCanvas,
   getCursorForHitTest,
@@ -27,7 +28,7 @@ import { getCurrentAppStateSnapshot, registerSceneGetter, unregisterSceneGetter 
 
 export class EditorScene extends Phaser.Scene {
   private compiled?: CompiledScene;
-  private sprites = new Map<string, Phaser.GameObjects.Rectangle>();
+  private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
   private entityToGroup = new Map<string, string>();
   private boundsGraphics?: Phaser.GameObjects.Graphics;
   private boundsHandles = new Map<string, Phaser.GameObjects.Zone>();
@@ -60,6 +61,7 @@ export class EditorScene extends Phaser.Scene {
   private wheelZoomAnchor?: { pointerX: number; pointerY: number; worldX: number; worldY: number };
   private panState?: { startPointerX: number; startPointerY: number; startScrollX: number; startScrollY: number };
   private readonly sceneBridgeGetter = () => this;
+  private loadVersion = 0;
 
   constructor() {
     super('EditorScene');
@@ -158,12 +160,13 @@ export class EditorScene extends Phaser.Scene {
   public getEntityWorldRect(id: string): { minX: number; minY: number; maxX: number; maxY: number; centerX: number; centerY: number } | null {
     const entity = this.compiled?.entities[id];
     if (!entity) return null;
+    const bounds = getRotatedEntityBounds(entity);
 
     return {
-      minX: entity.x - entity.width / 2,
-      minY: entity.y - entity.height / 2,
-      maxX: entity.x + entity.width / 2,
-      maxY: entity.y + entity.height / 2,
+      minX: bounds.minX,
+      minY: bounds.minY,
+      maxX: bounds.maxX,
+      maxY: bounds.maxY,
       centerX: entity.x,
       centerY: entity.y,
     };
@@ -310,11 +313,13 @@ export class EditorScene extends Phaser.Scene {
       const sprite = this.sprites.get(entity.id);
       if (!sprite) continue;
       sprite.setPosition(entity.x, entity.y);
+      this.applyEntityDisplayProps(sprite, entity, this.compiled.scene.entities[entity.id]?.asset);
     }
     this.updateGroupFrames();
   }
 
   private loadScene(sceneSpec: SceneSpec, mode: 'edit' | 'play' = 'edit'): void {
+    const currentLoadVersion = ++this.loadVersion;
     this.clearScene();
     this.mode = mode;
     this.compiled = compileScene(sceneSpec, {
@@ -331,20 +336,23 @@ export class EditorScene extends Phaser.Scene {
       },
     });
 
-    this.buildSprites();
-    this.buildGroupFrames(sceneSpec);
-    this.drawWorldFrame(sceneSpec);
-    this.refreshBoundsOverlay(sceneSpec);
-    this.applySelectionStyles();
-    if (!this.hasInitializedView) {
-      this.fitView();
-      this.hasInitializedView = true;
-    } else {
-      this.applyZoom(this.currentZoom);
-    }
-    if (mode === 'play') {
-      this.compiled.startAll();
-    }
+    void this.ensureAssetTextures(sceneSpec).finally(() => {
+      if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
+      this.buildSprites();
+      this.buildGroupFrames(sceneSpec);
+      this.drawWorldFrame(sceneSpec);
+      this.refreshBoundsOverlay(sceneSpec);
+      this.applySelectionStyles();
+      if (!this.hasInitializedView) {
+        this.fitView();
+        this.hasInitializedView = true;
+      } else {
+        this.applyZoom(this.currentZoom);
+      }
+      if (mode === 'play') {
+        this.compiled.startAll();
+      }
+    });
   }
 
   private clearScene(): void {
@@ -381,10 +389,24 @@ export class EditorScene extends Phaser.Scene {
   private buildSprites(): void {
     if (!this.compiled) return;
     for (const entity of Object.values(this.compiled.entities)) {
-      const rect = this.add.rectangle(entity.x, entity.y, entity.width, entity.height, 0x69d2ff, 0.9);
-      rect.setStrokeStyle(2, 0x1a2b4a, 1);
-      rect.setInteractive();
-      this.sprites.set(entity.id, rect);
+      const asset = this.compiled.scene.entities[entity.id]?.asset;
+      const textureKey = asset ? this.getTextureKey(asset) : undefined;
+      let sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+      if (asset && textureKey && this.textures.exists(textureKey)) {
+        const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+        if (asset.imageType === 'spritesheet') {
+          sprite = this.add.sprite(entity.x, entity.y, textureKey, frame);
+        } else {
+          sprite = this.add.image(entity.x, entity.y, textureKey);
+        }
+      } else {
+        const rect = this.add.rectangle(entity.x, entity.y, entity.width, entity.height, 0x69d2ff, 0.9);
+        rect.setStrokeStyle(2, 0x1a2b4a, 1);
+        sprite = rect;
+      }
+      sprite.setInteractive();
+      this.applyEntityDisplayProps(sprite, entity, asset);
+      this.sprites.set(entity.id, sprite);
     }
   }
 
@@ -501,15 +523,82 @@ export class EditorScene extends Phaser.Scene {
       const selectedGroup = this.selection.kind === 'group' && groupId === this.selection.id;
       const selectedEntities = this.selection.kind === 'entities' && this.selection.ids.includes(entityId);
       const inGroup = Boolean(groupId);
+      const entity = this.compiled?.entities[entityId];
+      const baseAlpha = entity?.alpha ?? 1;
 
       const isSelected = selectedEntity || selectedGroup || selectedEntities;
-      sprite.setAlpha(isSelected ? 1 : inGroup ? 0.72 : 0.9);
-      sprite.setStrokeStyle(
-        isSelected ? 3 : 2,
-        selectedEntity ? 0xffb86b : selectedGroup ? 0x9fe7ff : selectedEntities ? 0xff6b6b : 0x1a2b4a,
-        1
-      );
+      sprite.setAlpha(isSelected ? baseAlpha : inGroup ? baseAlpha * 0.72 : baseAlpha * 0.9);
+      const outlineColor = selectedEntity ? 0xffb86b : selectedGroup ? 0x9fe7ff : selectedEntities ? 0xff6b6b : 0x1a2b4a;
+      if (sprite instanceof Phaser.GameObjects.Rectangle) {
+        sprite.setStrokeStyle(isSelected ? 3 : 2, outlineColor, 1);
+      } else {
+        sprite.setTint(isSelected ? outlineColor : 0xffffff);
+      }
     }
+  }
+
+  private getTextureKey(asset: SpriteAssetSpec): string {
+    const sourceKey = asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path;
+    const suffix = asset.imageType === 'spritesheet' && asset.grid
+      ? `:${asset.grid.frameWidth}x${asset.grid.frameHeight}`
+      : '';
+    return `asset:${sourceKey}${suffix}`;
+  }
+
+  private applyEntityDisplayProps(
+    sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite,
+    entity: CompiledScene['entities'][string],
+    asset?: SpriteAssetSpec
+  ): void {
+    sprite.setPosition(entity.x, entity.y);
+    sprite.setAngle(entity.rotationDeg ?? 0);
+    sprite.setOrigin(entity.originX ?? 0.5, entity.originY ?? 0.5);
+    sprite.setAlpha(entity.alpha ?? 1);
+    sprite.setVisible(entity.visible ?? true);
+    sprite.setDepth(entity.depth ?? 0);
+    if (sprite instanceof Phaser.GameObjects.Rectangle) {
+      sprite.setSize(entity.width, entity.height);
+      sprite.setDisplaySize(entity.width, entity.height);
+      sprite.setScale((entity.flipX ? -1 : 1) * Math.abs(entity.scaleX ?? 1), (entity.flipY ? -1 : 1) * Math.abs(entity.scaleY ?? 1));
+    } else {
+      sprite.setDisplaySize(entity.width, entity.height);
+      sprite.setScale(Math.abs(entity.scaleX ?? 1), Math.abs(entity.scaleY ?? 1));
+      sprite.setFlipX(entity.flipX ?? false);
+      sprite.setFlipY(entity.flipY ?? false);
+      if (asset?.imageType === 'spritesheet' && sprite instanceof Phaser.GameObjects.Sprite) {
+        const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+        if (frame !== undefined) {
+          sprite.setFrame(frame);
+        }
+      }
+    }
+  }
+
+  private async ensureAssetTextures(sceneSpec: SceneSpec): Promise<void> {
+    const pendingAssets = Object.values(sceneSpec.entities)
+      .map((entity) => entity.asset)
+      .filter((asset): asset is SpriteAssetSpec => Boolean(asset))
+      .filter((asset) => !this.textures.exists(this.getTextureKey(asset)));
+
+    if (pendingAssets.length === 0) return;
+
+    for (const asset of pendingAssets) {
+      const key = this.getTextureKey(asset);
+      if (asset.imageType === 'spritesheet' && asset.grid) {
+        this.load.spritesheet(key, asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path, {
+          frameWidth: asset.grid.frameWidth,
+          frameHeight: asset.grid.frameHeight,
+        });
+      } else {
+        this.load.image(key, asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path);
+      }
+    }
+
+    await new Promise<void>((resolve) => {
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+      this.load.once(Phaser.Loader.Events.LOAD_ERROR, () => resolve());
+      this.load.start();
+    });
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
@@ -726,6 +815,10 @@ export class EditorScene extends Phaser.Scene {
     const canvasRect = this.game.canvas.getBoundingClientRect();
     const pointerX = rawEvent && 'clientX' in rawEvent ? rawEvent.clientX - canvasRect.left : this.input.activePointer.x;
     const pointerY = rawEvent && 'clientY' in rawEvent ? rawEvent.clientY - canvasRect.top : this.input.activePointer.y;
+    this.applyWheelZoom(pointerX, pointerY, deltaX, deltaY);
+  }
+
+  private applyWheelZoom(pointerX: number, pointerY: number, deltaX: number, deltaY: number): void {
     if (!this.wheelZoomAnchor
       || Math.abs(this.wheelZoomAnchor.pointerX - pointerX) > 0.5
       || Math.abs(this.wheelZoomAnchor.pointerY - pointerY) > 0.5) {

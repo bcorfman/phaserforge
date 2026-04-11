@@ -1,17 +1,79 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { serializeSceneToYaml } from '../../src/model/serialization';
+import { sampleScene } from '../../src/model/sampleScene';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number; centerX?: number; centerY?: number };
 
 export async function gotoStudio(page: Page): Promise<void> {
+  const existingAppRoot = page.getByTestId('app-root');
+  if (await existingAppRoot.isVisible().catch(() => false)) {
+    await waitForSceneReady(page);
+    return;
+  }
+
   await page.goto('/');
-  await expect(page.getByTestId('app-root')).toBeVisible();
+  try {
+    await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 10000 });
+  } catch {
+    await page.reload();
+    await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 10000 });
+  }
   await waitForSceneReady(page);
+}
+
+export async function seedSampleScene(page: Page): Promise<void> {
+  const yaml = serializeSceneToYaml(sampleScene);
+  await page.goto('/');
+  await page.evaluate(([sceneYaml]) => {
+    window.localStorage.setItem('phaseractions.sceneYaml.v1', sceneYaml);
+    window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
+  }, [yaml]);
+  await page.reload();
+  await waitForSampleScene(page);
 }
 
 export async function waitForSceneReady(page: Page): Promise<void> {
   await page.waitForFunction(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.isSceneReady?.());
   await expect(page.locator('#game-container canvas')).toBeVisible();
+}
+
+export async function waitForSampleScene(page: Page): Promise<void> {
+  await expect.poll(async () => {
+    const state = await getState<{
+      scene?: {
+        entities?: Record<string, unknown>;
+        groups?: Record<string, unknown>;
+        actions?: Record<string, unknown>;
+      };
+    } | null>(page);
+    return {
+      hasState: Boolean(state),
+      hasEntity: Boolean(state?.scene?.entities?.e1),
+      hasGroup: Boolean(state?.scene?.groups?.['g-enemies']),
+      hasAction: Boolean(state?.scene?.actions?.['a-move-right']),
+    };
+  }, { timeout: 10000 }).toEqual({
+    hasState: true,
+    hasEntity: true,
+    hasGroup: true,
+    hasAction: true,
+  });
+}
+
+export async function waitForEmptyScene(page: Page): Promise<void> {
+  await expect.poll(async () => {
+    const state = await getState<{ scene?: { entities?: Record<string, unknown>; groups?: Record<string, unknown> } } | null>(page);
+    return {
+      hasState: Boolean(state),
+      entityCount: Object.keys(state?.scene?.entities ?? {}).length,
+      groupCount: Object.keys(state?.scene?.groups ?? {}).length,
+    };
+  }, { timeout: 10000 }).toEqual({
+    hasState: true,
+    entityCount: 0,
+    groupCount: 0,
+  });
 }
 
 export async function dismissViewHint(page: Page): Promise<void> {
@@ -101,18 +163,27 @@ export async function panByScreenDelta(page: Page, delta: Point): Promise<void> 
 
 export async function expectSelection(page: Page, expected: Record<string, unknown>): Promise<void> {
   await expect.poll(async () => {
-    const state = await getState<{ selection: unknown }>(page);
-    return JSON.stringify(state.selection);
+    const state = await getState<{ selection?: unknown } | null>(page);
+    return JSON.stringify(state?.selection ?? null);
   }).toBe(JSON.stringify(expected));
 }
 
-export async function replaceJson(page: Page, mutator: (json: string) => string): Promise<void> {
-  const textarea = page.getByTestId('json-textarea');
+export async function selectGroupInSceneGraph(page: Page, groupId: string): Promise<void> {
+  const groupItem = page.getByTestId(`group-item-${groupId}`);
+  await expect(groupItem).toBeVisible();
+  await groupItem.scrollIntoViewIfNeeded();
+  await groupItem.click();
+  await expect(page.getByTestId('formation-name-input')).toBeVisible();
+}
+
+export async function replaceYaml(page: Page, mutator: (yaml: string) => string): Promise<void> {
+  const textarea = page.getByTestId('yaml-textarea');
   const current = await textarea.inputValue();
   await textarea.fill(mutator(current));
 }
 
 export async function expectInputValue(input: Locator, expected: string): Promise<void> {
+  await expect(input).toBeVisible();
   await expect.poll(() => input.inputValue()).toBe(expected);
 }
 

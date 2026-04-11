@@ -129,4 +129,27 @@ describe('compiler/runtime integration', () => {
     const second = compiled.entities.e1.x;
     expect(second - first).toBeCloseTo(5, 2);
   });
+
+  it('C5 compile preserves authored sprite display properties', () => {
+    const scene = simpleScene();
+    scene.entities.e1.scaleX = 1.5;
+    scene.entities.e1.scaleY = 0.5;
+    scene.entities.e1.originX = 0.25;
+    scene.entities.e1.originY = 0.75;
+    scene.entities.e1.alpha = 0.4;
+    scene.entities.e1.visible = false;
+    scene.entities.e1.depth = 9;
+    scene.entities.e1.flipX = true;
+
+    const compiled = compileScene(scene, { callRegistry: { onDone: () => {} } });
+
+    expect(compiled.entities.e1.scaleX).toBe(1.5);
+    expect(compiled.entities.e1.scaleY).toBe(0.5);
+    expect(compiled.entities.e1.originX).toBe(0.25);
+    expect(compiled.entities.e1.originY).toBe(0.75);
+    expect(compiled.entities.e1.alpha).toBe(0.4);
+    expect(compiled.entities.e1.visible).toBe(false);
+    expect(compiled.entities.e1.depth).toBe(9);
+    expect(compiled.entities.e1.flipX).toBe(true);
+  });
 });

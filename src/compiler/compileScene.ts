@@ -1,4 +1,5 @@
 import { SceneSpec } from '../model/types';
+import { resolveEntityDefaults } from '../model/entityDefaults';
 import { validateSceneSpec } from '../model/validation';
 import { ActionManager } from '../runtime/ActionManager';
 import { RuntimeEntity, RuntimeGroup } from '../runtime/targets/types';
@@ -20,14 +21,26 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
 
   const entities: Record<string, RuntimeEntity> = {};
   for (const entity of Object.values(scene.entities)) {
+    const resolved = resolveEntityDefaults(entity);
     entities[entity.id] = {
-      id: entity.id,
-      x: entity.x,
-      y: entity.y,
-      width: entity.width,
-      height: entity.height,
-      homeX: entity.x,
-      homeY: entity.y,
+      id: resolved.id,
+      x: resolved.x,
+      y: resolved.y,
+      width: resolved.width,
+      height: resolved.height,
+      rotationDeg: resolved.rotationDeg,
+      scaleX: resolved.scaleX,
+      scaleY: resolved.scaleY,
+      originX: resolved.originX,
+      originY: resolved.originY,
+      alpha: resolved.alpha,
+      visible: resolved.visible,
+      depth: resolved.depth,
+      flipX: resolved.flipX,
+      flipY: resolved.flipY,
+      asset: resolved.asset,
+      homeX: resolved.x,
+      homeY: resolved.y,
       vx: 0,
       vy: 0,
     };

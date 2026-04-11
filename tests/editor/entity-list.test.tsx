@@ -9,6 +9,7 @@ describe('EntityList behavior hierarchy', () => {
       <>{renderBehaviorHierarchy(sampleScene, { kind: 'none' }, () => {}, () => {})}</>
     );
 
+    expect(markup).toContain('Behavior Flow');
     expect(markup).toContain('Formation Patrol action hierarchy');
     expect(markup).toContain('Loop');
     expect(markup).toContain('Sweep + Drop');

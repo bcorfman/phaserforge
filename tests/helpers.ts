@@ -5,9 +5,9 @@ export function baseScene(): SceneSpec {
     id: 'scene-1',
     world: { width: 1024, height: 768 },
     entities: {
-      e1: { id: 'e1', x: 0, y: 0, width: 10, height: 10 },
-      e2: { id: 'e2', x: 20, y: 0, width: 10, height: 10 },
-      e3: { id: 'e3', x: 40, y: 0, width: 10, height: 10 },
+      e1: { id: 'e1', x: 0, y: 0, width: 10, height: 10, scaleX: 1, scaleY: 1, originX: 0.5, originY: 0.5, alpha: 1, visible: true, depth: 0, flipX: false, flipY: false, rotationDeg: 0 },
+      e2: { id: 'e2', x: 20, y: 0, width: 10, height: 10, scaleX: 1, scaleY: 1, originX: 0.5, originY: 0.5, alpha: 1, visible: true, depth: 0, flipX: false, flipY: false, rotationDeg: 0 },
+      e3: { id: 'e3', x: 40, y: 0, width: 10, height: 10, scaleX: 1, scaleY: 1, originX: 0.5, originY: 0.5, alpha: 1, visible: true, depth: 0, flipX: false, flipY: false, rotationDeg: 0 },
     },
     groups: {
       g1: { id: 'g1', members: ['e1', 'e2', 'e3'] },

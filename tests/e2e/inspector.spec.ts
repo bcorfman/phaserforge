@@ -1,13 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, expectInputValue, getState, gotoStudio } from './helpers';
+import { dismissViewHint, expectInputValue, getState, gotoStudio, seedSampleScene, selectGroupInSceneGraph, tapWorld, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
+  await seedSampleScene(page);
   await gotoStudio(page);
+  await waitForSampleScene(page);
   await dismissViewHint(page);
 });
 
 test('edits formation details and layout from the inspector', async ({ page }) => {
-  await page.getByTestId('group-item-g-enemies').click();
+  await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');
 
   await page.getByTestId('formation-name-input').fill('Invader Block');
@@ -42,7 +44,7 @@ test('edits move-until and bounds condition values from the inspector', async ({
 });
 
 test('removes a formation member and keeps the group selected', async ({ page }) => {
-  await page.getByTestId('group-item-g-enemies').click();
+  await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('group-member-remove-e3').click();
 
   await expect.poll(async () => {
@@ -57,4 +59,186 @@ test('removes a formation member and keeps the group selected', async ({ page })
     members: ['e1', 'e2', 'e4', 'e5', 'e6', 'e7', 'e8', 'e9', 'e10', 'e11', 'e12', 'e13', 'e14', 'e15'],
     layoutType: 'freeform',
   });
+});
+
+test('removes a behavior flow from the scene graph', async ({ page }) => {
+  await page.getByTestId('remove-behavior-b-formation').click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { behaviors: Record<string, unknown>; actions: Record<string, unknown>; conditions: Record<string, unknown> } }>(page);
+    return {
+      behaviorIds: Object.keys(state.scene.behaviors),
+      actionIds: Object.keys(state.scene.actions),
+      conditionIds: Object.keys(state.scene.conditions),
+    };
+  }).toEqual({
+    behaviorIds: [],
+    actionIds: [],
+    conditionIds: [],
+  });
+});
+
+test('edits authored sprite transform and visual properties from the inspector', async ({ page }) => {
+  await tapWorld(page, { x: 220, y: 140 });
+
+  await page.getByTestId('entity-scale-x-input').fill('1.5');
+  await page.getByTestId('entity-scale-y-input').fill('0.75');
+  await page.getByTestId('entity-origin-x-input').fill('0.25');
+  await page.getByTestId('entity-origin-y-input').fill('0.75');
+  await page.getByTestId('entity-alpha-input').fill('0.4');
+  await page.getByTestId('entity-depth-input').fill('9');
+  await page.getByTestId('entity-flip-x-input').check();
+  await page.getByTestId('entity-visible-input').uncheck();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, {
+      scaleX?: number;
+      scaleY?: number;
+      originX?: number;
+      originY?: number;
+      alpha?: number;
+      depth?: number;
+      flipX?: boolean;
+      visible?: boolean;
+    }> } }>(page);
+    return state.scene.entities.e1;
+  }).toMatchObject({
+    scaleX: 1.5,
+    scaleY: 0.75,
+    originX: 0.25,
+    originY: 0.75,
+    alpha: 0.4,
+    depth: 9,
+    flipX: true,
+    visible: false,
+  });
+});
+
+test('creates a formation from imported sprites and arranges it into a grid', async ({ page }) => {
+  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
+  await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
+  await page.getByTestId('spritesheet-frame-width-input').fill('64');
+  await page.getByTestId('spritesheet-frame-height-input').fill('64');
+  await page.getByTestId('spritesheet-frame-1').click();
+  await page.getByTestId('import-sprites-button').click();
+
+  await expect(page.getByTestId('multi-entity-inspector')).toBeVisible();
+  await page.getByTestId('new-formation-name-input').fill('Raid Wing');
+  await page.getByTestId('create-formation-from-selection-button').click();
+  await expectInputValue(page.getByTestId('formation-name-input'), 'Raid Wing');
+
+  await page.getByTestId('group-layout-rows-input').fill('1');
+  await page.getByTestId('group-layout-cols-input').fill('2');
+  await page.getByTestId('apply-group-layout-button').click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { groups: Record<string, { name?: string; layout?: { type?: string; rows?: number; cols?: number } }> } }>(page);
+    const createdGroup = Object.values(state.scene.groups).find((group) => group.name === 'Raid Wing');
+    return createdGroup?.layout;
+  }).toMatchObject({ type: 'grid', rows: 1, cols: 2 });
+});
+
+test('assigns a move flow to an imported sprite and persists it to YAML', async ({ page }) => {
+  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
+  await page.getByTestId('import-sprites-button').click();
+
+  await page.getByTestId('assign-action-flow-button').click();
+  await page.getByTestId('add-action-MoveUntil').click();
+  await page.getByTestId('velocity-x-input').fill('140');
+  await page.getByLabel('Min X').fill('48');
+
+  await expect.poll(async () => {
+    const state = await getState<{ selection: { kind: string; id?: string }; scene: { behaviors: Record<string, { target: { type: string; entityId?: string } }>; actions: Record<string, { type: string; velocity?: { x: number }; conditionId?: string }>; conditions: Record<string, { bounds: { minX: number } }> } }>(page);
+    const behavior = Object.values(state.scene.behaviors).find((entry) => entry.target.type === 'entity');
+    const move = state.selection.kind === 'action' && state.selection.id ? state.scene.actions[state.selection.id] : undefined;
+    const condition = move?.conditionId ? state.scene.conditions[move.conditionId] : undefined;
+    return { hasBehavior: Boolean(behavior), velocityX: move?.velocity?.x, minX: condition?.bounds.minX };
+  }).toEqual({ hasBehavior: true, velocityX: 140, minX: 48 });
+
+  await page.getByTestId('export-yaml-button').click();
+  await expect(page.getByTestId('yaml-textarea')).toContainText('type: MoveUntil');
+});
+
+test('assigns a group move flow to imported sprites and runs it in play mode', async ({ page }) => {
+  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
+  await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
+  await page.getByTestId('spritesheet-frame-width-input').fill('64');
+  await page.getByTestId('spritesheet-frame-height-input').fill('64');
+  await page.getByTestId('spritesheet-frame-1').click();
+  await page.getByTestId('import-sprites-button').click();
+  await page.getByTestId('create-formation-from-selection-button').click();
+  await page.getByTestId('assign-action-flow-button').click();
+  await page.getByTestId('add-action-MoveUntil').click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { groups: Record<string, { name?: string; members: string[] }> } }>(page);
+    const createdGroup = Object.values(state.scene.groups).find((group) => group.name === 'Formation 1');
+    return createdGroup?.members[0];
+  }).toBeTruthy();
+  const firstMemberId = await page.evaluate(() => {
+    const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { groups: Record<string, { name?: string; members: string[] }> } } | null;
+    const createdGroup = state ? Object.values(state.scene.groups).find((group) => group.name === 'Formation 1') : undefined;
+    return createdGroup?.members[0];
+  });
+
+  await page.getByTestId('toggle-mode-button').click();
+
+  const before = await page.evaluate((memberId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(memberId), firstMemberId);
+  await expect.poll(async () => {
+    const rect = await page.evaluate((memberId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(memberId), firstMemberId);
+    return rect?.centerX;
+  }).not.toBe(before?.centerX);
+});
+
+test('preview uses edited move velocity and bounce behavior', async ({ page }) => {
+  await page.getByTestId('action-item-a-move-right').click();
+  await page.getByTestId('velocity-x-input').fill('240');
+  await page.getByLabel('Max X').fill('460');
+  await page.locator('label:has-text("Behavior") select').selectOption('bounce');
+
+  const before = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
+  await page.getByTestId('toggle-mode-button').click();
+
+  await expect.poll(async () => {
+    const rect = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
+    return rect?.centerX;
+  }).toBeGreaterThan((before?.centerX ?? 0) + 20);
+
+  await expect.poll(async () => {
+    const rect = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
+    return rect?.centerX;
+  }, { timeout: 2000 }).toBeLessThan(before?.centerX ?? 0);
+});
+
+test('preview applies wrap behavior for an imported sprite move flow', async ({ page }) => {
+  await page.getByTestId('reset-scene-button').click();
+  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
+  await page.getByTestId('import-sprites-button').click();
+  await page.getByTestId('assign-action-flow-button').click();
+  await page.getByTestId('add-action-MoveUntil').click();
+
+  const entityId = await page.evaluate(() => {
+    const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { entities: Record<string, unknown> } } | null;
+    return state ? Object.keys(state.scene.entities)[0] : null;
+  });
+  if (!entityId) throw new Error('Imported entity id unavailable');
+
+  const before = await page.evaluate((id) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(id), entityId);
+  if (!before?.centerX) throw new Error('Imported entity rect unavailable');
+
+  await page.getByTestId('velocity-x-input').fill('300');
+  await page.getByLabel('Min X').fill('200');
+  await page.getByLabel('Max X').fill(String(Math.round(before.centerX + 40)));
+  await page.locator('label:has-text("Behavior") select').selectOption('wrap');
+  await page.getByTestId('toggle-mode-button').click();
+
+  await expect.poll(async () => {
+    const rect = await page.evaluate((id) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(id), entityId);
+    return rect?.centerX;
+  }).toBeLessThan(before.centerX);
+
+  await expect.poll(async () => {
+    const rect = await page.evaluate((id) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(id), entityId);
+    return rect?.centerX;
+  }).toBeGreaterThan(200);
 });

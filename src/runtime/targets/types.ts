@@ -4,6 +4,17 @@ export interface RuntimeEntity {
   y: number;
   width: number;
   height: number;
+  rotationDeg?: number;
+  scaleX?: number;
+  scaleY?: number;
+  originX?: number;
+  originY?: number;
+  alpha?: number;
+  visible?: boolean;
+  depth?: number;
+  flipX?: boolean;
+  flipY?: boolean;
+  asset?: unknown;
   homeX?: number;
   homeY?: number;
   vx?: number;

@@ -1,12 +1,38 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
-import { SceneSpec, ActionSpec, ConditionSpec, GroupSpec, Id } from '../model/types';
-import { sampleScene } from '../model/sampleScene';
+import {
+  ActionSpec,
+  ConditionSpec,
+  EditorRegistryConfig,
+  GroupSpec,
+  Id,
+  SceneSpec,
+  StartupMode,
+  type EntitySpec,
+} from '../model/types';
+import { createEmptyScene } from '../model/emptyScene';
 import { validateSceneSpec } from '../model/validation';
 import { applyGroupGridLayout, type GroupGridLayout } from './formationLayout';
 import { dissolveGroup, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
 import { syncBoundsToWorldResize } from './worldBounds';
+import { loadEditorConfig, loadEditorRegistry, coerceStartupMode, EMPTY_EDITOR_REGISTRY } from '../model/editorConfig';
+import { parseSceneYaml, serializeSceneToYaml } from '../model/serialization';
+import {
+  appendActionToBehavior,
+  assignBehaviorToTarget,
+  createDefaultBehaviorForTarget,
+  createGroupSpec,
+  getNextFormationName,
+  getPrimaryBehaviorForEntity,
+  getPrimaryBehaviorForGroup,
+  moveSequenceChild,
+  removeBehavior,
+  removeSequenceChild,
+  renameBehavior,
+} from './behaviorCommands';
+import { removeSceneGraphItem } from './sceneGraphCommands';
 
-const STORAGE_KEY = 'phaseractions.sceneSpec.v1';
+export const SCENE_STORAGE_KEY = 'phaseractions.sceneYaml.v1';
+export const STARTUP_MODE_STORAGE_KEY = 'phaseractions.startupMode.v1';
 
 export type Selection =
   | { kind: 'none' }
@@ -22,27 +48,40 @@ export interface EditorState {
   selection: Selection;
   expandedGroups: Record<Id, boolean>;
   dirty: boolean;
-  jsonText: string;
+  yamlText: string;
   error?: string;
   interaction?: { kind: 'entity' | 'group' | 'bounds'; id: string; handle?: 'left' | 'right' | 'top' | 'bottom' | 'tl' | 'tr' | 'bl' | 'br' };
   mode: 'edit' | 'play';
   hasSeenViewHint: boolean;
+  startupMode: StartupMode;
+  registry: EditorRegistryConfig;
+  initialized: boolean;
 }
 
-type EditorAction =
+export type ImportedEntityDraft = {
+  entity: EntitySpec;
+  addToSelectedGroup?: boolean;
+};
+
+export type EditorAction =
+  | { type: 'initialize'; scene: SceneSpec; startupMode: StartupMode; registry: EditorRegistryConfig }
+  | { type: 'set-startup-mode'; startupMode: StartupMode }
   | { type: 'select'; selection: Selection }
   | { type: 'select-multiple'; entityIds: Id[]; additive: boolean }
-  | { type: 'set-json-text'; value: string }
-  | { type: 'export-json' }
-  | { type: 'load-json' }
+  | { type: 'set-yaml-text'; value: string }
+  | { type: 'export-yaml' }
+  | { type: 'load-yaml' }
   | { type: 'reset-scene' }
   | { type: 'set-scene'; scene: SceneSpec }
   | { type: 'update-scene-world'; width: number; height: number }
+  | { type: 'update-entity'; id: Id; next: EntitySpec }
+  | { type: 'import-entities'; drafts: ImportedEntityDraft[] }
   | { type: 'update-action'; id: Id; next: ActionSpec }
   | { type: 'update-condition'; id: Id; next: ConditionSpec }
   | { type: 'update-group'; id: Id; next: GroupSpec }
   | { type: 'toggle-group-expanded'; id: Id }
   | { type: 'move-entity'; id: Id; dx: number; dy: number }
+  | { type: 'move-group'; id: Id; dx: number; dy: number }
   | { type: 'move-entities'; entityIds: Id[]; dx: number; dy: number }
   | { type: 'arrange-group-grid'; id: Id; layout: GroupGridLayout }
   | { type: 'update-bounds'; id: Id; bounds: { minX: number; maxX: number; minY: number; maxY: number } }
@@ -51,6 +90,14 @@ type EditorAction =
   | { type: 'create-group-from-selection'; name: string }
   | { type: 'remove-entity-from-group'; groupId: Id; entityId: Id }
   | { type: 'dissolve-group'; id: Id }
+  | { type: 'create-default-behavior-for-selection' }
+  | { type: 'assign-existing-behavior-to-selection'; behaviorId: Id }
+  | { type: 'rename-behavior'; id: Id; name: string }
+  | { type: 'remove-behavior-from-selection' }
+  | { type: 'append-action-to-selection-behavior'; actionType: 'MoveUntil' | 'Wait' | 'Call' }
+  | { type: 'move-sequence-action'; sequenceId: Id; childId: Id; direction: 'up' | 'down' }
+  | { type: 'remove-sequence-action'; sequenceId: Id; childId: Id }
+  | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'behavior' | 'action' | 'condition'; id: Id } }
   | { type: 'toggle-mode' }
   | { type: 'dismiss-view-hint' };
 
@@ -63,49 +110,102 @@ const EditorContext = createContext<{
   dispatch: React.Dispatch<EditorAction>;
 } | null>(null);
 
-export function initState(): EditorState {
-  if (typeof window !== 'undefined') {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as SceneSpec;
-        validateSceneSpec(parsed);
-        return {
-          scene: parsed,
-          selection: { kind: 'behavior', id: Object.keys(parsed.behaviors)[0] ?? '' },
-          expandedGroups: defaultExpandedGroups(parsed),
-          dirty: false,
-          jsonText: '',
-          mode: 'edit',
-          hasSeenViewHint: false,
-        };
-      } catch {
-        // fall through to sample scene
-      }
-    }
-  }
+function defaultState(): EditorState {
+  const scene = createEmptyScene();
   return {
-    scene: sampleScene,
-    selection: { kind: 'behavior', id: 'b-formation' },
-    expandedGroups: defaultExpandedGroups(sampleScene),
+    scene,
+    selection: { kind: 'none' },
+    expandedGroups: defaultExpandedGroups(scene),
     dirty: false,
-    jsonText: '',
+    yamlText: '',
     mode: 'edit',
     hasSeenViewHint: false,
+    startupMode: 'reload_last_yaml',
+    registry: EMPTY_EDITOR_REGISTRY,
+    initialized: false,
   };
+}
+
+export function initState(): EditorState {
+  return defaultState();
+}
+
+function withScene(state: EditorState, scene: SceneSpec, dirty: boolean, selection: Selection = state.selection): EditorState {
+  return {
+    ...state,
+    scene,
+    selection,
+    expandedGroups: defaultExpandedGroups(scene),
+    dirty,
+    error: undefined,
+  };
+}
+
+function importEntities(state: EditorState, drafts: ImportedEntityDraft[]): EditorState {
+  if (drafts.length === 0) return state;
+  const entities = { ...state.scene.entities };
+  const groups = { ...state.scene.groups };
+  const importedIds: string[] = [];
+  const addToGroupId = state.selection.kind === 'group' ? state.selection.id : undefined;
+
+  for (const draft of drafts) {
+    entities[draft.entity.id] = draft.entity;
+    importedIds.push(draft.entity.id);
+    if (draft.addToSelectedGroup && addToGroupId && groups[addToGroupId]) {
+      groups[addToGroupId] = {
+        ...groups[addToGroupId],
+        members: [...groups[addToGroupId].members, draft.entity.id],
+      };
+    }
+  }
+
+  return {
+    ...state,
+    scene: {
+      ...state.scene,
+      entities,
+      groups,
+    },
+    selection: importedIds.length === 1 ? { kind: 'entity', id: importedIds[0] } : { kind: 'entities', ids: importedIds },
+    dirty: true,
+    error: undefined,
+  };
+}
+
+function selectionToTarget(selection: Selection): { type: 'entity'; entityId: Id } | { type: 'group'; groupId: Id } | null {
+  if (selection.kind === 'entity') return { type: 'entity', entityId: selection.id };
+  if (selection.kind === 'group') return { type: 'group', groupId: selection.id };
+  return null;
 }
 
 export function reducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
+    case 'initialize':
+      return {
+        ...state,
+        scene: action.scene,
+        selection: { kind: 'none' },
+        expandedGroups: defaultExpandedGroups(action.scene),
+        dirty: false,
+        error: undefined,
+        startupMode: action.startupMode,
+        registry: action.registry,
+        initialized: true,
+      };
+    case 'set-startup-mode':
+      return {
+        ...state,
+        startupMode: action.startupMode,
+      };
     case 'select':
       return { ...state, selection: action.selection, error: undefined };
-    case 'set-json-text':
-      return { ...state, jsonText: action.value };
-    case 'export-json':
-      return { ...state, jsonText: JSON.stringify(state.scene, null, 2), error: undefined };
-    case 'load-json': {
+    case 'set-yaml-text':
+      return { ...state, yamlText: action.value };
+    case 'export-yaml':
+      return { ...state, yamlText: serializeSceneToYaml(state.scene), error: undefined };
+    case 'load-yaml': {
       try {
-        const parsed = JSON.parse(state.jsonText) as SceneSpec;
+        const parsed = parseSceneYaml(state.yamlText);
         validateSceneSpec(parsed);
         return {
           ...state,
@@ -116,74 +216,70 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
           selection: { kind: 'none' },
         };
       } catch (err) {
-        return { ...state, error: err instanceof Error ? err.message : 'Invalid JSON' };
+        return { ...state, error: err instanceof Error ? err.message : 'Invalid YAML' };
       }
     }
     case 'reset-scene':
       return {
         ...state,
-        scene: sampleScene,
-        expandedGroups: defaultExpandedGroups(sampleScene),
+        scene: createEmptyScene(),
+        expandedGroups: {},
         dirty: false,
         error: undefined,
-        selection: { kind: 'behavior', id: 'b-formation' },
+        selection: { kind: 'none' },
       };
     case 'set-scene':
       return { ...state, scene: action.scene, dirty: true };
     case 'update-scene-world':
-      return {
-        ...state,
-        scene: syncBoundsToWorldResize(state.scene, {
+      return withScene(
+        state,
+        syncBoundsToWorldResize(state.scene, {
           width: Math.max(1, action.width),
           height: Math.max(1, action.height),
         }),
-        dirty: true,
-        error: undefined,
-      };
+        true,
+      );
+    case 'update-entity': {
+      if (!state.scene.entities[action.id]) return state;
+      return withScene(state, {
+        ...state.scene,
+        entities: {
+          ...state.scene.entities,
+          [action.id]: action.next,
+        },
+      }, true);
+    }
+    case 'import-entities':
+      return importEntities(state, action.drafts);
     case 'update-action': {
       if (!state.scene.actions[action.id]) return state;
-      return {
-        ...state,
-        scene: {
-          ...state.scene,
-          actions: {
-            ...state.scene.actions,
-            [action.id]: action.next,
-          },
+      return withScene(state, {
+        ...state.scene,
+        actions: {
+          ...state.scene.actions,
+          [action.id]: action.next,
         },
-        dirty: true,
-        error: undefined,
-      };
+      }, true);
     }
     case 'update-condition': {
       if (!state.scene.conditions[action.id]) return state;
-      return {
-        ...state,
-        scene: {
-          ...state.scene,
-          conditions: {
-            ...state.scene.conditions,
-            [action.id]: action.next,
-          },
+      return withScene(state, {
+        ...state.scene,
+        conditions: {
+          ...state.scene.conditions,
+          [action.id]: action.next,
         },
-        dirty: true,
-        error: undefined,
-      };
+      }, true);
     }
     case 'update-group': {
       if (!state.scene.groups[action.id]) return state;
-      return {
-        ...state,
-        scene: {
-          ...state.scene,
-          groups: {
-            ...state.scene.groups,
-            [action.id]: action.next,
-          },
+      return withScene(state, {
+        ...state.scene,
+        groups: {
+          ...state.scene.groups,
+          [action.id]: action.next,
         },
-        dirty: true,
-        error: undefined,
-      };
+      }, true);
     }
     case 'toggle-group-expanded':
       return {
@@ -196,22 +292,17 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
     case 'move-entity': {
       const entity = state.scene.entities[action.id];
       if (!entity) return state;
-      return {
-        ...state,
-        scene: {
-          ...state.scene,
-          entities: {
-            ...state.scene.entities,
-            [action.id]: {
-              ...entity,
-              x: entity.x + action.dx,
-              y: entity.y + action.dy,
-            },
+      return withScene(state, {
+        ...state.scene,
+        entities: {
+          ...state.scene.entities,
+          [action.id]: {
+            ...entity,
+            x: entity.x + action.dx,
+            y: entity.y + action.dy,
           },
         },
-        dirty: true,
-        error: undefined,
-      };
+      }, true);
     }
     case 'move-group': {
       const group = state.scene.groups[action.id];
@@ -227,19 +318,14 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
           };
         }
       }
-      return {
-        ...state,
-        scene: {
-          ...state.scene,
-          entities: updatedEntities,
-          groups: {
-            ...state.scene.groups,
-            [action.id]: updateGroupLayoutPosition(group, action.dx, action.dy),
-          },
+      return withScene(state, {
+        ...state.scene,
+        entities: updatedEntities,
+        groups: {
+          ...state.scene.groups,
+          [action.id]: updateGroupLayoutPosition(group, action.dx, action.dy),
         },
-        dirty: true,
-        error: undefined,
-      };
+      }, true);
     }
     case 'select-multiple':
       if (action.entityIds.length === 0) {
@@ -261,25 +347,15 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
           };
         }
       }
-      return {
-        ...state,
-        scene: {
-          ...state.scene,
-          entities: updatedEntities,
-        },
-        dirty: true,
-        error: undefined,
-      };
+      return withScene(state, {
+        ...state.scene,
+        entities: updatedEntities,
+      }, true);
     }
     case 'arrange-group-grid': {
       const nextScene = applyGroupGridLayout(state.scene, action.id, action.layout);
       if (nextScene === state.scene) return state;
-      return {
-        ...state,
-        scene: nextScene,
-        dirty: true,
-        error: undefined,
-      };
+      return withScene(state, nextScene, true);
     }
     case 'update-bounds': {
       const condition = state.scene.conditions[action.id];
@@ -290,21 +366,16 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         minY: Math.min(action.bounds.minY, action.bounds.maxY),
         maxY: Math.max(action.bounds.minY, action.bounds.maxY),
       };
-      return {
-        ...state,
-        scene: {
-          ...state.scene,
-          conditions: {
-            ...state.scene.conditions,
-            [action.id]: {
-              ...condition,
-              bounds: clampedBounds,
-            },
+      return withScene(state, {
+        ...state.scene,
+        conditions: {
+          ...state.scene.conditions,
+          [action.id]: {
+            ...condition,
+            bounds: clampedBounds,
           },
         },
-        dirty: true,
-        error: undefined,
-      };
+      }, true);
     }
     case 'begin-canvas-interaction':
       return {
@@ -323,13 +394,8 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
     case 'create-group-from-selection': {
       if (state.selection.kind !== 'entities' || state.selection.ids.length === 0) return state;
 
-      const groupId = `g-${Date.now()}`; // Simple ID generation
-      const newGroup = {
-        id: groupId,
-        name: action.name,
-        members: state.selection.ids,
-        layout: { type: 'freeform' as const },
-      };
+      const groupId = `g-${Date.now()}`;
+      const newGroup = createGroupSpec(groupId, state.selection.ids, action.name.trim() || getNextFormationName(state.scene));
 
       return {
         ...state,
@@ -345,6 +411,105 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
           ...state.expandedGroups,
           [groupId]: true,
         },
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'create-default-behavior-for-selection': {
+      const target = selectionToTarget(state.selection);
+      if (!target) return state;
+      const { scene } = createDefaultBehaviorForTarget(state.scene, target);
+      if (scene === state.scene) return state;
+      return {
+        ...state,
+        scene,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'assign-existing-behavior-to-selection': {
+      const target = selectionToTarget(state.selection);
+      if (!target) return state;
+      const scene = assignBehaviorToTarget(state.scene, action.behaviorId, target);
+      if (scene === state.scene) return state;
+      return {
+        ...state,
+        scene,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'rename-behavior': {
+      const scene = renameBehavior(state.scene, action.id, action.name);
+      if (scene === state.scene) return state;
+      return {
+        ...state,
+        scene,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'remove-behavior-from-selection': {
+      const target = selectionToTarget(state.selection);
+      if (!target) return state;
+      const behavior = target.type === 'entity'
+        ? getPrimaryBehaviorForEntity(state.scene, target.entityId)
+        : getPrimaryBehaviorForGroup(state.scene, target.groupId);
+      if (!behavior) return state;
+      return {
+        ...state,
+        scene: removeBehavior(state.scene, behavior.id),
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'append-action-to-selection-behavior': {
+      const target = selectionToTarget(state.selection);
+      if (!target) return state;
+      const existingBehavior = target.type === 'entity'
+        ? getPrimaryBehaviorForEntity(state.scene, target.entityId)
+        : getPrimaryBehaviorForGroup(state.scene, target.groupId);
+      const { scene: sceneWithBehavior, behaviorId } = existingBehavior
+        ? { scene: state.scene, behaviorId: existingBehavior.id }
+        : createDefaultBehaviorForTarget(state.scene, target);
+      const { scene, actionId } = appendActionToBehavior(sceneWithBehavior, behaviorId, action.actionType);
+      if (!actionId) return state;
+      return {
+        ...state,
+        scene,
+        selection: { kind: 'action', id: actionId },
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'move-sequence-action': {
+      const scene = moveSequenceChild(state.scene, action.sequenceId, action.childId, action.direction);
+      if (scene === state.scene) return state;
+      return {
+        ...state,
+        scene,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'remove-sequence-action': {
+      const scene = removeSequenceChild(state.scene, action.sequenceId, action.childId);
+      if (scene === state.scene) return state;
+      return {
+        ...state,
+        scene,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'remove-scene-graph-item': {
+      const scene = removeSceneGraphItem(state.scene, action.item);
+      if (scene === state.scene) return state;
+      return {
+        ...state,
+        scene,
+        selection: { kind: 'none' },
+        expandedGroups: defaultExpandedGroups(scene),
         dirty: true,
         error: undefined,
       };
@@ -391,17 +556,60 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
   }
 }
 
+function loadStoredSceneYaml(): SceneSpec | null {
+  if (typeof window === 'undefined') return null;
+  const raw = window.localStorage.getItem(SCENE_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = parseSceneYaml(raw);
+    validateSceneSpec(parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, initState);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    let cancelled = false;
+
+    const initialize = async () => {
+      const [config, registry] = await Promise.all([loadEditorConfig(), loadEditorRegistry()]);
+      if (cancelled) return;
+
+      const storedMode = typeof window !== 'undefined'
+        ? coerceStartupMode(window.localStorage.getItem(STARTUP_MODE_STORAGE_KEY), config.startupMode)
+        : config.startupMode;
+      const scene = storedMode === 'reload_last_yaml' ? (loadStoredSceneYaml() ?? createEmptyScene()) : createEmptyScene();
+
+      dispatch({ type: 'initialize', scene, startupMode: storedMode, registry });
+    };
+
+    void initialize();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !state.initialized) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state.scene));
+      window.localStorage.setItem(STARTUP_MODE_STORAGE_KEY, state.startupMode);
     } catch {
       // ignore storage errors
     }
-  }, [state.scene]);
+  }, [state.initialized, state.startupMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !state.initialized) return;
+    try {
+      window.localStorage.setItem(SCENE_STORAGE_KEY, serializeSceneToYaml(state.scene));
+    } catch {
+      // ignore storage errors
+    }
+  }, [state.initialized, state.scene]);
 
   const value = useMemo(() => ({ state, dispatch }), [state]);
 
