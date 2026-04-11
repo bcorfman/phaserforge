@@ -36,7 +36,7 @@ export function TargetActionPanel({
   const [selectedBehaviorId, setSelectedBehaviorId] = useState(assignableBehaviors[0]?.id ?? '');
   const sequenceActions = behavior ? getSequenceChildren(scene, behavior.id) : [];
   const rootSequenceId = useMemo(() => {
-    if (!behavior) return '';
+    if (!behavior || !behavior.rootActionId) return '';
     const root = scene.actions[behavior.rootActionId];
     if (!root) return '';
     if (root.type === 'Sequence') return root.id;

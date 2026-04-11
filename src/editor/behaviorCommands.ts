@@ -93,7 +93,7 @@ function pruneUnreachable(scene: SceneSpec): SceneSpec {
 
 function getBehaviorSequenceRoot(scene: SceneSpec, behaviorId: Id): SequenceActionSpec | undefined {
   const behavior = scene.behaviors[behaviorId];
-  if (!behavior) return undefined;
+  if (!behavior || !behavior.rootActionId) return undefined;
 
   const root = scene.actions[behavior.rootActionId];
   if (!root) return undefined;

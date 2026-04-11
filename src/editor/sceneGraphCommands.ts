@@ -17,7 +17,9 @@ function pruneUnreachable(scene: SceneSpec): SceneSpec {
     }
   };
 
-  Object.values(scene.behaviors).forEach((behavior) => visitAction(behavior.rootActionId));
+  Object.values(scene.behaviors).forEach((behavior) => {
+    if (behavior.rootActionId) visitAction(behavior.rootActionId);
+  });
 
   const actions = Object.fromEntries(
     Object.entries(scene.actions).filter(([id]) => reachableActionIds.has(id))
@@ -72,7 +74,7 @@ function removeGroupOnly(scene: SceneSpec, groupId: Id): SceneSpec {
 export function removeActionFromScene(scene: SceneSpec, actionId: Id): SceneSpec {
   if (!scene.actions[actionId]) return scene;
 
-  const owningBehavior = Object.values(scene.behaviors).find((behavior) => behavior.rootActionId === actionId);
+  const owningBehavior = Object.values(scene.behaviors).find((behavior) => behavior.rootActionId && behavior.rootActionId === actionId);
   if (owningBehavior) {
     return removeBehavior(scene, owningBehavior.id);
   }

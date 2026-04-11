@@ -164,7 +164,8 @@ function detectCycles(scene: SceneSpec): void {
   const visiting = new Set<string>();
   const visited = new Set<string>();
 
-  const visit = (actionId: string): void => {
+  const visit = (actionId: string | undefined): void => {
+    if (!actionId) return;
     if (visiting.has(actionId)) {
       throw new Error(`Action cycle detected at ${actionId}`);
     }
