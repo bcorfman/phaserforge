@@ -2,12 +2,17 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
 import { inferGroupGridLayout, type GroupGridLayout } from './formationLayout';
-import { ActionSpec, ConditionSpec, MoveUntilActionSpec, CallActionSpec, WaitActionSpec, RepeatActionSpec, SequenceActionSpec, BoundsHitConditionSpec, ElapsedTimeConditionSpec, GroupSpec, SceneSpec } from '../model/types';
+import { SpriteImportPanel } from './SpriteImportPanel';
+import { TargetActionPanel } from './ActionFlowEditor';
+import { ActionSpec, ConditionSpec, MoveUntilActionSpec, CallActionSpec, WaitActionSpec, RepeatActionSpec, SequenceActionSpec, BoundsHitConditionSpec, ElapsedTimeConditionSpec, GroupSpec, SceneSpec, EntitySpec, type EditorRegistryConfig } from '../model/types';
+import { resolveEntityDefaults } from '../model/entityDefaults';
+import { getNextFormationName } from './behaviorCommands';
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
   const { selection, scene, interaction } = state;
   const [pinDuringDrag, setPinDuringDrag] = useState(false);
+  const [formationNameDraft, setFormationNameDraft] = useState('');
 
   const updateAction = (next: ActionSpec) =>
     dispatch({ type: 'update-action', id: next.id, next });
@@ -15,8 +20,16 @@ export function Inspector() {
     dispatch({ type: 'update-condition', id: next.id, next });
   const updateGroup = (next: GroupSpec) =>
     dispatch({ type: 'update-group', id: next.id, next });
+  const updateEntity = (next: EntitySpec) =>
+    dispatch({ type: 'update-entity', id: next.id, next });
   const arrangeGroupGrid = (id: string, layout: GroupGridLayout) =>
     dispatch({ type: 'arrange-group-grid', id, layout });
+
+  useEffect(() => {
+    if (selection.kind === 'entities') {
+      setFormationNameDraft(getNextFormationName(scene));
+    }
+  }, [scene, selection]);
 
   let content: ReactNode = null;
 
@@ -80,7 +93,6 @@ export function Inspector() {
     );
   } else if (selection.kind === 'group') {
     const group = scene.groups[selection.id];
-    const members = group?.members.map((memberId) => scene.entities[memberId]).filter(Boolean) ?? [];
     content = group ? (
       <GroupInspector
         group={group}
@@ -89,6 +101,17 @@ export function Inspector() {
         onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
         onUpdateGroup={updateGroup}
         onArrangeGroupGrid={arrangeGroupGrid}
+        onAssignFlow={() => dispatch({ type: 'create-default-behavior-for-selection' })}
+        onAssignExistingBehavior={(behaviorId) => dispatch({ type: 'assign-existing-behavior-to-selection', behaviorId })}
+        onRenameBehavior={(id, name) => dispatch({ type: 'rename-behavior', id, name })}
+        onRemoveBehavior={() => dispatch({ type: 'remove-behavior-from-selection' })}
+        onAddAction={(actionType) => dispatch({ type: 'append-action-to-selection-behavior', actionType })}
+        onMoveAction={(sequenceId, childId, direction) => dispatch({ type: 'move-sequence-action', sequenceId, childId, direction })}
+        onRemoveAction={(sequenceId, childId) => dispatch({ type: 'remove-sequence-action', sequenceId, childId })}
+        onSelectBehavior={(id) => dispatch({ type: 'select', selection: { kind: 'behavior', id } })}
+        onSelectAction={(id) => dispatch({ type: 'select', selection: { kind: 'action', id } })}
+        selectedActionId={selection.kind === 'action' ? selection.id : undefined}
+        registry={state.registry}
       />
     ) : (
       <div className="muted">Group not found.</div>
@@ -96,13 +119,48 @@ export function Inspector() {
   } else if (selection.kind === 'entity') {
     const entity = scene.entities[selection.id];
     content = entity ? (
-      <div className="inspector-block">
-        <div className="inspector-title">{entity.name ?? entity.id}</div>
-        <div className="inspector-row">Position: {Math.round(entity.x)}, {Math.round(entity.y)}</div>
-        <div className="inspector-row">Size: {entity.width} x {entity.height}</div>
-      </div>
+      renderEntityInspector(entity, updateEntity, {
+        scene,
+        registry: state.registry,
+        onAssignFlow: () => dispatch({ type: 'create-default-behavior-for-selection' }),
+        onAssignExistingBehavior: (behaviorId) => dispatch({ type: 'assign-existing-behavior-to-selection', behaviorId }),
+        onRenameBehavior: (id, name) => dispatch({ type: 'rename-behavior', id, name }),
+        onRemoveBehavior: () => dispatch({ type: 'remove-behavior-from-selection' }),
+        onAddAction: (actionType) => dispatch({ type: 'append-action-to-selection-behavior', actionType }),
+        onMoveAction: (sequenceId, childId, direction) => dispatch({ type: 'move-sequence-action', sequenceId, childId, direction }),
+        onRemoveAction: (sequenceId, childId) => dispatch({ type: 'remove-sequence-action', sequenceId, childId }),
+        onSelectBehavior: (id) => dispatch({ type: 'select', selection: { kind: 'behavior', id } }),
+        onSelectAction: (id) => dispatch({ type: 'select', selection: { kind: 'action', id } }),
+        selectedActionId: selection.kind === 'action' ? selection.id : undefined,
+      })
     ) : (
       <div className="muted">Entity not found.</div>
+    );
+  } else if (selection.kind === 'entities') {
+    content = (
+      <div className="inspector-block" data-testid="multi-entity-inspector">
+        <div className="inspector-title">Selected Sprites</div>
+        <div className="inspector-row">{selection.ids.length} sprites selected.</div>
+        <div className="inspector-row">Create a freeform formation first, then arrange it into a grid if needed.</div>
+        <label className="field">
+          <span>Formation Name</span>
+          <input
+            aria-label="New Formation Name"
+            data-testid="new-formation-name-input"
+            type="text"
+            value={formationNameDraft}
+            onChange={(event) => setFormationNameDraft(event.target.value)}
+          />
+        </label>
+        <button
+          className="button"
+          data-testid="create-formation-from-selection-button"
+          type="button"
+          onClick={() => dispatch({ type: 'create-group-from-selection', name: formationNameDraft })}
+        >
+          Create Formation from Selection
+        </button>
+      </div>
     );
   } else {
     content = <div className="muted">Select an item to edit.</div>;
@@ -111,7 +169,13 @@ export function Inspector() {
 
   return (
     <div className="panel" data-testid="inspector">
-      <div className="panel-title">Inspector</div>
+      <div className="panel-header">
+        <p className="eyebrow">Selection</p>
+        <h2 className="panel-title">Inspector</h2>
+        <p className="panel-description">
+          Adjust authored values for the current selection and review the active scene registry.
+        </p>
+      </div>
       <label className="inspector-toggle">
         <input
           aria-label="Pin selection while dragging"
@@ -123,6 +187,171 @@ export function Inspector() {
         <span>Pin selection while dragging</span>
       </label>
       {content}
+      <RegistryPanel />
+      <SpriteImportPanel />
+    </div>
+  );
+}
+
+export function renderEntityInspector(
+  entity: EntitySpec,
+  onUpdate: (next: EntitySpec) => void,
+  actionProps?: {
+    scene: SceneSpec;
+    registry: EditorRegistryConfig;
+    onAssignFlow: () => void;
+    onAssignExistingBehavior: (behaviorId: string) => void;
+    onRenameBehavior: (id: string, name: string) => void;
+    onRemoveBehavior: () => void;
+    onAddAction: (actionType: 'MoveUntil' | 'Wait' | 'Call') => void;
+    onMoveAction: (sequenceId: string, childId: string, direction: 'up' | 'down') => void;
+    onRemoveAction: (sequenceId: string, childId: string) => void;
+    onSelectBehavior: (id: string) => void;
+    onSelectAction: (id: string) => void;
+    selectedActionId?: string;
+  }
+) {
+  const resolved = resolveEntityDefaults(entity);
+  const update = (patch: Partial<EntitySpec>) => onUpdate({ ...entity, ...patch });
+
+  return (
+    <div className="inspector-block">
+      <div className="inspector-title">{resolved.name ?? resolved.id}</div>
+      <div className="inspector-row">Authored values update the selected sprite immediately on the canvas.</div>
+      {actionProps && (
+        <TargetActionPanel
+          scene={actionProps.scene}
+          target={{ type: 'entity', entityId: entity.id }}
+          registry={actionProps.registry}
+          onAssignFlow={actionProps.onAssignFlow}
+          onAssignExistingBehavior={actionProps.onAssignExistingBehavior}
+          onRenameBehavior={actionProps.onRenameBehavior}
+          onRemoveBehavior={actionProps.onRemoveBehavior}
+          onAddAction={actionProps.onAddAction}
+          onMoveAction={actionProps.onMoveAction}
+          onRemoveAction={actionProps.onRemoveAction}
+          onSelectBehavior={actionProps.onSelectBehavior}
+          onSelectAction={actionProps.onSelectAction}
+          selectedActionId={actionProps.selectedActionId}
+        />
+      )}
+      <div className="panel-heading">Transform</div>
+      <label className="field">
+        <span>X</span>
+        <input aria-label="Entity X" data-testid="entity-x-input" type="number" value={resolved.x} onChange={(e) => update({ x: Number(e.target.value) })} />
+      </label>
+      <label className="field">
+        <span>Y</span>
+        <input aria-label="Entity Y" data-testid="entity-y-input" type="number" value={resolved.y} onChange={(e) => update({ y: Number(e.target.value) })} />
+      </label>
+      <label className="field">
+        <span>Width</span>
+        <input aria-label="Entity Width" data-testid="entity-width-input" type="number" min={1} value={resolved.width} onChange={(e) => update({ width: Math.max(1, Number(e.target.value) || 1) })} />
+      </label>
+      <label className="field">
+        <span>Height</span>
+        <input aria-label="Entity Height" data-testid="entity-height-input" type="number" min={1} value={resolved.height} onChange={(e) => update({ height: Math.max(1, Number(e.target.value) || 1) })} />
+      </label>
+      <label className="field">
+        <span>Scale X</span>
+        <input aria-label="Scale X" data-testid="entity-scale-x-input" type="number" min={0.01} step="0.1" value={resolved.scaleX} onChange={(e) => update({ scaleX: Math.max(0.01, Number(e.target.value) || 0.01) })} />
+      </label>
+      <label className="field">
+        <span>Scale Y</span>
+        <input aria-label="Scale Y" data-testid="entity-scale-y-input" type="number" min={0.01} step="0.1" value={resolved.scaleY} onChange={(e) => update({ scaleY: Math.max(0.01, Number(e.target.value) || 0.01) })} />
+      </label>
+      <label className="field">
+        <span>Rotation</span>
+        <input aria-label="Rotation" data-testid="entity-rotation-input" type="number" min={0} max={359} value={resolved.rotationDeg} onChange={(e) => update({ rotationDeg: Math.max(0, Math.min(359, Number(e.target.value) || 0)) })} />
+      </label>
+      <label className="field">
+        <span>Origin X</span>
+        <input aria-label="Origin X" data-testid="entity-origin-x-input" type="number" min={0} max={1} step="0.1" value={resolved.originX} onChange={(e) => update({ originX: Math.max(0, Math.min(1, Number(e.target.value) || 0)) })} />
+      </label>
+      <label className="field">
+        <span>Origin Y</span>
+        <input aria-label="Origin Y" data-testid="entity-origin-y-input" type="number" min={0} max={1} step="0.1" value={resolved.originY} onChange={(e) => update({ originY: Math.max(0, Math.min(1, Number(e.target.value) || 0)) })} />
+      </label>
+      <label className="field">
+        <span>Flip X</span>
+        <input aria-label="Flip X" data-testid="entity-flip-x-input" type="checkbox" checked={resolved.flipX} onChange={(e) => update({ flipX: e.target.checked })} />
+      </label>
+      <label className="field">
+        <span>Flip Y</span>
+        <input aria-label="Flip Y" data-testid="entity-flip-y-input" type="checkbox" checked={resolved.flipY} onChange={(e) => update({ flipY: e.target.checked })} />
+      </label>
+      <div className="panel-heading">Visual</div>
+      <label className="field">
+        <span>Alpha</span>
+        <input aria-label="Alpha" data-testid="entity-alpha-input" type="number" min={0} max={1} step="0.1" value={resolved.alpha} onChange={(e) => update({ alpha: Math.max(0, Math.min(1, Number(e.target.value) || 0)) })} />
+      </label>
+      <label className="field">
+        <span>Visible</span>
+        <input aria-label="Visible" data-testid="entity-visible-input" type="checkbox" checked={resolved.visible} onChange={(e) => update({ visible: e.target.checked })} />
+      </label>
+      <label className="field">
+        <span>Depth</span>
+        <input aria-label="Depth" data-testid="entity-depth-input" type="number" value={resolved.depth} onChange={(e) => update({ depth: Number(e.target.value) || 0 })} />
+      </label>
+      <div className="inspector-row">
+        Asset: {resolved.asset ? `${resolved.asset.imageType} (${resolved.asset.source.kind})` : 'Placeholder rectangle'}
+      </div>
+      {resolved.asset && (
+        <>
+          <div className="inspector-row">
+            Source: {resolved.asset.source.kind === 'embedded' ? (resolved.asset.source.originalName ?? 'embedded') : resolved.asset.source.path}
+          </div>
+          {resolved.asset.imageType === 'spritesheet' ? (
+            <>
+              <label className="field">
+                <span>Frame Index</span>
+                <input
+                  aria-label="Frame Index"
+                  data-testid="entity-frame-index-input"
+                  type="number"
+                  min={0}
+                  value={resolved.asset.frame?.frameIndex ?? ''}
+                  onChange={(e) =>
+                    update({
+                      asset: {
+                        ...resolved.asset!,
+                        frame: {
+                          ...(resolved.asset!.frame ?? { kind: 'spritesheet-frame' as const }),
+                          kind: 'spritesheet-frame',
+                          frameIndex: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value) || 0),
+                        },
+                      },
+                    })
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>Frame Key</span>
+                <input
+                  aria-label="Frame Key"
+                  data-testid="entity-frame-key-input"
+                  type="text"
+                  value={resolved.asset.frame?.frameKey ?? ''}
+                  onChange={(e) =>
+                    update({
+                      asset: {
+                        ...resolved.asset!,
+                        frame: {
+                          ...(resolved.asset!.frame ?? { kind: 'spritesheet-frame' as const }),
+                          kind: 'spritesheet-frame',
+                          frameKey: e.target.value || undefined,
+                        },
+                      },
+                    })
+                  }
+                />
+              </label>
+            </>
+          ) : (
+            <div className="inspector-row">Single image uses its only frame.</div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -134,6 +363,17 @@ function GroupInspector({
   onRemoveMember,
   onUpdateGroup,
   onArrangeGroupGrid,
+  onAssignFlow,
+  onAssignExistingBehavior,
+  onRenameBehavior,
+  onRemoveBehavior,
+  onAddAction,
+  onMoveAction,
+  onRemoveAction,
+  onSelectBehavior,
+  onSelectAction,
+  selectedActionId,
+  registry,
 }: {
   group: GroupSpec;
   scene: SceneSpec;
@@ -141,6 +381,17 @@ function GroupInspector({
   onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
   onArrangeGroupGrid: (id: string, layout: GroupGridLayout) => void;
+  onAssignFlow: () => void;
+  onAssignExistingBehavior: (behaviorId: string) => void;
+  onRenameBehavior: (id: string, name: string) => void;
+  onRemoveBehavior: () => void;
+  onAddAction: (actionType: 'MoveUntil' | 'Wait' | 'Call') => void;
+  onMoveAction: (sequenceId: string, childId: string, direction: 'up' | 'down') => void;
+  onRemoveAction: (sequenceId: string, childId: string) => void;
+  onSelectBehavior: (id: string) => void;
+  onSelectAction: (id: string) => void;
+  selectedActionId?: string;
+  registry: EditorRegistryConfig;
 }) {
   const inferredLayout = inferGroupGridLayout(scene, group.id);
   const [draft, setDraft] = useState<GroupGridLayout | undefined>(inferredLayout);
@@ -158,6 +409,17 @@ function GroupInspector({
       onUpdateGroup,
       onArrangeGroupGrid,
       onDraftChange: setDraft,
+      onAssignFlow,
+      onAssignExistingBehavior,
+      onRenameBehavior,
+      onRemoveBehavior,
+      onAddAction,
+      onMoveAction,
+      onRemoveAction,
+      onSelectBehavior,
+      onSelectAction,
+      selectedActionId,
+      registry,
     })
   );
 }
@@ -173,6 +435,17 @@ export function renderGroupInspector(
     onUpdateGroup: (next: GroupSpec) => void;
     onArrangeGroupGrid: (id: string, layout: GroupGridLayout) => void;
     onDraftChange: (next: GroupGridLayout) => void;
+    onAssignFlow: () => void;
+    onAssignExistingBehavior: (behaviorId: string) => void;
+    onRenameBehavior: (id: string, name: string) => void;
+    onRemoveBehavior: () => void;
+    onAddAction: (actionType: 'MoveUntil' | 'Wait' | 'Call') => void;
+    onMoveAction: (sequenceId: string, childId: string, direction: 'up' | 'down') => void;
+    onRemoveAction: (sequenceId: string, childId: string) => void;
+    onSelectBehavior: (id: string) => void;
+    onSelectAction: (id: string) => void;
+    selectedActionId?: string;
+    registry: EditorRegistryConfig;
   }
 ) {
   const members = group.members.map((memberId) => scene.entities[memberId]).filter(Boolean);
@@ -181,6 +454,21 @@ export function renderGroupInspector(
   return (
     <div className="inspector-block">
       <div className="inspector-title" data-testid="inspector-title">{group.name ?? group.id}</div>
+      <TargetActionPanel
+        scene={scene}
+        target={{ type: 'group', groupId: group.id }}
+        registry={handlers.registry}
+        onAssignFlow={handlers.onAssignFlow}
+        onAssignExistingBehavior={handlers.onAssignExistingBehavior}
+        onRenameBehavior={handlers.onRenameBehavior}
+        onRemoveBehavior={handlers.onRemoveBehavior}
+        onAddAction={handlers.onAddAction}
+        onMoveAction={handlers.onMoveAction}
+        onRemoveAction={handlers.onRemoveAction}
+        onSelectBehavior={handlers.onSelectBehavior}
+        onSelectAction={handlers.onSelectAction}
+        selectedActionId={handlers.selectedActionId}
+      />
       <label className="field">
         <span>Formation Name</span>
         <input
@@ -619,6 +907,29 @@ function renderElapsedCondition(
           onChange={(e) => onChange({ ...condition, durationMs: Number(e.target.value) })}
         />
       </label>
+    </div>
+  );
+}
+
+function RegistryPanel() {
+  const { state } = useEditorStore();
+
+  return (
+    <div className="inspector-block" data-testid="registry-panel">
+      <div className="inspector-title">Available Types</div>
+      <div className="inspector-row">Arrange</div>
+      {state.registry.arrange.map((entry) => (
+        <div key={`arrange-${entry.type}`} className="inspector-row">
+          {entry.displayName}{entry.implemented ? '' : ' (planned)'}
+        </div>
+      ))}
+      <div className="inspector-row">Actions</div>
+      {state.registry.actions.map((entry) => (
+        <div key={`action-${entry.type}`} className="inspector-row">
+          {entry.displayName}{entry.implemented ? '' : ' (planned)'}
+          {entry.propertyTargets?.length ? ` · ${entry.propertyTargets.map((target) => target.key).join(', ')}` : ''}
+        </div>
+      ))}
     </div>
   );
 }

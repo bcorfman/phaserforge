@@ -35,11 +35,13 @@
     "dependencies": {
         "phaser": "^3.90.0",
         "react": "^19.0.0",
-        "react-dom": "^19.0.0"
+        "react-dom": "^19.0.0",
+        "yaml": "^2.8.3"
     },
     "devDependencies": {
         "@eslint/js": "^9.22.0",
         "@playwright/test": "^1.59.1",
+        "@types/node": "^25.6.0",
         "@types/react": "^19.0.10",
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react": "^4.3.4",

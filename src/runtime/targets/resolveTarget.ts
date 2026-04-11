@@ -1,5 +1,6 @@
 import { TargetRef } from '../../model/types';
 import { RuntimeEntity, RuntimeGroup, RuntimeTarget, FormationGroup } from './types';
+import { getRotatedEntityBounds } from '../geometry';
 
 export interface TargetContext {
   entities: Record<string, RuntimeEntity>;
@@ -41,12 +42,7 @@ export function coerceTarget(target: RuntimeTarget | RuntimeEntity[]): RuntimeTa
         target.map((member) => [member.id, { x: member.homeX ?? member.x, y: member.homeY ?? member.y }])
       ),
       getBounds() {
-        const edges = target.map((member) => ({
-          minX: member.x - member.width / 2,
-          maxX: member.x + member.width / 2,
-          minY: member.y - member.height / 2,
-          maxY: member.y + member.height / 2,
-        }));
+        const edges = target.map((member) => getRotatedEntityBounds(member));
         return edges.reduce(
           (acc, next) => ({
             minX: Math.min(acc.minX, next.minX),
@@ -58,11 +54,10 @@ export function coerceTarget(target: RuntimeTarget | RuntimeEntity[]): RuntimeTa
         );
       },
       getHomeBounds() {
-        const edges = target.map((member) => ({
-          minX: (member.homeX ?? member.x) - member.width / 2,
-          maxX: (member.homeX ?? member.x) + member.width / 2,
-          minY: (member.homeY ?? member.y) - member.height / 2,
-          maxY: (member.homeY ?? member.y) + member.height / 2,
+        const edges = target.map((member) => getRotatedEntityBounds({
+          ...member,
+          x: member.homeX ?? member.x,
+          y: member.homeY ?? member.y,
         }));
         return edges.reduce(
           (acc, next) => ({

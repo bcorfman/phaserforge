@@ -1,4 +1,5 @@
 import {
+  SpriteAssetSpec,
   SceneSpec,
   ActionSpec,
   SequenceActionSpec,
@@ -7,6 +8,7 @@ import {
   RepeatActionSpec,
   TargetRef,
 } from './types';
+import { resolveEntityDefaults } from './entityDefaults';
 
 export function validateSceneSpec(scene: SceneSpec): void {
   validateEntities(scene);
@@ -21,8 +23,48 @@ function validateEntities(scene: SceneSpec): void {
     throw new Error('Scene world must have positive width and height');
   }
   for (const [id, entity] of Object.entries(scene.entities)) {
+    const resolved = resolveEntityDefaults(entity);
     if (entity.id !== id) {
       throw new Error(`Entity id mismatch: key=${id} value=${entity.id}`);
+    }
+    if (resolved.rotationDeg < 0 || resolved.rotationDeg > 359) {
+      throw new Error(`Entity ${id} rotation must be between 0 and 359 degrees`);
+    }
+    if (resolved.scaleX <= 0 || resolved.scaleY <= 0) {
+      throw new Error(`Entity ${id} scale must be greater than 0`);
+    }
+    if (resolved.originX < 0 || resolved.originX > 1 || resolved.originY < 0 || resolved.originY > 1) {
+      throw new Error(`Entity ${id} origin must be between 0 and 1`);
+    }
+    if (resolved.alpha < 0 || resolved.alpha > 1) {
+      throw new Error(`Entity ${id} alpha must be between 0 and 1`);
+    }
+    if (entity.asset) {
+      validateAsset(entity.asset, id);
+    }
+  }
+}
+
+function validateAsset(asset: SpriteAssetSpec, entityId: string): void {
+  if (asset.source.kind === 'embedded') {
+    if (!asset.source.dataUrl.startsWith('data:')) {
+      throw new Error(`Entity ${entityId} embedded asset must use a data URL`);
+    }
+  } else if (!asset.source.path) {
+    throw new Error(`Entity ${entityId} path asset requires a path`);
+  }
+
+  if (asset.imageType === 'spritesheet') {
+    if (!asset.grid) {
+      throw new Error(`Entity ${entityId} spritesheet asset requires grid metadata`);
+    }
+    if (asset.grid.frameWidth < 1 || asset.grid.frameHeight < 1 || asset.grid.columns < 1 || asset.grid.rows < 1) {
+      throw new Error(`Entity ${entityId} spritesheet grid dimensions must be positive`);
+    }
+    if (asset.frame?.kind === 'spritesheet-frame') {
+      if ((asset.frame.frameIndex === undefined || asset.frame.frameIndex < 0) && !asset.frame.frameKey) {
+        throw new Error(`Entity ${entityId} spritesheet frame requires a non-negative frame index or frame key`);
+      }
     }
   }
 }
@@ -112,7 +154,7 @@ function validateBehaviors(scene: SceneSpec): void {
       throw new Error(`Behavior id mismatch: key=${id} value=${behavior.id}`);
     }
     validateTarget(scene, behavior.target, `Behavior ${id} target`);
-    if (!scene.actions[behavior.rootActionId]) {
+    if (behavior.rootActionId && !scene.actions[behavior.rootActionId]) {
       throw new Error(`Behavior ${id} references missing root action ${behavior.rootActionId}`);
     }
   }
@@ -122,7 +164,8 @@ function detectCycles(scene: SceneSpec): void {
   const visiting = new Set<string>();
   const visited = new Set<string>();
 
-  const visit = (actionId: string): void => {
+  const visit = (actionId: string | undefined): void => {
+    if (!actionId) return;
     if (visiting.has(actionId)) {
       throw new Error(`Action cycle detected at ${actionId}`);
     }

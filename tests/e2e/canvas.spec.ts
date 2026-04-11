@@ -8,15 +8,17 @@ import {
   getSceneSnapshot,
   getState,
   gotoStudio,
+  seedSampleScene,
   tapWorld,
   triggerRedo,
   triggerUndo,
+  waitForSampleScene,
 } from './helpers';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/');
-  await page.evaluate(() => window.localStorage.removeItem('phaseractions.sceneSpec.v1'));
+  await seedSampleScene(page);
   await gotoStudio(page);
+  await waitForSampleScene(page);
 });
 
 test('selects an entity by clicking it on the canvas', async ({ page }) => {

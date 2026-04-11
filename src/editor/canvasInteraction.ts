@@ -112,7 +112,7 @@ export function createHoverOutline(scene: Phaser.Scene): Phaser.GameObjects.Grap
 export function updateHoverOutline(
   outline: Phaser.GameObjects.Graphics,
   hoverState: HoverState,
-  sprites: Map<string, Phaser.GameObjects.Rectangle>,
+  sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>,
   groupZones: Map<string, Phaser.GameObjects.Zone>,
   bounds?: { minX: number; minY: number; maxX: number; maxY: number }
 ): void {
@@ -203,7 +203,7 @@ export function formatValue(value: number, unit = ''): string {
  */
 export function isPointOverEmptyCanvas(
   worldPoint: { x: number; y: number },
-  sprites: Map<string, Phaser.GameObjects.Rectangle>,
+  sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>,
   groupZones: Map<string, Phaser.GameObjects.Zone>,
   boundsHandles: Map<string, Phaser.GameObjects.Zone>,
   bounds?: { minX: number; minY: number; maxX: number; maxY: number }

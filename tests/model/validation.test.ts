@@ -39,4 +39,32 @@ describe('model validation', () => {
     scene.behaviors.b1.target = { type: 'group', groupId: 'missing' };
     expect(() => validateSceneSpec(scene)).toThrow(/unknown group/i);
   });
+
+  it('A7 authored sprite properties validate and default correctly', () => {
+    const scene = baseScene();
+    scene.entities.e1.scaleX = 1.5;
+    scene.entities.e1.scaleY = 0.75;
+    scene.entities.e1.originX = 0.25;
+    scene.entities.e1.originY = 0.75;
+    scene.entities.e1.alpha = 0.4;
+    scene.entities.e1.visible = false;
+    scene.entities.e1.depth = 12;
+    scene.entities.e1.flipX = true;
+    scene.entities.e1.flipY = true;
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+  });
+
+  it('A8 invalid authored sprite property ranges fail clearly', () => {
+    const scene = baseScene();
+    scene.entities.e1.scaleX = 0;
+    expect(() => validateSceneSpec(scene)).toThrow(/scale/i);
+
+    scene.entities.e1.scaleX = 1;
+    scene.entities.e1.originX = 2;
+    expect(() => validateSceneSpec(scene)).toThrow(/origin/i);
+
+    scene.entities.e1.originX = 0.5;
+    scene.entities.e1.alpha = 2;
+    expect(() => validateSceneSpec(scene)).toThrow(/alpha/i);
+  });
 });

@@ -37,6 +37,10 @@ export class BoundsHit implements Condition {
     return this.engine.isMet(target);
   }
 
+  validateTarget(target: RuntimeTarget | RuntimeEntity[]): void {
+    this.engine.validateTargetSpan(target);
+  }
+
   apply(target: RuntimeTarget | RuntimeEntity[]) {
     return this.engine.apply(target);
   }

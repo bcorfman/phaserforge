@@ -1,14 +1,12 @@
 import { FormationGroup, GroupBounds, RuntimeEntity } from './types';
+import { getRotatedEntityBounds } from '../geometry';
 
 function entityBoundsAt(member: RuntimeEntity, x: number, y: number): GroupBounds {
-  const halfW = member.width / 2;
-  const halfH = member.height / 2;
-  return {
-    minX: x - halfW,
-    maxX: x + halfW,
-    minY: y - halfH,
-    maxY: y + halfH,
-  };
+  return getRotatedEntityBounds({
+    ...member,
+    x,
+    y,
+  });
 }
 
 function combineBounds(bounds: GroupBounds[]): GroupBounds {

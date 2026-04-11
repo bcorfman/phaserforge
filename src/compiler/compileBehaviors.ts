@@ -49,6 +49,10 @@ export function compileBehavior(behavior: BehaviorSpec, ctx: CompileContext): Ac
     return instance;
   };
 
+  if (!behavior.rootActionId) {
+    return new Sequence([]);
+  }
+
   return buildAction(behavior.rootActionId);
 }
 

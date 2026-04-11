@@ -9,7 +9,7 @@ import { JsonPanel } from './editor/JsonPanel';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
-import { registerAppStateGetter, unregisterAppStateGetter } from './testing/testBridge';
+import { registerAppStateGetter, registerSelectionSetter, unregisterAppStateGetter, unregisterSelectionSetter } from './testing/testBridge';
 import './app/layout.css';
 
 function AppShell() {
@@ -19,6 +19,17 @@ function AppShell() {
   const [worldWidthDraft, setWorldWidthDraft] = useState('');
   const [worldHeightDraft, setWorldHeightDraft] = useState('');
   const readyRef = useRef(false);
+  const appStateRef = useRef({
+    scene: state.scene,
+    selection: state.selection,
+    mode: state.mode,
+    dirty: state.dirty,
+    yamlText: state.yamlText,
+    error: state.error,
+    hasSeenViewHint: state.hasSeenViewHint,
+    startupMode: state.startupMode,
+    initialized: state.initialized,
+  });
   const world = getSceneWorld(state.scene);
 
   useEffect(() => {
@@ -27,21 +38,37 @@ function AppShell() {
   }, [world.width, world.height]);
 
   useEffect(() => {
-    const getStateSnapshot = () => ({
+    appStateRef.current = {
       scene: state.scene,
       selection: state.selection,
       mode: state.mode,
       dirty: state.dirty,
-      jsonText: state.jsonText,
+      yamlText: state.yamlText,
       error: state.error,
       hasSeenViewHint: state.hasSeenViewHint,
-    });
+      startupMode: state.startupMode,
+      initialized: state.initialized,
+    };
+  }, [state]);
 
+  useEffect(() => {
+    const getStateSnapshot = () => appStateRef.current;
     registerAppStateGetter(getStateSnapshot);
     return () => {
       unregisterAppStateGetter(getStateSnapshot);
     };
-  }, [state]);
+  }, []);
+
+  useEffect(() => {
+    const setSelection = (selection: Parameters<typeof dispatch>[0] extends { type: 'select'; selection: infer T } ? T : never) => {
+      dispatch({ type: 'select', selection });
+    };
+
+    registerSelectionSetter(setSelection);
+    return () => {
+      unregisterSelectionSetter(setSelection);
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     const handleReady = () => {
@@ -177,96 +204,115 @@ function AppShell() {
     <div className="app-root" data-testid="app-root">
       <Toolbar />
       <div className="app-body">
-        <aside className="pane pane-left" data-testid="entity-list-pane">
+        <aside
+          aria-labelledby="scene-graph-heading"
+          className="pane pane-left"
+          data-testid="entity-list-pane"
+        >
           <EntityList />
         </aside>
-        <main className="pane pane-center" data-testid="canvas-pane">
-          <div className="viewbar" data-testid="viewbar">
-            <div className="viewbar-group">
-              <span className="viewbar-label">View</span>
-              <button
-                aria-label="Fit view"
-                className="button"
-                data-testid="fit-view-button"
-                type="button"
-                onClick={() => EventBus.emit('scene-fit-view')}
-              >
-                Fit
-              </button>
-              <button
-                aria-label="Reset zoom"
-                className="button"
-                data-testid="reset-zoom-button"
-                type="button"
-                onClick={() => EventBus.emit('scene-reset-zoom')}
-              >
-                Reset
-              </button>
-              <button
-                aria-label="Zoom out"
-                className="button button-compact"
-                data-testid="zoom-out-button"
-                type="button"
-                onClick={() => EventBus.emit('scene-zoom-out')}
-              >
-                -
-              </button>
-              <div className="viewbar-pill" data-testid="zoom-pill">{formatZoomPercent(zoom)}</div>
-              <button
-                aria-label="Zoom in"
-                className="button button-compact"
-                data-testid="zoom-in-button"
-                type="button"
-                onClick={() => EventBus.emit('scene-zoom-in')}
-              >
-                +
-              </button>
+        <main aria-labelledby="viewport-heading" className="pane pane-center" data-testid="canvas-pane">
+          <section className="viewbar shell-card" data-testid="viewbar">
+            <div className="viewbar-copy">
+              <p className="eyebrow">Canvas</p>
+              <h2 className="section-title" id="viewport-heading">Viewport</h2>
+              <p className="section-copy">
+                Pan with middle mouse or Shift + drag. Use zoom controls to inspect sprite spacing and bounds.
+              </p>
             </div>
-            <div className="viewbar-group">
-              <span className="viewbar-label">World</span>
-              <label className="viewbar-field">
-                <span>W</span>
-                <input
-                  aria-label="World width"
-                  data-testid="world-width-input"
-                  type="text"
-                  inputMode="numeric"
-                  value={worldWidthDraft}
-                  onChange={(e) => setWorldWidthDraft(e.target.value)}
-                  onBlur={() => commitWorldDraft('width')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      commitWorldDraft('width');
-                      e.currentTarget.blur();
-                    }
-                  }}
-                />
-              </label>
-              <label className="viewbar-field">
-                <span>H</span>
-                <input
-                  aria-label="World height"
-                  data-testid="world-height-input"
-                  type="text"
-                  inputMode="numeric"
-                  value={worldHeightDraft}
-                  onChange={(e) => setWorldHeightDraft(e.target.value)}
-                  onBlur={() => commitWorldDraft('height')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      commitWorldDraft('height');
-                      e.currentTarget.blur();
-                    }
-                  }}
-                />
-              </label>
+            <div className="viewbar-controls-row">
+              <div className="viewbar-group">
+                <button
+                  aria-label="Fit view"
+                  className="button"
+                  data-testid="fit-view-button"
+                  type="button"
+                  onClick={() => EventBus.emit('scene-fit-view')}
+                >
+                  Fit
+                </button>
+                <button
+                  aria-label="Reset zoom"
+                  className="button"
+                  data-testid="reset-zoom-button"
+                  type="button"
+                  onClick={() => EventBus.emit('scene-reset-zoom')}
+                >
+                  Reset
+                </button>
+                <button
+                  aria-label="Zoom out"
+                  className="button button-compact"
+                  data-testid="zoom-out-button"
+                  type="button"
+                  onClick={() => EventBus.emit('scene-zoom-out')}
+                >
+                  -
+                </button>
+                <div className="viewbar-pill" data-testid="zoom-pill">{formatZoomPercent(zoom)}</div>
+                <button
+                  aria-label="Zoom in"
+                  className="button button-compact"
+                  data-testid="zoom-in-button"
+                  type="button"
+                  onClick={() => EventBus.emit('scene-zoom-in')}
+                >
+                  +
+                </button>
+              </div>
+              <div className="viewbar-world">
+                <div className="viewbar-copy viewbar-copy-secondary">
+                  <p className="eyebrow">Scene Bounds</p>
+                  <h3 className="section-subtitle">World Size</h3>
+                </div>
+                <div className="viewbar-group">
+                  <label className="viewbar-field">
+                    <span>W</span>
+                    <input
+                      aria-label="World width"
+                      data-testid="world-width-input"
+                      type="text"
+                      inputMode="numeric"
+                      value={worldWidthDraft}
+                      onChange={(e) => setWorldWidthDraft(e.target.value)}
+                      onBlur={() => commitWorldDraft('width')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          commitWorldDraft('width');
+                          e.currentTarget.blur();
+                        }
+                      }}
+                    />
+                  </label>
+                  <label className="viewbar-field">
+                    <span>H</span>
+                    <input
+                      aria-label="World height"
+                      data-testid="world-height-input"
+                      type="text"
+                      inputMode="numeric"
+                      value={worldHeightDraft}
+                      onChange={(e) => setWorldHeightDraft(e.target.value)}
+                      onBlur={() => commitWorldDraft('height')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          commitWorldDraft('height');
+                          e.currentTarget.blur();
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
           <div className="phaser-frame" data-testid="phaser-frame">
             {!state.hasSeenViewHint && (
               <div className="view-hint" data-testid="view-hint">
                 <div className="view-hint-title">View Controls</div>
-                <div className="view-hint-text">Wheel to zoom, middle-drag or Space-drag to pan, or use Fit/100% above.</div>
+                <div className="view-hint-text">
+                  Pan with middle mouse or Shift + drag. Use zoom controls to inspect sprite spacing and bounds.
+                </div>
                 <button
                   aria-label="Dismiss view hint"
                   className="button"

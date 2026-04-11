@@ -50,7 +50,7 @@ export function getBoundsHandles(bounds: { minX: number; minY: number; maxX: num
 export function hitTestCanvas(
   worldPoint: { x: number; y: number },
   sceneSpec: SceneSpec,
-  sprites: Map<string, Phaser.GameObjects.Rectangle>,
+  sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>,
   groupZones: Map<string, Phaser.GameObjects.Zone>,
   boundsHandles: Map<string, Phaser.GameObjects.Zone>
 ): HitTestResult {

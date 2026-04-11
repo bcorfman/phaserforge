@@ -16,6 +16,7 @@ interface PhaserActionsStudioTestBridge {
   panByScreenDelta(delta: { x: number; y: number }): void;
   undo(): void;
   redo(): void;
+  select(selection: unknown): void;
 }
 
 interface Window {

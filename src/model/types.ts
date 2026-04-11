@@ -1,5 +1,7 @@
 export type Id = string;
 
+export type StartupMode = 'reload_last_yaml' | 'new_empty_scene';
+
 export type TargetRef =
   | { type: 'entity'; entityId: Id }
   | { type: 'group'; groupId: Id };
@@ -26,6 +28,58 @@ export interface EntitySpec {
   y: number;
   width: number;
   height: number;
+  rotationDeg?: number;
+  scaleX?: number;
+  scaleY?: number;
+  originX?: number;
+  originY?: number;
+  alpha?: number;
+  visible?: boolean;
+  depth?: number;
+  flipX?: boolean;
+  flipY?: boolean;
+  asset?: SpriteAssetSpec;
+}
+
+export type SpriteAssetSource =
+  | {
+      kind: 'embedded';
+      dataUrl: string;
+      originalName?: string;
+      mimeType?: string;
+    }
+  | {
+      kind: 'path';
+      path: string;
+    };
+
+export interface SpriteSheetGridSpec {
+  frameWidth: number;
+  frameHeight: number;
+  columns: number;
+  rows: number;
+}
+
+export interface SpriteFrameSpec {
+  kind: 'single' | 'spritesheet-frame';
+  frameIndex?: number;
+  frameKey?: string;
+  frameX?: number;
+  frameY?: number;
+}
+
+export interface EntityPropertyTarget {
+  key: 'x' | 'y' | 'rotationDeg' | 'scaleX' | 'scaleY' | 'alpha' | 'width' | 'height' | 'originX' | 'originY' | 'depth' | 'visible' | 'flipX' | 'flipY';
+  type: 'number' | 'boolean' | 'enum';
+  tweenable?: boolean;
+  affectsBounds?: boolean;
+}
+
+export interface SpriteAssetSpec {
+  source: SpriteAssetSource;
+  imageType: 'image' | 'spritesheet';
+  grid?: SpriteSheetGridSpec;
+  frame?: SpriteFrameSpec;
 }
 
 export type GroupLayoutSpec =
@@ -43,7 +97,7 @@ export interface BehaviorSpec {
   id: Id;
   name?: string;
   target: TargetRef;
-  rootActionId: Id;
+  rootActionId?: Id;
 }
 
 export type ActionSpec =
@@ -108,4 +162,28 @@ export interface ElapsedTimeConditionSpec {
   id: Id;
   type: 'ElapsedTime';
   durationMs: number;
+}
+
+export interface EditorConfig {
+  startupMode: StartupMode;
+}
+
+export interface EditorRegistryEntry {
+  type: string;
+  displayName: string;
+  category: string;
+  targetKinds?: Array<'entity' | 'group'>;
+  implemented: boolean;
+  propertyTargets?: EntityPropertyTarget[];
+  parameters?: Array<{
+    name: string;
+    type: 'number' | 'string' | 'boolean' | 'target' | 'reference';
+    required?: boolean;
+  }>;
+}
+
+export interface EditorRegistryConfig {
+  arrange: EditorRegistryEntry[];
+  actions: EditorRegistryEntry[];
+  conditions: EditorRegistryEntry[];
 }

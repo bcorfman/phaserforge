@@ -1,0 +1,115 @@
+arrange:
+  - type: grid
+    displayName: Grid
+    category: formation
+    targetKinds: [group]
+    implemented: true
+    parameters:
+      - { name: rows, type: number, required: true }
+      - { name: cols, type: number, required: true }
+  - type: line
+    displayName: Line
+    category: formation
+    targetKinds: [group]
+    implemented: false
+  - type: circle
+    displayName: Circle
+    category: formation
+    targetKinds: [group]
+    implemented: false
+  - type: v_formation
+    displayName: V Formation
+    category: formation
+    targetKinds: [group]
+    implemented: false
+actions:
+  - type: Sequence
+    displayName: Sequence
+    category: flow
+    targetKinds: [entity, group]
+    implemented: true
+  - type: MoveUntil
+    displayName: Move Until
+    category: movement
+    targetKinds: [entity, group]
+    implemented: true
+    propertyTargets:
+      - { key: x, type: number, tweenable: true, affectsBounds: true }
+      - { key: y, type: number, tweenable: true, affectsBounds: true }
+  - type: Wait
+    displayName: Wait
+    category: flow
+    targetKinds: [entity, group]
+    implemented: true
+  - type: Call
+    displayName: Call
+    category: flow
+    targetKinds: [entity, group]
+    implemented: true
+  - type: Repeat
+    displayName: Repeat
+    category: flow
+    targetKinds: [entity, group]
+    implemented: true
+  - type: RotateUntil
+    displayName: Rotate Until
+    category: movement
+    targetKinds: [entity, group]
+    implemented: false
+    propertyTargets:
+      - { key: rotationDeg, type: number, tweenable: true, affectsBounds: true }
+  - type: ParametricMotionUntil
+    displayName: Parametric Motion Until
+    category: parametric
+    targetKinds: [entity, group]
+    implemented: false
+    propertyTargets:
+      - { key: x, type: number, tweenable: true, affectsBounds: true }
+      - { key: y, type: number, tweenable: true, affectsBounds: true }
+      - { key: rotationDeg, type: number, tweenable: true, affectsBounds: true }
+  - type: ScaleUntil
+    displayName: Scale Until
+    category: transform
+    targetKinds: [entity, group]
+    implemented: false
+    propertyTargets:
+      - { key: scaleX, type: number, tweenable: true, affectsBounds: true }
+      - { key: scaleY, type: number, tweenable: true, affectsBounds: true }
+      - { key: width, type: number, tweenable: true, affectsBounds: true }
+      - { key: height, type: number, tweenable: true, affectsBounds: true }
+  - type: FadeUntil
+    displayName: Fade Until
+    category: transform
+    targetKinds: [entity, group]
+    implemented: false
+    propertyTargets:
+      - { key: alpha, type: number, tweenable: true, affectsBounds: false }
+  - type: TweenUntil
+    displayName: Tween Until
+    category: transform
+    targetKinds: [entity, group]
+    implemented: false
+    propertyTargets:
+      - { key: x, type: number, tweenable: true, affectsBounds: true }
+      - { key: y, type: number, tweenable: true, affectsBounds: true }
+      - { key: rotationDeg, type: number, tweenable: true, affectsBounds: true }
+      - { key: scaleX, type: number, tweenable: true, affectsBounds: true }
+      - { key: scaleY, type: number, tweenable: true, affectsBounds: true }
+      - { key: alpha, type: number, tweenable: true, affectsBounds: false }
+      - { key: width, type: number, tweenable: true, affectsBounds: true }
+      - { key: height, type: number, tweenable: true, affectsBounds: true }
+      - { key: originX, type: number, tweenable: true, affectsBounds: true }
+      - { key: originY, type: number, tweenable: true, affectsBounds: true }
+      - { key: depth, type: number, tweenable: true, affectsBounds: false }
+      - { key: visible, type: boolean, tweenable: false, affectsBounds: false }
+conditions:
+  - type: BoundsHit
+    displayName: Bounds Hit
+    category: condition
+    targetKinds: [entity, group]
+    implemented: true
+  - type: ElapsedTime
+    displayName: Elapsed Time
+    category: condition
+    targetKinds: [entity, group]
+    implemented: true
