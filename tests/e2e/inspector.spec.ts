@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, expectInputValue, getState, gotoStudio, seedSampleScene, selectGroupInSceneGraph, tapWorld, waitForSampleScene } from './helpers';
+import { dismissViewHint, expectInputValue, getEditableBoundsRect, getEntitySpriteWorldRect, getState, gotoStudio, seedSampleScene, selectGroupInSceneGraph, tapWorld, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
@@ -138,7 +138,7 @@ test('creates a formation from imported sprites and arranges it into a grid', as
   }).toMatchObject({ type: 'grid', rows: 1, cols: 2 });
 });
 
-test('assigns a move flow to an imported sprite and persists it to YAML', async ({ page }) => {
+test('assigns a move flow to an imported sprite', async ({ page }) => {
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
 
@@ -154,9 +154,6 @@ test('assigns a move flow to an imported sprite and persists it to YAML', async 
     const condition = move?.conditionId ? state.scene.conditions[move.conditionId] : undefined;
     return { hasBehavior: Boolean(behavior), velocityX: move?.velocity?.x, minX: condition?.bounds.minX };
   }).toEqual({ hasBehavior: true, velocityX: 140, minX: 48 });
-
-  await page.getByTestId('export-yaml-button').click();
-  await expect(page.getByTestId('yaml-textarea')).toContainText('type: MoveUntil');
 });
 
 test('assigns a group move flow to imported sprites and runs it in play mode', async ({ page }) => {
@@ -208,6 +205,59 @@ test('preview uses edited move velocity and bounce behavior', async ({ page }) =
     const rect = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
     return rect?.centerX;
   }, { timeout: 2000 }).toBeLessThan(before?.centerX ?? 0);
+});
+
+test('preview bounce reaches configured bounds edge before reversing', async ({ page }) => {
+  await page.getByTestId('reset-scene-button').click();
+  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
+  await page.getByTestId('import-sprites-button').click();
+  await page.getByTestId('assign-action-flow-button').click();
+  await page.getByTestId('add-action-MoveUntil').click();
+  await page.getByTestId('velocity-x-input').fill('300');
+  await page.locator('label:has-text("Behavior") select').selectOption('bounce');
+
+  const entityId = await page.evaluate(() => {
+    const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { entities: Record<string, unknown> } } | null;
+    return state ? Object.keys(state.scene.entities)[0] : null;
+  });
+  if (!entityId) throw new Error('Imported entity id unavailable');
+
+  const beforeSprite = await getEntitySpriteWorldRect(page, entityId);
+  if (!beforeSprite?.maxX) throw new Error('Sprite rect unavailable');
+  const minX = String(Math.round(beforeSprite.minX - 200));
+  const maxX = String(Math.round(beforeSprite.maxX + 40));
+  await page.getByLabel('Min X').fill(minX);
+  await page.getByLabel('Max X').fill(maxX);
+
+  const bounds = await getEditableBoundsRect(page);
+  if (!bounds?.maxX) throw new Error('Editable bounds unavailable');
+
+  await page.getByTestId('toggle-mode-button').click();
+
+  const expectedMaxX = bounds.maxX;
+  const maxObservedMaxX = await page.evaluate(async ({ id }) => {
+    const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    let lastCenterX: number | null = null;
+    let maxMaxX = -Infinity;
+
+    for (let i = 0; i < 240; i += 1) {
+      await nextFrame();
+      const rect = window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntitySpriteWorldRect(id) as { minX: number; maxX: number; centerX?: number } | null;
+      if (!rect) continue;
+      const centerX = rect.centerX ?? (rect.minX + rect.maxX) / 2;
+      if (Number.isFinite(rect.maxX)) maxMaxX = Math.max(maxMaxX, rect.maxX);
+
+      if (lastCenterX !== null && centerX < lastCenterX - 0.5) {
+        break;
+      }
+      lastCenterX = centerX;
+    }
+
+    return maxMaxX;
+  }, { id: entityId });
+
+  expect(maxObservedMaxX).toBeGreaterThanOrEqual(expectedMaxX - 1);
+  expect(maxObservedMaxX).toBeLessThanOrEqual(expectedMaxX + 8);
 });
 
 test('preview applies wrap behavior for an imported sprite move flow', async ({ page }) => {

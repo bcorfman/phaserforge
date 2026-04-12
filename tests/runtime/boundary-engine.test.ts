@@ -102,4 +102,55 @@ describe('boundary engine', () => {
     expect(group.members[1].x - group.members[0].x).toBe(20);
     expect(group.members[2].x - group.members[1].x).toBe(20);
   });
+
+  it('clamps using hitbox edges instead of full sprite bounds', () => {
+    const entity: RuntimeEntity & { hitbox?: { x: number; y: number; width: number; height: number } } = {
+      id: 'e1',
+      x: 55,
+      y: 0,
+      width: 64,
+      height: 64,
+      originX: 0.5,
+      originY: 0.5,
+      scaleX: 1,
+      scaleY: 1,
+      rotationDeg: 0,
+      vx: 100,
+      vy: 0,
+      hitbox: { x: 22, y: 22, width: 20, height: 20 },
+    };
+    const engine = new BoundaryEngine(
+      { minX: 0, maxX: 60, minY: -100, maxY: 100 },
+      { scope: 'member-any', behavior: 'limit' }
+    );
+
+    engine.apply(entity);
+
+    const originX = entity.originX ?? 0.5;
+    const hitbox = entity.hitbox!;
+    const hitboxMaxX = entity.x + (hitbox.x + hitbox.width - originX * entity.width);
+    expect(hitboxMaxX).toBe(60);
+    expect(entity.x).toBe(50);
+  });
+
+  it('computes group-extents contacts from hitbox edges', () => {
+    const group = createFormationGroup('g1', [
+      makeEntity('e1', 15, 0),
+      makeEntity('e2', 35, 0),
+      makeEntity('e3', 55, 0),
+    ]);
+    for (const member of group.members) {
+      member.hitbox = { x: 2, y: 2, width: 6, height: 6 };
+    }
+    const engine = new BoundaryEngine(
+      { minX: 0, maxX: 60, minY: -100, maxY: 100 },
+      { scope: 'group-extents', behavior: 'limit' }
+    );
+
+    expect(engine.isMet(group)).toBe(false);
+
+    group.translate(2, 0);
+
+    expect(engine.isMet(group)).toBe(true);
+  });
 });

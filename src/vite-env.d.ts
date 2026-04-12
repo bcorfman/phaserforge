@@ -7,6 +7,7 @@ interface PhaserActionsStudioTestBridge {
   isSceneReady(): boolean;
   getSceneSnapshot(): unknown;
   getEntityWorldRect(id: string): unknown;
+  getEntitySpriteWorldRect(id: string): unknown;
   getGroupWorldBounds(id: string): unknown;
   getEditableBoundsRect(): unknown;
   worldToClient(point: { x: number; y: number }): unknown;

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, expectInputValue, getState, gotoStudio, replaceYaml, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
+import { dismissViewHint, expectInputValue, getState, gotoStudio, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -9,17 +9,14 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('boots empty by default and supports YAML load/reset flows', async ({ page }) => {
+test('boots empty by default and loads scenes', async ({ page }) => {
   await gotoStudio(page);
   await expect(page.getByTestId('toolbar')).toBeVisible();
   await expect(page.getByTestId('entity-list')).toBeVisible();
   await expect(page.getByTestId('inspector')).toBeVisible();
-  await expect(page.getByTestId('json-panel')).toBeVisible();
   await expect(page.getByRole('main', { name: 'Viewport' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Scene Graph' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Inspector' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Scene YAML' })).toBeVisible();
-  await expect(page.getByText('Move entities on the canvas, tune formations in the inspector, and round-trip YAML without leaving the editor.')).toBeVisible();
   await expect(page.getByText('Pan with middle mouse or Shift + drag. Use zoom controls to inspect sprite spacing and bounds.')).toBeVisible();
   await waitForEmptyScene(page);
 
@@ -27,17 +24,8 @@ test('boots empty by default and supports YAML load/reset flows', async ({ page 
   await page.reload();
   await gotoStudio(page);
   await waitForSampleScene(page);
-  await page.getByTestId('export-yaml-button').click();
-  await expect(page.getByTestId('yaml-textarea')).toContainText('Enemy Formation');
-
-  await replaceYaml(page, (yaml) => yaml.replace('Enemy Formation', 'Patrol Wing'));
-  await page.getByTestId('load-yaml-button').click();
   await selectGroupInSceneGraph(page, 'g-enemies');
-  await expectInputValue(page.getByTestId('formation-name-input'), 'Patrol Wing');
-
-  await page.getByTestId('yaml-textarea').fill('{');
-  await page.getByTestId('load-yaml-button').click();
-  await expect(page.getByTestId('toolbar-error')).toBeVisible();
+  await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');
 
   await page.getByTestId('reset-scene-button').click();
   await expect.poll(async () => {
@@ -97,9 +85,6 @@ test('imports embedded sprites and spritesheets into the scene', async ({ page }
       .filter((entity) => entity.asset?.imageType === 'spritesheet')
       .length;
   }).toBeGreaterThan(1);
-
-  await page.getByTestId('export-yaml-button').click();
-  await expect(page.getByTestId('yaml-textarea')).toContainText('imageType: spritesheet');
 });
 
 test('removes an imported sprite from the scene graph', async ({ page }) => {

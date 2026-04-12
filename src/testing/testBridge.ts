@@ -27,6 +27,7 @@ export interface SceneBridge {
     viewportHeight: number;
   };
   getEntityWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
+  getEntitySpriteWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
   getGroupWorldBounds(id: string): Rect | null;
   getEditableBoundsRect(): Rect | null;
   worldToClient(point: Point): Point | null;
@@ -73,6 +74,10 @@ function ensureBridge(): void {
     getEntityWorldRect(id: string) {
       const scene = sceneGetter?.();
       return scene ? clone(scene.getEntityWorldRect(id)) : null;
+    },
+    getEntitySpriteWorldRect(id: string) {
+      const scene = sceneGetter?.();
+      return scene ? clone(scene.getEntitySpriteWorldRect(id)) : null;
     },
     getGroupWorldBounds(id: string) {
       const scene = sceneGetter?.();

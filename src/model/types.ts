@@ -28,6 +28,7 @@ export interface EntitySpec {
   y: number;
   width: number;
   height: number;
+  hitbox?: HitboxSpec;
   rotationDeg?: number;
   scaleX?: number;
   scaleY?: number;
@@ -39,6 +40,17 @@ export interface EntitySpec {
   flipX?: boolean;
   flipY?: boolean;
   asset?: SpriteAssetSpec;
+}
+
+export interface HitboxSpec {
+  /**
+   * Hitbox rectangle in unscaled, unrotated sprite-local pixel coordinates.
+   * (0,0) is the sprite's top-left corner before origin/rotation.
+   */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export type SpriteAssetSource =

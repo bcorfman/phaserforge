@@ -39,6 +39,7 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
       flipX: resolved.flipX,
       flipY: resolved.flipY,
       asset: resolved.asset,
+      hitbox: resolved.hitbox,
       homeX: resolved.x,
       homeY: resolved.y,
       vx: 0,

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useEditorStore } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
 import { buildBehaviorActionTrees, type ActionTreeNode } from './actionTree';
@@ -11,12 +12,68 @@ export function EntityList() {
   const { groups, ungroupedEntities } = summarizeSceneGroups(scene);
   const behaviorActionTrees = buildBehaviorActionTrees(scene);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingKind, setEditingKind] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+
   const isSelected = (kind: string, id: string): boolean => {
     if (selection.kind === 'entities') {
       return kind === 'entity' && selection.ids.includes(id);
     }
 
     return selection.kind !== 'none' && selection.kind === kind && 'id' in selection && selection.id === id;
+  };
+
+  const startEditing = (kind: string, id: string, currentName: string) => {
+    setEditingKind(kind);
+    setEditingId(id);
+    setEditingName(currentName);
+  };
+
+  const saveRename = () => {
+    if (!editingId || !editingKind || !editingName.trim()) {
+      cancelEditing();
+      return;
+    }
+
+    if (editingKind === 'group') {
+      const group = scene.groups[editingId];
+      if (group) {
+        dispatch({ type: 'update-group', id: editingId, next: { ...group, name: editingName } });
+      }
+    } else if (editingKind === 'entity') {
+      const entity = scene.entities[editingId];
+      if (entity) {
+        dispatch({ type: 'update-entity', id: editingId, next: { ...entity, name: editingName } });
+      }
+    } else if (editingKind === 'behavior') {
+      dispatch({ type: 'rename-behavior', id: editingId, name: editingName });
+    } else if (editingKind === 'action') {
+      const action = scene.actions[editingId];
+      if (action) {
+        dispatch({ type: 'update-action', id: editingId, next: { ...action, name: editingName } });
+      }
+    }
+
+    cancelEditing();
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditingKind(null);
+    setEditingName('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveRename();
+    } else if (e.key === 'Escape') {
+      cancelEditing();
+    }
+  };
+
+  const handleEditingNameChange = (newName: string) => {
+    setEditingName(newName);
   };
 
   return (
@@ -45,45 +102,87 @@ export function EntityList() {
               >
                 {expandedGroups[group.id] ? '▾' : '▸'}
               </button>
+              {editingId === group.id && editingKind === 'group' ? (
+                <input
+                  autoFocus
+                  className="scene-graph-rename-input"
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onBlur={saveRename}
+                  onKeyDown={handleKeyDown}
+                  data-testid={`rename-group-input-${group.id}`}
+                />
+              ) : (
+                <button
+                  className={`list-item group-item ${isSelected('group', group.id) ? 'active' : ''}`}
+                  data-testid={`group-item-${group.id}`}
+                  onClick={() => dispatch({ type: 'select', selection: { kind: 'group', id: group.id } })}
+                  type="button"
+                >
+                  <span>{group.name ?? group.id}</span>
+                  <span className="group-meta">{members.length} members</span>
+                </button>
+              )}
               <button
-                className={`list-item group-item ${isSelected('group', group.id) ? 'active' : ''}`}
-                data-testid={`group-item-${group.id}`}
-                onClick={() => dispatch({ type: 'select', selection: { kind: 'group', id: group.id } })}
+                aria-label={`Rename formation ${group.name ?? group.id}`}
+                className="scene-graph-button scene-graph-edit"
+                data-testid={`edit-group-${group.id}`}
                 type="button"
+                onClick={() => startEditing('group', group.id, group.name ?? group.id)}
               >
-                <span>{group.name ?? group.id}</span>
-                <span className="group-meta">{members.length} members</span>
+                ✏️
               </button>
               <button
                 aria-label={`Remove formation ${group.name ?? group.id}`}
-                className="scene-graph-remove"
+                className="scene-graph-button scene-graph-remove"
                 data-testid={`remove-group-${group.id}`}
                 type="button"
                 onClick={() => dispatch({ type: 'remove-scene-graph-item', item: { kind: 'group', id: group.id } })}
               >
-                Remove
+                🗑
               </button>
             </div>
             {expandedGroups[group.id] && (
               <div className="group-members">
                 {members.map((entity) => (
                   <div key={entity.id} className="member-row">
+                    {editingId === entity.id && editingKind === 'entity' ? (
+                      <input
+                        autoFocus
+                        className="scene-graph-rename-input"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={saveRename}
+                        onKeyDown={handleKeyDown}
+                        data-testid={`rename-entity-input-${entity.id}`}
+                      />
+                    ) : (
+                      <button
+                        className={`list-item member-item ${isSelected('entity', entity.id) ? 'active' : ''}`}
+                        data-testid={`member-item-${entity.id}`}
+                        onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: entity.id } })}
+                        type="button"
+                      >
+                        {entity.name ?? entity.id}
+                      </button>
+                    )}
                     <button
-                      className={`list-item member-item ${isSelected('entity', entity.id) ? 'active' : ''}`}
-                      data-testid={`member-item-${entity.id}`}
-                      onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: entity.id } })}
+                      aria-label={`Rename sprite ${entity.name ?? entity.id}`}
+                      className="scene-graph-button scene-graph-edit"
+                      data-testid={`edit-entity-${entity.id}`}
                       type="button"
+                      onClick={() => startEditing('entity', entity.id, entity.name ?? entity.id)}
                     >
-                      {entity.name ?? entity.id}
+                      ✏️
                     </button>
                     <button
                       aria-label={`Remove sprite ${entity.name ?? entity.id}`}
-                      className="scene-graph-remove"
+                      className="scene-graph-button scene-graph-remove"
                       data-testid={`remove-entity-${entity.id}`}
                       type="button"
                       onClick={() => dispatch({ type: 'remove-scene-graph-item', item: { kind: 'entity', id: entity.id } })}
                     >
-                      Remove
+                      🗑
                     </button>
                   </div>
                 ))}
@@ -100,22 +199,43 @@ export function EntityList() {
         {ungroupedEntities.length === 0 && <div className="muted">All entities are part of a formation.</div>}
         {ungroupedEntities.map((entity) => (
           <div key={entity.id} className="member-row">
+            {editingId === entity.id && editingKind === 'entity' ? (
+              <input
+                autoFocus
+                className="scene-graph-rename-input"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                onBlur={saveRename}
+                onKeyDown={handleKeyDown}
+                data-testid={`rename-entity-input-${entity.id}`}
+              />
+            ) : (
+              <button
+                className={`list-item ${isSelected('entity', entity.id) ? 'active' : ''}`}
+                data-testid={`ungrouped-entity-${entity.id}`}
+                onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: entity.id } })}
+                type="button"
+              >
+                {entity.name ?? entity.id}
+              </button>
+            )}
             <button
-              className={`list-item ${isSelected('entity', entity.id) ? 'active' : ''}`}
-              data-testid={`ungrouped-entity-${entity.id}`}
-              onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: entity.id } })}
+              aria-label={`Rename sprite ${entity.name ?? entity.id}`}
+              className="scene-graph-button scene-graph-edit"
+              data-testid={`edit-entity-${entity.id}`}
               type="button"
+              onClick={() => startEditing('entity', entity.id, entity.name ?? entity.id)}
             >
-              {entity.name ?? entity.id}
+              ✏️
             </button>
             <button
               aria-label={`Remove sprite ${entity.name ?? entity.id}`}
-              className="scene-graph-remove"
+              className="scene-graph-button scene-graph-remove"
               data-testid={`remove-entity-${entity.id}`}
               type="button"
               onClick={() => dispatch({ type: 'remove-scene-graph-item', item: { kind: 'entity', id: entity.id } })}
             >
-              Remove
+              🗑
             </button>
           </div>
         ))}
@@ -132,22 +252,43 @@ export function EntityList() {
           return (
             <div key={behavior.id} className="behavior-block">
               <div className="member-row">
+                {editingId === behavior.id && editingKind === 'behavior' ? (
+                  <input
+                    autoFocus
+                    className="scene-graph-rename-input"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onBlur={saveRename}
+                    onKeyDown={handleKeyDown}
+                    data-testid={`rename-behavior-input-${behavior.id}`}
+                  />
+                ) : (
+                  <button
+                    className={`list-item ${isSelected('behavior', behavior.id) ? 'active' : ''}`}
+                    data-testid={`behavior-item-${behavior.id}`}
+                    onClick={() => dispatch({ type: 'select', selection: { kind: 'behavior', id: behavior.id } })}
+                    type="button"
+                  >
+                    {behavior.name ?? behavior.id}
+                  </button>
+                )}
                 <button
-                  className={`list-item ${isSelected('behavior', behavior.id) ? 'active' : ''}`}
-                  data-testid={`behavior-item-${behavior.id}`}
-                  onClick={() => dispatch({ type: 'select', selection: { kind: 'behavior', id: behavior.id } })}
+                  aria-label={`Rename behavior ${behavior.name ?? behavior.id}`}
+                  className="scene-graph-button scene-graph-edit"
+                  data-testid={`edit-behavior-${behavior.id}`}
                   type="button"
+                  onClick={() => startEditing('behavior', behavior.id, behavior.name ?? behavior.id)}
                 >
-                  {behavior.name ?? behavior.id}
+                  ✏️
                 </button>
                 <button
                   aria-label={`Remove behavior ${behavior.name ?? behavior.id}`}
-                  className="scene-graph-remove"
+                  className="scene-graph-button scene-graph-remove"
                   data-testid={`remove-behavior-${behavior.id}`}
                   type="button"
                   onClick={() => dispatch({ type: 'remove-scene-graph-item', item: { kind: 'behavior', id: behavior.id } })}
                 >
-                  Remove
+                  🗑
                 </button>
               </div>
               {root ? (
@@ -158,6 +299,15 @@ export function EntityList() {
                     isSelected={isSelected}
                     onSelect={(id) => dispatch({ type: 'select', selection: { kind: 'action', id } })}
                     onRemove={(id) => dispatch({ type: 'remove-scene-graph-item', item: { kind: 'action', id } })}
+                    editingId={editingId}
+                    editingKind={editingKind}
+                    editingName={editingName}
+                    onStartEditing={startEditing}
+                    onSaveRename={saveRename}
+                    onCancelEditing={cancelEditing}
+                    onKeyDown={handleKeyDown}
+                    onEditingNameChange={handleEditingNameChange}
+                    scene={scene}
                   />
                 </div>
               ) : (
@@ -184,12 +334,12 @@ export function EntityList() {
             </button>
             <button
               aria-label={`Remove condition ${condition.id}`}
-              className="scene-graph-remove"
+              className="scene-graph-button scene-graph-remove"
               data-testid={`remove-condition-${condition.id}`}
               type="button"
               onClick={() => dispatch({ type: 'remove-scene-graph-item', item: { kind: 'condition', id: condition.id } })}
             >
-              Remove
+              🗑
             </button>
           </div>
         ))}
@@ -204,33 +354,72 @@ function ActionTreeBranch({
   isSelected,
   onSelect,
   onRemove,
+  editingId,
+  editingKind,
+  editingName,
+  onStartEditing,
+  onSaveRename,
+  onCancelEditing,
+  onKeyDown,
+  onEditingNameChange,
+  scene,
 }: {
   node: ActionTreeNode;
   depth: number;
   isSelected: (kind: string, id: string) => boolean;
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
+  editingId: string | null;
+  editingKind: string | null;
+  editingName: string;
+  onStartEditing: (kind: string, id: string, currentName: string) => void;
+  onSaveRename: () => void;
+  onCancelEditing: () => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  onEditingNameChange: (newName: string) => void;
+  scene: SceneSpec;
 }) {
   return (
     <>
       <div className="member-row" style={{ marginLeft: `${depth * 14}px` }}>
+        {editingId === node.id && editingKind === 'action' ? (
+          <input
+            autoFocus
+            className="scene-graph-rename-input"
+            value={editingName}
+            onChange={(e) => onEditingNameChange(e.target.value)}
+            onBlur={onSaveRename}
+            onKeyDown={onKeyDown}
+            data-testid={`rename-action-input-${node.id}`}
+          />
+        ) : (
+          <button
+            className={`list-item action-item ${isSelected('action', node.id) ? 'active' : ''}`}
+            data-testid={`action-item-${node.id}`}
+            onClick={() => onSelect(node.id)}
+            type="button"
+          >
+            <span className="action-item-label">{node.action.name ?? node.id}</span>
+            <span className="action-item-meta">{node.action.type}</span>
+          </button>
+        )}
         <button
-          className={`list-item action-item ${isSelected('action', node.id) ? 'active' : ''}`}
-          data-testid={`action-item-${node.id}`}
-          onClick={() => onSelect(node.id)}
+          aria-label={`Rename action ${getActionGraphLabel(node.action)}`}
+          className="scene-graph-button scene-graph-edit"
+          data-testid={`edit-action-${node.id}`}
           type="button"
+          onClick={() => onStartEditing('action', node.id, node.action.name ?? node.id)}
         >
-          <span className="action-item-label">{node.action.name ?? node.id}</span>
-          <span className="action-item-meta">{node.action.type}</span>
+          ✏️
         </button>
         <button
           aria-label={`Remove action ${getActionGraphLabel(node.action)}`}
-          className="scene-graph-remove"
+          className="scene-graph-button scene-graph-remove"
           data-testid={`remove-action-${node.id}`}
           type="button"
           onClick={() => onRemove(node.id)}
         >
-          Remove
+          🗑
         </button>
       </div>
       {node.children.map((child) => (
@@ -241,6 +430,15 @@ function ActionTreeBranch({
           isSelected={isSelected}
           onSelect={onSelect}
           onRemove={onRemove}
+          editingId={editingId}
+          editingKind={editingKind}
+          editingName={editingName}
+          onStartEditing={onStartEditing}
+          onSaveRename={onSaveRename}
+          onCancelEditing={onCancelEditing}
+          onKeyDown={onKeyDown}
+          onEditingNameChange={onEditingNameChange}
+          scene={scene}
         />
       ))}
     </>

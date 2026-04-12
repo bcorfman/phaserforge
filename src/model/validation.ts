@@ -39,9 +39,28 @@ function validateEntities(scene: SceneSpec): void {
     if (resolved.alpha < 0 || resolved.alpha > 1) {
       throw new Error(`Entity ${id} alpha must be between 0 and 1`);
     }
+    if (entity.hitbox) {
+      validateHitbox(entity.hitbox, resolved, id);
+    }
     if (entity.asset) {
       validateAsset(entity.asset, id);
     }
+  }
+}
+
+function validateHitbox(
+  hitbox: { x: number; y: number; width: number; height: number },
+  entity: { width: number; height: number },
+  entityId: string
+): void {
+  if (hitbox.width <= 0 || hitbox.height <= 0) {
+    throw new Error(`Entity ${entityId} hitbox must have positive width and height`);
+  }
+  if (hitbox.x < 0 || hitbox.y < 0) {
+    throw new Error(`Entity ${entityId} hitbox position must be >= 0`);
+  }
+  if (hitbox.x + hitbox.width > entity.width || hitbox.y + hitbox.height > entity.height) {
+    throw new Error(`Entity ${entityId} hitbox must fit within entity width/height`);
   }
 }
 

@@ -525,24 +525,66 @@ textarea:focus-visible {
   font-size: 0.92rem;
 }
 
-.scene-graph-remove {
-  min-width: 4.8rem;
-  min-height: 2.75rem;
-  padding: 0.7rem 0.8rem;
-  border: 1px solid rgba(154, 77, 63, 0.22);
-  border-radius: 0.9rem;
-  background: var(--danger-soft);
-  color: var(--danger);
-  font-size: 0.78rem;
+.scene-graph-button {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.3rem;
   font-weight: 600;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.scene-graph-button:hover,
+.scene-graph-button:focus-visible {
+  outline: none;
+}
+
+.scene-graph-remove {
+  border-color: rgba(154, 77, 63, 0.22);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .scene-graph-remove:hover,
 .scene-graph-remove:focus-visible {
   border-color: rgba(154, 77, 63, 0.4);
   background: rgba(212, 131, 108, 0.18);
+}
+
+.scene-graph-edit {
+  color: var(--muted);
+}
+
+.scene-graph-edit:hover,
+.scene-graph-edit:focus-visible {
+  background: rgba(186, 168, 143, 0.15);
+  color: var(--ink);
+}
+
+.scene-graph-rename-input {
+  flex: 1;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgba(20, 93, 102, 0.45);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.scene-graph-rename-input:focus {
   outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(20, 93, 102, 0.1);
 }
 
 .action-item {

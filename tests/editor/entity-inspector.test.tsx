@@ -14,6 +14,7 @@ describe('Entity inspector', () => {
     expect(markup).toContain('Scale Y');
     expect(markup).toContain('Origin X');
     expect(markup).toContain('Origin Y');
+    expect(markup).toContain('Hitbox (Bounds)');
     expect(markup).toContain('Flip X');
     expect(markup).toContain('Visual');
     expect(markup).toContain('Alpha');

@@ -5,7 +5,6 @@ import { EditorProvider, useEditorStore } from './editor/EditorStore';
 import { EntityList } from './editor/EntityList';
 import { Inspector } from './editor/Inspector';
 import { Toolbar } from './editor/Toolbar';
-import { JsonPanel } from './editor/JsonPanel';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
@@ -331,7 +330,6 @@ function AppShell() {
         </main>
         <aside className="pane pane-right" data-testid="inspector-pane">
           <Inspector />
-          <JsonPanel />
         </aside>
       </div>
     </div>

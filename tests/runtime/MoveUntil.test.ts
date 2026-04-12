@@ -81,6 +81,42 @@ describe('MoveUntil', () => {
     expect(action.isComplete()).toBe(true);
   });
 
+  it('keeps moving when clamped back into bounds while traveling inward', () => {
+    const target = makeEntity({ x: 5 });
+    const action = new MoveUntil(
+      [target],
+      { x: 50, y: 0 },
+      new BoundsHit(
+        { minX: 0, maxX: 200, minY: 0, maxY: 200 },
+        'any',
+        { behavior: 'limit' }
+      )
+    );
+
+    action.start();
+    action.update(50);
+
+    expect(target.x).toBeCloseTo(10, 5);
+    expect(target.vx).toBe(50);
+    expect(action.isComplete()).toBe(false);
+
+    action.update(50);
+
+    expect(target.x).toBeGreaterThan(10);
+    expect(action.isComplete()).toBe(false);
+  });
+
+  it('does not throw when BoundsHit spans are smaller than the target', () => {
+    const target = makeEntity({ x: 100, y: 100, width: 40, height: 40 });
+    const action = new MoveUntil(
+      [target],
+      { x: 10, y: 0 },
+      new BoundsHit({ minX: 0, maxX: 10, minY: 0, maxY: 10 }, 'any')
+    );
+
+    expect(() => action.start()).not.toThrow();
+  });
+
   it('keeps moving with the bounced velocity instead of completing on first contact', () => {
     const target = makeEntity({ x: 185 });
     const action = new MoveUntil(

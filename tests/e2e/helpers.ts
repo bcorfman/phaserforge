@@ -96,6 +96,10 @@ export async function getEntityWorldRect(page: Page, id: string): Promise<Rect> 
   return page.evaluate((entityId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(entityId), id) as Promise<Rect>;
 }
 
+export async function getEntitySpriteWorldRect(page: Page, id: string): Promise<Rect> {
+  return page.evaluate((entityId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntitySpriteWorldRect(entityId), id) as Promise<Rect>;
+}
+
 export async function getGroupWorldBounds(page: Page, id: string): Promise<Rect> {
   return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getGroupWorldBounds(groupId), id) as Promise<Rect>;
 }
