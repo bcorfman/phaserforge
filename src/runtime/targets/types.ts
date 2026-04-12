@@ -4,6 +4,7 @@ export interface RuntimeEntity {
   y: number;
   width: number;
   height: number;
+  hitbox?: { x: number; y: number; width: number; height: number };
   rotationDeg?: number;
   scaleX?: number;
   scaleY?: number;

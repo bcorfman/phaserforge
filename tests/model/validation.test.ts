@@ -67,4 +67,10 @@ describe('model validation', () => {
     scene.entities.e1.alpha = 2;
     expect(() => validateSceneSpec(scene)).toThrow(/alpha/i);
   });
+
+  it('A9 hitbox must fit within entity dimensions', () => {
+    const scene = baseScene();
+    scene.entities.e1.hitbox = { x: 2, y: 2, width: 20, height: 20 };
+    expect(() => validateSceneSpec(scene)).toThrow(/hitbox/i);
+  });
 });

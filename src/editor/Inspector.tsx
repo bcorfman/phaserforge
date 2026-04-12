@@ -252,6 +252,121 @@ export function renderEntityInspector(
         <span>Height</span>
         <input aria-label="Entity Height" data-testid="entity-height-input" type="number" min={1} value={resolved.height} onChange={(e) => update({ height: Math.max(1, Number(e.target.value) || 1) })} />
       </label>
+      <div className="panel-heading">Hitbox (Bounds)</div>
+      <label className="field">
+        <span>Use Hitbox</span>
+        <input
+          aria-label="Use Hitbox"
+          data-testid="entity-hitbox-enabled-input"
+          type="checkbox"
+          checked={Boolean(resolved.hitbox)}
+          onChange={(e) => update({
+            hitbox: e.target.checked
+              ? { x: 0, y: 0, width: resolved.width, height: resolved.height }
+              : undefined,
+          })}
+        />
+      </label>
+      <div className="inspector-row" style={{ display: 'flex', gap: 8 }}>
+        <button
+          className="button"
+          data-testid="entity-hitbox-autofit-button"
+          type="button"
+          onClick={() => {
+            void import('../phaser/EventBus').then(({ getActiveScene }) => {
+              const scene = getActiveScene() as any;
+              const computed = scene?.computeAutoHitboxForEntity?.(entity.id);
+              if (computed) update({ hitbox: computed });
+            }).catch(() => {});
+          }}
+        >
+          Auto-fit
+        </button>
+        <button
+          className="button"
+          data-testid="entity-hitbox-reset-button"
+          type="button"
+          onClick={() => update({ hitbox: { x: 0, y: 0, width: resolved.width, height: resolved.height } })}
+        >
+          Reset
+        </button>
+      </div>
+      {resolved.hitbox && (
+        <>
+          <label className="field">
+            <span>Hitbox X</span>
+            <input
+              aria-label="Hitbox X"
+              data-testid="entity-hitbox-x-input"
+              type="number"
+              min={0}
+              value={resolved.hitbox.x}
+              onChange={(e) =>
+                update({
+                  hitbox: {
+                    ...resolved.hitbox!,
+                    x: Math.max(0, Math.min(resolved.width, Number(e.target.value) || 0)),
+                  },
+                })
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Hitbox Y</span>
+            <input
+              aria-label="Hitbox Y"
+              data-testid="entity-hitbox-y-input"
+              type="number"
+              min={0}
+              value={resolved.hitbox.y}
+              onChange={(e) =>
+                update({
+                  hitbox: {
+                    ...resolved.hitbox!,
+                    y: Math.max(0, Math.min(resolved.height, Number(e.target.value) || 0)),
+                  },
+                })
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Hitbox Width</span>
+            <input
+              aria-label="Hitbox Width"
+              data-testid="entity-hitbox-width-input"
+              type="number"
+              min={1}
+              value={resolved.hitbox.width}
+              onChange={(e) =>
+                update({
+                  hitbox: {
+                    ...resolved.hitbox!,
+                    width: Math.max(1, Math.min(resolved.width - resolved.hitbox!.x, Number(e.target.value) || 1)),
+                  },
+                })
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Hitbox Height</span>
+            <input
+              aria-label="Hitbox Height"
+              data-testid="entity-hitbox-height-input"
+              type="number"
+              min={1}
+              value={resolved.hitbox.height}
+              onChange={(e) =>
+                update({
+                  hitbox: {
+                    ...resolved.hitbox!,
+                    height: Math.max(1, Math.min(resolved.height - resolved.hitbox!.y, Number(e.target.value) || 1)),
+                  },
+                })
+              }
+            />
+          </label>
+        </>
+      )}
       <label className="field">
         <span>Scale X</span>
         <input aria-label="Scale X" data-testid="entity-scale-x-input" type="number" min={0.01} step="0.1" value={resolved.scaleX} onChange={(e) => update({ scaleX: Math.max(0.01, Number(e.target.value) || 0.01) })} />

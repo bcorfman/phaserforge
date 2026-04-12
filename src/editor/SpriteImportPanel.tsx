@@ -3,6 +3,7 @@ import { ImportedEntityDraft, useEditorStore } from './EditorStore';
 import { EntitySpec, SpriteAssetSource } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getSceneWorld } from './sceneWorld';
+import { clampHitboxToEntity, computeHitboxFromImageData } from './hitboxAuto';
 
 type LoadedImage = {
   src: string;
@@ -10,6 +11,7 @@ type LoadedImage = {
   mimeType?: string;
   width: number;
   height: number;
+  image: HTMLImageElement;
   sourceKind: 'embedded' | 'path';
 };
 
@@ -23,6 +25,7 @@ function loadImageMetadata(src: string, name: string, mimeType: string | undefin
         mimeType,
         width: image.naturalWidth,
         height: image.naturalHeight,
+        image,
         sourceKind,
       });
     };
@@ -43,6 +46,7 @@ export function SpriteImportPanel() {
   const [imageType, setImageType] = useState<'image' | 'spritesheet'>('image');
   const [frameWidth, setFrameWidth] = useState(32);
   const [frameHeight, setFrameHeight] = useState(32);
+  const [autoHitbox, setAutoHitbox] = useState(true);
   const [selectedFrames, setSelectedFrames] = useState<number[]>([0]);
   const [error, setError] = useState<string | undefined>();
   const world = getSceneWorld(state.scene);
@@ -119,13 +123,22 @@ export function SpriteImportPanel() {
       const columns = grid?.columns ?? 1;
       const frameX = (frameIndex % columns) * frameWidth;
       const frameY = Math.floor(frameIndex / columns) * frameHeight;
+      const entityWidth = imageType === 'spritesheet' ? frameWidth : loadedImage.width;
+      const entityHeight = imageType === 'spritesheet' ? frameHeight : loadedImage.height;
+      const hitbox = autoHitbox ? computeAutoHitbox(loadedImage.image, {
+        frameX,
+        frameY,
+        frameWidth: entityWidth,
+        frameHeight: entityHeight,
+      }) : undefined;
       const entity: EntitySpec = {
         id: makeEntityId(index),
         name: `${loadedImage.name}-${frameIndex}`,
         x: baseX + (index % 4) * (frameWidth + 12),
         y: baseY + Math.floor(index / 4) * (frameHeight + 12),
-        width: imageType === 'spritesheet' ? frameWidth : loadedImage.width,
-        height: imageType === 'spritesheet' ? frameHeight : loadedImage.height,
+        width: entityWidth,
+        height: entityHeight,
+        hitbox,
         rotationDeg: 0,
         asset: {
           source,
@@ -208,6 +221,16 @@ export function SpriteImportPanel() {
             {loadedImage.name} {loadedImage.width} x {loadedImage.height}
           </div>
           <label className="field">
+            <span>Auto Hitbox</span>
+            <input
+              aria-label="Auto Hitbox"
+              data-testid="sprite-import-auto-hitbox-input"
+              type="checkbox"
+              checked={autoHitbox}
+              onChange={(e) => setAutoHitbox(e.target.checked)}
+            />
+          </label>
+          <label className="field">
             <span>Mode</span>
             <select
               aria-label="Sprite import mode"
@@ -269,4 +292,38 @@ export function SpriteImportPanel() {
       {error && <div className="toolbar-error">{error}</div>}
     </div>
   );
+}
+
+function computeAutoHitbox(
+  image: HTMLImageElement,
+  params: { frameX: number; frameY: number; frameWidth: number; frameHeight: number }
+): EntitySpec['hitbox'] {
+  const canvas = document.createElement('canvas');
+  canvas.width = params.frameWidth;
+  canvas.height = params.frameHeight;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) {
+    return { x: 0, y: 0, width: params.frameWidth, height: params.frameHeight };
+  }
+
+  try {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+      image,
+      params.frameX,
+      params.frameY,
+      params.frameWidth,
+      params.frameHeight,
+      0,
+      0,
+      params.frameWidth,
+      params.frameHeight
+    );
+    const imageData = ctx.getImageData(0, 0, params.frameWidth, params.frameHeight);
+    const computed = computeHitboxFromImageData(imageData, { alphaThreshold: 1 });
+    const raw = computed ?? { x: 0, y: 0, width: params.frameWidth, height: params.frameHeight };
+    return clampHitboxToEntity(raw, { width: params.frameWidth, height: params.frameHeight });
+  } catch {
+    return { x: 0, y: 0, width: params.frameWidth, height: params.frameHeight };
+  }
 }

@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { EventBus, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
-import { SceneSpec, BoundsHitConditionSpec, SpriteAssetSpec } from '../model/types';
+import { SceneSpec, BoundsHitConditionSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
 import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
 import { getRotatedEntityBounds } from '../runtime/geometry';
+import { clampHitboxToEntity, computeHitboxFromImageData, mapHitboxToEntitySize } from '../editor/hitboxAuto';
 import {
   hitTestCanvas,
   getCursorForHitTest,
@@ -32,6 +33,7 @@ export class EditorScene extends Phaser.Scene {
   private entityToGroup = new Map<string, string>();
   private boundsGraphics?: Phaser.GameObjects.Graphics;
   private boundsHandles = new Map<string, Phaser.GameObjects.Zone>();
+  private readonly autoHitboxCache = new Map<string, { x: number; y: number; width: number; height: number; sourceW: number; sourceH: number }>();
   private groupFrames = new Map<string, Phaser.GameObjects.Graphics>();
   private groupLabels = new Map<string, Phaser.GameObjects.Text>();
   private groupZones = new Map<string, Phaser.GameObjects.Zone>();
@@ -170,6 +172,76 @@ export class EditorScene extends Phaser.Scene {
       centerX: entity.x,
       centerY: entity.y,
     };
+  }
+
+  public getEntitySpriteWorldRect(id: string): { minX: number; minY: number; maxX: number; maxY: number; centerX: number; centerY: number } | null {
+    const sprite = this.sprites.get(id);
+    if (!sprite) return null;
+    const bounds = sprite.getBounds();
+    return {
+      minX: bounds.x,
+      minY: bounds.y,
+      maxX: bounds.x + bounds.width,
+      maxY: bounds.y + bounds.height,
+      centerX: sprite.x,
+      centerY: sprite.y,
+    };
+  }
+
+  public computeAutoHitboxForEntity(entityId: string, options: { alphaThreshold?: number } = {}): HitboxSpec | null {
+    const compiled = this.compiled;
+    if (!compiled) return null;
+    const entitySpec = compiled.scene.entities[entityId];
+    if (!entitySpec) return null;
+    const asset = entitySpec.asset;
+    if (!asset) {
+      return { x: 0, y: 0, width: entitySpec.width, height: entitySpec.height };
+    }
+
+    const textureKey = this.getTextureKey(asset);
+    const texture = this.textures.get(textureKey);
+    if (!texture) return { x: 0, y: 0, width: entitySpec.width, height: entitySpec.height };
+
+    const frameRef = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+    const frameKey: string | number = frameRef === undefined ? '__BASE' : frameRef;
+    const frameName = String(frameKey);
+    const frame = texture.get(frameKey as any);
+    if (!frame) return { x: 0, y: 0, width: entitySpec.width, height: entitySpec.height };
+
+    const source = frame.source.image as HTMLImageElement | HTMLCanvasElement | undefined;
+    if (!source) return { x: 0, y: 0, width: entitySpec.width, height: entitySpec.height };
+
+    const sourceW = frame.cutWidth;
+    const sourceH = frame.cutHeight;
+    const alphaThreshold = options.alphaThreshold ?? 1;
+    const cacheKey = `${textureKey}|${frameName}|${alphaThreshold}|${sourceW}x${sourceH}`;
+
+    let raw = this.autoHitboxCache.get(cacheKey) ?? null;
+    if (!raw) {
+      const canvas = document.createElement('canvas');
+      canvas.width = sourceW;
+      canvas.height = sourceH;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return { x: 0, y: 0, width: entitySpec.width, height: entitySpec.height };
+      try {
+        ctx.clearRect(0, 0, sourceW, sourceH);
+        ctx.drawImage(source, frame.cutX, frame.cutY, sourceW, sourceH, 0, 0, sourceW, sourceH);
+        const imageData = ctx.getImageData(0, 0, sourceW, sourceH);
+        const computed = computeHitboxFromImageData(imageData, { alphaThreshold });
+        const box = computed ?? { x: 0, y: 0, width: sourceW, height: sourceH };
+        raw = { ...box, sourceW, sourceH };
+        this.autoHitboxCache.set(cacheKey, raw);
+      } catch {
+        return { x: 0, y: 0, width: entitySpec.width, height: entitySpec.height };
+      }
+    }
+
+    const mapped = mapHitboxToEntitySize(
+      { x: raw.x, y: raw.y, width: raw.width, height: raw.height },
+      { width: raw.sourceW, height: raw.sourceH },
+      { width: entitySpec.width, height: entitySpec.height }
+    );
+    return clampHitboxToEntity(mapped, { width: entitySpec.width, height: entitySpec.height });
   }
 
   public getGroupWorldBounds(id: string): { minX: number; minY: number; maxX: number; maxY: number } | null {
@@ -561,8 +633,9 @@ export class EditorScene extends Phaser.Scene {
       sprite.setDisplaySize(entity.width, entity.height);
       sprite.setScale((entity.flipX ? -1 : 1) * Math.abs(entity.scaleX ?? 1), (entity.flipY ? -1 : 1) * Math.abs(entity.scaleY ?? 1));
     } else {
-      sprite.setDisplaySize(entity.width, entity.height);
-      sprite.setScale(Math.abs(entity.scaleX ?? 1), Math.abs(entity.scaleY ?? 1));
+      const displayWidth = entity.width * Math.abs(entity.scaleX ?? 1);
+      const displayHeight = entity.height * Math.abs(entity.scaleY ?? 1);
+      sprite.setDisplaySize(displayWidth, displayHeight);
       sprite.setFlipX(entity.flipX ?? false);
       sprite.setFlipY(entity.flipY ?? false);
       if (asset?.imageType === 'spritesheet' && sprite instanceof Phaser.GameObjects.Sprite) {

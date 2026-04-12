@@ -1,6 +1,6 @@
 import { coerceTarget, flattenTarget, isFormationGroup } from '../targets/resolveTarget';
 import { GroupBounds, RuntimeEntity, RuntimeTarget } from '../targets/types';
-import { getRotatedEntityBounds, getRectSpan } from '../geometry';
+import { getRotatedEntityBoundaryBounds, getRectSpan } from '../geometry';
 
 export type BoundaryScope = 'member-any' | 'member-all' | 'group-extents';
 export type BoundaryBehavior = 'stop' | 'limit' | 'bounce' | 'wrap';
@@ -19,12 +19,31 @@ export interface BoundaryResult {
 }
 
 function entityBounds(entity: RuntimeEntity): GroupBounds {
-  return getRotatedEntityBounds(entity);
+  return getRotatedEntityBoundaryBounds(entity);
 }
 
 function targetKey(target: RuntimeTarget): string {
   if (isFormationGroup(target)) return `group:${target.id}`;
   return `entity:${target.id}`;
+}
+
+function combineBounds(bounds: GroupBounds[]): GroupBounds {
+  return bounds.reduce(
+    (acc, next) => ({
+      minX: Math.min(acc.minX, next.minX),
+      maxX: Math.max(acc.maxX, next.maxX),
+      minY: Math.min(acc.minY, next.minY),
+      maxY: Math.max(acc.maxY, next.maxY),
+    }),
+    bounds[0]
+  );
+}
+
+function groupBoundaryBounds(group: RuntimeTarget): GroupBounds {
+  if (!isFormationGroup(group) || group.members.length === 0) {
+    return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  }
+  return combineBounds(group.members.map((member) => entityBounds(member)));
 }
 
 export class BoundaryEngine {
@@ -87,7 +106,7 @@ export class BoundaryEngine {
 
   private detect(target: RuntimeTarget): BoundaryResult {
     if (this.scope === 'group-extents' && isFormationGroup(target)) {
-      const groupBounds = target.getBounds();
+      const groupBounds = groupBoundaryBounds(target);
       return {
         hit: this.hasHit(groupBounds),
         sides: this.hitSides(groupBounds),
@@ -169,27 +188,81 @@ export class BoundaryEngine {
     previous: BoundaryResult['sides']
   ): void {
     if (!isFormationGroup(target)) return;
-    const current = target.getBounds();
+    const current = groupBoundaryBounds(target);
+    const members = target.members;
+    const movingOutX = sides.x === 'left'
+      ? members.some((member) => (member.vx ?? 0) < 0)
+      : sides.x === 'right'
+        ? members.some((member) => (member.vx ?? 0) > 0)
+        : false;
+    const movingOutY = sides.y === 'bottom'
+      ? members.some((member) => (member.vy ?? 0) < 0)
+      : sides.y === 'top'
+        ? members.some((member) => (member.vy ?? 0) > 0)
+        : false;
+
     let dx = 0;
     let dy = 0;
 
     if (sides.x === 'left') {
-      dx = this.behavior === 'wrap' ? this.bounds.maxX - current.maxX : this.bounds.minX - current.minX;
+      if (this.behavior === 'wrap') {
+        dx = movingOutX
+          ? this.bounds.maxX - current.maxX
+          : current.minX < this.bounds.minX
+            ? this.bounds.minX - current.minX
+            : 0;
+      } else {
+        dx = this.bounds.minX - current.minX;
+      }
     } else if (sides.x === 'right') {
-      dx = this.behavior === 'wrap' ? this.bounds.minX - current.minX : this.bounds.maxX - current.maxX;
+      if (this.behavior === 'wrap') {
+        dx = movingOutX
+          ? this.bounds.minX - current.minX
+          : current.maxX > this.bounds.maxX
+            ? this.bounds.maxX - current.maxX
+            : 0;
+      } else {
+        dx = this.bounds.maxX - current.maxX;
+      }
     }
 
     if (sides.y === 'bottom') {
-      dy = this.behavior === 'wrap' ? this.bounds.maxY - current.maxY : this.bounds.minY - current.minY;
+      if (this.behavior === 'wrap') {
+        dy = movingOutY
+          ? this.bounds.maxY - current.maxY
+          : current.minY < this.bounds.minY
+            ? this.bounds.minY - current.minY
+            : 0;
+      } else {
+        dy = this.bounds.minY - current.minY;
+      }
     } else if (sides.y === 'top') {
-      dy = this.behavior === 'wrap' ? this.bounds.minY - current.minY : this.bounds.maxY - current.maxY;
+      if (this.behavior === 'wrap') {
+        dy = movingOutY
+          ? this.bounds.minY - current.minY
+          : current.maxY > this.bounds.maxY
+            ? this.bounds.maxY - current.maxY
+            : 0;
+      } else {
+        dy = this.bounds.maxY - current.maxY;
+      }
     }
 
     target.translate(dx, dy);
 
     if (this.behavior === 'limit' || this.behavior === 'stop') {
-      if (sides.x) target.stopVelocity('x');
-      if (sides.y) target.stopVelocity('y');
+      if (sides.x && movingOutX) {
+        for (const member of target.members) {
+          const vx = member.vx ?? 0;
+          if (sides.x === 'left' ? vx < 0 : vx > 0) member.vx = 0;
+        }
+      }
+      if (sides.y && movingOutY) {
+        for (const member of target.members) {
+          const vy = member.vy ?? 0;
+          if (sides.y === 'bottom' ? vy < 0 : vy > 0) member.vy = 0;
+        }
+      }
       return;
     }
 
@@ -197,8 +270,16 @@ export class BoundaryEngine {
       const shouldFlipX = sides.x && sides.x !== previous.x;
       const shouldFlipY = sides.y && sides.y !== previous.y;
       for (const member of target.members) {
-        if (shouldFlipX) member.vx = -(member.vx ?? 0);
-        if (shouldFlipY) member.vy = -(member.vy ?? 0);
+        if (shouldFlipX && sides.x) {
+          const vx = member.vx ?? 0;
+          const movingOut = sides.x === 'left' ? vx < 0 : vx > 0;
+          if (movingOut) member.vx = -vx;
+        }
+        if (shouldFlipY && sides.y) {
+          const vy = member.vy ?? 0;
+          const movingOut = sides.y === 'bottom' ? vy < 0 : vy > 0;
+          if (movingOut) member.vy = -vy;
+        }
       }
     }
   }
@@ -207,40 +288,68 @@ export class BoundaryEngine {
     for (const member of members) {
       const current = entityBounds(member);
       const sides = this.hitSides(current);
+      const vx = member.vx ?? 0;
+      const vy = member.vy ?? 0;
+      const movingOutX = sides.x === 'left'
+        ? vx < 0
+        : sides.x === 'right'
+          ? vx > 0
+          : false;
+      const movingOutY = sides.y === 'bottom'
+        ? vy < 0
+        : sides.y === 'top'
+          ? vy > 0
+          : false;
 
       if (sides.x === 'left') {
         if (this.behavior === 'wrap') {
-          member.x += this.bounds.maxX - current.maxX;
+          if (movingOutX) {
+            member.x += this.bounds.maxX - current.maxX;
+          } else {
+            member.x += this.bounds.minX - current.minX;
+          }
         } else {
           member.x += this.bounds.minX - current.minX;
-          if (this.behavior === 'limit' || this.behavior === 'stop') member.vx = 0;
-          if (this.behavior === 'bounce') member.vx = -(member.vx ?? 0);
+          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutX) member.vx = 0;
+          if (this.behavior === 'bounce' && movingOutX) member.vx = -vx;
         }
       } else if (sides.x === 'right') {
         if (this.behavior === 'wrap') {
-          member.x += this.bounds.minX - current.minX;
+          if (movingOutX) {
+            member.x += this.bounds.minX - current.minX;
+          } else {
+            member.x += this.bounds.maxX - current.maxX;
+          }
         } else {
           member.x += this.bounds.maxX - current.maxX;
-          if (this.behavior === 'limit' || this.behavior === 'stop') member.vx = 0;
-          if (this.behavior === 'bounce') member.vx = -(member.vx ?? 0);
+          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutX) member.vx = 0;
+          if (this.behavior === 'bounce' && movingOutX) member.vx = -vx;
         }
       }
 
       if (sides.y === 'bottom') {
         if (this.behavior === 'wrap') {
-          member.y += this.bounds.maxY - current.maxY;
+          if (movingOutY) {
+            member.y += this.bounds.maxY - current.maxY;
+          } else {
+            member.y += this.bounds.minY - current.minY;
+          }
         } else {
           member.y += this.bounds.minY - current.minY;
-          if (this.behavior === 'limit' || this.behavior === 'stop') member.vy = 0;
-          if (this.behavior === 'bounce') member.vy = -(member.vy ?? 0);
+          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutY) member.vy = 0;
+          if (this.behavior === 'bounce' && movingOutY) member.vy = -vy;
         }
       } else if (sides.y === 'top') {
         if (this.behavior === 'wrap') {
-          member.y += this.bounds.minY - current.minY;
+          if (movingOutY) {
+            member.y += this.bounds.minY - current.minY;
+          } else {
+            member.y += this.bounds.maxY - current.maxY;
+          }
         } else {
           member.y += this.bounds.maxY - current.maxY;
-          if (this.behavior === 'limit' || this.behavior === 'stop') member.vy = 0;
-          if (this.behavior === 'bounce') member.vy = -(member.vy ?? 0);
+          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutY) member.vy = 0;
+          if (this.behavior === 'bounce' && movingOutY) member.vy = -vy;
         }
       }
     }
