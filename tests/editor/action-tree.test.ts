@@ -1,30 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { buildBehaviorActionTrees } from '../../src/editor/actionTree';
+import { getAttachmentsForTarget } from '../../src/editor/attachmentCommands';
 import { sampleScene } from '../../src/model/sampleScene';
 
-describe('buildBehaviorActionTrees', () => {
-  it('orders actions by behavior root and nested child references', () => {
-    const [tree] = buildBehaviorActionTrees(sampleScene);
+describe('attachmentCommands', () => {
+  it('orders attachments for a target by order then id', () => {
+    const list = getAttachmentsForTarget(sampleScene, { type: 'group', groupId: 'g-enemies' });
 
-    expect(tree.behaviorId).toBe('b-formation');
-    expect(tree.root.id).toBe('a-root');
-    expect(tree.root.children.map((child) => child.id)).toEqual(['a-seq']);
-    expect(tree.root.children[0].children.map((child) => child.id)).toEqual([
-      'a-move-right',
-      'a-drop-right',
-      'a-wait-right',
-      'a-move-left',
-      'a-drop-left',
-      'a-wait-left',
+    expect(list.map((a) => a.id)).toEqual([
+      'att-loop',
+      'att-move-right',
+      'att-drop-right',
+      'att-wait-right',
+      'att-move-left',
+      'att-drop-left',
+      'att-wait-left',
     ]);
   });
 
-  it('returns an empty action subtree when the root action is missing', () => {
-    const [tree] = buildBehaviorActionTrees({
-      ...sampleScene,
-      actions: {},
-    });
+  it('returns an empty list when no attachments exist for a target', () => {
+    const list = getAttachmentsForTarget(sampleScene, { type: 'entity', entityId: 'e1' });
 
-    expect(tree.root).toBeUndefined();
+    expect(list).toEqual([]);
   });
 });

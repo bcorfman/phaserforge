@@ -12,6 +12,7 @@ export function baseScene(): SceneSpec {
     groups: {
       g1: { id: 'g1', members: ['e1', 'e2', 'e3'] },
     },
+    attachments: {},
     behaviors: {
       b1: {
         id: 'b1',

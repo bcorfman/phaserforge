@@ -16,7 +16,96 @@ export function Toolbar() {
         </p>
       </div>
       <div className="toolbar-right">
-        <div className="toolbar-actions" role="toolbar" aria-label="Studio actions">
+        <div className="toolbar-right-top">
+          <label className="toolbar-field">
+            <span>Startup</span>
+            <select
+              aria-label="Startup mode"
+              data-testid="startup-mode-select"
+              value={state.startupMode}
+              onChange={(e) => dispatch({ type: 'set-startup-mode', startupMode: e.target.value as typeof state.startupMode })}
+            >
+              <option value="reload_last_yaml">Reload Last YAML</option>
+              <option value="new_empty_scene">New Empty Scene</option>
+            </select>
+          </label>
+          <label className="toolbar-field toolbar-field-compact">
+            <span>UI Scale</span>
+            <div className="toolbar-slider-row">
+              <input
+                aria-label="UI Scale"
+                data-testid="ui-scale-slider"
+                className="toolbar-slider"
+                type="range"
+                min={0.75}
+                max={1.1}
+                step={0.05}
+                value={state.uiScale}
+                onChange={(e) => dispatch({ type: 'set-ui-scale', uiScale: Number(e.target.value) })}
+              />
+              <span className="toolbar-slider-value">{Math.round(state.uiScale * 100)}%</span>
+            </div>
+          </label>
+          <div className="theme-toggle" role="group" aria-label="Theme">
+            <button
+              aria-label="Use system theme"
+              aria-pressed={state.themeMode === 'system'}
+              className={`theme-button ${state.themeMode === 'system' ? 'active' : ''}`}
+              data-testid="theme-mode-system"
+              type="button"
+              onClick={() => dispatch({ type: 'set-theme-mode', themeMode: 'system' })}
+            >
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M4 5.75C4 4.7835 4.7835 4 5.75 4H18.25C19.2165 4 20 4.7835 20 5.75V15.25C20 16.2165 19.2165 17 18.25 17H5.75C4.7835 17 4 16.2165 4 15.25V5.75Z"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                />
+                <path d="M8 20H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M12 17V20" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              </svg>
+            </button>
+            <button
+              aria-label="Use light theme"
+              aria-pressed={state.themeMode === 'light'}
+              className={`theme-button ${state.themeMode === 'light' ? 'active' : ''}`}
+              data-testid="theme-mode-light"
+              type="button"
+              onClick={() => dispatch({ type: 'set-theme-mode', themeMode: 'light' })}
+            >
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="4.25" stroke="currentColor" strokeWidth="1.7" />
+                <path d="M12 2.5V5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M12 19V21.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M2.5 12H5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M19 12H21.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M4.6 4.6L6.35 6.35" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M17.65 17.65L19.4 19.4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M4.6 19.4L6.35 17.65" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M17.65 6.35L19.4 4.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              </svg>
+            </button>
+            <button
+              aria-label="Use dark theme"
+              aria-pressed={state.themeMode === 'dark'}
+              className={`theme-button ${state.themeMode === 'dark' ? 'active' : ''}`}
+              data-testid="theme-mode-dark"
+              type="button"
+              onClick={() => dispatch({ type: 'set-theme-mode', themeMode: 'dark' })}
+            >
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20.5 14.4C19.5 18.3 15.8 21.2 11.7 20.9C7.2 20.6 3.6 16.8 3.6 12.3C3.6 8.1 6.7 4.6 10.8 3.7C10.4 5.1 10.3 6.6 10.6 8C11.4 11.8 15 14.4 18.9 13.9C19.5 13.8 20 13.6 20.5 13.3V14.4Z"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="toolbar-actions toolbar-actions-bottom" role="toolbar" aria-label="Studio actions">
         <button
           aria-label="Toggle play mode"
           className={`button ${state.mode === 'play' ? 'active' : ''}`}
@@ -53,19 +142,6 @@ export function Toolbar() {
         >
           New Scene
         </button>
-        </div>
-        <label className="toolbar-field">
-          <span>Startup</span>
-          <select
-            aria-label="Startup mode"
-            data-testid="startup-mode-select"
-            value={state.startupMode}
-            onChange={(e) => dispatch({ type: 'set-startup-mode', startupMode: e.target.value as typeof state.startupMode })}
-          >
-            <option value="reload_last_yaml">Reload Last YAML</option>
-            <option value="new_empty_scene">New Empty Scene</option>
-          </select>
-        </label>
       </div>
       {state.error && <div className="toolbar-error" data-testid="toolbar-error" role="alert">{state.error}</div>}
     </header>

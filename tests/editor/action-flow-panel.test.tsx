@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { TargetActionPanel } from '../../src/editor/ActionFlowEditor';
+import { AttachedActionsPanel } from '../../src/editor/AttachedActionsPanel';
 import { sampleScene } from '../../src/model/sampleScene';
 
 const registry = {
@@ -9,59 +9,50 @@ const registry = {
     { type: 'MoveUntil', displayName: 'Move Until', category: 'movement', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'Wait', displayName: 'Wait', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'Call', displayName: 'Call', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
+    { type: 'Repeat', displayName: 'Repeat', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
   ],
   conditions: [],
 };
 
-describe('TargetActionPanel', () => {
-  it('shows assign flow controls when the selected target has no behavior', () => {
+describe('AttachedActionsPanel', () => {
+  it('renders add buttons and an ordered list of attached actions for a target', () => {
     const markup = renderToStaticMarkup(
-      <TargetActionPanel
+      <AttachedActionsPanel
         scene={sampleScene}
         target={{ type: 'entity', entityId: 'e1' }}
+        selectedAttachmentId={undefined}
         registry={registry}
-        onAssignFlow={() => {}}
-        onAssignExistingBehavior={() => {}}
-        onRenameBehavior={() => {}}
-        onRemoveBehavior={() => {}}
-        onAddAction={() => {}}
-        onMoveAction={() => {}}
-        onRemoveAction={() => {}}
-        onSelectBehavior={() => {}}
-        onSelectAction={() => {}}
+        onAddAttachment={() => {}}
+        onSelectAttachment={() => {}}
+        onMoveAttachment={() => {}}
+        onRemoveAttachment={() => {}}
       />
     );
 
-    expect(markup).toContain('Assign Action Flow');
-    expect(markup).toContain('Use Existing Flow');
+    expect(markup).toContain('Attached Actions');
+    expect(markup).toContain('Add');
+    expect(markup).toContain('Move Until');
+    expect(markup).toContain('Repeat');
+    expect(markup).toContain('List');
   });
 
-  it('shows sequence editing controls when the selected group already has a behavior', () => {
+  it('marks the selected attachment and includes step labels', () => {
     const markup = renderToStaticMarkup(
-      <TargetActionPanel
+      <AttachedActionsPanel
         scene={sampleScene}
         target={{ type: 'group', groupId: 'g-enemies' }}
-        selectedActionId="a-move-left"
+        selectedAttachmentId="att-move-left"
         registry={registry}
-        onAssignFlow={() => {}}
-        onAssignExistingBehavior={() => {}}
-        onRenameBehavior={() => {}}
-        onRemoveBehavior={() => {}}
-        onAddAction={() => {}}
-        onMoveAction={() => {}}
-        onRemoveAction={() => {}}
-        onSelectBehavior={() => {}}
-        onSelectAction={() => {}}
+        onAddAttachment={() => {}}
+        onSelectAttachment={() => {}}
+        onMoveAttachment={() => {}}
+        onRemoveAttachment={() => {}}
       />
     );
 
-    expect(markup).toContain('Flow Name');
-    expect(markup).toContain('Open Behavior');
-    expect(markup).toContain('Remove Flow');
-    expect(markup).toContain('Preview runs this list from Step 1');
     expect(markup).toContain('Step 1');
+    expect(markup).toContain('Loop');
     expect(markup).toContain('Selected');
-    expect(markup).toContain('Move Right');
-    expect(markup).toContain('Drop');
+    expect(markup).toContain('Move Left');
   });
 });

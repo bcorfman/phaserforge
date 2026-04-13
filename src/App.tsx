@@ -27,6 +27,8 @@ function AppShell() {
     error: state.error,
     hasSeenViewHint: state.hasSeenViewHint,
     startupMode: state.startupMode,
+    themeMode: state.themeMode,
+    uiScale: state.uiScale,
     initialized: state.initialized,
   });
   const world = getSceneWorld(state.scene);
@@ -46,9 +48,24 @@ function AppShell() {
       error: state.error,
       hasSeenViewHint: state.hasSeenViewHint,
       startupMode: state.startupMode,
+      themeMode: state.themeMode,
+      uiScale: state.uiScale,
       initialized: state.initialized,
     };
   }, [state]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (state.themeMode === 'system') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', state.themeMode);
+    }
+  }, [state.themeMode]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--ui-scale', String(state.uiScale));
+  }, [state.uiScale]);
 
   useEffect(() => {
     const getStateSnapshot = () => appStateRef.current;

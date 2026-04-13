@@ -5,23 +5,106 @@ arrange:
     targetKinds: [group]
     implemented: true
     parameters:
-      - { name: rows, type: number, required: true }
-      - { name: cols, type: number, required: true }
+      - { name: rows, type: number, required: true, default: 3 }
+      - { name: cols, type: number, required: true, default: 5 }
+      - { name: startX, type: number, required: true, default: 220 }
+      - { name: startY, type: number, required: true, default: 140 }
+      - { name: spacingX, type: number, required: true, default: 48 }
+      - { name: spacingY, type: number, required: true, default: 40 }
   - type: line
     displayName: Line
     category: formation
     targetKinds: [group]
-    implemented: false
+    implemented: true
+    parameters:
+      - { name: startX, type: number, default: 0 }
+      - { name: startY, type: number, default: 0 }
+      - { name: spacing, type: number, default: 50 }
   - type: circle
     displayName: Circle
     category: formation
     targetKinds: [group]
-    implemented: false
+    implemented: true
+    parameters:
+      - { name: centerX, type: number, default: 0 }
+      - { name: centerY, type: number, default: 0 }
+      - { name: radius, type: number, default: 120 }
+  - type: arc
+    displayName: Arc
+    category: formation
+    targetKinds: [group]
+    implemented: true
+    parameters:
+      - { name: centerX, type: number, default: 0 }
+      - { name: centerY, type: number, default: 0 }
+      - { name: radius, type: number, default: 120 }
+      - { name: startAngleDeg, type: number, default: 20 }
+      - { name: endAngleDeg, type: number, default: 160 }
   - type: v_formation
     displayName: V Formation
     category: formation
     targetKinds: [group]
-    implemented: false
+    implemented: true
+    parameters:
+      - { name: apexX, type: number, default: 0 }
+      - { name: apexY, type: number, default: 0 }
+      - { name: spacing, type: number, default: 60 }
+      - { name: direction, type: string, default: up }
+  - type: diamond
+    displayName: Diamond
+    category: formation
+    targetKinds: [group]
+    implemented: true
+    parameters:
+      - { name: centerX, type: number, default: 0 }
+      - { name: centerY, type: number, default: 0 }
+      - { name: spacing, type: number, default: 60 }
+      - { name: includeCenter, type: boolean, default: true }
+  - type: triangle
+    displayName: Triangle
+    category: formation
+    targetKinds: [group]
+    implemented: true
+    parameters:
+      - { name: apexX, type: number, default: 0 }
+      - { name: apexY, type: number, default: 0 }
+      - { name: rowSpacing, type: number, default: 60 }
+      - { name: lateralSpacing, type: number, default: 60 }
+      - { name: invert, type: boolean, default: false }
+  - type: hexagonal_grid
+    displayName: Hexagonal Grid
+    category: formation
+    targetKinds: [group]
+    implemented: true
+    parameters:
+      - { name: cols, type: number, default: 5 }
+      - { name: rows, type: number, default: 3 }
+      - { name: startX, type: number, default: 0 }
+      - { name: startY, type: number, default: 0 }
+      - { name: spacing, type: number, default: 60 }
+  - type: concentric_rings
+    displayName: Concentric Rings
+    category: formation
+    targetKinds: [group]
+    implemented: true
+    parameters:
+      - { name: centerX, type: number, default: 0 }
+      - { name: centerY, type: number, default: 0 }
+      - { name: ring1Radius, type: number, default: 80 }
+      - { name: ring2Radius, type: number, default: 120 }
+      - { name: ring1Count, type: number, default: 6 }
+      - { name: ring2Count, type: number, default: 12 }
+  - type: cross
+    displayName: Cross
+    category: formation
+    targetKinds: [group]
+    implemented: true
+    parameters:
+      - { name: centerX, type: number, default: 0 }
+      - { name: centerY, type: number, default: 0 }
+      - { name: armLength, type: number, default: 120 }
+      - { name: spacing, type: number, default: 60 }
+      - { name: includeCenter, type: boolean, default: true }
 actions:
   - type: Sequence
     displayName: Sequence

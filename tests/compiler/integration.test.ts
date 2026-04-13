@@ -9,6 +9,7 @@ function simpleScene(): SceneSpec {
       e1: { id: 'e1', x: 0, y: 0, width: 10, height: 10 },
     },
     groups: {},
+    attachments: {},
     behaviors: {
       b1: {
         id: 'b1',
@@ -36,6 +37,7 @@ function groupScene(speed: number): SceneSpec {
     groups: {
       g1: { id: 'g1', members: ['e1', 'e2', 'e3'] },
     },
+    attachments: {},
     behaviors: {
       b1: {
         id: 'b1',

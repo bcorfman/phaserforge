@@ -1,5 +1,16 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, expectInputValue, getEditableBoundsRect, getEntitySpriteWorldRect, getState, gotoStudio, seedSampleScene, selectGroupInSceneGraph, tapWorld, waitForSampleScene } from './helpers';
+import {
+  dismissViewHint,
+  expectInputValue,
+  getEditableBoundsRect,
+  getEntitySpriteWorldRect,
+  getState,
+  gotoStudio,
+  seedSampleScene,
+  selectGroupInSceneGraph,
+  tapWorld,
+  waitForSampleScene,
+} from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
@@ -13,8 +24,9 @@ test('edits formation details and layout from the inspector', async ({ page }) =
   await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');
 
   await page.getByTestId('formation-name-input').fill('Invader Block');
-  await page.getByTestId('group-layout-start-x-input').fill('260');
-  await page.getByTestId('group-layout-spacing-x-input').fill('60');
+  await page.getByTestId('arrange-preset-select').selectOption('grid');
+  await page.getByTestId('arrange-param-startX').fill('260');
+  await page.getByTestId('arrange-param-spacingX').fill('60');
   await page.getByTestId('apply-group-layout-button').click();
 
   await expect.poll(async () => {
@@ -26,25 +38,27 @@ test('edits formation details and layout from the inspector', async ({ page }) =
   });
 });
 
-test('edits move-until and bounds condition values from the inspector', async ({ page }) => {
-  await page.getByTestId('action-item-a-move-right').click();
+test('edits move-until and bounds values from the attachment inspector', async ({ page }) => {
+  await page.getByTestId('attachment-item-att-move-right').click();
 
-  await page.getByTestId('velocity-x-input').fill('140');
-  await page.getByLabel('Min X').fill('120');
-  await page.getByLabel('Max Y').fill('700');
+  await page.getByTestId('attachment-velocity-x-input').fill('140');
+  await page.getByTestId('attachment-bounds-min-x-input').fill('120');
+  await page.getByTestId('attachment-bounds-max-y-input').fill('700');
 
   await expect.poll(async () => {
-    const state = await getState<{ scene: { actions: Record<string, { velocity: { x: number } }>; conditions: Record<string, { bounds: { minX: number; maxY: number } }> } }>(page);
+    const state = await getState<{ scene: { attachments: Record<string, { params?: Record<string, unknown>; condition?: { type: string; bounds: { minX: number; maxY: number } } }> } }>(page);
+    const att = state.scene.attachments['att-move-right'];
     return {
-      velocityX: state.scene.actions['a-move-right'].velocity.x,
-      minX: state.scene.conditions['c-bounds'].bounds.minX,
-      maxY: state.scene.conditions['c-bounds'].bounds.maxY,
+      velocityX: Number(att.params?.velocityX ?? 0),
+      minX: att.condition?.type === 'BoundsHit' ? att.condition.bounds.minX : null,
+      maxY: att.condition?.type === 'BoundsHit' ? att.condition.bounds.maxY : null,
     };
   }).toEqual({ velocityX: 140, minX: 120, maxY: 700 });
 });
 
 test('removes a formation member and keeps the group selected', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
+  await page.getByTestId('inspector').getByLabel('Expand Members').click();
   await page.getByTestId('group-member-remove-e3').click();
 
   await expect.poll(async () => {
@@ -61,21 +75,13 @@ test('removes a formation member and keeps the group selected', async ({ page })
   });
 });
 
-test('removes a behavior flow from the scene graph', async ({ page }) => {
-  await page.getByTestId('remove-behavior-b-formation').click();
+test('removes an attached action from the scene graph', async ({ page }) => {
+  await page.getByTestId('remove-attachment-att-wait-right').click();
 
   await expect.poll(async () => {
-    const state = await getState<{ scene: { behaviors: Record<string, unknown>; actions: Record<string, unknown>; conditions: Record<string, unknown> } }>(page);
-    return {
-      behaviorIds: Object.keys(state.scene.behaviors),
-      actionIds: Object.keys(state.scene.actions),
-      conditionIds: Object.keys(state.scene.conditions),
-    };
-  }).toEqual({
-    behaviorIds: [],
-    actionIds: [],
-    conditionIds: [],
-  });
+    const state = await getState<{ scene: { attachments: Record<string, unknown> } }>(page);
+    return Boolean(state.scene.attachments['att-wait-right']);
+  }).toBe(false);
 });
 
 test('edits authored sprite transform and visual properties from the inspector', async ({ page }) => {
@@ -127,8 +133,9 @@ test('creates a formation from imported sprites and arranges it into a grid', as
   await page.getByTestId('create-formation-from-selection-button').click();
   await expectInputValue(page.getByTestId('formation-name-input'), 'Raid Wing');
 
-  await page.getByTestId('group-layout-rows-input').fill('1');
-  await page.getByTestId('group-layout-cols-input').fill('2');
+  await page.getByTestId('arrange-preset-select').selectOption('grid');
+  await page.getByTestId('arrange-param-rows').fill('1');
+  await page.getByTestId('arrange-param-cols').fill('2');
   await page.getByTestId('apply-group-layout-button').click();
 
   await expect.poll(async () => {
@@ -138,25 +145,26 @@ test('creates a formation from imported sprites and arranges it into a grid', as
   }).toMatchObject({ type: 'grid', rows: 1, cols: 2 });
 });
 
-test('assigns a move flow to an imported sprite', async ({ page }) => {
+test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
 
-  await page.getByTestId('assign-action-flow-button').click();
-  await page.getByTestId('add-action-MoveUntil').click();
-  await page.getByTestId('velocity-x-input').fill('140');
-  await page.getByLabel('Min X').fill('48');
+  await page.getByTestId('add-attachment-MoveUntil').click();
+  await page.getByTestId('attachment-velocity-x-input').fill('140');
+  await page.getByTestId('attachment-bounds-min-x-input').fill('48');
 
   await expect.poll(async () => {
-    const state = await getState<{ selection: { kind: string; id?: string }; scene: { behaviors: Record<string, { target: { type: string; entityId?: string } }>; actions: Record<string, { type: string; velocity?: { x: number }; conditionId?: string }>; conditions: Record<string, { bounds: { minX: number } }> } }>(page);
-    const behavior = Object.values(state.scene.behaviors).find((entry) => entry.target.type === 'entity');
-    const move = state.selection.kind === 'action' && state.selection.id ? state.scene.actions[state.selection.id] : undefined;
-    const condition = move?.conditionId ? state.scene.conditions[move.conditionId] : undefined;
-    return { hasBehavior: Boolean(behavior), velocityX: move?.velocity?.x, minX: condition?.bounds.minX };
-  }).toEqual({ hasBehavior: true, velocityX: 140, minX: 48 });
+    const state = await getState<{ selection: { kind: string; id?: string }; scene: { attachments: Record<string, { target: { type: string; entityId?: string }; presetId: string; params?: Record<string, unknown>; condition?: { type: string; bounds: { minX: number } } }> } }>(page);
+    const created = Object.values(state.scene.attachments).find((att) => att.target.type === 'entity' && att.presetId === 'MoveUntil');
+    return {
+      selectionKind: state.selection.kind,
+      velocityX: created ? Number(created.params?.velocityX ?? 0) : null,
+      minX: created?.condition?.type === 'BoundsHit' ? created.condition.bounds.minX : null,
+    };
+  }).toEqual({ selectionKind: 'attachment', velocityX: 140, minX: 48 });
 });
 
-test('assigns a group move flow to imported sprites and runs it in play mode', async ({ page }) => {
+test('assigns a group MoveUntil action to imported sprites and runs it in play mode', async ({ page }) => {
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
   await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
   await page.getByTestId('spritesheet-frame-width-input').fill('64');
@@ -164,23 +172,20 @@ test('assigns a group move flow to imported sprites and runs it in play mode', a
   await page.getByTestId('spritesheet-frame-1').click();
   await page.getByTestId('import-sprites-button').click();
   await page.getByTestId('create-formation-from-selection-button').click();
-  await page.getByTestId('assign-action-flow-button').click();
-  await page.getByTestId('add-action-MoveUntil').click();
 
-  await expect.poll(async () => {
-    const state = await getState<{ scene: { groups: Record<string, { name?: string; members: string[] }> } }>(page);
-    const createdGroup = Object.values(state.scene.groups).find((group) => group.name === 'Formation 1');
-    return createdGroup?.members[0];
-  }).toBeTruthy();
+  await page.getByTestId('add-attachment-MoveUntil').click();
+  await page.getByTestId('attachment-velocity-x-input').fill('120');
+
   const firstMemberId = await page.evaluate(() => {
     const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { groups: Record<string, { name?: string; members: string[] }> } } | null;
     const createdGroup = state ? Object.values(state.scene.groups).find((group) => group.name === 'Formation 1') : undefined;
-    return createdGroup?.members[0];
+    return createdGroup?.members[0] ?? null;
   });
-
-  await page.getByTestId('toggle-mode-button').click();
+  if (!firstMemberId) throw new Error('First member id unavailable');
 
   const before = await page.evaluate((memberId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(memberId), firstMemberId);
+  await page.getByTestId('toggle-mode-button').click();
+
   await expect.poll(async () => {
     const rect = await page.evaluate((memberId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(memberId), firstMemberId);
     return rect?.centerX;
@@ -188,10 +193,10 @@ test('assigns a group move flow to imported sprites and runs it in play mode', a
 });
 
 test('preview uses edited move velocity and bounce behavior', async ({ page }) => {
-  await page.getByTestId('action-item-a-move-right').click();
-  await page.getByTestId('velocity-x-input').fill('240');
-  await page.getByLabel('Max X').fill('460');
-  await page.locator('label:has-text("Behavior") select').selectOption('bounce');
+  await page.getByTestId('attachment-item-att-move-right').click();
+  await page.getByTestId('attachment-velocity-x-input').fill('240');
+  await page.getByTestId('attachment-bounds-max-x-input').fill('460');
+  await page.getByTestId('attachment-bounds-behavior-select').selectOption('bounce');
 
   const before = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
   await page.getByTestId('toggle-mode-button').click();
@@ -211,10 +216,9 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
   await page.getByTestId('reset-scene-button').click();
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
-  await page.getByTestId('assign-action-flow-button').click();
-  await page.getByTestId('add-action-MoveUntil').click();
-  await page.getByTestId('velocity-x-input').fill('300');
-  await page.locator('label:has-text("Behavior") select').selectOption('bounce');
+  await page.getByTestId('add-attachment-MoveUntil').click();
+  await page.getByTestId('attachment-velocity-x-input').fill('300');
+  await page.getByTestId('attachment-bounds-behavior-select').selectOption('bounce');
 
   const entityId = await page.evaluate(() => {
     const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { entities: Record<string, unknown> } } | null;
@@ -226,8 +230,8 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
   if (!beforeSprite?.maxX) throw new Error('Sprite rect unavailable');
   const minX = String(Math.round(beforeSprite.minX - 200));
   const maxX = String(Math.round(beforeSprite.maxX + 40));
-  await page.getByLabel('Min X').fill(minX);
-  await page.getByLabel('Max X').fill(maxX);
+  await page.getByTestId('attachment-bounds-min-x-input').fill(minX);
+  await page.getByTestId('attachment-bounds-max-x-input').fill(maxX);
 
   const bounds = await getEditableBoundsRect(page);
   if (!bounds?.maxX) throw new Error('Editable bounds unavailable');
@@ -260,12 +264,11 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
   expect(maxObservedMaxX).toBeLessThanOrEqual(expectedMaxX + 8);
 });
 
-test('preview applies wrap behavior for an imported sprite move flow', async ({ page }) => {
+test('preview applies wrap behavior for an imported sprite move action', async ({ page }) => {
   await page.getByTestId('reset-scene-button').click();
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
-  await page.getByTestId('assign-action-flow-button').click();
-  await page.getByTestId('add-action-MoveUntil').click();
+  await page.getByTestId('add-attachment-MoveUntil').click();
 
   const entityId = await page.evaluate(() => {
     const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { entities: Record<string, unknown> } } | null;
@@ -276,10 +279,10 @@ test('preview applies wrap behavior for an imported sprite move flow', async ({ 
   const before = await page.evaluate((id) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(id), entityId);
   if (!before?.centerX) throw new Error('Imported entity rect unavailable');
 
-  await page.getByTestId('velocity-x-input').fill('300');
-  await page.getByLabel('Min X').fill('200');
-  await page.getByLabel('Max X').fill(String(Math.round(before.centerX + 40)));
-  await page.locator('label:has-text("Behavior") select').selectOption('wrap');
+  await page.getByTestId('attachment-velocity-x-input').fill('300');
+  await page.getByTestId('attachment-bounds-min-x-input').fill('200');
+  await page.getByTestId('attachment-bounds-max-x-input').fill(String(Math.round(before.centerX + 40)));
+  await page.getByTestId('attachment-bounds-behavior-select').selectOption('wrap');
   await page.getByTestId('toggle-mode-button').click();
 
   await expect.poll(async () => {
@@ -292,3 +295,4 @@ test('preview applies wrap behavior for an imported sprite move flow', async ({ 
     return rect?.centerX;
   }).toBeGreaterThan(200);
 });
+

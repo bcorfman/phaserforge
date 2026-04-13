@@ -36,13 +36,16 @@ describe('EditorStore reducer', () => {
 
   it('updates bounds with clamping', () => {
     const state = seededState();
-    const action: EditorAction = { type: 'update-bounds', id: 'c-bounds', bounds: { minX: 100, maxX: 50, minY: 200, maxY: 150 } };
+    const action: EditorAction = { type: 'update-bounds', id: 'att-move-right', bounds: { minX: 100, maxX: 50, minY: 200, maxY: 150 } };
     const next = reducer(state, action);
 
-    expect(next.scene.conditions['c-bounds'].bounds.minX).toBe(50);
-    expect(next.scene.conditions['c-bounds'].bounds.maxX).toBe(100);
-    expect(next.scene.conditions['c-bounds'].bounds.minY).toBe(150);
-    expect(next.scene.conditions['c-bounds'].bounds.maxY).toBe(200);
+    const bounds = next.scene.attachments['att-move-right'].condition?.type === 'BoundsHit'
+      ? next.scene.attachments['att-move-right'].condition.bounds
+      : undefined;
+    expect(bounds?.minX).toBe(50);
+    expect(bounds?.maxX).toBe(100);
+    expect(bounds?.minY).toBe(150);
+    expect(bounds?.maxY).toBe(200);
     expect(next.dirty).toBe(true);
   });
 
@@ -145,7 +148,7 @@ describe('EditorStore reducer', () => {
     expect(next.scene.groups[groupId]).toBeUndefined();
     expect(next.selection).toEqual({ kind: 'entities', ids: state.scene.groups[groupId].members });
     expect(next.expandedGroups[groupId]).toBeUndefined();
-    expect(next.scene.behaviors['b-formation'].target).toEqual({ type: 'entity', entityId: 'e1' });
+    expect(next.scene.attachments['att-move-right'].target).toEqual({ type: 'entity', entityId: 'e1' });
     expect(next.dirty).toBe(true);
   });
 
@@ -179,12 +182,10 @@ describe('EditorStore reducer', () => {
     });
 
     expect(next.scene.world).toEqual({ width: 1600, height: 1200 });
-    expect(next.scene.conditions['c-bounds'].bounds).toEqual({
-      minX: 80,
-      minY: 60,
-      maxX: 1520,
-      maxY: 1152,
-    });
+    const bounds = next.scene.attachments['att-move-right'].condition?.type === 'BoundsHit'
+      ? next.scene.attachments['att-move-right'].condition.bounds
+      : undefined;
+    expect(bounds).toEqual({ minX: 80, minY: 60, maxX: 1520, maxY: 1152 });
     expect(next.dirty).toBe(true);
   });
 
@@ -242,50 +243,21 @@ describe('EditorStore reducer', () => {
     });
 
     expect(next.scene.groups['g-enemies']).toBeUndefined();
-    expect(next.scene.behaviors['b-formation']).toBeUndefined();
+    expect(next.scene.attachments['att-move-right']).toBeUndefined();
     expect(next.scene.entities.e1).toBeUndefined();
     expect(next.scene.entities.e15).toBeUndefined();
     expect(next.selection).toEqual({ kind: 'none' });
   });
 
-  it('removes a behavior and prunes its flow from the scene graph', () => {
+  it('removes an attachment from the scene graph', () => {
     const state = seededState();
     const next = reducer(state, {
       type: 'remove-scene-graph-item',
-      item: { kind: 'behavior', id: 'b-formation' },
+      item: { kind: 'attachment', id: 'att-drop-right' },
     });
 
-    expect(next.scene.behaviors['b-formation']).toBeUndefined();
-    expect(next.scene.actions['a-root']).toBeUndefined();
-    expect(next.scene.actions['a-seq']).toBeUndefined();
-    expect(next.scene.conditions['c-bounds']).toBeUndefined();
-  });
-
-  it('removes an action from the behavior flow when deleted from the scene graph', () => {
-    const state = seededState();
-    const next = reducer(state, {
-      type: 'remove-scene-graph-item',
-      item: { kind: 'action', id: 'a-drop-right' },
-    });
-
-    expect(next.scene.actions['a-drop-right']).toBeUndefined();
-    expect(next.scene.actions['a-seq'].type).toBe('Sequence');
-    if (next.scene.actions['a-seq'].type !== 'Sequence') {
-      throw new Error('expected a-seq to remain a Sequence');
-    }
-    expect(next.scene.actions['a-seq'].children).not.toContain('a-drop-right');
-  });
-
-  it('removes a condition by removing dependent move actions from the scene graph', () => {
-    const state = seededState();
-    const next = reducer(state, {
-      type: 'remove-scene-graph-item',
-      item: { kind: 'condition', id: 'c-bounds' },
-    });
-
-    expect(next.scene.conditions['c-bounds']).toBeUndefined();
-    expect(next.scene.actions['a-move-right']).toBeUndefined();
-    expect(next.scene.actions['a-move-left']).toBeUndefined();
+    expect(next.scene.attachments['att-drop-right']).toBeUndefined();
+    expect(next.selection).toEqual({ kind: 'none' });
   });
 
   it('reflows a group using grid layout controls', () => {
@@ -331,54 +303,20 @@ describe('EditorStore reducer', () => {
     expect(next.dirty).toBe(true);
   });
 
-  it('creates a default behavior for the selected entity', () => {
-    const state = { ...seededState(), selection: { kind: 'entity' as const, id: 'e1' } };
-    const next = reducer(state, { type: 'create-default-behavior-for-selection' });
+  it('creates an attachment for the selected group and selects it', () => {
+    const state = seededState();
+    const next = reducer(state, { type: 'create-attachment', target: { type: 'group', groupId: 'g-enemies' }, presetId: 'Wait' });
 
-    const newBehaviorId = Object.keys(next.scene.behaviors).find((id) => !state.scene.behaviors[id]);
-    expect(newBehaviorId).toBeDefined();
-    expect(next.scene.behaviors[newBehaviorId!].target).toEqual({ type: 'entity', entityId: 'e1' });
-    expect(next.selection).toEqual({ kind: 'entity', id: 'e1' });
+    expect(next.selection.kind).toBe('attachment');
+    if (next.selection.kind === 'attachment') {
+      expect(next.scene.attachments[next.selection.id]).toBeDefined();
+      expect(next.scene.attachments[next.selection.id].presetId).toBe('Wait');
+    }
   });
 
-  it('adds a MoveUntil action for the selected group behavior and selects the new action', () => {
-    const state = { ...seededState(), selection: { kind: 'group' as const, id: 'g-enemies' } };
-    const next = reducer(state, { type: 'append-action-to-selection-behavior', actionType: 'MoveUntil' });
-
-    const newActionId = Object.keys(next.scene.actions).find((id) => !state.scene.actions[id]);
-    expect(newActionId).toBeDefined();
-    expect(next.scene.actions[newActionId!].type).toBe('MoveUntil');
-    expect(next.scene.actions[newActionId!].target).toEqual({ type: 'group', groupId: 'g-enemies' });
-    expect(next.selection).toEqual({ kind: 'action', id: newActionId });
-  });
-
-  it('removes the selected target behavior and cleans up its orphaned graph', () => {
-    const state = { ...seededState(), selection: { kind: 'group' as const, id: 'g-enemies' } };
-    const next = reducer(state, { type: 'remove-behavior-from-selection' });
-
-    expect(next.scene.behaviors['b-formation']).toBeUndefined();
-    expect(Object.keys(next.scene.actions)).toEqual([]);
-    expect(Object.keys(next.scene.conditions)).toEqual([]);
-  });
-
-  it('moves and removes actions from the selected behavior sequence', () => {
-    const state = { ...seededState(), selection: { kind: 'group' as const, id: 'g-enemies' } };
-    const moved = reducer(state, {
-      type: 'move-sequence-action',
-      sequenceId: 'a-seq',
-      childId: 'a-drop-right',
-      direction: 'up',
-    });
-
-    expect(moved.scene.actions['a-seq'].children.indexOf('a-drop-right')).toBe(0);
-
-    const removed = reducer(moved, {
-      type: 'remove-sequence-action',
-      sequenceId: 'a-seq',
-      childId: 'a-drop-right',
-    });
-
-    expect(removed.scene.actions['a-seq'].children).not.toContain('a-drop-right');
-    expect(removed.scene.actions['a-drop-right']).toBeUndefined();
+  it('updates ui scale with clamping', () => {
+    const state = seededState();
+    const next = reducer(state, { type: 'set-ui-scale', uiScale: 0.2 } as any);
+    expect(next.uiScale).toBeGreaterThanOrEqual(0.75);
   });
 });

@@ -1,23 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { renderBehaviorHierarchy } from '../../src/editor/EntityList';
+import { EntityListView } from '../../src/editor/EntityList';
 import { sampleScene } from '../../src/model/sampleScene';
 
-describe('EntityList behavior hierarchy', () => {
-  it('renders the behavior action tree in behavior-rooted order', () => {
+describe('EntityList', () => {
+  it('renders sprites, formations, and actions sections', () => {
     const markup = renderToStaticMarkup(
-      <>{renderBehaviorHierarchy(sampleScene, { kind: 'none' }, () => {}, () => {})}</>
+      <EntityListView
+        scene={sampleScene}
+        selection={{ kind: 'none' }}
+        expandedGroups={{ 'g-enemies': false }}
+        dispatch={() => {}}
+      />
     );
 
-    expect(markup).toContain('Behavior Flow');
-    expect(markup).toContain('Formation Patrol action hierarchy');
+    expect(markup).toContain('Sprites');
+    expect(markup).toContain('Formations');
+    expect(markup).toContain('Actions');
+    expect(markup).toContain('Enemy Formation');
     expect(markup).toContain('Loop');
-    expect(markup).toContain('Sweep + Drop');
     expect(markup).toContain('Move Right');
-    expect(markup).toContain('Pause');
-
-    expect(markup.indexOf('Loop')).toBeLessThan(markup.indexOf('Sweep + Drop'));
-    expect(markup.indexOf('Sweep + Drop')).toBeLessThan(markup.indexOf('Move Right'));
-    expect(markup.indexOf('Move Right')).toBeLessThan(markup.indexOf('Move Left'));
   });
 });

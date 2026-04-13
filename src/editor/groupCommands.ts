@@ -1,4 +1,4 @@
-import { type ActionSpec, type GroupLayoutSpec, type GroupSpec, type Id, type SceneSpec, type TargetRef } from '../model/types';
+import { type GroupLayoutSpec, type GroupSpec, type Id, type SceneSpec, type TargetRef } from '../model/types';
 
 export function updateGroupLayoutPosition(group: GroupSpec, dx: number, dy: number): GroupSpec {
   if (group.layout?.type !== 'grid') return group;
@@ -53,32 +53,14 @@ function removeGroupAndRetarget(scene: SceneSpec, groupId: Id, replacement?: Tar
   return {
     ...scene,
     groups: remainingGroups,
-    behaviors: Object.fromEntries(
-      Object.entries(scene.behaviors).map(([id, behavior]) => [
-        id,
-        behavior.target.type === 'group' && behavior.target.groupId === groupId && replacement
-          ? { ...behavior, target: replacement }
-          : behavior,
-      ])
-    ),
-    actions: Object.fromEntries(
-      Object.entries(scene.actions).map(([id, action]) => [id, retargetAction(action, groupId, replacement)])
+    attachments: Object.fromEntries(
+      Object.entries(scene.attachments).flatMap(([id, attachment]) => {
+        if (attachment.target.type !== 'group' || attachment.target.groupId !== groupId) return [[id, attachment]];
+        if (!replacement) return [];
+        return [[id, { ...attachment, target: replacement, applyTo: undefined }]];
+      })
     ),
   };
-}
-
-function retargetAction(action: ActionSpec, groupId: Id, replacement?: TargetRef): ActionSpec {
-  if (!replacement) return action;
-
-  if (action.type === 'MoveUntil' && action.target.type === 'group' && action.target.groupId === groupId) {
-    return { ...action, target: replacement };
-  }
-
-  if (action.type === 'Call' && action.target?.type === 'group' && action.target.groupId === groupId) {
-    return { ...action, target: replacement };
-  }
-
-  return action;
 }
 
 export function makeGridLayout(rows: number, cols: number, startX: number, startY: number, spacingX: number, spacingY: number): GroupLayoutSpec {

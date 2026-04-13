@@ -65,7 +65,7 @@ test('drags a formation on the canvas and restores layout metadata on undo', asy
 });
 
 test('resizes editable bounds from the canvas handle', async ({ page }) => {
-  await page.getByTestId('action-item-a-move-right').click();
+  await page.getByTestId('attachment-item-att-move-right').click();
   await expect.poll(async () => await getEditableBoundsRect(page)).toMatchObject({
     minX: 80,
     minY: 60,
@@ -74,8 +74,9 @@ test('resizes editable bounds from the canvas handle', async ({ page }) => {
   await dragBoundsHandle(page, 'nw', { x: 20, y: 20 });
 
   await expect.poll(async () => {
-    const state = await getState<{ scene: { conditions: Record<string, { bounds: { minX: number; minY: number; maxX: number; maxY: number } }> } }>(page);
-    return state.scene.conditions['c-bounds'].bounds;
+    const state = await getState<{ scene: { attachments: Record<string, { condition?: { type: string; bounds: { minX: number; minY: number; maxX: number; maxY: number } } }> } }>(page);
+    const cond = state.scene.attachments['att-move-right'].condition;
+    return cond?.type === 'BoundsHit' ? cond.bounds : null;
   }).toMatchObject({
     minX: 100,
     minY: 80,
