@@ -31,12 +31,11 @@ describe('group commands', () => {
     expect(next.groups['g-enemies'].layout).toEqual({ type: 'freeform' });
   });
 
-  it('retargets behaviors and actions when a group is dissolved', () => {
+  it('retargets group-targeted attachments when a group is dissolved', () => {
     const next = dissolveGroup(sampleScene, 'g-enemies');
 
     expect(next.groups['g-enemies']).toBeUndefined();
-    expect(next.behaviors['b-formation'].target).toEqual({ type: 'entity', entityId: 'e1' });
-    expect(next.actions['a-move-right'].target).toEqual({ type: 'entity', entityId: 'e1' });
-    expect(next.actions['a-drop-right'].target).toEqual({ type: 'entity', entityId: 'e1' });
+    expect(next.attachments['att-move-right'].target).toEqual({ type: 'entity', entityId: 'e1' });
+    expect(next.attachments['att-move-right'].applyTo).toBeUndefined();
   });
 });

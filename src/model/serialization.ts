@@ -1,5 +1,6 @@
 import { parse, stringify } from 'yaml';
 import { SceneSpec } from './types';
+import { migrateSceneSpec } from './migrateScene';
 
 export function serializeSceneToYaml(scene: SceneSpec): string {
   return stringify(scene, {
@@ -14,5 +15,5 @@ export function parseSceneYaml(text: string): SceneSpec {
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('Invalid YAML scene');
   }
-  return parsed as SceneSpec;
+  return migrateSceneSpec(parsed);
 }

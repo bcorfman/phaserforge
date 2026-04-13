@@ -4,8 +4,12 @@ import { dismissViewHint, expectInputValue, getState, gotoStudio, seedSampleScen
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
+    window.localStorage.removeItem('phaseractions.sceneYaml.v2');
     window.localStorage.removeItem('phaseractions.sceneYaml.v1');
     window.localStorage.removeItem('phaseractions.startupMode.v1');
+    window.localStorage.removeItem('phaseractions.themeMode.v1');
+    window.localStorage.removeItem('phaseractions.uiScale.v1');
+    window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
   });
 });
 
@@ -15,8 +19,9 @@ test('boots empty by default and loads scenes', async ({ page }) => {
   await expect(page.getByTestId('entity-list')).toBeVisible();
   await expect(page.getByTestId('inspector')).toBeVisible();
   await expect(page.getByRole('main', { name: 'Viewport' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Scene Graph' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Inspector' })).toBeVisible();
+  await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Sprites' })).toBeVisible();
+  await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Formations' })).toBeVisible();
+  await expect(page.getByTestId('registry-panel')).toBeVisible();
   await expect(page.getByText('Pan with middle mouse or Shift + drag. Use zoom controls to inspect sprite spacing and bounds.')).toBeVisible();
   await waitForEmptyScene(page);
 
@@ -104,4 +109,33 @@ test('removes an imported sprite from the scene graph', async ({ page }) => {
     const state = await getState<{ scene: { entities: Record<string, unknown> } }>(page);
     return Object.keys(state.scene.entities);
   }).toEqual([]);
+});
+
+test('uses compact global sizing scale', async ({ page }) => {
+  await gotoStudio(page);
+
+  const uiScale = await page.evaluate(() => {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--ui-scale');
+    return Number.parseFloat(raw);
+  });
+  expect(uiScale).toBeGreaterThan(0);
+  expect(uiScale).toBeLessThan(1);
+
+  const rootFontSize = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
+  expect(rootFontSize).toBeLessThan(16);
+  expect(rootFontSize).toBeGreaterThan(12);
+});
+
+test('toggles theme modes and persists preference', async ({ page }) => {
+  await gotoStudio(page);
+
+  await page.getByTestId('theme-mode-dark').click();
+  await expect.poll(async () => page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('dark');
+
+  await page.reload();
+  await gotoStudio(page);
+  await expect.poll(async () => page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('dark');
+
+  await page.getByTestId('theme-mode-system').click();
+  await expect.poll(async () => page.evaluate(() => document.documentElement.hasAttribute('data-theme'))).toBe(false);
 });

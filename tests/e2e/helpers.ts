@@ -26,6 +26,8 @@ export async function seedSampleScene(page: Page): Promise<void> {
   const yaml = serializeSceneToYaml(sampleScene);
   await page.goto('/');
   await page.evaluate(([sceneYaml]) => {
+    window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
+    window.localStorage.setItem('phaseractions.sceneYaml.v2', sceneYaml);
     window.localStorage.setItem('phaseractions.sceneYaml.v1', sceneYaml);
     window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
   }, [yaml]);
@@ -44,20 +46,20 @@ export async function waitForSampleScene(page: Page): Promise<void> {
       scene?: {
         entities?: Record<string, unknown>;
         groups?: Record<string, unknown>;
-        actions?: Record<string, unknown>;
+        attachments?: Record<string, unknown>;
       };
     } | null>(page);
     return {
       hasState: Boolean(state),
       hasEntity: Boolean(state?.scene?.entities?.e1),
       hasGroup: Boolean(state?.scene?.groups?.['g-enemies']),
-      hasAction: Boolean(state?.scene?.actions?.['a-move-right']),
+      hasAttachment: Boolean(state?.scene?.attachments?.['att-move-right']),
     };
   }, { timeout: 10000 }).toEqual({
     hasState: true,
     hasEntity: true,
     hasGroup: true,
-    hasAction: true,
+    hasAttachment: true,
   });
 }
 

@@ -7,13 +7,9 @@ describe('syncBoundsToWorldResize', () => {
     const next = syncBoundsToWorldResize(sampleScene, { width: 800, height: 600 });
 
     expect(next.world).toEqual({ width: 800, height: 600 });
-    expect(next.conditions['c-bounds']).toMatchObject({
-      bounds: {
-        minX: 80,
-        minY: 60,
-        maxX: 720,
-        maxY: 552,
-      },
-    });
+    const bounds = next.attachments['att-move-right'].condition?.type === 'BoundsHit'
+      ? next.attachments['att-move-right'].condition.bounds
+      : undefined;
+    expect(bounds).toEqual({ minX: 80, minY: 60, maxX: 720, maxY: 552 });
   });
 });

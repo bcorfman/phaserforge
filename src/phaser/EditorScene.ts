@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { EventBus, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
-import { SceneSpec, BoundsHitConditionSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
+import { SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
 import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
 import { getRotatedEntityBounds } from '../runtime/geometry';
@@ -258,9 +258,10 @@ export class EditorScene extends Phaser.Scene {
   }
 
   public getEditableBoundsRect(): { minX: number; minY: number; maxX: number; maxY: number } | null {
-    const conditionId = this.activeBoundsConditionId;
-    const condition = conditionId ? this.compiled?.scene.conditions[conditionId] : undefined;
-    if (!condition || condition.type !== 'BoundsHit') return null;
+    const attachmentId = this.activeBoundsConditionId;
+    const attachment = attachmentId ? this.compiled?.scene.attachments[attachmentId] : undefined;
+    const condition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+    if (!condition) return null;
 
     return {
       minX: condition.bounds.minX,
@@ -291,7 +292,7 @@ export class EditorScene extends Phaser.Scene {
   public testTapWorld(point: { x: number; y: number }): void {
     const hitResult = hitTestCanvas(
       point,
-      this.compiled?.scene || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
       this.sprites,
       this.groupZones,
       this.boundsHandles
@@ -307,7 +308,7 @@ export class EditorScene extends Phaser.Scene {
   public testDragWorld(start: { x: number; y: number }, end: { x: number; y: number }): void {
     const hitResult = hitTestCanvas(
       start,
-      this.compiled?.scene || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
       this.sprites,
       this.groupZones,
       this.boundsHandles
@@ -340,9 +341,10 @@ export class EditorScene extends Phaser.Scene {
         break;
       }
       case 'bounds-handle': {
-        const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
-        if (boundsCondition?.type !== 'BoundsHit' || !hitResult.handle) return;
-        this.recordOperation('update-bounds', boundsCondition.id, boundsCondition.bounds);
+        const attachment = this.activeBoundsConditionId ? this.compiled?.scene.attachments[this.activeBoundsConditionId] : undefined;
+        const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+        if (!attachment || !boundsCondition || !hitResult.handle) return;
+        this.recordOperation('update-bounds', attachment.id, boundsCondition.bounds);
         const nextBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, hitResult.handle, dx, dy);
         EventBus.emit('canvas-update-bounds', nextBounds);
         this.operationHistory[this.historyIndex].after = nextBounds;
@@ -354,10 +356,11 @@ export class EditorScene extends Phaser.Scene {
   }
 
   public testDragBoundsHandle(handle: string, delta: { x: number; y: number }): void {
-    const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
-    if (boundsCondition?.type !== 'BoundsHit') return;
+    const attachment = this.activeBoundsConditionId ? this.compiled?.scene.attachments[this.activeBoundsConditionId] : undefined;
+    const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+    if (!attachment || !boundsCondition) return;
 
-    this.recordOperation('update-bounds', boundsCondition.id, boundsCondition.bounds);
+    this.recordOperation('update-bounds', attachment.id, boundsCondition.bounds);
     const nextBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, handle, delta.x, delta.y);
     EventBus.emit('canvas-update-bounds', nextBounds);
     this.operationHistory[this.historyIndex].after = nextBounds;
@@ -560,11 +563,10 @@ export class EditorScene extends Phaser.Scene {
     this.boundsHandles.forEach((handle) => handle.destroy());
     this.boundsHandles.clear();
 
-    const boundsConditionId = getEditableBoundsConditionId(scene, this.selection);
-    this.activeBoundsConditionId = boundsConditionId;
-    const boundsCondition = boundsConditionId ? scene.conditions[boundsConditionId] : undefined;
-    if (!boundsCondition || boundsCondition.type !== 'BoundsHit') return;
-
+    const attachmentId = getEditableBoundsConditionId(scene, this.selection);
+    this.activeBoundsConditionId = attachmentId;
+    const attachment = attachmentId ? scene.attachments[attachmentId] : undefined;
+    const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
     if (!boundsCondition) return;
     const bounds = boundsCondition.bounds;
     const graphics = this.add.graphics();
@@ -689,7 +691,13 @@ export class EditorScene extends Phaser.Scene {
     const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
 
     // Use new hit testing
-    const hitResult = hitTestCanvas(worldPoint, this.compiled?.scene || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} }, this.sprites, this.groupZones, this.boundsHandles);
+    const hitResult = hitTestCanvas(
+      worldPoint,
+      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.sprites,
+      this.groupZones,
+      this.boundsHandles
+    );
 
     if (hitResult.kind === 'none') {
       // Start marquee selection on empty canvas click
@@ -720,7 +728,13 @@ export class EditorScene extends Phaser.Scene {
     const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
 
     // Update hover state and cursor
-    const hitResult = hitTestCanvas(worldPoint, this.compiled?.scene || { entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} }, this.sprites, this.groupZones, this.boundsHandles);
+    const hitResult = hitTestCanvas(
+      worldPoint,
+      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.sprites,
+      this.groupZones,
+      this.boundsHandles
+    );
     this.updateHoverState(hitResult);
     this.updateCursor(hitResult);
 
@@ -741,20 +755,21 @@ export class EditorScene extends Phaser.Scene {
           this.createMarqueeRectangle();
         } else if (hitResult.kind === 'bounds-handle') {
           // Record bounds operation
-          const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
-          if (boundsCondition) {
-            this.recordOperation('update-bounds', boundsCondition.id, boundsCondition.bounds);
-          }
+          const attachmentId = this.activeBoundsConditionId;
+          const attachment = attachmentId ? this.compiled?.scene.attachments[attachmentId] : undefined;
+          const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+          if (!attachment || !boundsCondition) return;
+          this.recordOperation('update-bounds', attachment.id, boundsCondition.bounds);
 
           this.dragState = {
             kind: 'bounds-handle',
-            id: hitResult.id!,
+            id: attachment.id,
             startX: worldPoint.x,
             startY: worldPoint.y,
             handle: hitResult.handle,
             hasMoved: false
           };
-          EventBus.emit('canvas-interaction-start', { kind: 'bounds-handle', id: hitResult.id });
+          EventBus.emit('canvas-interaction-start', { kind: 'bounds-handle', id: attachment.id });
         } else {
           // Check if this is part of a multi-selection
           if (hitResult.kind === 'entity' && this.selection.kind === 'entities' && this.selection.ids.includes(hitResult.id!)) {
@@ -824,17 +839,18 @@ export class EditorScene extends Phaser.Scene {
       EventBus.emit('canvas-move-group', { id: this.dragState.id, dx: snappedDx, dy: snappedDy });
     } else if (this.dragState.kind === 'bounds-handle' && this.dragState.handle) {
       // Calculate new bounds based on handle being dragged
-      const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
-      if (boundsCondition?.type === 'BoundsHit') {
-        const newBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, this.dragState.handle, snappedDx, snappedDy);
-        EventBus.emit('canvas-update-bounds', newBounds);
-      }
+      const attachment = this.activeBoundsConditionId ? this.compiled?.scene.attachments[this.activeBoundsConditionId] : undefined;
+      const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+      if (!boundsCondition) return;
+      const newBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, this.dragState.handle, snappedDx, snappedDy);
+      EventBus.emit('canvas-update-bounds', newBounds);
     }
 
     // Update drag overlay
     if (this.dragOverlay) {
-      const boundsCondition = this.activeBoundsConditionId ? this.compiled?.scene.conditions[this.activeBoundsConditionId] : undefined;
-      updateDragOverlay(this.dragOverlay, this.dragState, worldPoint, boundsCondition?.type === 'BoundsHit' ? boundsCondition.bounds : undefined);
+      const attachment = this.activeBoundsConditionId ? this.compiled?.scene.attachments[this.activeBoundsConditionId] : undefined;
+      const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+      updateDragOverlay(this.dragOverlay, this.dragState, worldPoint, boundsCondition?.bounds);
     }
 
     this.dragState.startX = worldPoint.x;
@@ -929,12 +945,9 @@ export class EditorScene extends Phaser.Scene {
         this.hoverState.handle !== newHoverState.handle) {
       this.hoverState = newHoverState;
       if (this.hoverOutline) {
-        const boundsConditionId = this.compiled?.scene ? getEditableBoundsConditionId(this.compiled.scene, this.selection) : undefined;
-        const bounds = boundsConditionId
-          ? this.compiled?.scene.conditions[boundsConditionId]?.type === 'BoundsHit'
-            ? this.compiled.scene.conditions[boundsConditionId].bounds
-            : undefined
-          : undefined;
+        const attachmentId = this.compiled?.scene ? getEditableBoundsConditionId(this.compiled.scene, this.selection) : undefined;
+        const attachment = attachmentId ? this.compiled?.scene.attachments[attachmentId] : undefined;
+        const bounds = attachment?.condition?.type === 'BoundsHit' ? attachment.condition.bounds : undefined;
         updateHoverOutline(this.hoverOutline, this.hoverState, this.sprites, this.groupZones, bounds);
       }
     }

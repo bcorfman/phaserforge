@@ -11,6 +11,15 @@ export interface SceneSpec {
   world?: WorldSpec;
   entities: Record<Id, EntitySpec>;
   groups: Record<Id, GroupSpec>;
+  /**
+   * Attached actions/presets applied to entities or formations.
+   * This is the primary authoring model moving forward.
+   */
+  attachments: Record<Id, AttachmentSpec>;
+  /**
+   * Legacy behavior/action graph authoring model (kept for backward-compatible
+   * YAML migration only; new scenes should not rely on it).
+   */
   behaviors: Record<Id, BehaviorSpec>;
   actions: Record<Id, ActionSpec>;
   conditions: Record<Id, ConditionSpec>;
@@ -96,6 +105,7 @@ export interface SpriteAssetSpec {
 
 export type GroupLayoutSpec =
   | { type: 'grid'; rows: number; cols: number; startX: number; startY: number; spacingX: number; spacingY: number }
+  | { type: 'arrange'; arrangeKind: string; params: Record<string, number | string | boolean> }
   | { type: 'freeform' };
 
 export interface GroupSpec {
@@ -103,6 +113,47 @@ export interface GroupSpec {
   name?: string;
   members: Id[]; // entity ids
   layout?: GroupLayoutSpec;
+}
+
+export type InlineConditionSpec = InlineBoundsHitConditionSpec | InlineElapsedTimeConditionSpec;
+
+export interface InlineBoundsHitConditionSpec {
+  type: 'BoundsHit';
+  bounds: { minX: number; maxX: number; minY: number; maxY: number };
+  mode: 'any' | 'all';
+  scope?: 'member-any' | 'member-all' | 'group-extents';
+  behavior?: 'stop' | 'limit' | 'bounce' | 'wrap';
+}
+
+export interface InlineElapsedTimeConditionSpec {
+  type: 'ElapsedTime';
+  durationMs: number;
+}
+
+export interface AttachmentSpec {
+  id: Id;
+  name?: string;
+  /**
+   * Ordering key for the target's attachment list.
+   * Lower numbers run earlier when compiling a script sequence.
+   */
+  order?: number;
+  target: TargetRef;
+  /**
+   * Only meaningful when target.type === 'group'.
+   * - group: action targets the formation as a synchronized unit
+   * - members: action targets each member individually (compiled as Parallel)
+   */
+  applyTo?: 'group' | 'members';
+  enabled?: boolean;
+  /**
+   * Identifier of the preset/action entry in the editor registry.
+   * For v1, this will typically match an action `type` like "MoveUntil".
+   */
+  presetId: string;
+  params?: Record<string, number | string | boolean>;
+  condition?: InlineConditionSpec;
+  tag?: string;
 }
 
 export interface BehaviorSpec {
@@ -191,6 +242,7 @@ export interface EditorRegistryEntry {
     name: string;
     type: 'number' | 'string' | 'boolean' | 'target' | 'reference';
     required?: boolean;
+    default?: number | string | boolean;
   }>;
 }
 

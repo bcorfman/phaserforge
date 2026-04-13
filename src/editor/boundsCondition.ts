@@ -2,20 +2,12 @@ import { type Selection } from './EditorStore';
 import { type Id, type SceneSpec } from '../model/types';
 
 export function getPrimaryBoundsConditionId(scene: SceneSpec): Id | undefined {
-  return Object.values(scene.conditions).find((condition) => condition.type === 'BoundsHit')?.id;
+  return Object.values(scene.attachments).find((attachment) => attachment.presetId === 'MoveUntil' && attachment.condition?.type === 'BoundsHit')?.id;
 }
 
 export function getEditableBoundsConditionId(scene: SceneSpec, selection: Selection): Id | undefined {
-  if (selection.kind === 'condition') {
-    return scene.conditions[selection.id]?.type === 'BoundsHit' ? selection.id : undefined;
-  }
-
-  if (selection.kind === 'action') {
-    const action = scene.actions[selection.id];
-    if (action?.type === 'MoveUntil' && scene.conditions[action.conditionId]?.type === 'BoundsHit') {
-      return action.conditionId;
-    }
-  }
-
-  return undefined;
+  if (selection.kind !== 'attachment') return undefined;
+  const attachment = scene.attachments[selection.id];
+  if (!attachment) return undefined;
+  return attachment.presetId === 'MoveUntil' && attachment.condition?.type === 'BoundsHit' ? attachment.id : undefined;
 }

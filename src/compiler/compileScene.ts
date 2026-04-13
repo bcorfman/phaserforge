@@ -4,7 +4,9 @@ import { validateSceneSpec } from '../model/validation';
 import { ActionManager } from '../runtime/ActionManager';
 import { RuntimeEntity, RuntimeGroup } from '../runtime/targets/types';
 import { createFormationGroup } from '../runtime/targets/createFormationGroup';
-import { compileBehavior, CompileOptions } from './compileBehaviors';
+import { CompileOptions } from './compileBehaviors';
+import { compileAttachments } from './compileAttachments';
+import { migrateSceneSpec } from '../model/migrateScene';
 
 export interface CompiledScene {
   scene: SceneSpec;
@@ -17,10 +19,11 @@ export interface CompiledScene {
 }
 
 export function compileScene(scene: SceneSpec, options?: CompileOptions): CompiledScene {
-  validateSceneSpec(scene);
+  const migrated = migrateSceneSpec(scene);
+  validateSceneSpec(migrated);
 
   const entities: Record<string, RuntimeEntity> = {};
-  for (const entity of Object.values(scene.entities)) {
+  for (const entity of Object.values(migrated.entities)) {
     const resolved = resolveEntityDefaults(entity);
     entities[entity.id] = {
       id: resolved.id,
@@ -48,7 +51,7 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
   }
 
   const groups: Record<string, RuntimeGroup> = {};
-  for (const group of Object.values(scene.groups)) {
+  for (const group of Object.values(migrated.groups)) {
     groups[group.id] = createFormationGroup(
       group.id,
       group.members.map((memberId) => entities[memberId])
@@ -56,14 +59,7 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
   }
 
   const actionManager = new ActionManager();
-  const behaviors: Record<string, ReturnType<typeof compileBehavior>> = {};
-  for (const behavior of Object.values(scene.behaviors)) {
-    behaviors[behavior.id] = compileBehavior(behavior, {
-      scene,
-      targets: { entities, groups },
-      options,
-    });
-  }
+  const behaviors = compileAttachments(migrated, { targets: { entities, groups }, options });
 
   const startAll = (): void => {
     for (const action of Object.values(behaviors)) {
@@ -78,5 +74,5 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
     }
   };
 
-  return { scene, entities, groups, behaviors, actionManager, startAll, reset };
+  return { scene: migrated, entities, groups, behaviors, actionManager, startAll, reset };
 }

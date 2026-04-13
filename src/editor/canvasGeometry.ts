@@ -3,7 +3,7 @@
  */
 
 import Phaser from 'phaser';
-import { SceneSpec, BoundsHitConditionSpec } from '../model/types';
+import { SceneSpec } from '../model/types';
 
 export interface HitTestResult {
   kind: 'entity' | 'group' | 'bounds-handle' | 'bounds-body' | 'none';
@@ -57,7 +57,7 @@ export function hitTestCanvas(
   // Priority 1: Bounds handles
   for (const [handleId, zone] of boundsHandles.entries()) {
     if (zone.getBounds().contains(worldPoint.x, worldPoint.y)) {
-      return { kind: 'bounds-handle', id: 'bounds', handle: handleId };
+      return { kind: 'bounds-handle', handle: handleId };
     }
   }
 
@@ -76,18 +76,16 @@ export function hitTestCanvas(
   }
 
   // Priority 4: Bounds body
-  const boundsCondition = Object.values(sceneSpec.conditions).find(
-    (c): c is BoundsHitConditionSpec => c.type === 'BoundsHit'
-  );
-  if (boundsCondition) {
-    const bounds = boundsCondition.bounds;
+  const boundsAttachment = Object.values(sceneSpec.attachments).find((a) => a.condition?.type === 'BoundsHit');
+  if (boundsAttachment?.condition?.type === 'BoundsHit') {
+    const bounds = boundsAttachment.condition.bounds;
     if (
       worldPoint.x >= bounds.minX &&
       worldPoint.x <= bounds.maxX &&
       worldPoint.y >= bounds.minY &&
       worldPoint.y <= bounds.maxY
     ) {
-      return { kind: 'bounds-body', id: 'bounds' };
+      return { kind: 'bounds-body' };
     }
   }
 

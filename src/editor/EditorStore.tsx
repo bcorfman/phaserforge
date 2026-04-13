@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import {
-  ActionSpec,
-  ConditionSpec,
   EditorRegistryConfig,
   GroupSpec,
   Id,
@@ -11,37 +9,40 @@ import {
 } from '../model/types';
 import { createEmptyScene } from '../model/emptyScene';
 import { validateSceneSpec } from '../model/validation';
-import { applyGroupGridLayout, type GroupGridLayout } from './formationLayout';
+import { applyGroupArrangeLayout, applyGroupGridLayout, type GroupGridLayout } from './formationLayout';
 import { dissolveGroup, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
 import { syncBoundsToWorldResize } from './worldBounds';
 import { loadEditorConfig, loadEditorRegistry, coerceStartupMode, EMPTY_EDITOR_REGISTRY } from '../model/editorConfig';
 import { parseSceneYaml, serializeSceneToYaml } from '../model/serialization';
-import {
-  appendActionToBehavior,
-  assignBehaviorToTarget,
-  createDefaultBehaviorForTarget,
-  createGroupSpec,
-  getNextFormationName,
-  getPrimaryBehaviorForEntity,
-  getPrimaryBehaviorForGroup,
-  moveSequenceChild,
-  removeBehavior,
-  removeSequenceChild,
-  renameBehavior,
-} from './behaviorCommands';
+import { createGroupSpec, getNextFormationName } from './behaviorCommands';
 import { removeSceneGraphItem } from './sceneGraphCommands';
+import { createAttachment, moveAttachmentWithinTarget, removeAttachment, updateAttachment } from './attachmentCommands';
+import type { AttachmentSpec, TargetRef } from '../model/types';
 
-export const SCENE_STORAGE_KEY = 'phaseractions.sceneYaml.v1';
+export const SCENE_STORAGE_KEY_V1 = 'phaseractions.sceneYaml.v1';
+export const SCENE_STORAGE_KEY = 'phaseractions.sceneYaml.v2';
 export const STARTUP_MODE_STORAGE_KEY = 'phaseractions.startupMode.v1';
+export const THEME_MODE_STORAGE_KEY = 'phaseractions.themeMode.v1';
+export const UI_SCALE_STORAGE_KEY = 'phaseractions.uiScale.v1';
+
+export type ThemeMode = 'system' | 'light' | 'dark';
+
+export function coerceThemeMode(raw: string | null | undefined): ThemeMode {
+  return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system';
+}
+
+export function coerceUiScale(raw: string | null | undefined, fallback: number): number {
+  const parsed = raw == null ? NaN : Number(raw);
+  const value = Number.isFinite(parsed) ? parsed : fallback;
+  return Math.max(0.75, Math.min(1.1, value));
+}
 
 export type Selection =
   | { kind: 'none' }
   | { kind: 'entity'; id: Id }
   | { kind: 'entities'; ids: Id[] }
   | { kind: 'group'; id: Id }
-  | { kind: 'behavior'; id: Id }
-  | { kind: 'action'; id: Id }
-  | { kind: 'condition'; id: Id };
+  | { kind: 'attachment'; id: Id };
 
 export interface EditorState {
   scene: SceneSpec;
@@ -54,6 +55,8 @@ export interface EditorState {
   mode: 'edit' | 'play';
   hasSeenViewHint: boolean;
   startupMode: StartupMode;
+  themeMode: ThemeMode;
+  uiScale: number;
   registry: EditorRegistryConfig;
   initialized: boolean;
 }
@@ -64,8 +67,10 @@ export type ImportedEntityDraft = {
 };
 
 export type EditorAction =
-  | { type: 'initialize'; scene: SceneSpec; startupMode: StartupMode; registry: EditorRegistryConfig }
+  | { type: 'initialize'; scene: SceneSpec; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; registry: EditorRegistryConfig }
   | { type: 'set-startup-mode'; startupMode: StartupMode }
+  | { type: 'set-theme-mode'; themeMode: ThemeMode }
+  | { type: 'set-ui-scale'; uiScale: number }
   | { type: 'select'; selection: Selection }
   | { type: 'select-multiple'; entityIds: Id[]; additive: boolean }
   | { type: 'set-yaml-text'; value: string }
@@ -76,28 +81,24 @@ export type EditorAction =
   | { type: 'update-scene-world'; width: number; height: number }
   | { type: 'update-entity'; id: Id; next: EntitySpec }
   | { type: 'import-entities'; drafts: ImportedEntityDraft[] }
-  | { type: 'update-action'; id: Id; next: ActionSpec }
-  | { type: 'update-condition'; id: Id; next: ConditionSpec }
   | { type: 'update-group'; id: Id; next: GroupSpec }
+  | { type: 'create-attachment'; target: TargetRef; presetId: string }
+  | { type: 'update-attachment'; id: Id; next: AttachmentSpec }
+  | { type: 'remove-attachment'; id: Id }
+  | { type: 'move-attachment'; id: Id; direction: 'up' | 'down' }
   | { type: 'toggle-group-expanded'; id: Id }
   | { type: 'move-entity'; id: Id; dx: number; dy: number }
   | { type: 'move-group'; id: Id; dx: number; dy: number }
   | { type: 'move-entities'; entityIds: Id[]; dx: number; dy: number }
   | { type: 'arrange-group-grid'; id: Id; layout: GroupGridLayout }
+  | { type: 'arrange-group'; id: Id; arrangeKind: string; params: Record<string, number | string | boolean> }
   | { type: 'update-bounds'; id: Id; bounds: { minX: number; maxX: number; minY: number; maxY: number } }
   | { type: 'begin-canvas-interaction'; kind: 'entity' | 'group' | 'bounds'; id: string; handle?: string }
   | { type: 'end-canvas-interaction' }
   | { type: 'create-group-from-selection'; name: string }
   | { type: 'remove-entity-from-group'; groupId: Id; entityId: Id }
   | { type: 'dissolve-group'; id: Id }
-  | { type: 'create-default-behavior-for-selection' }
-  | { type: 'assign-existing-behavior-to-selection'; behaviorId: Id }
-  | { type: 'rename-behavior'; id: Id; name: string }
-  | { type: 'remove-behavior-from-selection' }
-  | { type: 'append-action-to-selection-behavior'; actionType: 'MoveUntil' | 'Wait' | 'Call' }
-  | { type: 'move-sequence-action'; sequenceId: Id; childId: Id; direction: 'up' | 'down' }
-  | { type: 'remove-sequence-action'; sequenceId: Id; childId: Id }
-  | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'behavior' | 'action' | 'condition'; id: Id } }
+  | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'attachment'; id: Id } }
   | { type: 'toggle-mode' }
   | { type: 'dismiss-view-hint' };
 
@@ -121,6 +122,8 @@ function defaultState(): EditorState {
     mode: 'edit',
     hasSeenViewHint: false,
     startupMode: 'reload_last_yaml',
+    themeMode: 'system',
+    uiScale: 0.85,
     registry: EMPTY_EDITOR_REGISTRY,
     initialized: false,
   };
@@ -172,12 +175,6 @@ function importEntities(state: EditorState, drafts: ImportedEntityDraft[]): Edit
   };
 }
 
-function selectionToTarget(selection: Selection): { type: 'entity'; entityId: Id } | { type: 'group'; groupId: Id } | null {
-  if (selection.kind === 'entity') return { type: 'entity', entityId: selection.id };
-  if (selection.kind === 'group') return { type: 'group', groupId: selection.id };
-  return null;
-}
-
 export function reducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'initialize':
@@ -189,6 +186,8 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         dirty: false,
         error: undefined,
         startupMode: action.startupMode,
+        themeMode: action.themeMode,
+        uiScale: coerceUiScale(String(action.uiScale), 0.85),
         registry: action.registry,
         initialized: true,
       };
@@ -196,6 +195,16 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         startupMode: action.startupMode,
+      };
+    case 'set-theme-mode':
+      return {
+        ...state,
+        themeMode: action.themeMode,
+      };
+    case 'set-ui-scale':
+      return {
+        ...state,
+        uiScale: coerceUiScale(String(action.uiScale), state.uiScale),
       };
     case 'select':
       return { ...state, selection: action.selection, error: undefined };
@@ -251,26 +260,6 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
     }
     case 'import-entities':
       return importEntities(state, action.drafts);
-    case 'update-action': {
-      if (!state.scene.actions[action.id]) return state;
-      return withScene(state, {
-        ...state.scene,
-        actions: {
-          ...state.scene.actions,
-          [action.id]: action.next,
-        },
-      }, true);
-    }
-    case 'update-condition': {
-      if (!state.scene.conditions[action.id]) return state;
-      return withScene(state, {
-        ...state.scene,
-        conditions: {
-          ...state.scene.conditions,
-          [action.id]: action.next,
-        },
-      }, true);
-    }
     case 'update-group': {
       if (!state.scene.groups[action.id]) return state;
       return withScene(state, {
@@ -280,6 +269,39 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
           [action.id]: action.next,
         },
       }, true);
+    }
+    case 'create-attachment': {
+      const { scene, attachmentId } = createAttachment(state.scene, action.target, action.presetId, {
+        applyTo: action.target.type === 'group' ? 'group' : undefined,
+      });
+      return {
+        ...state,
+        scene,
+        selection: { kind: 'attachment', id: attachmentId },
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'update-attachment': {
+      const nextScene = updateAttachment(state.scene, action.id, action.next);
+      if (nextScene === state.scene) return state;
+      return withScene(state, nextScene, true);
+    }
+    case 'remove-attachment': {
+      const nextScene = removeAttachment(state.scene, action.id);
+      if (nextScene === state.scene) return state;
+      return {
+        ...state,
+        scene: nextScene,
+        selection: { kind: 'none' },
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'move-attachment': {
+      const nextScene = moveAttachmentWithinTarget(state.scene, action.id, action.direction);
+      if (nextScene === state.scene) return state;
+      return withScene(state, nextScene, true);
     }
     case 'toggle-group-expanded':
       return {
@@ -357,25 +379,28 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       if (nextScene === state.scene) return state;
       return withScene(state, nextScene, true);
     }
+    case 'arrange-group': {
+      const nextScene = applyGroupArrangeLayout(state.scene, action.id, action.arrangeKind, action.params);
+      if (nextScene === state.scene) return state;
+      return withScene(state, nextScene, true);
+    }
     case 'update-bounds': {
-      const condition = state.scene.conditions[action.id];
-      if (!condition || condition.type !== 'BoundsHit') return state;
+      const attachment = state.scene.attachments[action.id];
+      if (!attachment || attachment.presetId !== 'MoveUntil') return state;
+      if (!attachment.condition || attachment.condition.type !== 'BoundsHit') return state;
       const clampedBounds = {
         minX: Math.min(action.bounds.minX, action.bounds.maxX),
         maxX: Math.max(action.bounds.minX, action.bounds.maxX),
         minY: Math.min(action.bounds.minY, action.bounds.maxY),
         maxY: Math.max(action.bounds.minY, action.bounds.maxY),
       };
-      return withScene(state, {
-        ...state.scene,
-        conditions: {
-          ...state.scene.conditions,
-          [action.id]: {
-            ...condition,
-            bounds: clampedBounds,
-          },
+      return withScene(state, updateAttachment(state.scene, attachment.id, {
+        ...attachment,
+        condition: {
+          ...attachment.condition,
+          bounds: clampedBounds,
         },
-      }, true);
+      }), true);
     }
     case 'begin-canvas-interaction':
       return {
@@ -411,93 +436,6 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
           ...state.expandedGroups,
           [groupId]: true,
         },
-        dirty: true,
-        error: undefined,
-      };
-    }
-    case 'create-default-behavior-for-selection': {
-      const target = selectionToTarget(state.selection);
-      if (!target) return state;
-      const { scene } = createDefaultBehaviorForTarget(state.scene, target);
-      if (scene === state.scene) return state;
-      return {
-        ...state,
-        scene,
-        dirty: true,
-        error: undefined,
-      };
-    }
-    case 'assign-existing-behavior-to-selection': {
-      const target = selectionToTarget(state.selection);
-      if (!target) return state;
-      const scene = assignBehaviorToTarget(state.scene, action.behaviorId, target);
-      if (scene === state.scene) return state;
-      return {
-        ...state,
-        scene,
-        dirty: true,
-        error: undefined,
-      };
-    }
-    case 'rename-behavior': {
-      const scene = renameBehavior(state.scene, action.id, action.name);
-      if (scene === state.scene) return state;
-      return {
-        ...state,
-        scene,
-        dirty: true,
-        error: undefined,
-      };
-    }
-    case 'remove-behavior-from-selection': {
-      const target = selectionToTarget(state.selection);
-      if (!target) return state;
-      const behavior = target.type === 'entity'
-        ? getPrimaryBehaviorForEntity(state.scene, target.entityId)
-        : getPrimaryBehaviorForGroup(state.scene, target.groupId);
-      if (!behavior) return state;
-      return {
-        ...state,
-        scene: removeBehavior(state.scene, behavior.id),
-        dirty: true,
-        error: undefined,
-      };
-    }
-    case 'append-action-to-selection-behavior': {
-      const target = selectionToTarget(state.selection);
-      if (!target) return state;
-      const existingBehavior = target.type === 'entity'
-        ? getPrimaryBehaviorForEntity(state.scene, target.entityId)
-        : getPrimaryBehaviorForGroup(state.scene, target.groupId);
-      const { scene: sceneWithBehavior, behaviorId } = existingBehavior
-        ? { scene: state.scene, behaviorId: existingBehavior.id }
-        : createDefaultBehaviorForTarget(state.scene, target);
-      const { scene, actionId } = appendActionToBehavior(sceneWithBehavior, behaviorId, action.actionType);
-      if (!actionId) return state;
-      return {
-        ...state,
-        scene,
-        selection: { kind: 'action', id: actionId },
-        dirty: true,
-        error: undefined,
-      };
-    }
-    case 'move-sequence-action': {
-      const scene = moveSequenceChild(state.scene, action.sequenceId, action.childId, action.direction);
-      if (scene === state.scene) return state;
-      return {
-        ...state,
-        scene,
-        dirty: true,
-        error: undefined,
-      };
-    }
-    case 'remove-sequence-action': {
-      const scene = removeSequenceChild(state.scene, action.sequenceId, action.childId);
-      if (scene === state.scene) return state;
-      return {
-        ...state,
-        scene,
         dirty: true,
         error: undefined,
       };
@@ -558,7 +496,7 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
 
 function loadStoredSceneYaml(): SceneSpec | null {
   if (typeof window === 'undefined') return null;
-  const raw = window.localStorage.getItem(SCENE_STORAGE_KEY);
+  const raw = window.localStorage.getItem(SCENE_STORAGE_KEY) ?? window.localStorage.getItem(SCENE_STORAGE_KEY_V1);
   if (!raw) return null;
   try {
     const parsed = parseSceneYaml(raw);
@@ -582,9 +520,15 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       const storedMode = typeof window !== 'undefined'
         ? coerceStartupMode(window.localStorage.getItem(STARTUP_MODE_STORAGE_KEY), config.startupMode)
         : config.startupMode;
+      const storedThemeMode = typeof window !== 'undefined'
+        ? coerceThemeMode(window.localStorage.getItem(THEME_MODE_STORAGE_KEY))
+        : 'system';
+      const storedUiScale = typeof window !== 'undefined'
+        ? coerceUiScale(window.localStorage.getItem(UI_SCALE_STORAGE_KEY), 0.85)
+        : 0.85;
       const scene = storedMode === 'reload_last_yaml' ? (loadStoredSceneYaml() ?? createEmptyScene()) : createEmptyScene();
 
-      dispatch({ type: 'initialize', scene, startupMode: storedMode, registry });
+      dispatch({ type: 'initialize', scene, startupMode: storedMode, themeMode: storedThemeMode, uiScale: storedUiScale, registry });
     };
 
     void initialize();
@@ -601,6 +545,24 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       // ignore storage errors
     }
   }, [state.initialized, state.startupMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !state.initialized) return;
+    try {
+      window.localStorage.setItem(THEME_MODE_STORAGE_KEY, state.themeMode);
+    } catch {
+      // ignore storage errors
+    }
+  }, [state.initialized, state.themeMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !state.initialized) return;
+    try {
+      window.localStorage.setItem(UI_SCALE_STORAGE_KEY, String(state.uiScale));
+    } catch {
+      // ignore storage errors
+    }
+  }, [state.initialized, state.uiScale]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !state.initialized) return;

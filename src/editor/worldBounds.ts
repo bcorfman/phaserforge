@@ -1,27 +1,27 @@
-import { type BoundsHitConditionSpec, type SceneSpec, type WorldSpec } from '../model/types';
+import { type InlineBoundsHitConditionSpec, type SceneSpec, type WorldSpec } from '../model/types';
 import { getSceneWorld } from './sceneWorld';
 
 export function syncBoundsToWorldResize(scene: SceneSpec, nextWorld: WorldSpec): SceneSpec {
   const previousWorld = getSceneWorld(scene);
-  const nextConditions = Object.fromEntries(
-    Object.entries(scene.conditions).map(([id, condition]) => {
-      if (condition.type !== 'BoundsHit') return [id, condition];
-      return [id, resizeBoundsCondition(condition, previousWorld, nextWorld)];
+  const nextAttachments = Object.fromEntries(
+    Object.entries(scene.attachments).map(([id, attachment]) => {
+      if (attachment.condition?.type !== 'BoundsHit') return [id, attachment];
+      return [id, { ...attachment, condition: resizeBoundsCondition(attachment.condition, previousWorld, nextWorld) }];
     })
   );
 
   return {
     ...scene,
     world: nextWorld,
-    conditions: nextConditions,
+    attachments: nextAttachments,
   };
 }
 
 function resizeBoundsCondition(
-  condition: BoundsHitConditionSpec,
+  condition: InlineBoundsHitConditionSpec,
   previousWorld: WorldSpec,
   nextWorld: WorldSpec
-): BoundsHitConditionSpec {
+): InlineBoundsHitConditionSpec {
   const rightInset = previousWorld.width - condition.bounds.maxX;
   const bottomInset = previousWorld.height - condition.bounds.maxY;
 
