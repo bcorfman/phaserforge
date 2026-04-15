@@ -1,27 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useEditorStore, type Selection } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
-import type { AttachmentSpec, SceneSpec } from '../model/types';
+import type { SceneSpec } from '../model/types';
 import { countAttachmentsForTarget } from './sceneGraphCommands';
-import { getTargetLabel } from './attachmentCommands';
 
 function isSelected(selection: Selection, kind: Selection['kind'], id: string): boolean {
   if (selection.kind === 'entities') {
     return kind === 'entity' && selection.ids.includes(id);
   }
   return selection.kind === kind && 'id' in selection && selection.id === id;
-}
-
-function sortedAttachments(scene: SceneSpec): AttachmentSpec[] {
-  return Object.values(scene.attachments).sort((a, b) => {
-    const aTarget = getTargetLabel(scene, a.target);
-    const bTarget = getTargetLabel(scene, b.target);
-    if (aTarget !== bTarget) return aTarget.localeCompare(bTarget);
-    const ao = a.order ?? 0;
-    const bo = b.order ?? 0;
-    if (ao !== bo) return ao - bo;
-    return a.id.localeCompare(b.id);
-  });
 }
 
 export function EntityList() {
@@ -49,13 +36,12 @@ export function EntityListView({
   dispatch: (action: any) => void;
 }) {
   const { groups, ungroupedEntities } = summarizeSceneGroups(scene);
-  const attachments = useMemo(() => sortedAttachments(scene), [scene]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'attachment' | null>(null);
+  const [editingKind, setEditingKind] = useState<'entity' | 'group' | null>(null);
   const [editingName, setEditingName] = useState('');
 
-  const startEditing = (kind: 'entity' | 'group' | 'attachment', id: string, currentName: string) => {
+  const startEditing = (kind: 'entity' | 'group', id: string, currentName: string) => {
     setEditingKind(kind);
     setEditingId(id);
     setEditingName(currentName);
@@ -83,13 +69,7 @@ export function EntityListView({
       if (entity) {
         dispatch({ type: 'update-entity', id: editingId, next: { ...entity, name: editingName } });
       }
-    } else if (editingKind === 'attachment') {
-      const attachment = scene.attachments[editingId];
-      if (attachment) {
-        dispatch({ type: 'update-attachment', id: editingId, next: { ...attachment, name: editingName } });
-      }
     }
-
     cancelEditing();
   };
 
@@ -223,56 +203,6 @@ export function EntityListView({
                 ))}
               </div>
             )}
-          </div>
-        ))}
-      </section>
-
-      <section className="panel-section" aria-labelledby="scene-graph-actions">
-        <div className="panel-heading-row">
-          <h3 className="panel-heading" id="scene-graph-actions">Actions</h3>
-          <span className="panel-count">{attachments.length}</span>
-        </div>
-        {attachments.map((attachment) => (
-          <div key={attachment.id} className="member-row">
-            {editingId === attachment.id && editingKind === 'attachment' ? (
-              <input
-                autoFocus
-                className="scene-graph-rename-input"
-                value={editingName}
-                onChange={(e) => setEditingName(e.target.value)}
-                onBlur={saveRename}
-                onKeyDown={handleKeyDown}
-                data-testid={`rename-attachment-input-${attachment.id}`}
-              />
-            ) : (
-              <button
-                className={`list-item ${isSelected(selection, 'attachment', attachment.id) ? 'active' : ''}`}
-                data-testid={`attachment-item-${attachment.id}`}
-                onClick={() => dispatch({ type: 'select', selection: { kind: 'attachment', id: attachment.id } })}
-                type="button"
-              >
-                <span className="action-item-label">{attachment.name ?? attachment.id}</span>
-                <span className="action-item-meta">{attachment.presetId} · {getTargetLabel(scene, attachment.target)}</span>
-              </button>
-            )}
-            <button
-              aria-label={`Rename action ${attachment.name ?? attachment.id}`}
-              className="scene-graph-button scene-graph-edit"
-              data-testid={`edit-attachment-${attachment.id}`}
-              type="button"
-              onClick={() => startEditing('attachment', attachment.id, attachment.name ?? attachment.id)}
-            >
-              ✏️
-            </button>
-            <button
-              aria-label={`Remove action ${attachment.name ?? attachment.id}`}
-              className="scene-graph-button scene-graph-remove"
-              data-testid={`remove-attachment-${attachment.id}`}
-              type="button"
-              onClick={() => dispatch({ type: 'remove-scene-graph-item', item: { kind: 'attachment', id: attachment.id } })}
-            >
-              🗑
-            </button>
           </div>
         ))}
       </section>

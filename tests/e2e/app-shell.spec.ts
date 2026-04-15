@@ -21,6 +21,7 @@ test('boots empty by default and loads scenes', async ({ page }) => {
   await expect(page.getByRole('main', { name: 'Viewport' })).toBeVisible();
   await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Sprites' })).toBeVisible();
   await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Formations' })).toBeVisible();
+  await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Actions' })).toBeHidden();
   await expect(page.getByTestId('registry-panel')).toBeVisible();
   await expect(page.getByText('Pan with middle mouse or Shift + drag. Use zoom controls to inspect sprite spacing and bounds.')).toBeVisible();
   await waitForEmptyScene(page);
@@ -111,19 +112,18 @@ test('removes an imported sprite from the scene graph', async ({ page }) => {
   }).toEqual([]);
 });
 
-test('uses compact global sizing scale', async ({ page }) => {
+test('uses medium global sizing scale', async ({ page }) => {
   await gotoStudio(page);
 
   const uiScale = await page.evaluate(() => {
     const raw = getComputedStyle(document.documentElement).getPropertyValue('--ui-scale');
     return Number.parseFloat(raw);
   });
-  expect(uiScale).toBeGreaterThan(0);
-  expect(uiScale).toBeLessThan(1);
+  expect(uiScale).toBeCloseTo(0.95, 3);
 
   const rootFontSize = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
   expect(rootFontSize).toBeLessThan(16);
-  expect(rootFontSize).toBeGreaterThan(12);
+  expect(rootFontSize).toBeGreaterThan(14);
 });
 
 test('toggles theme modes and persists preference', async ({ page }) => {
@@ -138,4 +138,34 @@ test('toggles theme modes and persists preference', async ({ page }) => {
 
   await page.getByTestId('theme-mode-system').click();
   await expect.poll(async () => page.evaluate(() => document.documentElement.hasAttribute('data-theme'))).toBe(false);
+});
+
+test('side panes avoid horizontal overflow', async ({ page }) => {
+  await seedSampleScene(page);
+  await gotoStudio(page);
+  await waitForSampleScene(page);
+
+  await selectGroupInSceneGraph(page, 'g-enemies');
+  await expect(page.getByTestId('inspector-pane')).toBeVisible();
+
+  const results = await page.evaluate(() => {
+    const panes = [
+      document.querySelector('[data-testid="entity-list-pane"]'),
+      document.querySelector('[data-testid="inspector-pane"]'),
+    ].filter(Boolean) as HTMLElement[];
+
+    return panes.map((pane) => {
+      const body = pane.querySelector('.panel.panel-scroll') as HTMLElement | null;
+      const el = body ?? pane;
+      return {
+        testId: pane.getAttribute('data-testid'),
+        clientWidth: el.clientWidth,
+        scrollWidth: el.scrollWidth,
+      };
+    });
+  });
+
+  for (const entry of results) {
+    expect(entry.scrollWidth, `pane ${entry.testId} scrollWidth`).toBeLessThanOrEqual(entry.clientWidth + 1);
+  }
 });

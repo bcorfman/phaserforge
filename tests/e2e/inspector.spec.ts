@@ -39,11 +39,14 @@ test('edits formation details and layout from the inspector', async ({ page }) =
 });
 
 test('edits move-until and bounds values from the attachment inspector', async ({ page }) => {
-  await page.getByTestId('attachment-item-att-move-right').click();
+  await selectGroupInSceneGraph(page, 'g-enemies');
+  await page.getByTestId('attachment-open-att-move-right').click();
 
   await page.getByTestId('attachment-velocity-x-input').fill('140');
   await page.getByTestId('attachment-bounds-min-x-input').fill('120');
   await page.getByTestId('attachment-bounds-max-y-input').fill('700');
+  // Commit validated numeric inputs.
+  await page.getByTestId('attachment-name-input').click();
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { attachments: Record<string, { params?: Record<string, unknown>; condition?: { type: string; bounds: { minX: number; maxY: number } } }> } }>(page);
@@ -76,7 +79,8 @@ test('removes a formation member and keeps the group selected', async ({ page })
 });
 
 test('removes an attached action from the scene graph', async ({ page }) => {
-  await page.getByTestId('remove-attachment-att-wait-right').click();
+  await selectGroupInSceneGraph(page, 'g-enemies');
+  await page.getByTestId('attachment-remove-att-wait-right').click();
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { attachments: Record<string, unknown> } }>(page);
@@ -120,6 +124,68 @@ test('edits authored sprite transform and visual properties from the inspector',
   });
 });
 
+test('validated numeric fields allow clearing until blur', async ({ page }) => {
+  await tapWorld(page, { x: 220, y: 140 });
+
+  const scaleX = page.getByTestId('entity-scale-x-input');
+  const scaleY = page.getByTestId('entity-scale-y-input');
+
+  await scaleX.click();
+  await scaleX.press('Control+A');
+  await scaleX.press('Backspace');
+  await expect(scaleX).toHaveValue('');
+
+  await scaleX.type('2');
+  await expect(scaleX).toHaveValue('2');
+
+  // Commit on blur.
+  await scaleY.click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, { scaleX?: number }> } }>(page);
+    return state.scene.entities.e1.scaleX;
+  }).toBe(2);
+});
+
+test('move-until velocity inputs allow clearing until blur', async ({ page }) => {
+  await selectGroupInSceneGraph(page, 'g-enemies');
+  await page.getByTestId('attachment-open-att-move-right').click();
+
+  const velocityX = page.getByTestId('attachment-velocity-x-input');
+  const velocityY = page.getByTestId('attachment-velocity-y-input');
+
+  await velocityX.click();
+  await velocityX.press('Control+A');
+  await velocityX.press('Backspace');
+  await expect(velocityX).toHaveValue('');
+
+  await velocityX.type('123');
+  await expect(velocityX).toHaveValue('123');
+
+  await velocityY.click();
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { attachments: Record<string, { params?: Record<string, unknown> }> } }>(page);
+    const params = state.scene.attachments['att-move-right'].params ?? {};
+    return Number(params.velocityX ?? NaN);
+  }).toBe(123);
+});
+
+test('bounds hit checkbox toggles BoundsHit condition', async ({ page }) => {
+  await selectGroupInSceneGraph(page, 'g-enemies');
+  await page.getByTestId('attachment-open-att-move-right').click();
+
+  const toggle = page.getByTestId('attachment-bounds-enabled-input');
+  await expect(toggle).toBeChecked();
+  await expect(toggle).toHaveAttribute('aria-label', 'Enabled');
+  await expect(page.getByTestId('attachment-bounds-behavior-select')).toBeVisible();
+
+  await toggle.uncheck();
+  await expect(page.getByTestId('attachment-bounds-behavior-select')).toBeHidden();
+
+  await toggle.check();
+  await expect(page.getByTestId('attachment-bounds-behavior-select')).toBeVisible();
+});
+
 test('creates a formation from imported sprites and arranges it into a grid', async ({ page }) => {
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
   await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
@@ -152,6 +218,8 @@ test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
   await page.getByTestId('add-attachment-MoveUntil').click();
   await page.getByTestId('attachment-velocity-x-input').fill('140');
   await page.getByTestId('attachment-bounds-min-x-input').fill('48');
+  // Commit validated numeric inputs.
+  await page.getByTestId('attachment-name-input').click();
 
   await expect.poll(async () => {
     const state = await getState<{ selection: { kind: string; id?: string }; scene: { attachments: Record<string, { target: { type: string; entityId?: string }; presetId: string; params?: Record<string, unknown>; condition?: { type: string; bounds: { minX: number } } }> } }>(page);
@@ -193,7 +261,8 @@ test('assigns a group MoveUntil action to imported sprites and runs it in play m
 });
 
 test('preview uses edited move velocity and bounce behavior', async ({ page }) => {
-  await page.getByTestId('attachment-item-att-move-right').click();
+  await selectGroupInSceneGraph(page, 'g-enemies');
+  await page.getByTestId('attachment-open-att-move-right').click();
   await page.getByTestId('attachment-velocity-x-input').fill('240');
   await page.getByTestId('attachment-bounds-max-x-input').fill('460');
   await page.getByTestId('attachment-bounds-behavior-select').selectOption('bounce');
@@ -232,6 +301,8 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
   const maxX = String(Math.round(beforeSprite.maxX + 40));
   await page.getByTestId('attachment-bounds-min-x-input').fill(minX);
   await page.getByTestId('attachment-bounds-max-x-input').fill(maxX);
+  // Commit validated numeric inputs.
+  await page.getByTestId('attachment-name-input').click();
 
   const bounds = await getEditableBoundsRect(page);
   if (!bounds?.maxX) throw new Error('Editable bounds unavailable');
@@ -295,4 +366,3 @@ test('preview applies wrap behavior for an imported sprite move action', async (
     return rect?.centerX;
   }).toBeGreaterThan(200);
 });
-

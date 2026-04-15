@@ -853,8 +853,10 @@ export class EditorScene extends Phaser.Scene {
       updateDragOverlay(this.dragOverlay, this.dragState, worldPoint, boundsCondition?.bounds);
     }
 
-    this.dragState.startX = worldPoint.x;
-    this.dragState.startY = worldPoint.y;
+    if (this.dragState.kind !== 'marquee') {
+      this.dragState.startX = worldPoint.x;
+      this.dragState.startY = worldPoint.y;
+    }
   }
 
   private handlePointerUp(): void {

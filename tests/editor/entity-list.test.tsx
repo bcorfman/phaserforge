@@ -4,7 +4,7 @@ import { EntityListView } from '../../src/editor/EntityList';
 import { sampleScene } from '../../src/model/sampleScene';
 
 describe('EntityList', () => {
-  it('renders sprites, formations, and actions sections', () => {
+  it('renders sprites and formations sections without actions', () => {
     const markup = renderToStaticMarkup(
       <EntityListView
         scene={sampleScene}
@@ -16,9 +16,8 @@ describe('EntityList', () => {
 
     expect(markup).toContain('Sprites');
     expect(markup).toContain('Formations');
-    expect(markup).toContain('Actions');
     expect(markup).toContain('Enemy Formation');
-    expect(markup).toContain('Loop');
-    expect(markup).toContain('Move Right');
+    expect(markup).not.toContain('Actions');
+    expect(markup).not.toContain('Move Right');
   });
 });

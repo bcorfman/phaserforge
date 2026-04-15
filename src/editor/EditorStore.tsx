@@ -24,6 +24,7 @@ export const SCENE_STORAGE_KEY = 'phaseractions.sceneYaml.v2';
 export const STARTUP_MODE_STORAGE_KEY = 'phaseractions.startupMode.v1';
 export const THEME_MODE_STORAGE_KEY = 'phaseractions.themeMode.v1';
 export const UI_SCALE_STORAGE_KEY = 'phaseractions.uiScale.v1';
+export const DEFAULT_UI_SCALE = 0.95;
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -123,7 +124,7 @@ function defaultState(): EditorState {
     hasSeenViewHint: false,
     startupMode: 'reload_last_yaml',
     themeMode: 'system',
-    uiScale: 0.85,
+    uiScale: DEFAULT_UI_SCALE,
     registry: EMPTY_EDITOR_REGISTRY,
     initialized: false,
   };
@@ -187,7 +188,7 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         error: undefined,
         startupMode: action.startupMode,
         themeMode: action.themeMode,
-        uiScale: coerceUiScale(String(action.uiScale), 0.85),
+        uiScale: coerceUiScale(String(action.uiScale), DEFAULT_UI_SCALE),
         registry: action.registry,
         initialized: true,
       };
@@ -524,8 +525,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         ? coerceThemeMode(window.localStorage.getItem(THEME_MODE_STORAGE_KEY))
         : 'system';
       const storedUiScale = typeof window !== 'undefined'
-        ? coerceUiScale(window.localStorage.getItem(UI_SCALE_STORAGE_KEY), 0.85)
-        : 0.85;
+        ? coerceUiScale(window.localStorage.getItem(UI_SCALE_STORAGE_KEY), DEFAULT_UI_SCALE)
+        : DEFAULT_UI_SCALE;
       const scene = storedMode === 'reload_last_yaml' ? (loadStoredSceneYaml() ?? createEmptyScene()) : createEmptyScene();
 
       dispatch({ type: 'initialize', scene, startupMode: storedMode, themeMode: storedThemeMode, uiScale: storedUiScale, registry });

@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   dragBoundsHandle,
   dismissViewHint,
+  dragOnCanvas,
   dragWorld,
   expectSelection,
   getEditableBoundsRect,
@@ -9,6 +10,8 @@ import {
   getState,
   gotoStudio,
   seedSampleScene,
+  selectGroupInSceneGraph,
+  worldToClient,
   tapWorld,
   triggerRedo,
   triggerUndo,
@@ -26,6 +29,23 @@ test('selects an entity by clicking it on the canvas', async ({ page }) => {
 
   await expectSelection(page, { kind: 'entity', id: 'e1' });
   await expect(page.getByTestId('inspector')).toContainText('e1');
+});
+
+test('marquee selects multiple entities by click-dragging empty canvas', async ({ page }) => {
+  await dismissViewHint(page);
+
+  const e1 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1') ?? null) as any);
+  const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
+  if (!e1 || !e2) throw new Error('Entity rects unavailable');
+
+  const start = await worldToClient(page, { x: e1.minX - 30, y: e1.minY - 30 });
+  const end = await worldToClient(page, { x: e2.maxX + 5, y: e2.maxY + 5 });
+  await dragOnCanvas(page, start, end, 'left');
+
+  await expect.poll(async () => {
+    const state = await getState<{ selection?: { kind: string; ids?: string[] } }>(page);
+    return state.selection;
+  }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
 });
 
 test('drags an entity on the canvas and supports keyboard undo/redo', async ({ page }) => {
@@ -65,7 +85,8 @@ test('drags a formation on the canvas and restores layout metadata on undo', asy
 });
 
 test('resizes editable bounds from the canvas handle', async ({ page }) => {
-  await page.getByTestId('attachment-item-att-move-right').click();
+  await selectGroupInSceneGraph(page, 'g-enemies');
+  await page.getByTestId('attachment-open-att-move-right').click();
   await expect.poll(async () => await getEditableBoundsRect(page)).toMatchObject({
     minX: 80,
     minY: 60,

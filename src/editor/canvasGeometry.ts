@@ -76,16 +76,20 @@ export function hitTestCanvas(
   }
 
   // Priority 4: Bounds body
-  const boundsAttachment = Object.values(sceneSpec.attachments).find((a) => a.condition?.type === 'BoundsHit');
-  if (boundsAttachment?.condition?.type === 'BoundsHit') {
-    const bounds = boundsAttachment.condition.bounds;
-    if (
-      worldPoint.x >= bounds.minX &&
-      worldPoint.x <= bounds.maxX &&
-      worldPoint.y >= bounds.minY &&
-      worldPoint.y <= bounds.maxY
-    ) {
-      return { kind: 'bounds-body' };
+  // Only consider bounds-body hit testing when an editable bounds overlay is active.
+  // Otherwise, BoundsHit conditions can cover most of the scene and would prevent marquee selection.
+  if (boundsHandles.size > 0) {
+    const boundsAttachment = Object.values(sceneSpec.attachments).find((a) => a.condition?.type === 'BoundsHit');
+    if (boundsAttachment?.condition?.type === 'BoundsHit') {
+      const bounds = boundsAttachment.condition.bounds;
+      if (
+        worldPoint.x >= bounds.minX &&
+        worldPoint.x <= bounds.maxX &&
+        worldPoint.y >= bounds.minY &&
+        worldPoint.y <= bounds.maxY
+      ) {
+        return { kind: 'bounds-body' };
+      }
     }
   }
 
