@@ -2,7 +2,7 @@
 
 :root {
   color-scheme: light;
-  --ui-scale: 0.85;
+  --ui-scale: 0.95;
   --bg: #f3ede3;
   --bg-wash: #e7ddd0;
   --surface: rgba(255, 250, 242, 0.92);
@@ -415,7 +415,10 @@ textarea:focus-visible {
 .app-body {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr) minmax(18rem, 21rem);
+  grid-template-columns:
+    minmax(260px, clamp(260px, 18vw, 320px))
+    minmax(0, 1fr)
+    minmax(340px, clamp(340px, 23vw, 440px));
   gap: 1rem;
   min-height: 0;
 }
@@ -644,7 +647,6 @@ html[data-theme='dark'] .phaser-frame {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  width: 100%;
   border: 1px solid transparent;
   border-radius: 0.9rem;
   background: var(--surface-strong);
@@ -652,6 +654,12 @@ html[data-theme='dark'] .phaser-frame {
   text-align: left;
   padding: 0.75rem 0.85rem;
   cursor: pointer;
+}
+
+.group-row > .list-item,
+.member-row > .list-item {
+  flex: 1;
+  min-width: 0;
 }
 
 .group-row,
@@ -754,6 +762,9 @@ html[data-theme='dark'] .phaser-frame {
 .action-item-label {
   min-width: 0;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .inspector-block {
@@ -769,6 +780,7 @@ html[data-theme='dark'] .phaser-frame {
   justify-content: space-between;
   gap: 0.65rem;
   font-size: 0.82rem;
+  min-width: 0;
 }
 
 .inspector-block .field > span {
@@ -779,26 +791,57 @@ html[data-theme='dark'] .phaser-frame {
 
 .inspector-block .field input,
 .inspector-block .field select {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 2.1rem;
   padding: 0.35rem 0.55rem;
   border-radius: 0.65rem;
 }
 
 .inspector-block .field input[type='checkbox'] {
+  flex: 0 0 auto;
   width: 1.1rem;
   height: 1.1rem;
   min-height: auto;
   padding: 0;
 }
 
+.inspector-block .field.field-checkbox {
+  justify-content: flex-start;
+}
+
+.inspector-block .field.field-checkbox > span {
+  flex: 0 0 auto;
+}
+
+.inspector-block .field.field-checkbox input[type='checkbox'] {
+  margin-left: 0.65rem;
+}
+
+.inspector-grid-2 .field.field-checkbox > span {
+  flex-basis: auto;
+}
+
 .inspector-grid-2 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.65rem;
+  gap: 0.8rem;
+}
+
+.inspector-grid-2 .field {
+  min-width: 0;
 }
 
 .inspector-grid-2 .field > span {
   flex-basis: 5.25rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-item-meta {
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;

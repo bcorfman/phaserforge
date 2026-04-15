@@ -9,6 +9,7 @@ import { AttachmentSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, Ent
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
+import { ValidatedNumberInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
@@ -238,53 +239,119 @@ function EntityInspector({
         <div className="inspector-grid-2">
           <label className="field">
             <span>X</span>
-            <input aria-label="Entity X" data-testid="entity-x-input" type="number" value={resolved.x} onChange={(e) => update({ x: Number(e.target.value) })} />
+            <ValidatedNumberInput
+              aria-label="Entity X"
+              data-testid="entity-x-input"
+              value={resolved.x}
+              onCommit={(next) => update({ x: next })}
+            />
           </label>
           <label className="field">
             <span>Y</span>
-            <input aria-label="Entity Y" data-testid="entity-y-input" type="number" value={resolved.y} onChange={(e) => update({ y: Number(e.target.value) })} />
+            <ValidatedNumberInput
+              aria-label="Entity Y"
+              data-testid="entity-y-input"
+              value={resolved.y}
+              onCommit={(next) => update({ y: next })}
+            />
           </label>
         </div>
         <div className="inspector-grid-2">
           <label className="field">
             <span>Width</span>
-            <input aria-label="Entity Width" data-testid="entity-width-input" type="number" min={1} value={resolved.width} onChange={(e) => update({ width: Math.max(1, Number(e.target.value) || 1) })} />
+            <ValidatedNumberInput
+              aria-label="Entity Width"
+              data-testid="entity-width-input"
+              min={1}
+              value={resolved.width}
+              clamp={(next) => Math.max(1, next || 1)}
+              onCommit={(next) => update({ width: next })}
+            />
           </label>
           <label className="field">
             <span>Height</span>
-            <input aria-label="Entity Height" data-testid="entity-height-input" type="number" min={1} value={resolved.height} onChange={(e) => update({ height: Math.max(1, Number(e.target.value) || 1) })} />
+            <ValidatedNumberInput
+              aria-label="Entity Height"
+              data-testid="entity-height-input"
+              min={1}
+              value={resolved.height}
+              clamp={(next) => Math.max(1, next || 1)}
+              onCommit={(next) => update({ height: next })}
+            />
           </label>
         </div>
         <div className="inspector-grid-2">
           <label className="field">
             <span>Scale X</span>
-            <input aria-label="Scale X" data-testid="entity-scale-x-input" type="number" min={0.01} step="0.1" value={resolved.scaleX} onChange={(e) => update({ scaleX: Math.max(0.01, Number(e.target.value) || 0.01) })} />
+            <ValidatedNumberInput
+              aria-label="Scale X"
+              data-testid="entity-scale-x-input"
+              min={0.01}
+              step="0.1"
+              value={resolved.scaleX}
+              clamp={(next) => Math.max(0.01, next || 0.01)}
+              onCommit={(next) => update({ scaleX: next })}
+            />
           </label>
           <label className="field">
             <span>Scale Y</span>
-            <input aria-label="Scale Y" data-testid="entity-scale-y-input" type="number" min={0.01} step="0.1" value={resolved.scaleY} onChange={(e) => update({ scaleY: Math.max(0.01, Number(e.target.value) || 0.01) })} />
+            <ValidatedNumberInput
+              aria-label="Scale Y"
+              data-testid="entity-scale-y-input"
+              min={0.01}
+              step="0.1"
+              value={resolved.scaleY}
+              clamp={(next) => Math.max(0.01, next || 0.01)}
+              onCommit={(next) => update({ scaleY: next })}
+            />
           </label>
         </div>
         <label className="field">
           <span>Rotation</span>
-          <input aria-label="Rotation" data-testid="entity-rotation-input" type="number" min={0} max={359} value={resolved.rotationDeg} onChange={(e) => update({ rotationDeg: Math.max(0, Math.min(359, Number(e.target.value) || 0)) })} />
+          <ValidatedNumberInput
+            aria-label="Rotation"
+            data-testid="entity-rotation-input"
+            min={0}
+            max={359}
+            value={resolved.rotationDeg}
+            clamp={(next) => Math.max(0, Math.min(359, next || 0))}
+            onCommit={(next) => update({ rotationDeg: next })}
+          />
         </label>
         <div className="inspector-grid-2">
           <label className="field">
             <span>Origin X</span>
-            <input aria-label="Origin X" data-testid="entity-origin-x-input" type="number" min={0} max={1} step="0.1" value={resolved.originX} onChange={(e) => update({ originX: Math.max(0, Math.min(1, Number(e.target.value) || 0)) })} />
+            <ValidatedNumberInput
+              aria-label="Origin X"
+              data-testid="entity-origin-x-input"
+              min={0}
+              max={1}
+              step="0.1"
+              value={resolved.originX}
+              clamp={(next) => Math.max(0, Math.min(1, next || 0))}
+              onCommit={(next) => update({ originX: next })}
+            />
           </label>
           <label className="field">
             <span>Origin Y</span>
-            <input aria-label="Origin Y" data-testid="entity-origin-y-input" type="number" min={0} max={1} step="0.1" value={resolved.originY} onChange={(e) => update({ originY: Math.max(0, Math.min(1, Number(e.target.value) || 0)) })} />
+            <ValidatedNumberInput
+              aria-label="Origin Y"
+              data-testid="entity-origin-y-input"
+              min={0}
+              max={1}
+              step="0.1"
+              value={resolved.originY}
+              clamp={(next) => Math.max(0, Math.min(1, next || 0))}
+              onCommit={(next) => update({ originY: next })}
+            />
           </label>
         </div>
         <div className="inspector-grid-2">
-          <label className="field">
+          <label className="field field-checkbox">
             <span>Flip X</span>
             <input aria-label="Flip X" data-testid="entity-flip-x-input" type="checkbox" checked={resolved.flipX} onChange={(e) => update({ flipX: e.target.checked })} />
           </label>
-          <label className="field">
+          <label className="field field-checkbox">
             <span>Flip Y</span>
             <input aria-label="Flip Y" data-testid="entity-flip-y-input" type="checkbox" checked={resolved.flipY} onChange={(e) => update({ flipY: e.target.checked })} />
           </label>
@@ -335,79 +402,51 @@ function EntityInspector({
         </div>
         {resolved.hitbox && (
           <>
-            <div className="inspector-grid-2">
-              <label className="field">
-                <span>Hitbox X</span>
-                <input
-                  aria-label="Hitbox X"
-                  data-testid="entity-hitbox-x-input"
-                  type="number"
-                  min={0}
-                  value={resolved.hitbox.x}
-                  onChange={(e) =>
-                    update({
-                      hitbox: {
-                        ...resolved.hitbox!,
-                        x: Math.max(0, Math.min(resolved.width, Number(e.target.value) || 0)),
-                      },
-                    })
-                  }
-                />
-              </label>
+	            <div className="inspector-grid-2">
+	              <label className="field">
+	                <span>Hitbox X</span>
+	                <ValidatedNumberInput
+	                  aria-label="Hitbox X"
+	                  data-testid="entity-hitbox-x-input"
+	                  min={0}
+	                  value={resolved.hitbox.x}
+	                  clamp={(next) => Math.max(0, Math.min(resolved.width, next || 0))}
+	                  onCommit={(next) => update({ hitbox: { ...resolved.hitbox!, x: next } })}
+	                />
+	              </label>
               <label className="field">
                 <span>Hitbox Y</span>
-                <input
+                <ValidatedNumberInput
                   aria-label="Hitbox Y"
                   data-testid="entity-hitbox-y-input"
-                  type="number"
                   min={0}
                   value={resolved.hitbox.y}
-                  onChange={(e) =>
-                    update({
-                      hitbox: {
-                        ...resolved.hitbox!,
-                        y: Math.max(0, Math.min(resolved.height, Number(e.target.value) || 0)),
-                      },
-                    })
-                  }
+                  clamp={(next) => Math.max(0, Math.min(resolved.height, next || 0))}
+                  onCommit={(next) => update({ hitbox: { ...resolved.hitbox!, y: next } })}
                 />
               </label>
             </div>
             <div className="inspector-grid-2">
               <label className="field">
                 <span>Hitbox Width</span>
-                <input
+                <ValidatedNumberInput
                   aria-label="Hitbox Width"
                   data-testid="entity-hitbox-width-input"
-                  type="number"
                   min={1}
                   value={resolved.hitbox.width}
-                  onChange={(e) =>
-                    update({
-                      hitbox: {
-                        ...resolved.hitbox!,
-                        width: Math.max(1, Math.min(resolved.width - resolved.hitbox!.x, Number(e.target.value) || 1)),
-                      },
-                    })
-                  }
+                  clamp={(next) => Math.max(1, Math.min(resolved.width - resolved.hitbox!.x, next || 1))}
+                  onCommit={(next) => update({ hitbox: { ...resolved.hitbox!, width: next } })}
                 />
               </label>
               <label className="field">
                 <span>Hitbox Height</span>
-                <input
+                <ValidatedNumberInput
                   aria-label="Hitbox Height"
                   data-testid="entity-hitbox-height-input"
-                  type="number"
                   min={1}
                   value={resolved.hitbox.height}
-                  onChange={(e) =>
-                    update({
-                      hitbox: {
-                        ...resolved.hitbox!,
-                        height: Math.max(1, Math.min(resolved.height - resolved.hitbox!.y, Number(e.target.value) || 1)),
-                      },
-                    })
-                  }
+                  clamp={(next) => Math.max(1, Math.min(resolved.height - resolved.hitbox!.y, next || 1))}
+                  onCommit={(next) => update({ hitbox: { ...resolved.hitbox!, height: next } })}
                 />
               </label>
             </div>
@@ -422,7 +461,16 @@ function EntityInspector({
         <div className="inspector-grid-2">
           <label className="field">
             <span>Alpha</span>
-            <input aria-label="Alpha" data-testid="entity-alpha-input" type="number" min={0} max={1} step="0.1" value={resolved.alpha} onChange={(e) => update({ alpha: Math.max(0, Math.min(1, Number(e.target.value) || 0)) })} />
+            <ValidatedNumberInput
+              aria-label="Alpha"
+              data-testid="entity-alpha-input"
+              min={0}
+              max={1}
+              step="0.1"
+              value={resolved.alpha}
+              clamp={(next) => Math.max(0, Math.min(1, next || 0))}
+              onCommit={(next) => update({ alpha: next })}
+            />
           </label>
           <label className="field">
             <span>Visible</span>
@@ -431,7 +479,12 @@ function EntityInspector({
         </div>
         <label className="field">
           <span>Depth</span>
-          <input aria-label="Depth" data-testid="entity-depth-input" type="number" value={resolved.depth} onChange={(e) => update({ depth: Number(e.target.value) || 0 })} />
+          <ValidatedNumberInput
+            aria-label="Depth"
+            data-testid="entity-depth-input"
+            value={resolved.depth}
+            onCommit={(next) => update({ depth: next })}
+          />
         </label>
         <div className="inspector-row">
           Asset: {resolved.asset ? `${resolved.asset.imageType} (${resolved.asset.source.kind})` : 'Placeholder rectangle'}
@@ -446,30 +499,30 @@ function EntityInspector({
           <div className="inspector-row">
             Source: {resolved.asset.source.kind === 'embedded' ? (resolved.asset.source.originalName ?? 'embedded') : resolved.asset.source.path}
           </div>
-          {resolved.asset.imageType === 'spritesheet' ? (
-            <>
-              <label className="field">
-                <span>Frame Index</span>
-                <input
-                  aria-label="Frame Index"
-                  data-testid="entity-frame-index-input"
-                  type="number"
-                  min={0}
-                  value={resolved.asset.frame?.frameIndex ?? ''}
-                  onChange={(e) =>
-                    update({
-                      asset: {
-                        ...resolved.asset!,
-                        frame: {
-                          ...(resolved.asset!.frame ?? { kind: 'spritesheet-frame' as const }),
-                          kind: 'spritesheet-frame',
-                          frameIndex: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value) || 0),
-                        },
-                      },
-                    })
-                  }
-                />
-              </label>
+	          {resolved.asset.imageType === 'spritesheet' ? (
+	            <>
+	              <label className="field">
+	                <span>Frame Index</span>
+	                <ValidatedOptionalNumberInput
+	                  aria-label="Frame Index"
+	                  data-testid="entity-frame-index-input"
+	                  min={0}
+	                  value={resolved.asset.frame?.frameIndex}
+	                  clamp={(next) => Math.max(0, next || 0)}
+	                  onCommit={(next) =>
+	                    update({
+	                      asset: {
+	                        ...resolved.asset!,
+	                        frame: {
+	                          ...(resolved.asset!.frame ?? { kind: 'spritesheet-frame' as const }),
+	                          kind: 'spritesheet-frame',
+	                          frameIndex: next,
+	                        },
+	                      },
+	                    })
+	                  }
+	                />
+	              </label>
               <label className="field">
                 <span>Frame Key</span>
                 <input
@@ -713,12 +766,11 @@ export function renderGroupInspector(
               return (
                 <label key={param.name} className="field">
                   <span>{label}</span>
-                  <input
+                  <ValidatedNumberInput
                     aria-label={label}
                     data-testid={`arrange-param-${param.name}`}
-                    type="number"
                     value={Number(rawValue ?? 0)}
-                    onChange={(e) => handlers.onArrangeParamsChange({ ...arrangeParamsDraft, [param.name]: Number(e.target.value) })}
+                    onCommit={(next) => handlers.onArrangeParamsChange({ ...arrangeParamsDraft, [param.name]: next })}
                   />
                 </label>
               );
@@ -920,46 +972,48 @@ function AttachmentInspector({
           open={foldouts.isOpen('attachment.moveuntil', true)}
           onToggle={() => foldouts.toggle('attachment.moveuntil', true)}
         >
-          <div className="inspector-grid-2">
-            <label className="field">
-              <span>Velocity X</span>
-              <input
-                aria-label="Velocity X"
-                data-testid="attachment-velocity-x-input"
-                type="number"
-                value={Number(params.velocityX ?? 0)}
-                onChange={(e) => onUpdate({ ...attachment, params: { ...params, velocityX: Number(e.target.value) } })}
-              />
-            </label>
-            <label className="field">
-              <span>Velocity Y</span>
-              <input
-                aria-label="Velocity Y"
-                data-testid="attachment-velocity-y-input"
-                type="number"
-                value={Number(params.velocityY ?? 0)}
-                onChange={(e) => onUpdate({ ...attachment, params: { ...params, velocityY: Number(e.target.value) } })}
-              />
-            </label>
-          </div>
-          <InspectorFoldout
-            title="Bounds"
-            open={foldouts.isOpen('attachment.bounds', true)}
-            onToggle={() => foldouts.toggle('attachment.bounds', true)}
-          >
-            <button
-              className="button"
-              data-testid="attachment-add-bounds-condition"
-              type="button"
-              onClick={() => onUpdate({ ...attachment, condition: ensureBoundsCondition() })}
-            >
-              Ensure Bounds Condition
-            </button>
-            {attachment.condition?.type === 'BoundsHit' && (
-              <>
-                <label className="field">
-                  <span>Behavior</span>
-                  <select
+	          <div className="inspector-grid-2">
+	            <label className="field">
+	              <span>Velocity X</span>
+	              <ValidatedNumberInput
+	                aria-label="Velocity X"
+	                data-testid="attachment-velocity-x-input"
+	                value={Number(params.velocityX ?? 0)}
+	                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocityX: next } })}
+	              />
+	            </label>
+	            <label className="field">
+	              <span>Velocity Y</span>
+	              <ValidatedNumberInput
+	                aria-label="Velocity Y"
+	                data-testid="attachment-velocity-y-input"
+	                value={Number(params.velocityY ?? 0)}
+	                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocityY: next } })}
+	              />
+	            </label>
+	          </div>
+	          <InspectorFoldout
+	            title="Bounds"
+	            open={foldouts.isOpen('attachment.bounds', true)}
+	            onToggle={() => foldouts.toggle('attachment.bounds', true)}
+	          >
+	            <label className="field">
+	              <span>Enabled</span>
+	              <input
+	                aria-label="Enabled"
+	                data-testid="attachment-bounds-enabled-input"
+	                type="checkbox"
+	                checked={attachment.condition?.type === 'BoundsHit'}
+	                onChange={(e) =>
+	                  onUpdate({ ...attachment, condition: e.target.checked ? ensureBoundsCondition() : undefined })
+	                }
+	              />
+	            </label>
+	            {attachment.condition?.type === 'BoundsHit' && (
+	              <>
+	                <label className="field">
+	                  <span>Behavior</span>
+	                  <select
                     aria-label="Behavior"
                     data-testid="attachment-bounds-behavior-select"
                     value={attachment.condition.behavior ?? 'limit'}
@@ -971,58 +1025,54 @@ function AttachmentInspector({
                     <option value="wrap">Wrap</option>
                   </select>
                 </label>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Min X</span>
-                    <input
-                      aria-label="Bounds Min X"
-                      data-testid="attachment-bounds-min-x-input"
-                      type="number"
-                      value={attachment.condition.bounds.minX}
-                      onChange={(e) =>
-                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, minX: Number(e.target.value) } } })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Min Y</span>
-                    <input
-                      aria-label="Bounds Min Y"
-                      data-testid="attachment-bounds-min-y-input"
-                      type="number"
-                      value={attachment.condition.bounds.minY}
-                      onChange={(e) =>
-                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, minY: Number(e.target.value) } } })
-                      }
-                    />
-                  </label>
-                </div>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Max X</span>
-                    <input
-                      aria-label="Bounds Max X"
-                      data-testid="attachment-bounds-max-x-input"
-                      type="number"
-                      value={attachment.condition.bounds.maxX}
-                      onChange={(e) =>
-                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, maxX: Number(e.target.value) } } })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Max Y</span>
-                    <input
-                      aria-label="Bounds Max Y"
-                      data-testid="attachment-bounds-max-y-input"
-                      type="number"
-                      value={attachment.condition.bounds.maxY}
-                      onChange={(e) =>
-                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, maxY: Number(e.target.value) } } })
-                      }
-                    />
-                  </label>
-                </div>
+	                <div className="inspector-grid-2">
+	                  <label className="field">
+	                    <span>Min X</span>
+	                    <ValidatedNumberInput
+	                      aria-label="Bounds Min X"
+	                      data-testid="attachment-bounds-min-x-input"
+	                      value={attachment.condition.bounds.minX}
+	                      onCommit={(next) =>
+	                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, minX: next } } })
+	                      }
+	                    />
+	                  </label>
+	                  <label className="field">
+	                    <span>Min Y</span>
+	                    <ValidatedNumberInput
+	                      aria-label="Bounds Min Y"
+	                      data-testid="attachment-bounds-min-y-input"
+	                      value={attachment.condition.bounds.minY}
+	                      onCommit={(next) =>
+	                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, minY: next } } })
+	                      }
+	                    />
+	                  </label>
+	                </div>
+	                <div className="inspector-grid-2">
+	                  <label className="field">
+	                    <span>Max X</span>
+	                    <ValidatedNumberInput
+	                      aria-label="Bounds Max X"
+	                      data-testid="attachment-bounds-max-x-input"
+	                      value={attachment.condition.bounds.maxX}
+	                      onCommit={(next) =>
+	                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, maxX: next } } })
+	                      }
+	                    />
+	                  </label>
+	                  <label className="field">
+	                    <span>Max Y</span>
+	                    <ValidatedNumberInput
+	                      aria-label="Bounds Max Y"
+	                      data-testid="attachment-bounds-max-y-input"
+	                      value={attachment.condition.bounds.maxY}
+	                      onCommit={(next) =>
+	                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, maxY: next } } })
+	                      }
+	                    />
+	                  </label>
+	                </div>
               </>
             )}
           </InspectorFoldout>
@@ -1034,20 +1084,20 @@ function AttachmentInspector({
           title="Wait"
           open={foldouts.isOpen('attachment.wait', true)}
           onToggle={() => foldouts.toggle('attachment.wait', true)}
-        >
-          <label className="field">
-            <span>Duration (ms)</span>
-            <input
-              aria-label="Duration Ms"
-              data-testid="attachment-wait-duration-input"
-              type="number"
-              min={0}
-              value={Number(params.durationMs ?? 0)}
-              onChange={(e) => onUpdate({ ...attachment, params: { ...params, durationMs: Math.max(0, Number(e.target.value) || 0) } })}
-            />
-          </label>
-        </InspectorFoldout>
-      )}
+	        >
+	          <label className="field">
+	            <span>Duration (ms)</span>
+	            <ValidatedNumberInput
+	              aria-label="Duration Ms"
+	              data-testid="attachment-wait-duration-input"
+	              min={0}
+	              value={Number(params.durationMs ?? 0)}
+	              clamp={(next) => Math.max(0, next || 0)}
+	              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, durationMs: next } })}
+	            />
+	          </label>
+	        </InspectorFoldout>
+	      )}
 
       {attachment.presetId === 'Call' && (
         <InspectorFoldout
@@ -1065,28 +1115,26 @@ function AttachmentInspector({
               onChange={(e) => onUpdate({ ...attachment, params: { ...params, callId: e.target.value } })}
             />
           </label>
-          <div className="inspector-grid-2">
-            <label className="field">
-              <span>dx</span>
-              <input
-                aria-label="dx"
-                data-testid="attachment-call-dx-input"
-                type="number"
-                value={Number(params.dx ?? 0)}
-                onChange={(e) => onUpdate({ ...attachment, params: { ...params, dx: Number(e.target.value) } })}
-              />
-            </label>
-            <label className="field">
-              <span>dy</span>
-              <input
-                aria-label="dy"
-                data-testid="attachment-call-dy-input"
-                type="number"
-                value={Number(params.dy ?? 0)}
-                onChange={(e) => onUpdate({ ...attachment, params: { ...params, dy: Number(e.target.value) } })}
-              />
-            </label>
-          </div>
+	          <div className="inspector-grid-2">
+	            <label className="field">
+	              <span>dx</span>
+	              <ValidatedNumberInput
+	                aria-label="dx"
+	                data-testid="attachment-call-dx-input"
+	                value={Number(params.dx ?? 0)}
+	                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, dx: next } })}
+	              />
+	            </label>
+	            <label className="field">
+	              <span>dy</span>
+	              <ValidatedNumberInput
+	                aria-label="dy"
+	                data-testid="attachment-call-dy-input"
+	                value={Number(params.dy ?? 0)}
+	                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, dy: next } })}
+	              />
+	            </label>
+	          </div>
         </InspectorFoldout>
       )}
 
@@ -1096,30 +1144,28 @@ function AttachmentInspector({
           open={foldouts.isOpen('attachment.repeat', true)}
           onToggle={() => foldouts.toggle('attachment.repeat', true)}
         >
-          <div className="inspector-row">Wraps the rest of this target’s attached actions into a loop.</div>
-          <label className="field">
-            <span>Count</span>
-            <input
-              aria-label="Repeat Count"
-              data-testid="attachment-repeat-count-input"
-              type="number"
-              min={0}
-              value={typeof params.count === 'number' ? params.count : ''}
-              onChange={(e) => {
-                const raw = e.target.value;
-                const next = raw === '' ? undefined : Math.max(0, Number(raw) || 0);
-                const nextParams = { ...params };
-                if (next === undefined) {
-                  delete (nextParams as any).count;
-                } else {
-                  (nextParams as any).count = next;
-                }
-                onUpdate({ ...attachment, params: nextParams });
-              }}
-            />
-          </label>
-        </InspectorFoldout>
-      )}
+	          <div className="inspector-row">Wraps the rest of this target’s attached actions into a loop.</div>
+	          <label className="field">
+	            <span>Count</span>
+	            <ValidatedOptionalNumberInput
+	              aria-label="Repeat Count"
+	              data-testid="attachment-repeat-count-input"
+	              min={0}
+	              value={typeof params.count === 'number' ? params.count : undefined}
+	              clamp={(next) => Math.max(0, next || 0)}
+	              onCommit={(next) => {
+	                const nextParams = { ...params } as any;
+	                if (next === undefined) {
+	                  delete nextParams.count;
+	                } else {
+	                  nextParams.count = next;
+	                }
+	                onUpdate({ ...attachment, params: nextParams });
+	              }}
+	            />
+	          </label>
+	        </InspectorFoldout>
+	      )}
 
       <button className="button button-danger" data-testid="attachment-delete-button" type="button" onClick={onRemove}>
         Delete Action
