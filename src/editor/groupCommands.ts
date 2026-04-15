@@ -21,7 +21,7 @@ export function updateGroupLayoutPosition(group: GroupSpec, dx: number, dy: numb
       const raw = nextParams[key];
       const parsed = typeof raw === 'number' ? raw : Number(raw);
       if (!Number.isFinite(parsed)) return;
-      nextParams[key] = parsed + delta;
+      nextParams[key] = Math.round(parsed + delta);
     };
 
     shift('centerX', dx);

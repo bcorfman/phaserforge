@@ -96,6 +96,20 @@ describe('EditorStore reducer', () => {
     expect(next.dirty).toBe(true);
   });
 
+  it('rounds move deltas to integers', () => {
+    const state = seededState();
+    const nextEntity = reducer(state, { type: 'move-entity', id: 'e1', dx: 1.2, dy: 2.7 });
+    expect(nextEntity.scene.entities.e1.x).toBe(state.scene.entities.e1.x + 1);
+    expect(nextEntity.scene.entities.e1.y).toBe(state.scene.entities.e1.y + 3);
+
+    const nextGroup = reducer(state, { type: 'move-group', id: 'g-enemies', dx: -1.6, dy: 4.4 });
+    const group = state.scene.groups['g-enemies'];
+    for (const memberId of group.members) {
+      expect(nextGroup.scene.entities[memberId].x).toBe(state.scene.entities[memberId].x - 2);
+      expect(nextGroup.scene.entities[memberId].y).toBe(state.scene.entities[memberId].y + 4);
+    }
+  });
+
   it('moves group by delta, updating all members', () => {
     const state = seededState();
     const action: EditorAction = { type: 'move-group', id: 'g-enemies', dx: 5, dy: -5 };
@@ -120,7 +134,7 @@ describe('EditorStore reducer', () => {
           ...state.scene.groups,
           [groupId]: {
             ...state.scene.groups[groupId],
-            layout: { type: 'arrange', arrangeKind: 'circle', params: { centerX: 100, centerY: 200, radius: 50 } },
+            layout: { type: 'arrange', arrangeKind: 'circle', params: { centerX: 100.5, centerY: 200.2, radius: 50 } },
           },
         },
       },
@@ -130,7 +144,7 @@ describe('EditorStore reducer', () => {
     const layout = next.scene.groups[groupId].layout;
     expect(layout?.type).toBe('arrange');
     if (layout?.type !== 'arrange') throw new Error('Expected arrange layout');
-    expect(layout.params.centerX).toBe(110);
+    expect(layout.params.centerX).toBe(111);
     expect(layout.params.centerY).toBe(195);
   });
 

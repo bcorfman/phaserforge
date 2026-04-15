@@ -313,8 +313,8 @@ export class EditorScene extends Phaser.Scene {
       this.groupZones,
       this.boundsHandles
     );
-    const dx = this.snapDeltaToGrid(end.x - start.x);
-    const dy = this.snapDeltaToGrid(end.y - start.y);
+    const dx = Math.round(this.snapDeltaToGrid(end.x - start.x));
+    const dy = Math.round(this.snapDeltaToGrid(end.y - start.y));
 
     if (dx === 0 && dy === 0) return;
 
@@ -822,8 +822,8 @@ export class EditorScene extends Phaser.Scene {
     }
 
     // Apply grid snapping to deltas
-    const snappedDx = this.snapDeltaToGrid(dx);
-    const snappedDy = this.snapDeltaToGrid(dy);
+    const snappedDx = Math.round(this.snapDeltaToGrid(dx));
+    const snappedDy = Math.round(this.snapDeltaToGrid(dy));
 
     if (this.dragState.kind === 'marquee') {
       // Update marquee rectangle
@@ -854,8 +854,8 @@ export class EditorScene extends Phaser.Scene {
     }
 
     if (this.dragState.kind !== 'marquee') {
-      this.dragState.startX = worldPoint.x;
-      this.dragState.startY = worldPoint.y;
+      this.dragState.startX += snappedDx;
+      this.dragState.startY += snappedDy;
     }
   }
 
