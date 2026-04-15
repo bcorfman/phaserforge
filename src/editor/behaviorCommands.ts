@@ -424,6 +424,30 @@ export function getNextFormationName(scene: SceneSpec): string {
   return `Formation ${candidate}`;
 }
 
+function slugifyGroupName(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+export function createGroupIdFromName(scene: SceneSpec, name: string): Id {
+  const slug = slugifyGroupName(name) || 'formation';
+  const base = `g-${slug}`;
+  if (!scene.groups[base]) return base;
+
+  let suffix = 2;
+  let candidate = `${base}-${suffix}`;
+  while (scene.groups[candidate]) {
+    suffix += 1;
+    candidate = `${base}-${suffix}`;
+  }
+  return candidate;
+}
+
 export function getAssignableBehaviors(scene: SceneSpec, target: TargetRef): BehaviorSpec[] {
   return Object.values(scene.behaviors).filter((behavior) => !targetsEqual(behavior.target, target));
 }

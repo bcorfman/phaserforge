@@ -9,12 +9,13 @@ import {
 } from '../model/types';
 import { createEmptyScene } from '../model/emptyScene';
 import { validateSceneSpec } from '../model/validation';
+import { resolveEntityDefaults } from '../model/entityDefaults';
 import { applyGroupArrangeLayout, applyGroupGridLayout, type GroupGridLayout } from './formationLayout';
 import { dissolveGroup, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
 import { syncBoundsToWorldResize } from './worldBounds';
 import { loadEditorConfig, loadEditorRegistry, coerceStartupMode, EMPTY_EDITOR_REGISTRY } from '../model/editorConfig';
 import { parseSceneYaml, serializeSceneToYaml } from '../model/serialization';
-import { createGroupSpec, getNextFormationName } from './behaviorCommands';
+import { createGroupIdFromName, createGroupSpec, getNextFormationName } from './behaviorCommands';
 import { removeSceneGraphItem } from './sceneGraphCommands';
 import { createAttachment, moveAttachmentWithinTarget, removeAttachment, updateAttachment } from './attachmentCommands';
 import type { AttachmentSpec, TargetRef } from '../model/types';
@@ -93,6 +94,7 @@ export type EditorAction =
   | { type: 'move-entities'; entityIds: Id[]; dx: number; dy: number }
   | { type: 'arrange-group-grid'; id: Id; layout: GroupGridLayout }
   | { type: 'arrange-group'; id: Id; arrangeKind: string; params: Record<string, number | string | boolean> }
+  | { type: 'create-group-from-arrange'; name: string; templateEntityId: Id; arrangeKind: string; params: Record<string, number | string | boolean>; memberCount?: number }
   | { type: 'update-bounds'; id: Id; bounds: { minX: number; maxX: number; minY: number; maxY: number } }
   | { type: 'begin-canvas-interaction'; kind: 'entity' | 'group' | 'bounds'; id: string; handle?: string }
   | { type: 'end-canvas-interaction' }
@@ -384,6 +386,66 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       const nextScene = applyGroupArrangeLayout(state.scene, action.id, action.arrangeKind, action.params);
       if (nextScene === state.scene) return state;
       return withScene(state, nextScene, true);
+    }
+    case 'create-group-from-arrange': {
+      const template = state.scene.entities[action.templateEntityId];
+      if (!template) return state;
+
+      const rawName = action.name.trim();
+      const formationName = rawName.length > 0 ? rawName : getNextFormationName(state.scene);
+      const groupId = createGroupIdFromName(state.scene, formationName);
+
+      const world = state.scene.world ?? { width: 1024, height: 768 };
+      const baseX = world.width / 2;
+      const baseY = world.height / 2;
+
+      let count = Math.max(1, Math.floor(Number(action.memberCount ?? 12)));
+      if (action.arrangeKind === 'grid') {
+        const rows = Math.max(1, Math.floor(Number((action.params as any).rows ?? 1)));
+        const cols = Math.max(1, Math.floor(Number((action.params as any).cols ?? 1)));
+        count = rows * cols;
+      }
+      count = Math.max(1, Math.min(200, count));
+
+      const { id: _id, name: _name, x: _x, y: _y, ...templateFields } = template;
+      const nextEntities = { ...state.scene.entities };
+      const memberIds: Id[] = [];
+      const createdAt = Date.now();
+
+      for (let index = 0; index < count; index += 1) {
+        const id = `e-form-${createdAt}-${index}`;
+        memberIds.push(id);
+        nextEntities[id] = resolveEntityDefaults({
+          ...templateFields,
+          id,
+          name: `${template.name ?? template.id} ${index + 1}`,
+          x: baseX,
+          y: baseY,
+        });
+      }
+
+      const nextScene: SceneSpec = {
+        ...state.scene,
+        entities: nextEntities,
+        groups: {
+          ...state.scene.groups,
+          [groupId]: createGroupSpec(groupId, memberIds, formationName),
+        },
+      };
+
+      const arranged = applyGroupArrangeLayout(nextScene, groupId, action.arrangeKind, action.params);
+
+      return {
+        ...state,
+        scene: arranged,
+        selection: { kind: 'group', id: groupId },
+        expandedGroups: {
+          ...state.expandedGroups,
+          [groupId]: true,
+        },
+        dirty: true,
+        error: undefined,
+      };
     }
     case 'update-bounds': {
       const attachment = state.scene.attachments[action.id];

@@ -11,6 +11,81 @@ function seededState() {
 }
 
 describe('EditorStore reducer', () => {
+  it('creates group from arrange preset with a name-based id and clones template sprites', () => {
+    const state = seededState();
+    const initialEntityCount = Object.keys(state.scene.entities).length;
+    const initialGroupCount = Object.keys(state.scene.groups).length;
+
+    const action: EditorAction = {
+      type: 'create-group-from-arrange',
+      name: 'Enemy Formation',
+      templateEntityId: 'e1',
+      arrangeKind: 'line',
+      memberCount: 5,
+      params: { startX: 300, startY: 200, spacing: 10 },
+    };
+    const next = reducer(state, action);
+
+    expect(Object.keys(next.scene.groups).length).toBe(initialGroupCount + 1);
+    expect(next.scene.groups['g-enemy-formation']).toBeDefined();
+    expect(next.selection).toEqual({ kind: 'group', id: 'g-enemy-formation' });
+    expect(next.expandedGroups['g-enemy-formation']).toBe(true);
+    expect(next.dirty).toBe(true);
+
+    const group = next.scene.groups['g-enemy-formation'];
+    expect(group.name).toBe('Enemy Formation');
+    expect(group.members).toHaveLength(5);
+    expect(Object.keys(next.scene.entities).length).toBe(initialEntityCount + 5);
+    for (const memberId of group.members) {
+      const member = next.scene.entities[memberId];
+      expect(member).toBeDefined();
+      expect(member.width).toBe(state.scene.entities.e1.width);
+      expect(member.height).toBe(state.scene.entities.e1.height);
+      expect(member.asset).toEqual(state.scene.entities.e1.asset);
+    }
+  });
+
+  it('suffixes name-based group ids when a collision exists', () => {
+    const state = seededState();
+
+    const first = reducer(state, {
+      type: 'create-group-from-arrange',
+      name: 'Enemy Formation',
+      templateEntityId: 'e1',
+      arrangeKind: 'line',
+      memberCount: 1,
+      params: { startX: 0, startY: 0, spacing: 10 },
+    });
+
+    const second = reducer(first, {
+      type: 'create-group-from-arrange',
+      name: 'Enemy Formation',
+      templateEntityId: 'e1',
+      arrangeKind: 'line',
+      memberCount: 1,
+      params: { startX: 0, startY: 0, spacing: 10 },
+    });
+
+    expect(second.scene.groups['g-enemy-formation']).toBeDefined();
+    expect(second.scene.groups['g-enemy-formation-2']).toBeDefined();
+  });
+
+  it('derives the id from the default formation name when a blank name is provided', () => {
+    const state = seededState();
+
+    const next = reducer(state, {
+      type: 'create-group-from-arrange',
+      name: '',
+      templateEntityId: 'e1',
+      arrangeKind: 'line',
+      memberCount: 1,
+      params: { startX: 0, startY: 0, spacing: 10 },
+    });
+
+    expect(next.scene.groups['g-formation-1']).toBeDefined();
+    expect(next.scene.groups['g-formation-1'].name).toBe('Formation 1');
+  });
+
   it('moves entity by delta', () => {
     const state = seededState();
     const action: EditorAction = { type: 'move-entity', id: 'e1', dx: 10, dy: 20 };
@@ -32,6 +107,31 @@ describe('EditorStore reducer', () => {
       expect(next.scene.entities[memberId].y).toBe(state.scene.entities[memberId].y - 5);
     }
     expect(next.dirty).toBe(true);
+  });
+
+  it('moves arrange layouts by delta to keep center params in sync', () => {
+    const state = seededState();
+    const groupId = 'g-enemies';
+    const patched = {
+      ...state,
+      scene: {
+        ...state.scene,
+        groups: {
+          ...state.scene.groups,
+          [groupId]: {
+            ...state.scene.groups[groupId],
+            layout: { type: 'arrange', arrangeKind: 'circle', params: { centerX: 100, centerY: 200, radius: 50 } },
+          },
+        },
+      },
+    };
+
+    const next = reducer(patched, { type: 'move-group', id: groupId, dx: 10, dy: -5 });
+    const layout = next.scene.groups[groupId].layout;
+    expect(layout?.type).toBe('arrange');
+    if (layout?.type !== 'arrange') throw new Error('Expected arrange layout');
+    expect(layout.params.centerX).toBe(110);
+    expect(layout.params.centerY).toBe(195);
   });
 
   it('updates bounds with clamping', () => {

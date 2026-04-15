@@ -22,7 +22,7 @@ test('boots empty by default and loads scenes', async ({ page }) => {
   await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Sprites' })).toBeVisible();
   await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Formations' })).toBeVisible();
   await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Actions' })).toBeHidden();
-  await expect(page.getByTestId('registry-panel')).toBeVisible();
+  await expect(page.getByTestId('registry-panel')).toHaveCount(0);
   await expect(page.getByText('Pan with middle mouse or Shift + drag. Use zoom controls to inspect sprite spacing and bounds.')).toBeVisible();
   await waitForEmptyScene(page);
 
