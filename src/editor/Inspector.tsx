@@ -46,14 +46,6 @@ export function Inspector() {
           <div className="inspector-row">Size: {entity.width} x {entity.height}</div>
         </div>
       ) : null;
-    } else if (interaction.kind === 'group') {
-      const group = scene.groups[interaction.id];
-      content = group ? (
-        <div className="inspector-block">
-          <div className="inspector-title">Dragging: {group.name ?? group.id}</div>
-          <div className="inspector-row">Members: {group.members.length}</div>
-        </div>
-      ) : null;
     } else if (interaction.kind === 'bounds') {
       const attachment = scene.attachments[interaction.id];
       const condition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;

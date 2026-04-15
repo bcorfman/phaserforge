@@ -109,14 +109,29 @@ export function applyGroupArrangeLayout(
 ): SceneSpec {
   const group = scene.groups[groupId];
   if (!group) return scene;
+  const normalizedParams: Record<string, number | string | boolean> = { ...params };
+  const roundParam = (key: string) => {
+    if (!(key in normalizedParams)) return;
+    const raw = normalizedParams[key];
+    const parsed = typeof raw === 'number' ? raw : Number(raw);
+    if (!Number.isFinite(parsed)) return;
+    normalizedParams[key] = Math.round(parsed);
+  };
+  roundParam('centerX');
+  roundParam('centerY');
+  roundParam('startX');
+  roundParam('startY');
+  roundParam('apexX');
+  roundParam('apexY');
+
   if (arrangeKind === 'grid') {
     const layout: GroupGridLayout = {
       rows: Math.max(1, Math.floor(Number(params.rows ?? 1))),
       cols: Math.max(1, Math.floor(Number(params.cols ?? 1))),
-      startX: Number(params.startX ?? 0),
-      startY: Number(params.startY ?? 0),
-      spacingX: Number(params.spacingX ?? 0),
-      spacingY: Number(params.spacingY ?? 0),
+      startX: Math.round(Number(params.startX ?? 0)),
+      startY: Math.round(Number(params.startY ?? 0)),
+      spacingX: Math.round(Number(params.spacingX ?? 0)),
+      spacingY: Math.round(Number(params.spacingY ?? 0)),
     };
     return applyGroupGridLayout(scene, groupId, layout);
   }
@@ -129,36 +144,36 @@ export function applyGroupArrangeLayout(
 
   switch (arrangeKind) {
     case 'line':
-      arrangeLine(members, { startX: Number(params.startX ?? members[0].x), startY: Number(params.startY ?? members[0].y), spacing: Number(params.spacing ?? 50) });
+      arrangeLine(members, { startX: Number(normalizedParams.startX ?? members[0].x), startY: Number(normalizedParams.startY ?? members[0].y), spacing: Number(params.spacing ?? 50) });
       break;
     case 'circle':
-      arrangeCircle(members, { centerX: Number(params.centerX ?? members[0].x), centerY: Number(params.centerY ?? members[0].y), radius: Number(params.radius ?? 120) });
+      arrangeCircle(members, { centerX: Number(normalizedParams.centerX ?? members[0].x), centerY: Number(normalizedParams.centerY ?? members[0].y), radius: Number(params.radius ?? 120) });
       break;
     case 'v_formation':
-      arrangeVFormation(members, { apexX: Number(params.apexX ?? members[0].x), apexY: Number(params.apexY ?? members[0].y), spacing: Number(params.spacing ?? 60), direction: (params.direction === 'down' ? 'down' : 'up') });
+      arrangeVFormation(members, { apexX: Number(normalizedParams.apexX ?? members[0].x), apexY: Number(normalizedParams.apexY ?? members[0].y), spacing: Number(params.spacing ?? 60), direction: (params.direction === 'down' ? 'down' : 'up') });
       break;
     case 'diamond':
-      arrangeDiamond(members, { centerX: Number(params.centerX ?? members[0].x), centerY: Number(params.centerY ?? members[0].y), spacing: Number(params.spacing ?? 60), includeCenter: params.includeCenter !== false });
+      arrangeDiamond(members, { centerX: Number(normalizedParams.centerX ?? members[0].x), centerY: Number(normalizedParams.centerY ?? members[0].y), spacing: Number(params.spacing ?? 60), includeCenter: params.includeCenter !== false });
       break;
     case 'triangle':
-      arrangeTriangle(members, { apexX: Number(params.apexX ?? members[0].x), apexY: Number(params.apexY ?? members[0].y), rowSpacing: Number(params.rowSpacing ?? 60), lateralSpacing: Number(params.lateralSpacing ?? 60), invert: Boolean(params.invert) });
+      arrangeTriangle(members, { apexX: Number(normalizedParams.apexX ?? members[0].x), apexY: Number(normalizedParams.apexY ?? members[0].y), rowSpacing: Number(params.rowSpacing ?? 60), lateralSpacing: Number(params.lateralSpacing ?? 60), invert: Boolean(params.invert) });
       break;
     case 'hexagonal_grid':
-      arrangeHexagonalGrid(members, { rows: Math.max(1, Math.floor(Number(params.rows ?? 1))), cols: Math.max(1, Math.floor(Number(params.cols ?? 1))), startX: Number(params.startX ?? members[0].x), startY: Number(params.startY ?? members[0].y), spacing: Number(params.spacing ?? 60) });
+      arrangeHexagonalGrid(members, { rows: Math.max(1, Math.floor(Number(params.rows ?? 1))), cols: Math.max(1, Math.floor(Number(params.cols ?? 1))), startX: Number(normalizedParams.startX ?? members[0].x), startY: Number(normalizedParams.startY ?? members[0].y), spacing: Number(params.spacing ?? 60) });
       break;
     case 'arc':
-      arrangeArc(members, { centerX: Number(params.centerX ?? members[0].x), centerY: Number(params.centerY ?? members[0].y), radius: Number(params.radius ?? 120), startAngleDeg: Number(params.startAngleDeg ?? 20), endAngleDeg: Number(params.endAngleDeg ?? 160) });
+      arrangeArc(members, { centerX: Number(normalizedParams.centerX ?? members[0].x), centerY: Number(normalizedParams.centerY ?? members[0].y), radius: Number(params.radius ?? 120), startAngleDeg: Number(params.startAngleDeg ?? 20), endAngleDeg: Number(params.endAngleDeg ?? 160) });
       break;
     case 'concentric_rings': {
       const ring1 = Number(params.ring1Radius ?? 80);
       const ring2 = Number(params.ring2Radius ?? 120);
       const count1 = Math.max(1, Math.floor(Number(params.ring1Count ?? Math.min(6, members.length))));
       const count2 = Math.max(0, Math.floor(Number(params.ring2Count ?? Math.max(0, members.length - count1))));
-      arrangeConcentricRings(members, { centerX: Number(params.centerX ?? members[0].x), centerY: Number(params.centerY ?? members[0].y), radii: [ring1, ring2], spritesPerRing: [count1, count2] });
+      arrangeConcentricRings(members, { centerX: Number(normalizedParams.centerX ?? members[0].x), centerY: Number(normalizedParams.centerY ?? members[0].y), radii: [ring1, ring2], spritesPerRing: [count1, count2] });
       break;
     }
     case 'cross':
-      arrangeCross(members, { centerX: Number(params.centerX ?? members[0].x), centerY: Number(params.centerY ?? members[0].y), armLength: Number(params.armLength ?? 120), spacing: Number(params.spacing ?? 60), includeCenter: params.includeCenter !== false });
+      arrangeCross(members, { centerX: Number(normalizedParams.centerX ?? members[0].x), centerY: Number(normalizedParams.centerY ?? members[0].y), armLength: Number(params.armLength ?? 120), spacing: Number(params.spacing ?? 60), includeCenter: params.includeCenter !== false });
       break;
     default:
       return scene;
@@ -166,6 +181,8 @@ export function applyGroupArrangeLayout(
 
   const nextEntities = { ...scene.entities };
   for (const member of members) {
+    member.x = Math.round(member.x);
+    member.y = Math.round(member.y);
     nextEntities[member.id] = member;
   }
 
@@ -176,7 +193,7 @@ export function applyGroupArrangeLayout(
       ...scene.groups,
       [groupId]: {
         ...group,
-        layout: { type: 'arrange', arrangeKind, params },
+        layout: { type: 'arrange', arrangeKind, params: normalizedParams },
       },
     },
   };

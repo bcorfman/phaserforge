@@ -317,14 +317,16 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
     case 'move-entity': {
       const entity = state.scene.entities[action.id];
       if (!entity) return state;
+      const dx = Math.round(action.dx);
+      const dy = Math.round(action.dy);
       return withScene(state, {
         ...state.scene,
         entities: {
           ...state.scene.entities,
           [action.id]: {
             ...entity,
-            x: entity.x + action.dx,
-            y: entity.y + action.dy,
+            x: entity.x + dx,
+            y: entity.y + dy,
           },
         },
       }, true);
@@ -332,14 +334,16 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
     case 'move-group': {
       const group = state.scene.groups[action.id];
       if (!group) return state;
+      const dx = Math.round(action.dx);
+      const dy = Math.round(action.dy);
       const updatedEntities = { ...state.scene.entities };
       for (const entityId of group.members) {
         const entity = updatedEntities[entityId];
         if (entity) {
           updatedEntities[entityId] = {
             ...entity,
-            x: entity.x + action.dx,
-            y: entity.y + action.dy,
+            x: entity.x + dx,
+            y: entity.y + dy,
           };
         }
       }
@@ -348,7 +352,7 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         entities: updatedEntities,
         groups: {
           ...state.scene.groups,
-          [action.id]: updateGroupLayoutPosition(group, action.dx, action.dy),
+          [action.id]: updateGroupLayoutPosition(group, dx, dy),
         },
       }, true);
     }
@@ -361,14 +365,16 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         return { ...state, selection: { kind: 'entities', ids: action.entityIds } };
       }
     case 'move-entities': {
+      const dx = Math.round(action.dx);
+      const dy = Math.round(action.dy);
       const updatedEntities = { ...state.scene.entities };
       for (const entityId of action.entityIds) {
         const entity = updatedEntities[entityId];
         if (entity) {
           updatedEntities[entityId] = {
             ...entity,
-            x: entity.x + action.dx,
-            y: entity.y + action.dy,
+            x: entity.x + dx,
+            y: entity.y + dy,
           };
         }
       }
