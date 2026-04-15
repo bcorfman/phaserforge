@@ -10,6 +10,7 @@ import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
+import { CreateFormationPanel } from './CreateFormationPanel';
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
@@ -142,7 +143,7 @@ export function Inspector() {
         </div>
       );
     } else {
-      content = <div className="muted">Select an item to edit.</div>;
+      content = <CreateFormationPanel scene={scene} registry={state.registry} dispatch={dispatch} />;
     }
   }
 
@@ -166,7 +167,6 @@ export function Inspector() {
         <span>Pin selection while dragging</span>
       </label>
       {content}
-      <RegistryPanel />
       <SpriteImportPanel />
     </div>
   );
@@ -626,6 +626,14 @@ function GroupInspector({
     setArrangeParamsDraft(deriveInitialParams(kind));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group.id]);
+
+  useEffect(() => {
+    if (arrangeKindDraft === 'grid' && group.layout?.type === 'grid') {
+      setArrangeParamsDraft(group.layout as unknown as Record<string, number | string | boolean>);
+    } else if (group.layout?.type === 'arrange' && group.layout.arrangeKind === arrangeKindDraft) {
+      setArrangeParamsDraft(group.layout.params);
+    }
+  }, [arrangeKindDraft, group.layout]);
 
   return (
     renderGroupInspector(group, scene, arrangeKindDraft, arrangeParamsDraft, {
@@ -1172,29 +1180,6 @@ function AttachmentInspector({
       <button className="button button-danger" data-testid="attachment-delete-button" type="button" onClick={onRemove}>
         Delete Action
       </button>
-    </div>
-  );
-}
-
-function RegistryPanel() {
-  const { state } = useEditorStore();
-
-  return (
-    <div className="inspector-block" data-testid="registry-panel">
-      <div className="inspector-title">Available Types</div>
-      <div className="inspector-row">Arrange</div>
-      {state.registry.arrange.map((entry) => (
-        <div key={`arrange-${entry.type}`} className="inspector-row">
-          {entry.displayName}{entry.implemented ? '' : ' (planned)'}
-        </div>
-      ))}
-      <div className="inspector-row">Actions</div>
-      {state.registry.actions.map((entry) => (
-        <div key={`action-${entry.type}`} className="inspector-row">
-          {entry.displayName}{entry.implemented ? '' : ' (planned)'}
-          {entry.propertyTargets?.length ? ` · ${entry.propertyTargets.map((target) => target.key).join(', ')}` : ''}
-        </div>
-      ))}
     </div>
   );
 }
