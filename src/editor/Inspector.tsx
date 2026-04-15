@@ -888,6 +888,8 @@ function AttachmentInspector({
     };
   };
 
+  const boundsCondition = attachment.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+
   return (
     <div className="inspector-block" data-testid="attachment-inspector">
       <div className="inspector-title">{attachment.name ?? attachment.id}</div>
@@ -1003,21 +1005,21 @@ function AttachmentInspector({
 	                aria-label="Enabled"
 	                data-testid="attachment-bounds-enabled-input"
 	                type="checkbox"
-	                checked={attachment.condition?.type === 'BoundsHit'}
-	                onChange={(e) =>
-	                  onUpdate({ ...attachment, condition: e.target.checked ? ensureBoundsCondition() : undefined })
-	                }
-	              />
-	            </label>
-	            {attachment.condition?.type === 'BoundsHit' && (
-	              <>
-	                <label className="field">
-	                  <span>Behavior</span>
-	                  <select
+                checked={Boolean(boundsCondition)}
+                onChange={(e) =>
+                  onUpdate({ ...attachment, condition: e.target.checked ? ensureBoundsCondition() : undefined })
+                }
+              />
+            </label>
+            {boundsCondition && (
+              <>
+                <label className="field">
+                  <span>Behavior</span>
+                  <select
                     aria-label="Behavior"
                     data-testid="attachment-bounds-behavior-select"
-                    value={attachment.condition.behavior ?? 'limit'}
-                    onChange={(e) => onUpdate({ ...attachment, condition: { ...attachment.condition!, behavior: e.target.value as any } })}
+                    value={boundsCondition.behavior ?? 'limit'}
+                    onChange={(e) => onUpdate({ ...attachment, condition: { ...boundsCondition, behavior: e.target.value as any } })}
                   >
                     <option value="stop">Stop</option>
                     <option value="limit">Clamp at Edge</option>
@@ -1025,54 +1027,54 @@ function AttachmentInspector({
                     <option value="wrap">Wrap</option>
                   </select>
                 </label>
-	                <div className="inspector-grid-2">
-	                  <label className="field">
-	                    <span>Min X</span>
-	                    <ValidatedNumberInput
-	                      aria-label="Bounds Min X"
-	                      data-testid="attachment-bounds-min-x-input"
-	                      value={attachment.condition.bounds.minX}
-	                      onCommit={(next) =>
-	                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, minX: next } } })
-	                      }
-	                    />
-	                  </label>
-	                  <label className="field">
-	                    <span>Min Y</span>
-	                    <ValidatedNumberInput
-	                      aria-label="Bounds Min Y"
-	                      data-testid="attachment-bounds-min-y-input"
-	                      value={attachment.condition.bounds.minY}
-	                      onCommit={(next) =>
-	                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, minY: next } } })
-	                      }
-	                    />
-	                  </label>
-	                </div>
-	                <div className="inspector-grid-2">
-	                  <label className="field">
-	                    <span>Max X</span>
-	                    <ValidatedNumberInput
-	                      aria-label="Bounds Max X"
-	                      data-testid="attachment-bounds-max-x-input"
-	                      value={attachment.condition.bounds.maxX}
-	                      onCommit={(next) =>
-	                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, maxX: next } } })
-	                      }
-	                    />
-	                  </label>
-	                  <label className="field">
-	                    <span>Max Y</span>
-	                    <ValidatedNumberInput
-	                      aria-label="Bounds Max Y"
-	                      data-testid="attachment-bounds-max-y-input"
-	                      value={attachment.condition.bounds.maxY}
-	                      onCommit={(next) =>
-	                        onUpdate({ ...attachment, condition: { ...attachment.condition!, bounds: { ...attachment.condition!.bounds, maxY: next } } })
-	                      }
-	                    />
-	                  </label>
-	                </div>
+                <div className="inspector-grid-2">
+                  <label className="field">
+                    <span>Min X</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Min X"
+                      data-testid="attachment-bounds-min-x-input"
+                      value={boundsCondition.bounds.minX}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Min Y</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Min Y"
+                      data-testid="attachment-bounds-min-y-input"
+                      value={boundsCondition.bounds.minY}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="inspector-grid-2">
+                  <label className="field">
+                    <span>Max X</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Max X"
+                      data-testid="attachment-bounds-max-x-input"
+                      value={boundsCondition.bounds.maxX}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Max Y</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Max Y"
+                      data-testid="attachment-bounds-max-y-input"
+                      value={boundsCondition.bounds.maxY}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
+                      }
+                    />
+                  </label>
+                </div>
               </>
             )}
           </InspectorFoldout>
