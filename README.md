@@ -9,7 +9,7 @@ Planned architecture:
 - editor UI in React
 - Phaser runtime embedded in the app
 - declarative scene/behavior model
-- compiler from model -> r
+- compiler from model -> runtime
 - minimal PhaserActions runtime separate from Phaser scene code
 
 Initial focus:
