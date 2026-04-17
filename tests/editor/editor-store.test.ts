@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { reducer, initState, type EditorAction } from '../../src/editor/EditorStore';
 import { sampleScene } from '../../src/model/sampleScene';
+import { serializeSceneToYaml } from '../../src/model/serialization';
 
 function seededState() {
   return {
@@ -11,6 +12,58 @@ function seededState() {
 }
 
 describe('EditorStore reducer', () => {
+  it('loads YAML text into the scene and sets a transient status message', () => {
+    const now = 1_700_000_000_000;
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+
+    const yaml = serializeSceneToYaml(sampleScene);
+    const state = initState();
+    const next = reducer(state, { type: 'load-yaml-text', text: yaml, sourceLabel: 'fixture.yaml' } as any);
+
+    expect(next.scene).toEqual(sampleScene);
+    expect(next.yamlText).toBe(yaml);
+    expect(next.dirty).toBe(false);
+    expect(next.error).toBeUndefined();
+    expect(next.selection).toEqual({ kind: 'none' });
+    expect(next.statusMessage).toContain('fixture.yaml');
+    expect(next.statusExpiresAt).toBeGreaterThan(now);
+  });
+
+  it('does not set a success status message when YAML parsing fails', () => {
+    const now = 1_700_000_000_000;
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+
+    const state = initState();
+    const next = reducer(state, { type: 'load-yaml-text', text: 'not: [valid', sourceLabel: 'bad.yaml' } as any);
+
+    expect(next.error).toBeTruthy();
+    expect(next.statusMessage).toBeUndefined();
+    expect(next.statusExpiresAt).toBeUndefined();
+  });
+
+  it('sets and clears errors', () => {
+    const state = seededState();
+    const withError = reducer(state, { type: 'set-error', error: 'Boom' });
+    expect(withError.error).toBe('Boom');
+
+    const cleared = reducer(withError, { type: 'set-error', error: undefined });
+    expect(cleared.error).toBeUndefined();
+  });
+
+  it('exports the current scene to YAML text and clears errors', () => {
+    const state = {
+      ...seededState(),
+      yamlText: 'previous yaml',
+      error: 'previous error',
+    };
+
+    const next = reducer(state, { type: 'export-yaml' });
+
+    expect(next.scene).toEqual(state.scene);
+    expect(next.yamlText).toBe(serializeSceneToYaml(state.scene));
+    expect(next.error).toBeUndefined();
+  });
+
   it('creates group from arrange preset with a name-based id and clones template sprites', () => {
     const state = seededState();
     const initialEntityCount = Object.keys(state.scene.entities).length;
