@@ -254,6 +254,10 @@ textarea:focus-visible {
   grid-column: 1 / -1;
 }
 
+.toolbar-status {
+  grid-column: 1 / -1;
+}
+
 .toolbar-right-top {
   display: flex;
   align-items: flex-start;
@@ -377,6 +381,15 @@ textarea:focus-visible {
   border: 1px solid rgba(154, 77, 63, 0.25);
   background: var(--danger-soft);
   color: var(--danger);
+  border-radius: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.toolbar-status {
+  border: 1px solid rgba(20, 93, 102, 0.25);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   border-radius: 0.9rem;
   padding: 0.75rem 0.9rem;
   font-size: 0.85rem;

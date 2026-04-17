@@ -53,6 +53,8 @@ export interface EditorState {
   dirty: boolean;
   yamlText: string;
   error?: string;
+  statusMessage?: string;
+  statusExpiresAt?: number;
   interaction?: { kind: 'entity' | 'group' | 'bounds'; id: string; handle?: 'left' | 'right' | 'top' | 'bottom' | 'tl' | 'tr' | 'bl' | 'br' };
   mode: 'edit' | 'play';
   hasSeenViewHint: boolean;
@@ -76,8 +78,11 @@ export type EditorAction =
   | { type: 'select'; selection: Selection }
   | { type: 'select-multiple'; entityIds: Id[]; additive: boolean }
   | { type: 'set-yaml-text'; value: string }
+  | { type: 'set-error'; error?: string }
+  | { type: 'set-status'; message?: string; expiresAt?: number }
   | { type: 'export-yaml' }
   | { type: 'load-yaml' }
+  | { type: 'load-yaml-text'; text: string; sourceLabel: string }
   | { type: 'reset-scene' }
   | { type: 'set-scene'; scene: SceneSpec }
   | { type: 'update-scene-world'; width: number; height: number }
@@ -188,6 +193,8 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         expandedGroups: defaultExpandedGroups(action.scene),
         dirty: false,
         error: undefined,
+        statusMessage: undefined,
+        statusExpiresAt: undefined,
         startupMode: action.startupMode,
         themeMode: action.themeMode,
         uiScale: coerceUiScale(String(action.uiScale), DEFAULT_UI_SCALE),
@@ -213,6 +220,10 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, selection: action.selection, error: undefined };
     case 'set-yaml-text':
       return { ...state, yamlText: action.value };
+    case 'set-error':
+      return { ...state, error: action.error };
+    case 'set-status':
+      return { ...state, statusMessage: action.message, statusExpiresAt: action.expiresAt };
     case 'export-yaml':
       return { ...state, yamlText: serializeSceneToYaml(state.scene), error: undefined };
     case 'load-yaml': {
@@ -228,7 +239,37 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
           selection: { kind: 'none' },
         };
       } catch (err) {
-        return { ...state, error: err instanceof Error ? err.message : 'Invalid YAML' };
+        return {
+          ...state,
+          error: err instanceof Error ? err.message : 'Invalid YAML',
+          statusMessage: undefined,
+          statusExpiresAt: undefined,
+        };
+      }
+    }
+    case 'load-yaml-text': {
+      try {
+        const parsed = parseSceneYaml(action.text);
+        validateSceneSpec(parsed);
+        const expiresAt = Date.now() + 4000;
+        return {
+          ...state,
+          scene: parsed,
+          expandedGroups: defaultExpandedGroups(parsed),
+          dirty: false,
+          error: undefined,
+          selection: { kind: 'none' },
+          yamlText: action.text,
+          statusMessage: `Loaded YAML: ${action.sourceLabel}`,
+          statusExpiresAt: expiresAt,
+        };
+      } catch (err) {
+        return {
+          ...state,
+          error: err instanceof Error ? err.message : 'Invalid YAML',
+          statusMessage: undefined,
+          statusExpiresAt: undefined,
+        };
       }
     }
     case 'reset-scene':
@@ -578,6 +619,7 @@ function loadStoredSceneYaml(): SceneSpec | null {
 
 export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, initState);
+  const statusTimeoutRef = React.useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -641,6 +683,27 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       // ignore storage errors
     }
   }, [state.initialized, state.scene]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (statusTimeoutRef.current != null) {
+      window.clearTimeout(statusTimeoutRef.current);
+      statusTimeoutRef.current = null;
+    }
+
+    if (!state.statusExpiresAt || !state.statusMessage) return;
+    const delayMs = Math.max(0, state.statusExpiresAt - Date.now());
+    statusTimeoutRef.current = window.setTimeout(() => {
+      dispatch({ type: 'set-status', message: undefined, expiresAt: undefined });
+    }, delayMs);
+
+    return () => {
+      if (statusTimeoutRef.current != null) {
+        window.clearTimeout(statusTimeoutRef.current);
+        statusTimeoutRef.current = null;
+      }
+    };
+  }, [state.statusExpiresAt, state.statusMessage]);
 
   const value = useMemo(() => ({ state, dispatch }), [state]);
 
