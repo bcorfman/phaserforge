@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEditorStore, type Selection } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
-import type { SceneSpec } from '../model/types';
+import type { ProjectSpec, SceneSpec } from '../model/types';
 import { countAttachmentsForTarget } from './sceneGraphCommands';
 
 function isSelected(selection: Selection, kind: Selection['kind'], id: string): boolean {
@@ -13,9 +13,12 @@ function isSelected(selection: Selection, kind: Selection['kind'], id: string): 
 
 export function EntityList() {
   const { state, dispatch } = useEditorStore();
-  const { scene, selection, expandedGroups } = state;
+  const { project, currentSceneId, selection, expandedGroups } = state;
+  const scene = project.scenes[currentSceneId];
   return (
     <EntityListView
+      project={project}
+      currentSceneId={currentSceneId}
       scene={scene}
       selection={selection}
       expandedGroups={expandedGroups}
@@ -25,11 +28,15 @@ export function EntityList() {
 }
 
 export function EntityListView({
+  project,
+  currentSceneId,
   scene,
   selection,
   expandedGroups,
   dispatch,
 }: {
+  project: ProjectSpec;
+  currentSceneId: string;
   scene: SceneSpec;
   selection: Selection;
   expandedGroups: Record<string, boolean>;
@@ -80,6 +87,53 @@ export function EntityListView({
 
   return (
     <div className="panel panel-scroll" data-testid="entity-list">
+      <section className="panel-section" aria-labelledby="scene-list">
+        <div className="panel-heading-row">
+          <h3 className="panel-heading" id="scene-list">Scenes</h3>
+          <span className="panel-count">{Object.keys(project.scenes).length}</span>
+        </div>
+        <div className="member-list">
+          {Object.keys(project.scenes).map((sceneId) => (
+            <div key={sceneId} className="member-row">
+              <button
+                className={`list-item ${sceneId === currentSceneId ? 'active' : ''}`}
+                data-testid={`scene-item-${sceneId}`}
+                type="button"
+                onClick={() => dispatch({ type: 'set-current-scene', sceneId })}
+              >
+                {sceneId}
+              </button>
+              <button
+                aria-label={`Duplicate scene ${sceneId}`}
+                className="scene-graph-button"
+                data-testid={`duplicate-scene-${sceneId}`}
+                type="button"
+                onClick={() => dispatch({ type: 'duplicate-scene', sceneId })}
+              >
+                ⧉
+              </button>
+              <button
+                aria-label={`Delete scene ${sceneId}`}
+                className="scene-graph-button scene-graph-remove"
+                data-testid={`delete-scene-${sceneId}`}
+                type="button"
+                disabled={Object.keys(project.scenes).length <= 1}
+                onClick={() => dispatch({ type: 'delete-scene', sceneId })}
+              >
+                🗑
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          className="button"
+          data-testid="create-scene-button"
+          type="button"
+          onClick={() => dispatch({ type: 'create-scene' })}
+        >
+          New Scene
+        </button>
+      </section>
       <section className="panel-section" aria-labelledby="scene-graph-sprites">
         <div className="panel-heading-row">
           <h3 className="panel-heading" id="scene-graph-sprites">Sprites</h3>

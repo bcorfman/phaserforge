@@ -3,14 +3,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { dismissViewHint, getState, gotoStudio, seedSampleScene } from './helpers';
-import { serializeSceneToYaml } from '../../src/model/serialization';
-import { sampleScene } from '../../src/model/sampleScene';
+import { serializeProjectToYaml } from '../../src/model/serialization';
+import { sampleProject } from '../../src/model/sampleProject';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
-    window.localStorage.removeItem('phaseractions.sceneYaml.v2');
-    window.localStorage.removeItem('phaseractions.sceneYaml.v1');
+    window.localStorage.removeItem('phaseractions.projectYaml.v1');
     window.localStorage.removeItem('phaseractions.startupMode.v1');
     window.localStorage.removeItem('phaseractions.themeMode.v1');
     window.localStorage.removeItem('phaseractions.uiScale.v1');
@@ -39,14 +38,14 @@ test('Export YAML populates editor state but has no visible YAML panel', async (
   await expect.poll(async () => {
     const state = await getState<{ yamlText?: string }>(page);
     return state.yamlText ?? '';
-  }).toBe(serializeSceneToYaml(sampleScene));
+  }).toBe(serializeProjectToYaml(sampleProject));
 
-  const expectedYaml = serializeSceneToYaml(sampleScene);
+  const expectedYaml = serializeProjectToYaml(sampleProject);
   const downloadPath = await download.path();
   if (downloadPath) {
     expect(fs.readFileSync(downloadPath, 'utf8')).toBe(expectedYaml);
   } else {
-    const tempPath = path.join(os.tmpdir(), `${Date.now()}-scene.yaml`);
+    const tempPath = path.join(os.tmpdir(), `${Date.now()}-project.yaml`);
     await download.saveAs(tempPath);
     expect(fs.readFileSync(tempPath, 'utf8')).toBe(expectedYaml);
     fs.unlinkSync(tempPath);

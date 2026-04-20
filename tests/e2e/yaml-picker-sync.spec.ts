@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getState, gotoStudio } from './helpers';
-import { serializeSceneToYaml } from '../../src/model/serialization';
-import { sampleScene } from '../../src/model/sampleScene';
+import { serializeProjectToYaml } from '../../src/model/serialization';
+import { sampleProject } from '../../src/model/sampleProject';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
-    window.localStorage.removeItem('phaseractions.sceneYaml.v2');
-    window.localStorage.removeItem('phaseractions.sceneYaml.v1');
+    window.localStorage.removeItem('phaseractions.projectYaml.v1');
     window.localStorage.removeItem('phaseractions.startupMode.v1');
     window.localStorage.removeItem('phaseractions.themeMode.v1');
     window.localStorage.removeItem('phaseractions.uiScale.v1');
@@ -16,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Load/Export YAML share the same picker start directory (startIn handle)', async ({ page }) => {
-  const yaml = serializeSceneToYaml(sampleScene);
+  const yaml = serializeProjectToYaml(sampleProject);
   await page.addInitScript((sceneYaml) => {
     const openHandle: any = {
       getFile: async () => new File([sceneYaml], 'picked.yaml', { type: 'application/x-yaml' }),

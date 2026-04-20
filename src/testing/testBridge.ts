@@ -1,12 +1,14 @@
 import type { Selection } from '../editor/EditorStore';
-import type { SceneSpec, StartupMode } from '../model/types';
-import { SCENE_STORAGE_KEY } from '../editor/EditorStore';
+import type { ProjectSpec, SceneSpec, StartupMode } from '../model/types';
+import { PROJECT_STORAGE_KEY, SCENE_STORAGE_KEY } from '../editor/EditorStore';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number };
 
 export interface AppStateSnapshot {
-  scene: SceneSpec;
+  project: ProjectSpec;
+  currentSceneId: string;
+  scene: SceneSpec; // active scene snapshot for convenience
   selection: Selection;
   mode: 'edit' | 'play';
   dirty: boolean;
@@ -20,6 +22,7 @@ export interface AppStateSnapshot {
 export interface SceneBridge {
   getTestSnapshot(): {
     ready: boolean;
+    sceneKey?: string;
     zoom: number;
     scrollX: number;
     scrollY: number;
@@ -29,6 +32,7 @@ export interface SceneBridge {
   getEntityWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
   getEntitySpriteWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
   getGroupWorldBounds(id: string): Rect | null;
+  getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
   getEditableBoundsRect(): Rect | null;
   worldToClient(point: Point): Point | null;
   testTapWorld(point: Point): void;
@@ -57,6 +61,7 @@ function ensureBridge(): void {
   window.__PHASER_ACTIONS_STUDIO_TEST__ = {
     isEnabled: true,
     clearStoredScene() {
+      window.localStorage.removeItem(PROJECT_STORAGE_KEY);
       window.localStorage.removeItem(SCENE_STORAGE_KEY);
     },
     getState() {
@@ -82,6 +87,10 @@ function ensureBridge(): void {
     getGroupWorldBounds(id: string) {
       const scene = sceneGetter?.();
       return scene ? clone(scene.getGroupWorldBounds(id)) : null;
+    },
+    getFormationPhysicsGroupInfo(groupId: string) {
+      const scene = sceneGetter?.();
+      return scene ? clone(scene.getFormationPhysicsGroupInfo(groupId)) : null;
     },
     getEditableBoundsRect() {
       const scene = sceneGetter?.();

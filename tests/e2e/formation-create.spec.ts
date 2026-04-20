@@ -4,8 +4,7 @@ import { dismissViewHint, getState, gotoStudio, seedSampleScene, waitForSampleSc
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
-    window.localStorage.removeItem('phaseractions.sceneYaml.v2');
-    window.localStorage.removeItem('phaseractions.sceneYaml.v1');
+    window.localStorage.removeItem('phaseractions.projectYaml.v1');
     window.localStorage.removeItem('phaseractions.startupMode.v1');
     window.localStorage.removeItem('phaseractions.themeMode.v1');
     window.localStorage.removeItem('phaseractions.uiScale.v1');
@@ -53,4 +52,3 @@ test('creates a formation from an arrange preset after prompting for a template 
     selection: { kind: 'group', id: 'g-enemy-formation' },
   });
 });
-

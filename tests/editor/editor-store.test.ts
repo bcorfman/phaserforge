@@ -1,14 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import { reducer, initState, type EditorAction } from '../../src/editor/EditorStore';
-import { sampleScene } from '../../src/model/sampleScene';
-import { serializeSceneToYaml } from '../../src/model/serialization';
+import { serializeProjectToYaml } from '../../src/model/serialization';
+import { sampleProject } from '../../src/model/sampleProject';
 
 function seededState() {
+  const base = initState();
   return {
-    ...initState(),
-    scene: sampleScene,
+    ...base,
+    project: sampleProject,
+    currentSceneId: sampleProject.initialSceneId,
     expandedGroups: { 'g-enemies': false },
   };
+}
+
+function sceneOf(state: any) {
+  return state.project.scenes[state.currentSceneId];
 }
 
 describe('EditorStore reducer', () => {
@@ -16,11 +22,12 @@ describe('EditorStore reducer', () => {
     const now = 1_700_000_000_000;
     vi.spyOn(Date, 'now').mockReturnValue(now);
 
-    const yaml = serializeSceneToYaml(sampleScene);
+    const yaml = serializeProjectToYaml(sampleProject);
     const state = initState();
     const next = reducer(state, { type: 'load-yaml-text', text: yaml, sourceLabel: 'fixture.yaml' } as any);
 
-    expect(next.scene).toEqual(sampleScene);
+    expect(next.project).toEqual(sampleProject);
+    expect(sceneOf(next)).toEqual(sampleProject.scenes[sampleProject.initialSceneId]);
     expect(next.yamlText).toBe(yaml);
     expect(next.dirty).toBe(false);
     expect(next.error).toBeUndefined();
@@ -59,15 +66,16 @@ describe('EditorStore reducer', () => {
 
     const next = reducer(state, { type: 'export-yaml' });
 
-    expect(next.scene).toEqual(state.scene);
-    expect(next.yamlText).toBe(serializeSceneToYaml(state.scene));
+    expect(next.project).toEqual(state.project);
+    expect(next.yamlText).toBe(serializeProjectToYaml(state.project));
     expect(next.error).toBeUndefined();
   });
 
   it('creates group from arrange preset with a name-based id and clones template sprites', () => {
     const state = seededState();
-    const initialEntityCount = Object.keys(state.scene.entities).length;
-    const initialGroupCount = Object.keys(state.scene.groups).length;
+    const scene = sceneOf(state);
+    const initialEntityCount = Object.keys(scene.entities).length;
+    const initialGroupCount = Object.keys(scene.groups).length;
 
     const action: EditorAction = {
       type: 'create-group-from-arrange',
@@ -78,23 +86,24 @@ describe('EditorStore reducer', () => {
       params: { startX: 300, startY: 200, spacing: 10 },
     };
     const next = reducer(state, action);
-
-    expect(Object.keys(next.scene.groups).length).toBe(initialGroupCount + 1);
-    expect(next.scene.groups['g-enemy-formation']).toBeDefined();
+    const nextScene = sceneOf(next);
+    expect(Object.keys(nextScene.groups).length).toBe(initialGroupCount + 1);
+    expect(nextScene.groups['g-enemy-formation']).toBeDefined();
     expect(next.selection).toEqual({ kind: 'group', id: 'g-enemy-formation' });
     expect(next.expandedGroups['g-enemy-formation']).toBe(true);
     expect(next.dirty).toBe(true);
 
-    const group = next.scene.groups['g-enemy-formation'];
+    const group = nextScene.groups['g-enemy-formation'];
     expect(group.name).toBe('Enemy Formation');
     expect(group.members).toHaveLength(5);
-    expect(Object.keys(next.scene.entities).length).toBe(initialEntityCount + 5);
+    expect(group.layout).toEqual({ type: 'freeform' });
+    expect(Object.keys(nextScene.entities).length).toBe(initialEntityCount + 5);
     for (const memberId of group.members) {
-      const member = next.scene.entities[memberId];
+      const member = nextScene.entities[memberId];
       expect(member).toBeDefined();
-      expect(member.width).toBe(state.scene.entities.e1.width);
-      expect(member.height).toBe(state.scene.entities.e1.height);
-      expect(member.asset).toEqual(state.scene.entities.e1.asset);
+      expect(member.width).toBe(scene.entities.e1.width);
+      expect(member.height).toBe(scene.entities.e1.height);
+      expect(member.asset).toEqual(scene.entities.e1.asset);
     }
   });
 
@@ -119,8 +128,9 @@ describe('EditorStore reducer', () => {
       params: { startX: 0, startY: 0, spacing: 10 },
     });
 
-    expect(second.scene.groups['g-enemy-formation']).toBeDefined();
-    expect(second.scene.groups['g-enemy-formation-2']).toBeDefined();
+    const secondScene = sceneOf(second);
+    expect(secondScene.groups['g-enemy-formation']).toBeDefined();
+    expect(secondScene.groups['g-enemy-formation-2']).toBeDefined();
   });
 
   it('derives the id from the default formation name when a blank name is provided', () => {
@@ -135,8 +145,9 @@ describe('EditorStore reducer', () => {
       params: { startX: 0, startY: 0, spacing: 10 },
     });
 
-    expect(next.scene.groups['g-formation-1']).toBeDefined();
-    expect(next.scene.groups['g-formation-1'].name).toBe('Formation 1');
+    const nextScene = sceneOf(next);
+    expect(nextScene.groups['g-formation-1']).toBeDefined();
+    expect(nextScene.groups['g-formation-1'].name).toBe('Formation 1');
   });
 
   it('moves entity by delta', () => {
@@ -144,22 +155,22 @@ describe('EditorStore reducer', () => {
     const action: EditorAction = { type: 'move-entity', id: 'e1', dx: 10, dy: 20 };
     const next = reducer(state, action);
 
-    expect(next.scene.entities['e1'].x).toBe(state.scene.entities['e1'].x + 10);
-    expect(next.scene.entities['e1'].y).toBe(state.scene.entities['e1'].y + 20);
+    expect(sceneOf(next).entities['e1'].x).toBe(sceneOf(state).entities['e1'].x + 10);
+    expect(sceneOf(next).entities['e1'].y).toBe(sceneOf(state).entities['e1'].y + 20);
     expect(next.dirty).toBe(true);
   });
 
   it('rounds move deltas to integers', () => {
     const state = seededState();
     const nextEntity = reducer(state, { type: 'move-entity', id: 'e1', dx: 1.2, dy: 2.7 });
-    expect(nextEntity.scene.entities.e1.x).toBe(state.scene.entities.e1.x + 1);
-    expect(nextEntity.scene.entities.e1.y).toBe(state.scene.entities.e1.y + 3);
+    expect(sceneOf(nextEntity).entities.e1.x).toBe(sceneOf(state).entities.e1.x + 1);
+    expect(sceneOf(nextEntity).entities.e1.y).toBe(sceneOf(state).entities.e1.y + 3);
 
     const nextGroup = reducer(state, { type: 'move-group', id: 'g-enemies', dx: -1.6, dy: 4.4 });
-    const group = state.scene.groups['g-enemies'];
+    const group = sceneOf(state).groups['g-enemies'];
     for (const memberId of group.members) {
-      expect(nextGroup.scene.entities[memberId].x).toBe(state.scene.entities[memberId].x - 2);
-      expect(nextGroup.scene.entities[memberId].y).toBe(state.scene.entities[memberId].y + 4);
+      expect(sceneOf(nextGroup).entities[memberId].x).toBe(sceneOf(state).entities[memberId].x - 2);
+      expect(sceneOf(nextGroup).entities[memberId].y).toBe(sceneOf(state).entities[memberId].y + 4);
     }
   });
 
@@ -168,10 +179,10 @@ describe('EditorStore reducer', () => {
     const action: EditorAction = { type: 'move-group', id: 'g-enemies', dx: 5, dy: -5 };
     const next = reducer(state, action);
 
-    const group = state.scene.groups['g-enemies'];
+    const group = sceneOf(state).groups['g-enemies'];
     for (const memberId of group.members) {
-      expect(next.scene.entities[memberId].x).toBe(state.scene.entities[memberId].x + 5);
-      expect(next.scene.entities[memberId].y).toBe(state.scene.entities[memberId].y - 5);
+      expect(sceneOf(next).entities[memberId].x).toBe(sceneOf(state).entities[memberId].x + 5);
+      expect(sceneOf(next).entities[memberId].y).toBe(sceneOf(state).entities[memberId].y - 5);
     }
     expect(next.dirty).toBe(true);
   });
@@ -181,20 +192,26 @@ describe('EditorStore reducer', () => {
     const groupId = 'g-enemies';
     const patched = {
       ...state,
-      scene: {
-        ...state.scene,
-        groups: {
-          ...state.scene.groups,
-          [groupId]: {
-            ...state.scene.groups[groupId],
-            layout: { type: 'arrange', arrangeKind: 'circle', params: { centerX: 100.5, centerY: 200.2, radius: 50 } },
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: {
+            ...sceneOf(state),
+            groups: {
+              ...sceneOf(state).groups,
+              [groupId]: {
+                ...sceneOf(state).groups[groupId],
+                layout: { type: 'arrange', arrangeKind: 'circle', params: { centerX: 100.5, centerY: 200.2, radius: 50 } },
+              },
+            },
           },
         },
       },
     };
 
     const next = reducer(patched, { type: 'move-group', id: groupId, dx: 10, dy: -5 });
-    const layout = next.scene.groups[groupId].layout;
+    const layout = sceneOf(next).groups[groupId].layout;
     expect(layout?.type).toBe('arrange');
     if (layout?.type !== 'arrange') throw new Error('Expected arrange layout');
     expect(layout.params.centerX).toBe(111);
@@ -206,8 +223,8 @@ describe('EditorStore reducer', () => {
     const action: EditorAction = { type: 'update-bounds', id: 'att-move-right', bounds: { minX: 100, maxX: 50, minY: 200, maxY: 150 } };
     const next = reducer(state, action);
 
-    const bounds = next.scene.attachments['att-move-right'].condition?.type === 'BoundsHit'
-      ? next.scene.attachments['att-move-right'].condition.bounds
+    const bounds = sceneOf(next).attachments['att-move-right'].condition?.type === 'BoundsHit'
+      ? sceneOf(next).attachments['att-move-right'].condition.bounds
       : undefined;
     expect(bounds?.minX).toBe(50);
     expect(bounds?.maxX).toBe(100);
@@ -261,10 +278,10 @@ describe('EditorStore reducer', () => {
     const action: EditorAction = { type: 'move-entities', entityIds: ['e1', 'e2'], dx: 15, dy: -10 };
     const next = reducer(state, action);
 
-    expect(next.scene.entities['e1'].x).toBe(state.scene.entities['e1'].x + 15);
-    expect(next.scene.entities['e1'].y).toBe(state.scene.entities['e1'].y - 10);
-    expect(next.scene.entities['e2'].x).toBe(state.scene.entities['e2'].x + 15);
-    expect(next.scene.entities['e2'].y).toBe(state.scene.entities['e2'].y - 10);
+    expect(sceneOf(next).entities['e1'].x).toBe(sceneOf(state).entities['e1'].x + 15);
+    expect(sceneOf(next).entities['e1'].y).toBe(sceneOf(state).entities['e1'].y - 10);
+    expect(sceneOf(next).entities['e2'].x).toBe(sceneOf(state).entities['e2'].x + 15);
+    expect(sceneOf(next).entities['e2'].y).toBe(sceneOf(state).entities['e2'].y - 10);
     expect(next.dirty).toBe(true);
   });
 
@@ -273,11 +290,11 @@ describe('EditorStore reducer', () => {
     const action: EditorAction = { type: 'create-group-from-selection', name: 'Test Group' };
     const next = reducer(state, action);
 
-    const groupIds = Object.keys(next.scene.groups);
-    expect(groupIds.length).toBe(Object.keys(state.scene.groups).length + 1);
-    const newGroupId = groupIds.find(id => !state.scene.groups[id]);
+    const groupIds = Object.keys(sceneOf(next).groups);
+    expect(groupIds.length).toBe(Object.keys(sceneOf(state).groups).length + 1);
+    const newGroupId = groupIds.find(id => !sceneOf(state).groups[id]);
     expect(newGroupId).toBeDefined();
-    expect(next.scene.groups[newGroupId!]).toEqual({
+    expect(sceneOf(next).groups[newGroupId!]).toEqual({
       id: newGroupId,
       name: 'Test Group',
       members: ['e1', 'e2'],
@@ -292,9 +309,9 @@ describe('EditorStore reducer', () => {
     const state = { ...seededState(), selection: { kind: 'entities' as const, ids: ['e1', 'e2'] } };
     const next = reducer(state, { type: 'create-group-from-selection', name: '' });
 
-    const newGroupId = Object.keys(next.scene.groups).find((id) => !state.scene.groups[id]);
+    const newGroupId = Object.keys(sceneOf(next).groups).find((id) => !sceneOf(state).groups[id]);
     expect(newGroupId).toBeDefined();
-    expect(next.scene.groups[newGroupId!].name).toBe('Formation 1');
+    expect(sceneOf(next).groups[newGroupId!].name).toBe('Formation 1');
   });
 
   it('does not create group when no entities selected', () => {
@@ -302,7 +319,7 @@ describe('EditorStore reducer', () => {
     const action: EditorAction = { type: 'create-group-from-selection', name: 'Test Group' };
     const next = reducer(state, action);
 
-    expect(next.scene.groups).toEqual(state.scene.groups);
+    expect(sceneOf(next).groups).toEqual(sceneOf(state).groups);
     expect(next.selection).toEqual(state.selection);
   });
 
@@ -312,11 +329,31 @@ describe('EditorStore reducer', () => {
     const action: EditorAction = { type: 'dissolve-group', id: groupId };
     const next = reducer(state, action);
 
-    expect(next.scene.groups[groupId]).toBeUndefined();
-    expect(next.selection).toEqual({ kind: 'entities', ids: state.scene.groups[groupId].members });
+    expect(sceneOf(next).groups[groupId]).toBeUndefined();
+    expect(next.selection).toEqual({ kind: 'entities', ids: sceneOf(state).groups[groupId].members });
     expect(next.expandedGroups[groupId]).toBeUndefined();
-    expect(next.scene.attachments['att-move-right'].target).toEqual({ type: 'entity', entityId: 'e1' });
+    expect(sceneOf(next).attachments['att-move-right'].target).toEqual({ type: 'entity', entityId: 'e1' });
     expect(next.dirty).toBe(true);
+  });
+
+  it('ungroups a formation without deleting its member sprites, and can regroup back to the same formation', () => {
+    const state = { ...seededState(), selection: { kind: 'group' as const, id: 'g-enemies' } };
+    const members = sceneOf(state).groups['g-enemies'].members;
+    const attachmentIds = Object.keys(sceneOf(state).attachments);
+
+    const ungrouped = reducer(state, { type: 'ungroup-group', id: 'g-enemies' } as any);
+    expect(sceneOf(ungrouped).groups['g-enemies']).toBeUndefined();
+    expect(ungrouped.selection).toEqual({ kind: 'entities', ids: members });
+    expect(Object.keys(sceneOf(ungrouped).entities)).toEqual(Object.keys(sceneOf(state).entities));
+    expect(Object.keys(sceneOf(ungrouped).attachments)).toHaveLength(0);
+    expect(Object.keys(ungrouped.pendingGroupRestore?.attachments ?? {})).toEqual(attachmentIds);
+    expect(ungrouped.pendingGroupRestore?.group.id).toBe('g-enemies');
+
+    const regrouped = reducer(ungrouped, { type: 'group-selection', name: 'ignored' } as any);
+    expect(sceneOf(regrouped).groups['g-enemies']).toBeDefined();
+    expect(regrouped.selection).toEqual({ kind: 'group', id: 'g-enemies' });
+    expect(Object.keys(sceneOf(regrouped).attachments)).toEqual(attachmentIds);
+    expect(regrouped.pendingGroupRestore).toBeUndefined();
   });
 
   it('does not dissolve non-existent group', () => {
@@ -324,7 +361,7 @@ describe('EditorStore reducer', () => {
     const action: EditorAction = { type: 'dissolve-group', id: 'non-existent' };
     const next = reducer(state, action);
 
-    expect(next.scene.groups).toEqual(state.scene.groups);
+    expect(sceneOf(next).groups).toEqual(sceneOf(state).groups);
     expect(next.selection).toEqual(state.selection);
   });
 
@@ -333,10 +370,10 @@ describe('EditorStore reducer', () => {
     const next = reducer(state, {
       type: 'update-group',
       id: 'g-enemies',
-      next: { ...state.scene.groups['g-enemies'], name: 'Invader Block' },
+      next: { ...sceneOf(state).groups['g-enemies'], name: 'Invader Block' },
     });
 
-    expect(next.scene.groups['g-enemies'].name).toBe('Invader Block');
+    expect(sceneOf(next).groups['g-enemies'].name).toBe('Invader Block');
     expect(next.dirty).toBe(true);
   });
 
@@ -348,9 +385,9 @@ describe('EditorStore reducer', () => {
       height: 1200,
     });
 
-    expect(next.scene.world).toEqual({ width: 1600, height: 1200 });
-    const bounds = next.scene.attachments['att-move-right'].condition?.type === 'BoundsHit'
-      ? next.scene.attachments['att-move-right'].condition.bounds
+    expect(sceneOf(next).world).toEqual({ width: 1600, height: 1200 });
+    const bounds = sceneOf(next).attachments['att-move-right'].condition?.type === 'BoundsHit'
+      ? sceneOf(next).attachments['att-move-right'].condition.bounds
       : undefined;
     expect(bounds).toEqual({ minX: 80, minY: 60, maxX: 1520, maxY: 1152 });
     expect(next.dirty).toBe(true);
@@ -372,8 +409,8 @@ describe('EditorStore reducer', () => {
       entityId: 'e3',
     });
 
-    expect(next.scene.groups['g-enemies'].members).not.toContain('e3');
-    expect(next.scene.groups['g-enemies'].layout).toEqual({ type: 'freeform' });
+    expect(sceneOf(next).groups['g-enemies'].members).not.toContain('e3');
+    expect(sceneOf(next).groups['g-enemies'].layout).toEqual({ type: 'freeform' });
     expect(next.selection).toEqual({ kind: 'group', id: 'g-enemies' });
   });
 
@@ -397,22 +434,22 @@ describe('EditorStore reducer', () => {
       item: { kind: 'entity', id: 'e-imported' },
     });
 
-    expect(next.scene.entities['e-imported']).toBeUndefined();
+    expect(sceneOf(next).entities['e-imported']).toBeUndefined();
     expect(next.selection).toEqual({ kind: 'none' });
     expect(next.dirty).toBe(true);
   });
 
-  it('removes a group and its member entities from the scene graph', () => {
+  it('removes a group from the scene graph but keeps member entities', () => {
     const state = seededState();
     const next = reducer(state, {
       type: 'remove-scene-graph-item',
       item: { kind: 'group', id: 'g-enemies' },
     });
 
-    expect(next.scene.groups['g-enemies']).toBeUndefined();
-    expect(next.scene.attachments['att-move-right']).toBeUndefined();
-    expect(next.scene.entities.e1).toBeUndefined();
-    expect(next.scene.entities.e15).toBeUndefined();
+    expect(sceneOf(next).groups['g-enemies']).toBeUndefined();
+    expect(sceneOf(next).attachments['att-move-right']).toBeUndefined();
+    expect(sceneOf(next).entities.e1).toBeDefined();
+    expect(sceneOf(next).entities.e15).toBeDefined();
     expect(next.selection).toEqual({ kind: 'none' });
   });
 
@@ -423,7 +460,7 @@ describe('EditorStore reducer', () => {
       item: { kind: 'attachment', id: 'att-drop-right' },
     });
 
-    expect(next.scene.attachments['att-drop-right']).toBeUndefined();
+    expect(sceneOf(next).attachments['att-drop-right']).toBeUndefined();
     expect(next.selection).toEqual({ kind: 'none' });
   });
 
@@ -435,10 +472,10 @@ describe('EditorStore reducer', () => {
       layout: { rows: 5, cols: 3, startX: 300, startY: 120, spacingX: 20, spacingY: 25 },
     });
 
-    expect(next.scene.entities.e1.x).toBe(300);
-    expect(next.scene.entities.e1.y).toBe(120);
-    expect(next.scene.entities.e4.x).toBe(300);
-    expect(next.scene.entities.e4.y).toBe(145);
+    expect(sceneOf(next).entities.e1.x).toBe(300);
+    expect(sceneOf(next).entities.e1.y).toBe(120);
+    expect(sceneOf(next).entities.e4.x).toBe(300);
+    expect(sceneOf(next).entities.e4.y).toBe(145);
     expect(next.dirty).toBe(true);
   });
 
@@ -450,8 +487,8 @@ describe('EditorStore reducer', () => {
       layout: { rows: 4, cols: 4, startX: 300, startY: 120, spacingX: 20, spacingY: 25 },
     });
 
-    expect(next.scene.groups['g-enemies'].members).toHaveLength(16);
-    expect(next.scene.entities.e16).toBeDefined();
+    expect(sceneOf(next).groups['g-enemies'].members).toHaveLength(16);
+    expect(sceneOf(next).entities.e16).toBeDefined();
     expect(next.dirty).toBe(true);
   });
 
@@ -463,10 +500,10 @@ describe('EditorStore reducer', () => {
       layout: { rows: 3, cols: 4, startX: 300, startY: 120, spacingX: 20, spacingY: 25 },
     });
 
-    expect(next.scene.groups['g-enemies'].members).toHaveLength(12);
-    expect(next.scene.entities.e13).toBeUndefined();
-    expect(next.scene.entities.e14).toBeUndefined();
-    expect(next.scene.entities.e15).toBeUndefined();
+    expect(sceneOf(next).groups['g-enemies'].members).toHaveLength(12);
+    expect(sceneOf(next).entities.e13).toBeUndefined();
+    expect(sceneOf(next).entities.e14).toBeUndefined();
+    expect(sceneOf(next).entities.e15).toBeUndefined();
     expect(next.dirty).toBe(true);
   });
 
@@ -476,8 +513,8 @@ describe('EditorStore reducer', () => {
 
     expect(next.selection.kind).toBe('attachment');
     if (next.selection.kind === 'attachment') {
-      expect(next.scene.attachments[next.selection.id]).toBeDefined();
-      expect(next.scene.attachments[next.selection.id].presetId).toBe('Wait');
+      expect(sceneOf(next).attachments[next.selection.id]).toBeDefined();
+      expect(sceneOf(next).attachments[next.selection.id].presetId).toBe('Wait');
     }
   });
 

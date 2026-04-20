@@ -25,6 +25,61 @@ export interface SceneSpec {
   conditions: Record<Id, ConditionSpec>;
 }
 
+export interface BackgroundLayerSpec {
+  assetId: Id;
+  x: number;
+  y: number;
+  depth: number;
+  alpha?: number;
+  tint?: number;
+  scrollFactor?: { x: number; y: number };
+  layout: 'stretch' | 'cover' | 'contain' | 'center' | 'tile';
+}
+
+export interface GameSceneSpec extends SceneSpec {
+  backgroundLayers?: BackgroundLayerSpec[];
+}
+
+export interface ImageAssetSpec {
+  id: Id;
+  source: SpriteAssetSource;
+}
+
+export interface SpriteSheetAssetSpec {
+  id: Id;
+  source: SpriteAssetSource;
+  grid: SpriteSheetGridSpec;
+}
+
+export interface AudioAssetSpec {
+  id: Id;
+  source: SpriteAssetSource;
+}
+
+export interface InputActionMapSpec {
+  actions: Record<string, Array<InputBindingSpec>>;
+}
+
+export type InputBindingSpec =
+  | { device: 'keyboard'; key: string; event: 'down' | 'up' | 'held' }
+  | { device: 'mouse'; button: 'left' | 'middle' | 'right'; event: 'down' | 'up' | 'held' }
+  | { device: 'pointer'; event: 'move' | 'drag'; region?: string }
+  | { device: 'gamepad'; control: string; event: 'down' | 'up' | 'axis'; threshold?: number };
+
+export interface ProjectSpec {
+  id: Id;
+  assets: {
+    images: Record<Id, ImageAssetSpec>;
+    spriteSheets: Record<Id, SpriteSheetAssetSpec>;
+  };
+  audio: {
+    sounds: Record<Id, AudioAssetSpec>;
+  };
+  inputMaps: Record<Id, InputActionMapSpec>;
+  scenes: Record<Id, GameSceneSpec>;
+  initialSceneId: Id;
+}
+
 export interface WorldSpec {
   width: number;
   height: number;

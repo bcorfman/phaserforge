@@ -3,14 +3,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { dismissViewHint, getState, gotoStudio } from './helpers';
-import { serializeSceneToYaml } from '../../src/model/serialization';
-import { sampleScene } from '../../src/model/sampleScene';
+import { serializeProjectToYaml } from '../../src/model/serialization';
+import { sampleProject } from '../../src/model/sampleProject';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
-    window.localStorage.removeItem('phaseractions.sceneYaml.v2');
-    window.localStorage.removeItem('phaseractions.sceneYaml.v1');
+    window.localStorage.removeItem('phaseractions.projectYaml.v1');
     window.localStorage.removeItem('phaseractions.startupMode.v1');
     window.localStorage.removeItem('phaseractions.themeMode.v1');
     window.localStorage.removeItem('phaseractions.uiScale.v1');
@@ -32,7 +31,7 @@ test('Load YAML opens a picker and loads the chosen file, then shows an expiring
 
   const fixtureName = 'fixture.yaml';
   const tmpPath = path.join(os.tmpdir(), `phaseractions-load-${Date.now()}-${fixtureName}`);
-  fs.writeFileSync(tmpPath, serializeSceneToYaml(sampleScene), 'utf8');
+  fs.writeFileSync(tmpPath, serializeProjectToYaml(sampleProject), 'utf8');
   await page.setInputFiles('[data-testid="yaml-open-file-input"]', tmpPath);
 
   await expect.poll(async () => {
