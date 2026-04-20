@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
-import { inferGroupGridLayout, type GroupGridLayout } from './formationLayout';
 import { SpriteImportPanel } from './SpriteImportPanel';
 import { AttachedActionsPanel } from './AttachedActionsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
@@ -14,7 +13,8 @@ import { CreateFormationPanel } from './CreateFormationPanel';
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
-  const { selection, scene, interaction } = state;
+  const scene = state.project.scenes[state.currentSceneId];
+  const { selection, interaction } = state;
   const [pinDuringDrag, setPinDuringDrag] = useState(false);
   const [formationNameDraft, setFormationNameDraft] = useState('');
 
@@ -22,10 +22,6 @@ export function Inspector() {
     dispatch({ type: 'update-group', id: next.id, next });
   const updateEntity = (next: EntitySpec) =>
     dispatch({ type: 'update-entity', id: next.id, next });
-  const arrangeGroupGrid = (id: string, layout: GroupGridLayout) =>
-    dispatch({ type: 'arrange-group-grid', id, layout });
-  const arrangeGroup = (id: string, arrangeKind: string, params: Record<string, number | string | boolean>) =>
-    dispatch({ type: 'arrange-group', id, arrangeKind, params });
 
   useEffect(() => {
     if (selection.kind === 'entities') {
@@ -87,8 +83,8 @@ export function Inspector() {
           onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
           onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
           onUpdateGroup={updateGroup}
-          onArrangeGroup={arrangeGroup}
-          onArrangeGroupGrid={arrangeGroupGrid}
+          onUngroup={() => dispatch({ type: 'ungroup-group', id: group.id })}
+          onDeleteGroup={() => dispatch({ type: 'delete-group', id: group.id })}
         />
       ) : (
         <div className="muted">Formation not found.</div>
@@ -113,7 +109,7 @@ export function Inspector() {
         <div className="inspector-block" data-testid="multi-entity-inspector">
           <div className="inspector-title">Selected Sprites</div>
           <div className="inspector-row">{selection.ids.length} sprites selected.</div>
-          <div className="inspector-row">Create a freeform formation first, then arrange it into a grid if needed.</div>
+          <div className="inspector-row">Group these sprites to get a single formation bounding box.</div>
           <label className="field">
             <span>Formation Name</span>
             <input
@@ -126,11 +122,11 @@ export function Inspector() {
           </label>
           <button
             className="button"
-            data-testid="create-formation-from-selection-button"
+            data-testid="group-selection-button"
             type="button"
-            onClick={() => dispatch({ type: 'create-group-from-selection', name: formationNameDraft })}
+            onClick={() => dispatch({ type: 'group-selection', name: formationNameDraft })}
           >
-            Create Formation from Selection
+            Group
           </button>
         </div>
       );
@@ -558,8 +554,8 @@ function GroupInspector({
   onSelectMember,
   onRemoveMember,
   onUpdateGroup,
-  onArrangeGroup,
-  onArrangeGroupGrid,
+  onUngroup,
+  onDeleteGroup,
 }: {
   group: GroupSpec;
   scene: SceneSpec;
@@ -572,63 +568,13 @@ function GroupInspector({
   onSelectMember: (id: string) => void;
   onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
-  onArrangeGroup: (id: string, arrangeKind: string, params: Record<string, number | string | boolean>) => void;
-  onArrangeGroupGrid: (id: string, layout: GroupGridLayout) => void;
+  onUngroup: () => void;
+  onDeleteGroup: () => void;
 }) {
   const foldouts = useInspectorFoldouts();
-  const arrangeEntries = registry.arrange.filter((entry) => entry.implemented);
-  const inferredGrid = inferGroupGridLayout(scene, group.id);
-
-  const deriveInitialArrangeKind = () => {
-    if (group.layout?.type === 'grid') return 'grid';
-    if (group.layout?.type === 'arrange') return group.layout.arrangeKind;
-    return arrangeEntries[0]?.type ?? 'grid';
-  };
-
-  const deriveInitialParams = (kind: string) => {
-    if (group.layout?.type === 'grid' && kind === 'grid') return group.layout as unknown as Record<string, number | string | boolean>;
-    if (group.layout?.type === 'arrange' && kind === group.layout.arrangeKind) return group.layout.params;
-
-    if (kind === 'grid' && inferredGrid) return inferredGrid as unknown as Record<string, number | string | boolean>;
-
-    const entry = arrangeEntries.find((e) => e.type === kind);
-    const params: Record<string, number | string | boolean> = {};
-    for (const param of entry?.parameters ?? []) {
-      if (typeof param.default !== 'undefined') {
-        params[param.name] = param.default;
-      } else if (param.type === 'number') {
-        params[param.name] = 0;
-      } else if (param.type === 'boolean') {
-        params[param.name] = false;
-      } else {
-        params[param.name] = '';
-      }
-    }
-    return params;
-  };
-
-  const [arrangeKindDraft, setArrangeKindDraft] = useState<string>(deriveInitialArrangeKind);
-  const [arrangeParamsDraft, setArrangeParamsDraft] = useState<Record<string, number | string | boolean>>(
-    deriveInitialParams(deriveInitialArrangeKind())
-  );
-
-  useEffect(() => {
-    const kind = deriveInitialArrangeKind();
-    setArrangeKindDraft(kind);
-    setArrangeParamsDraft(deriveInitialParams(kind));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group.id]);
-
-  useEffect(() => {
-    if (arrangeKindDraft === 'grid' && group.layout?.type === 'grid') {
-      setArrangeParamsDraft(group.layout as unknown as Record<string, number | string | boolean>);
-    } else if (group.layout?.type === 'arrange' && group.layout.arrangeKind === arrangeKindDraft) {
-      setArrangeParamsDraft(group.layout.params);
-    }
-  }, [arrangeKindDraft, group.layout]);
 
   return (
-    renderGroupInspector(group, scene, arrangeKindDraft, arrangeParamsDraft, {
+    renderGroupInspector(group, scene, {
       registry,
       selectedAttachmentId,
       onAddAttachment,
@@ -638,13 +584,8 @@ function GroupInspector({
       onSelectMember,
       onRemoveMember,
       onUpdateGroup,
-      onArrangeGroup,
-      onArrangeGroupGrid,
-      onArrangeKindChange: (kind) => {
-        setArrangeKindDraft(kind);
-        setArrangeParamsDraft(deriveInitialParams(kind));
-      },
-      onArrangeParamsChange: (next) => setArrangeParamsDraft(next),
+      onUngroup,
+      onDeleteGroup,
       foldouts,
     })
   );
@@ -653,8 +594,6 @@ function GroupInspector({
 export function renderGroupInspector(
   group: GroupSpec,
   scene: SceneSpec,
-  arrangeKindDraft: string,
-  arrangeParamsDraft: Record<string, number | string | boolean>,
   handlers: {
     registry: EditorRegistryConfig;
     selectedAttachmentId?: string;
@@ -665,25 +604,13 @@ export function renderGroupInspector(
     onSelectMember: (id: string) => void;
     onRemoveMember: (id: string) => void;
     onUpdateGroup: (next: GroupSpec) => void;
-    onArrangeGroup: (id: string, arrangeKind: string, params: Record<string, number | string | boolean>) => void;
-    onArrangeGroupGrid: (id: string, layout: GroupGridLayout) => void;
-    onArrangeKindChange: (next: string) => void;
-    onArrangeParamsChange: (next: Record<string, number | string | boolean>) => void;
+    onUngroup: () => void;
+    onDeleteGroup: () => void;
     foldouts: { isOpen: (key: string, defaultOpen: boolean) => boolean; toggle: (key: string, defaultOpen: boolean) => void };
   }
 ) {
   const members = group.members.map((memberId) => scene.entities[memberId]).filter(Boolean);
   const layoutSummary = summarizeGridLayout(members);
-  const arrangeEntries = handlers.registry.arrange.filter((entry) => entry.implemented);
-  const selectedArrangeEntry = arrangeEntries.find((entry) => entry.type === arrangeKindDraft) ?? arrangeEntries[0];
-
-  const formatParamLabel = (name: string) => {
-    const withSpaces = name
-      .replace(/_/g, ' ')
-      .replace(/([a-z])([A-Z0-9])/g, '$1 $2')
-      .replace(/([0-9])([a-zA-Z])/g, '$1 $2');
-    return withSpaces.replace(/\b\w/g, (c) => c.toUpperCase());
-  };
 
   return (
     <div className="inspector-block">
@@ -706,6 +633,32 @@ export function renderGroupInspector(
       </InspectorFoldout>
 
       <InspectorFoldout
+        title="Grouping"
+        open={handlers.foldouts.isOpen('group.grouping', true)}
+        onToggle={() => handlers.foldouts.toggle('group.grouping', true)}
+      >
+        <div className="inspector-row">Toggle between a single formation selection and its individual member sprites.</div>
+        <div className="inspector-row">
+          <button
+            className="button"
+            data-testid="ungroup-button"
+            type="button"
+            onClick={handlers.onUngroup}
+          >
+            Ungroup
+          </button>
+          <button
+            className="button button-danger"
+            data-testid="delete-group-button"
+            type="button"
+            onClick={handlers.onDeleteGroup}
+          >
+            Delete Group
+          </button>
+        </div>
+      </InspectorFoldout>
+
+      <InspectorFoldout
         title="Formation"
         open={handlers.foldouts.isOpen('group.formation', true)}
         onToggle={() => handlers.foldouts.toggle('group.formation', true)}
@@ -723,84 +676,6 @@ export function renderGroupInspector(
         <div className="inspector-row">Members: {group.members.length}</div>
         <div className="inspector-row">
           Layout: {layoutSummary.kind === 'grid' ? `${layoutSummary.rows} x ${layoutSummary.cols} grid` : 'Freeform'}
-        </div>
-      </InspectorFoldout>
-
-      <InspectorFoldout
-        title="Arrange"
-        open={handlers.foldouts.isOpen('group.arrange', true)}
-        onToggle={() => handlers.foldouts.toggle('group.arrange', true)}
-      >
-        <div className="inline-boundary-editor">
-          <label className="field">
-            <span>Preset</span>
-            <select
-              aria-label="Arrange Preset"
-              data-testid="arrange-preset-select"
-              value={arrangeKindDraft}
-              onChange={(e) => handlers.onArrangeKindChange(e.target.value)}
-            >
-              {arrangeEntries.map((entry) => (
-                <option key={entry.type} value={entry.type}>{entry.displayName}</option>
-              ))}
-            </select>
-          </label>
-          {(selectedArrangeEntry?.parameters ?? []).map((param) => {
-            const rawValue = arrangeParamsDraft[param.name];
-            const label = formatParamLabel(param.name);
-            if (param.type === 'boolean') {
-              return (
-                <label key={param.name} className="field">
-                  <span>{label}</span>
-                  <input
-                    aria-label={label}
-                    data-testid={`arrange-param-${param.name}`}
-                    type="checkbox"
-                    checked={Boolean(rawValue)}
-                    onChange={(e) => handlers.onArrangeParamsChange({ ...arrangeParamsDraft, [param.name]: e.target.checked })}
-                  />
-                </label>
-              );
-            }
-            if (param.type === 'number') {
-              return (
-                <label key={param.name} className="field">
-                  <span>{label}</span>
-                  <ValidatedNumberInput
-                    aria-label={label}
-                    data-testid={`arrange-param-${param.name}`}
-                    value={Number(rawValue ?? 0)}
-                    onCommit={(next) => handlers.onArrangeParamsChange({ ...arrangeParamsDraft, [param.name]: next })}
-                  />
-                </label>
-              );
-            }
-            return (
-              <label key={param.name} className="field">
-                <span>{label}</span>
-                <input
-                  aria-label={label}
-                  data-testid={`arrange-param-${param.name}`}
-                  type="text"
-                  value={String(rawValue ?? '')}
-                  onChange={(e) => handlers.onArrangeParamsChange({ ...arrangeParamsDraft, [param.name]: e.target.value })}
-                />
-              </label>
-            );
-          })}
-          {arrangeKindDraft === 'grid' && (
-            <div className="inspector-row">
-              Grid size will become {Math.max(1, Math.floor(Number(arrangeParamsDraft.rows ?? 1))) * Math.max(1, Math.floor(Number(arrangeParamsDraft.cols ?? 1)))} sprites.
-            </div>
-          )}
-          <button
-            className="button"
-            data-testid="apply-group-layout-button"
-            onClick={() => handlers.onArrangeGroup(group.id, arrangeKindDraft, arrangeParamsDraft)}
-            type="button"
-          >
-            Apply Arrange Preset
-          </button>
         </div>
       </InspectorFoldout>
 

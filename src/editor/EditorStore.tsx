@@ -3,23 +3,26 @@ import {
   EditorRegistryConfig,
   GroupSpec,
   Id,
+  GameSceneSpec,
+  ProjectSpec,
   SceneSpec,
   StartupMode,
   type EntitySpec,
 } from '../model/types';
-import { createEmptyScene } from '../model/emptyScene';
+import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject';
 import { validateSceneSpec } from '../model/validation';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { applyGroupArrangeLayout, applyGroupGridLayout, type GroupGridLayout } from './formationLayout';
 import { dissolveGroup, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
 import { syncBoundsToWorldResize } from './worldBounds';
 import { loadEditorConfig, loadEditorRegistry, coerceStartupMode, EMPTY_EDITOR_REGISTRY } from '../model/editorConfig';
-import { parseSceneYaml, serializeSceneToYaml } from '../model/serialization';
+import { importLegacySceneYamlToProject, parseProjectYaml, parseSceneYaml, serializeProjectToYaml } from '../model/serialization';
 import { createGroupIdFromName, createGroupSpec, getNextFormationName } from './behaviorCommands';
 import { removeSceneGraphItem } from './sceneGraphCommands';
 import { createAttachment, moveAttachmentWithinTarget, removeAttachment, updateAttachment } from './attachmentCommands';
 import type { AttachmentSpec, TargetRef } from '../model/types';
 
+export const PROJECT_STORAGE_KEY = 'phaseractions.projectYaml.v1';
 export const SCENE_STORAGE_KEY_V1 = 'phaseractions.sceneYaml.v1';
 export const SCENE_STORAGE_KEY = 'phaseractions.sceneYaml.v2';
 export const STARTUP_MODE_STORAGE_KEY = 'phaseractions.startupMode.v1';
@@ -47,7 +50,8 @@ export type Selection =
   | { kind: 'attachment'; id: Id };
 
 export interface EditorState {
-  scene: SceneSpec;
+  project: ProjectSpec;
+  currentSceneId: Id;
   selection: Selection;
   expandedGroups: Record<Id, boolean>;
   dirty: boolean;
@@ -63,6 +67,7 @@ export interface EditorState {
   uiScale: number;
   registry: EditorRegistryConfig;
   initialized: boolean;
+  pendingGroupRestore?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec> };
 }
 
 export type ImportedEntityDraft = {
@@ -71,7 +76,7 @@ export type ImportedEntityDraft = {
 };
 
 export type EditorAction =
-  | { type: 'initialize'; scene: SceneSpec; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; registry: EditorRegistryConfig }
+  | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; registry: EditorRegistryConfig }
   | { type: 'set-startup-mode'; startupMode: StartupMode }
   | { type: 'set-theme-mode'; themeMode: ThemeMode }
   | { type: 'set-ui-scale'; uiScale: number }
@@ -83,8 +88,13 @@ export type EditorAction =
   | { type: 'export-yaml' }
   | { type: 'load-yaml' }
   | { type: 'load-yaml-text'; text: string; sourceLabel: string }
+  | { type: 'import-legacy-scene-yaml-text'; text: string; sourceLabel: string }
   | { type: 'reset-scene' }
-  | { type: 'set-scene'; scene: SceneSpec }
+  | { type: 'set-current-scene'; sceneId: Id }
+  | { type: 'create-scene'; sceneId?: Id }
+  | { type: 'duplicate-scene'; sceneId: Id; nextSceneId?: Id }
+  | { type: 'delete-scene'; sceneId: Id }
+  | { type: 'rename-scene'; sceneId: Id; name: string }
   | { type: 'update-scene-world'; width: number; height: number }
   | { type: 'update-entity'; id: Id; next: EntitySpec }
   | { type: 'import-entities'; drafts: ImportedEntityDraft[] }
@@ -104,6 +114,9 @@ export type EditorAction =
   | { type: 'begin-canvas-interaction'; kind: 'entity' | 'group' | 'bounds'; id: string; handle?: string }
   | { type: 'end-canvas-interaction' }
   | { type: 'create-group-from-selection'; name: string }
+  | { type: 'ungroup-group'; id: Id }
+  | { type: 'group-selection'; name: string }
+  | { type: 'delete-group'; id: Id }
   | { type: 'remove-entity-from-group'; groupId: Id; entityId: Id }
   | { type: 'dissolve-group'; id: Id }
   | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'attachment'; id: Id } }
@@ -114,15 +127,61 @@ function defaultExpandedGroups(scene: SceneSpec): Record<Id, boolean> {
   return Object.fromEntries(Object.keys(scene.groups).map((groupId) => [groupId, false]));
 }
 
+function idsEqualAsSet(a: Id[], b: Id[]): boolean {
+  if (a.length !== b.length) return false;
+  const setA = new Set(a);
+  for (const id of b) {
+    if (!setA.has(id)) return false;
+  }
+  return true;
+}
+
+function allocUniqueId(existing: Record<string, unknown>, base: string): string {
+  const sanitizedBase = base.trim().length > 0 ? base.trim() : 'scene';
+  if (!existing[sanitizedBase]) return sanitizedBase;
+  let counter = 2;
+  while (existing[`${sanitizedBase}-${counter}`]) counter += 1;
+  return `${sanitizedBase}-${counter}`;
+}
+
+function removeGroupKeepMembers(
+  scene: SceneSpec,
+  groupId: Id
+): { scene: SceneSpec; removed?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec> } } {
+  const group = scene.groups[groupId];
+  if (!group) return { scene };
+
+  const removedAttachments: Record<Id, AttachmentSpec> = {};
+  const remainingAttachments: Record<Id, AttachmentSpec> = {};
+  for (const [id, attachment] of Object.entries(scene.attachments)) {
+    if (attachment.target.type === 'group' && attachment.target.groupId === groupId) {
+      removedAttachments[id] = attachment;
+    } else {
+      remainingAttachments[id] = attachment;
+    }
+  }
+
+  const { [groupId]: _removedGroup, ...remainingGroups } = scene.groups;
+  void _removedGroup;
+
+  return {
+    scene: { ...scene, groups: remainingGroups, attachments: remainingAttachments },
+    removed: { group, attachments: removedAttachments },
+  };
+}
+
 const EditorContext = createContext<{
   state: EditorState;
   dispatch: React.Dispatch<EditorAction>;
 } | null>(null);
 
 function defaultState(): EditorState {
-  const scene = createEmptyScene();
+  const project = createEmptyProject();
+  const currentSceneId = project.initialSceneId;
+  const scene = project.scenes[currentSceneId];
   return {
-    scene,
+    project,
+    currentSceneId,
     selection: { kind: 'none' },
     expandedGroups: defaultExpandedGroups(scene),
     dirty: false,
@@ -134,6 +193,7 @@ function defaultState(): EditorState {
     uiScale: DEFAULT_UI_SCALE,
     registry: EMPTY_EDITOR_REGISTRY,
     initialized: false,
+    pendingGroupRestore: undefined,
   };
 }
 
@@ -141,10 +201,24 @@ export function initState(): EditorState {
   return defaultState();
 }
 
-function withScene(state: EditorState, scene: SceneSpec, dirty: boolean, selection: Selection = state.selection): EditorState {
+export function getActiveScene(state: Pick<EditorState, 'project' | 'currentSceneId'>): GameSceneSpec {
+  const scene = state.project.scenes[state.currentSceneId];
+  if (!scene) {
+    throw new Error(`Missing active scene ${state.currentSceneId}`);
+  }
+  return scene;
+}
+
+function withScene(state: EditorState, scene: GameSceneSpec, dirty: boolean, selection: Selection = state.selection): EditorState {
   return {
     ...state,
-    scene,
+    project: {
+      ...state.project,
+      scenes: {
+        ...state.project.scenes,
+        [state.currentSceneId]: scene,
+      },
+    },
     selection,
     expandedGroups: defaultExpandedGroups(scene),
     dirty,
@@ -154,8 +228,9 @@ function withScene(state: EditorState, scene: SceneSpec, dirty: boolean, selecti
 
 function importEntities(state: EditorState, drafts: ImportedEntityDraft[]): EditorState {
   if (drafts.length === 0) return state;
-  const entities = { ...state.scene.entities };
-  const groups = { ...state.scene.groups };
+  const scene = getActiveScene(state);
+  const entities = { ...scene.entities };
+  const groups = { ...scene.groups };
   const importedIds: string[] = [];
   const addToGroupId = state.selection.kind === 'group' ? state.selection.id : undefined;
 
@@ -171,36 +246,37 @@ function importEntities(state: EditorState, drafts: ImportedEntityDraft[]): Edit
   }
 
   return {
-    ...state,
-    scene: {
-      ...state.scene,
-      entities,
-      groups,
-    },
+    ...withScene(state, { ...scene, entities, groups }, true),
     selection: importedIds.length === 1 ? { kind: 'entity', id: importedIds[0] } : { kind: 'entities', ids: importedIds },
-    dirty: true,
-    error: undefined,
   };
 }
 
 export function reducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'initialize':
-      return {
-        ...state,
-        scene: action.scene,
-        selection: { kind: 'none' },
-        expandedGroups: defaultExpandedGroups(action.scene),
-        dirty: false,
-        error: undefined,
-        statusMessage: undefined,
-        statusExpiresAt: undefined,
-        startupMode: action.startupMode,
-        themeMode: action.themeMode,
-        uiScale: coerceUiScale(String(action.uiScale), DEFAULT_UI_SCALE),
-        registry: action.registry,
-        initialized: true,
-      };
+      return (() => {
+        const currentSceneId = action.project.scenes[action.currentSceneId]
+          ? action.currentSceneId
+          : action.project.initialSceneId;
+        const activeScene = action.project.scenes[currentSceneId];
+        validateSceneSpec(activeScene);
+        return {
+          ...state,
+          project: action.project,
+          currentSceneId,
+          selection: { kind: 'none' },
+          expandedGroups: defaultExpandedGroups(activeScene),
+          dirty: false,
+          error: undefined,
+          statusMessage: undefined,
+          statusExpiresAt: undefined,
+          startupMode: action.startupMode,
+          themeMode: action.themeMode,
+          uiScale: coerceUiScale(String(action.uiScale), DEFAULT_UI_SCALE),
+          registry: action.registry,
+          initialized: true,
+        };
+      })();
     case 'set-startup-mode':
       return {
         ...state,
@@ -225,15 +301,17 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
     case 'set-status':
       return { ...state, statusMessage: action.message, statusExpiresAt: action.expiresAt };
     case 'export-yaml':
-      return { ...state, yamlText: serializeSceneToYaml(state.scene), error: undefined };
+      return { ...state, yamlText: serializeProjectToYaml(state.project), error: undefined };
     case 'load-yaml': {
       try {
-        const parsed = parseSceneYaml(state.yamlText);
-        validateSceneSpec(parsed);
+        const parsed = parseProjectYaml(state.yamlText);
+        for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
+        const currentSceneId = parsed.initialSceneId;
         return {
           ...state,
-          scene: parsed,
-          expandedGroups: defaultExpandedGroups(parsed),
+          project: parsed,
+          currentSceneId,
+          expandedGroups: defaultExpandedGroups(parsed.scenes[currentSceneId]),
           dirty: false,
           error: undefined,
           selection: { kind: 'none' },
@@ -249,13 +327,15 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
     }
     case 'load-yaml-text': {
       try {
-        const parsed = parseSceneYaml(action.text);
-        validateSceneSpec(parsed);
+        const parsed = parseProjectYaml(action.text);
+        for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
+        const currentSceneId = parsed.initialSceneId;
         const expiresAt = Date.now() + 4000;
         return {
           ...state,
-          scene: parsed,
-          expandedGroups: defaultExpandedGroups(parsed),
+          project: parsed,
+          currentSceneId,
+          expandedGroups: defaultExpandedGroups(parsed.scenes[currentSceneId]),
           dirty: false,
           error: undefined,
           selection: { kind: 'none' },
@@ -272,32 +352,169 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         };
       }
     }
+    case 'import-legacy-scene-yaml-text': {
+      try {
+        const project = importLegacySceneYamlToProject(action.text);
+        for (const scene of Object.values(project.scenes)) validateSceneSpec(scene);
+        const currentSceneId = project.initialSceneId;
+        const expiresAt = Date.now() + 4000;
+        return {
+          ...state,
+          project,
+          currentSceneId,
+          expandedGroups: defaultExpandedGroups(project.scenes[currentSceneId]),
+          dirty: false,
+          error: undefined,
+          selection: { kind: 'none' },
+          yamlText: action.text,
+          statusMessage: `Imported legacy YAML: ${action.sourceLabel}`,
+          statusExpiresAt: expiresAt,
+        };
+      } catch (err) {
+        return {
+          ...state,
+          error: err instanceof Error ? err.message : 'Invalid YAML',
+          statusMessage: undefined,
+          statusExpiresAt: undefined,
+        };
+      }
+    }
     case 'reset-scene':
+      return withScene(
+        {
+          ...state,
+          selection: { kind: 'none' },
+        },
+        createEmptyGameScene(state.currentSceneId),
+        false,
+        { kind: 'none' },
+      );
+    case 'set-current-scene': {
+      if (!state.project.scenes[action.sceneId]) return state;
+      const nextScene = state.project.scenes[action.sceneId];
       return {
         ...state,
-        scene: createEmptyScene(),
-        expandedGroups: {},
-        dirty: false,
-        error: undefined,
+        currentSceneId: action.sceneId,
         selection: { kind: 'none' },
+        expandedGroups: defaultExpandedGroups(nextScene),
+        error: undefined,
       };
-    case 'set-scene':
-      return { ...state, scene: action.scene, dirty: true };
+    }
+    case 'create-scene': {
+      const nextId = allocUniqueId(state.project.scenes, action.sceneId ?? 'scene-1');
+      const nextScene = createEmptyGameScene(nextId);
+      const project: ProjectSpec = {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [nextId]: nextScene,
+        },
+      };
+      return {
+        ...state,
+        project,
+        currentSceneId: nextId,
+        selection: { kind: 'none' },
+        expandedGroups: defaultExpandedGroups(nextScene),
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'duplicate-scene': {
+      const source = state.project.scenes[action.sceneId];
+      if (!source) return state;
+      const nextId = allocUniqueId(state.project.scenes, action.nextSceneId ?? `${action.sceneId}-copy`);
+      const cloned = JSON.parse(JSON.stringify(source)) as GameSceneSpec;
+      cloned.id = nextId;
+      const project: ProjectSpec = {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [nextId]: cloned,
+        },
+      };
+      return {
+        ...state,
+        project,
+        currentSceneId: nextId,
+        selection: { kind: 'none' },
+        expandedGroups: defaultExpandedGroups(cloned),
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'delete-scene': {
+      const keys = Object.keys(state.project.scenes);
+      if (keys.length <= 1) return state;
+      if (!state.project.scenes[action.sceneId]) return state;
+      const { [action.sceneId]: _removed, ...remaining } = state.project.scenes;
+      void _removed;
+      const remainingIds = Object.keys(remaining);
+      const fallbackId = remainingIds[0];
+      const nextCurrent = state.currentSceneId === action.sceneId ? fallbackId : state.currentSceneId;
+      const nextInitial = state.project.initialSceneId === action.sceneId ? fallbackId : state.project.initialSceneId;
+      const project: ProjectSpec = {
+        ...state.project,
+        scenes: remaining,
+        initialSceneId: nextInitial,
+      };
+      const activeScene = project.scenes[nextCurrent];
+      return {
+        ...state,
+        project,
+        currentSceneId: nextCurrent,
+        selection: { kind: 'none' },
+        expandedGroups: defaultExpandedGroups(activeScene),
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'rename-scene': {
+      const source = state.project.scenes[action.sceneId];
+      if (!source) return state;
+      const desired = action.name.trim();
+      if (desired.length === 0) return state;
+      const nextId = desired === action.sceneId ? desired : allocUniqueId(state.project.scenes, desired);
+      if (nextId === action.sceneId) return state;
+
+      const { [action.sceneId]: _removed, ...rest } = state.project.scenes;
+      void _removed;
+      const renamed: GameSceneSpec = { ...(source as any), id: nextId };
+      const scenes = { ...rest, [nextId]: renamed };
+      const project: ProjectSpec = {
+        ...state.project,
+        scenes,
+        initialSceneId: state.project.initialSceneId === action.sceneId ? nextId : state.project.initialSceneId,
+      };
+      return {
+        ...state,
+        project,
+        currentSceneId: state.currentSceneId === action.sceneId ? nextId : state.currentSceneId,
+        selection: { kind: 'none' },
+        expandedGroups: defaultExpandedGroups(renamed),
+        dirty: true,
+        error: undefined,
+      };
+    }
     case 'update-scene-world':
-      return withScene(
-        state,
-        syncBoundsToWorldResize(state.scene, {
-          width: Math.max(1, action.width),
-          height: Math.max(1, action.height),
-        }),
-        true,
-      );
+      return (() => {
+        const scene = getActiveScene(state);
+        return withScene(
+          state,
+          syncBoundsToWorldResize(scene, {
+            width: Math.max(1, action.width),
+            height: Math.max(1, action.height),
+          }) as GameSceneSpec,
+          true,
+        );
+      })();
     case 'update-entity': {
-      if (!state.scene.entities[action.id]) return state;
+      const scene = getActiveScene(state);
+      if (!scene.entities[action.id]) return state;
       return withScene(state, {
-        ...state.scene,
+        ...scene,
         entities: {
-          ...state.scene.entities,
+          ...scene.entities,
           [action.id]: action.next,
         },
       }, true);
@@ -305,47 +522,45 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
     case 'import-entities':
       return importEntities(state, action.drafts);
     case 'update-group': {
-      if (!state.scene.groups[action.id]) return state;
+      const scene = getActiveScene(state);
+      if (!scene.groups[action.id]) return state;
       return withScene(state, {
-        ...state.scene,
+        ...scene,
         groups: {
-          ...state.scene.groups,
+          ...scene.groups,
           [action.id]: action.next,
         },
       }, true);
     }
     case 'create-attachment': {
-      const { scene, attachmentId } = createAttachment(state.scene, action.target, action.presetId, {
+      const scene = getActiveScene(state);
+      const { scene: nextScene, attachmentId } = createAttachment(scene, action.target, action.presetId, {
         applyTo: action.target.type === 'group' ? 'group' : undefined,
       });
-      return {
-        ...state,
-        scene,
-        selection: { kind: 'attachment', id: attachmentId },
-        dirty: true,
-        error: undefined,
-      };
+      return withScene(
+        { ...state, selection: { kind: 'attachment', id: attachmentId } },
+        nextScene as GameSceneSpec,
+        true,
+        { kind: 'attachment', id: attachmentId },
+      );
     }
     case 'update-attachment': {
-      const nextScene = updateAttachment(state.scene, action.id, action.next);
-      if (nextScene === state.scene) return state;
-      return withScene(state, nextScene, true);
+      const scene = getActiveScene(state);
+      const nextScene = updateAttachment(scene, action.id, action.next);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
     }
     case 'remove-attachment': {
-      const nextScene = removeAttachment(state.scene, action.id);
-      if (nextScene === state.scene) return state;
-      return {
-        ...state,
-        scene: nextScene,
-        selection: { kind: 'none' },
-        dirty: true,
-        error: undefined,
-      };
+      const scene = getActiveScene(state);
+      const nextScene = removeAttachment(scene, action.id);
+      if (nextScene === scene) return state;
+      return withScene({ ...state, selection: { kind: 'none' } }, nextScene as GameSceneSpec, true, { kind: 'none' });
     }
     case 'move-attachment': {
-      const nextScene = moveAttachmentWithinTarget(state.scene, action.id, action.direction);
-      if (nextScene === state.scene) return state;
-      return withScene(state, nextScene, true);
+      const scene = getActiveScene(state);
+      const nextScene = moveAttachmentWithinTarget(scene, action.id, action.direction);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
     }
     case 'toggle-group-expanded':
       return {
@@ -356,14 +571,15 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         },
       };
     case 'move-entity': {
-      const entity = state.scene.entities[action.id];
+      const scene = getActiveScene(state);
+      const entity = scene.entities[action.id];
       if (!entity) return state;
       const dx = Math.round(action.dx);
       const dy = Math.round(action.dy);
       return withScene(state, {
-        ...state.scene,
+        ...scene,
         entities: {
-          ...state.scene.entities,
+          ...scene.entities,
           [action.id]: {
             ...entity,
             x: entity.x + dx,
@@ -373,11 +589,12 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       }, true);
     }
     case 'move-group': {
-      const group = state.scene.groups[action.id];
+      const scene = getActiveScene(state);
+      const group = scene.groups[action.id];
       if (!group) return state;
       const dx = Math.round(action.dx);
       const dy = Math.round(action.dy);
-      const updatedEntities = { ...state.scene.entities };
+      const updatedEntities = { ...scene.entities };
       for (const entityId of group.members) {
         const entity = updatedEntities[entityId];
         if (entity) {
@@ -389,10 +606,10 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         }
       }
       return withScene(state, {
-        ...state.scene,
+        ...scene,
         entities: updatedEntities,
         groups: {
-          ...state.scene.groups,
+          ...scene.groups,
           [action.id]: updateGroupLayoutPosition(group, dx, dy),
         },
       }, true);
@@ -406,9 +623,10 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         return { ...state, selection: { kind: 'entities', ids: action.entityIds } };
       }
     case 'move-entities': {
+      const scene = getActiveScene(state);
       const dx = Math.round(action.dx);
       const dy = Math.round(action.dy);
-      const updatedEntities = { ...state.scene.entities };
+      const updatedEntities = { ...scene.entities };
       for (const entityId of action.entityIds) {
         const entity = updatedEntities[entityId];
         if (entity) {
@@ -420,29 +638,32 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         }
       }
       return withScene(state, {
-        ...state.scene,
+        ...scene,
         entities: updatedEntities,
       }, true);
     }
     case 'arrange-group-grid': {
-      const nextScene = applyGroupGridLayout(state.scene, action.id, action.layout);
-      if (nextScene === state.scene) return state;
-      return withScene(state, nextScene, true);
+      const scene = getActiveScene(state);
+      const nextScene = applyGroupGridLayout(scene, action.id, action.layout);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
     }
     case 'arrange-group': {
-      const nextScene = applyGroupArrangeLayout(state.scene, action.id, action.arrangeKind, action.params);
-      if (nextScene === state.scene) return state;
-      return withScene(state, nextScene, true);
+      const scene = getActiveScene(state);
+      const nextScene = applyGroupArrangeLayout(scene, action.id, action.arrangeKind, action.params);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
     }
     case 'create-group-from-arrange': {
-      const template = state.scene.entities[action.templateEntityId];
+      const scene = getActiveScene(state);
+      const template = scene.entities[action.templateEntityId];
       if (!template) return state;
 
       const rawName = action.name.trim();
-      const formationName = rawName.length > 0 ? rawName : getNextFormationName(state.scene);
-      const groupId = createGroupIdFromName(state.scene, formationName);
+      const formationName = rawName.length > 0 ? rawName : getNextFormationName(scene);
+      const groupId = createGroupIdFromName(scene, formationName);
 
-      const world = state.scene.world ?? { width: 1024, height: 768 };
+      const world = scene.world ?? { width: 1024, height: 768 };
       const baseX = world.width / 2;
       const baseY = world.height / 2;
 
@@ -455,7 +676,7 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       count = Math.max(1, Math.min(200, count));
 
       const { id: _id, name: _name, x: _x, y: _y, ...templateFields } = template;
-      const nextEntities = { ...state.scene.entities };
+      const nextEntities = { ...scene.entities };
       const memberIds: Id[] = [];
       const createdAt = Date.now();
 
@@ -471,31 +692,38 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         });
       }
 
-      const nextScene: SceneSpec = {
-        ...state.scene,
+      const nextScene: GameSceneSpec = {
+        ...scene,
         entities: nextEntities,
         groups: {
-          ...state.scene.groups,
+          ...scene.groups,
           [groupId]: createGroupSpec(groupId, memberIds, formationName),
         },
       };
 
       const arranged = applyGroupArrangeLayout(nextScene, groupId, action.arrangeKind, action.params);
+      const strippedLayout: GameSceneSpec = {
+        ...arranged,
+        groups: {
+          ...arranged.groups,
+          [groupId]: {
+            ...arranged.groups[groupId],
+            layout: { type: 'freeform' },
+          },
+        },
+      };
 
       return {
-        ...state,
-        scene: arranged,
-        selection: { kind: 'group', id: groupId },
+        ...withScene(state, strippedLayout, true, { kind: 'group', id: groupId }),
         expandedGroups: {
           ...state.expandedGroups,
           [groupId]: true,
         },
-        dirty: true,
-        error: undefined,
       };
     }
     case 'update-bounds': {
-      const attachment = state.scene.attachments[action.id];
+      const scene = getActiveScene(state);
+      const attachment = scene.attachments[action.id];
       if (!attachment || attachment.presetId !== 'MoveUntil') return state;
       if (!attachment.condition || attachment.condition.type !== 'BoundsHit') return state;
       const clampedBounds = {
@@ -504,13 +732,13 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
         minY: Math.min(action.bounds.minY, action.bounds.maxY),
         maxY: Math.max(action.bounds.minY, action.bounds.maxY),
       };
-      return withScene(state, updateAttachment(state.scene, attachment.id, {
+      return withScene(state, updateAttachment(scene, attachment.id, {
         ...attachment,
         condition: {
           ...attachment.condition,
           bounds: clampedBounds,
         },
-      }), true);
+      }) as GameSceneSpec, true);
     }
     case 'begin-canvas-interaction':
       return {
@@ -528,65 +756,133 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       };
     case 'create-group-from-selection': {
       if (state.selection.kind !== 'entities' || state.selection.ids.length === 0) return state;
+      const scene = getActiveScene(state);
 
       const groupId = `g-${Date.now()}`;
-      const newGroup = createGroupSpec(groupId, state.selection.ids, action.name.trim() || getNextFormationName(state.scene));
+      const newGroup = createGroupSpec(groupId, state.selection.ids, action.name.trim() || getNextFormationName(scene));
+
+      const nextScene: GameSceneSpec = {
+        ...scene,
+        groups: {
+          ...scene.groups,
+          [groupId]: newGroup,
+        },
+      };
 
       return {
-        ...state,
-        scene: {
-          ...state.scene,
-          groups: {
-            ...state.scene.groups,
-            [groupId]: newGroup,
-          },
-        },
-        selection: { kind: 'group', id: groupId },
+        ...withScene(state, nextScene, true, { kind: 'group', id: groupId }),
         expandedGroups: {
           ...state.expandedGroups,
           [groupId]: true,
         },
-        dirty: true,
-        error: undefined,
+        pendingGroupRestore: undefined,
+      };
+    }
+    case 'ungroup-group': {
+      const scene = getActiveScene(state);
+      const removed = removeGroupKeepMembers(scene, action.id);
+      if (!removed.removed) return state;
+
+      const { group, attachments } = removed.removed;
+      const { [group.id]: _removedExpanded, ...expandedGroups } = state.expandedGroups;
+      void _removedExpanded;
+
+      return {
+        ...withScene(state, removed.scene as GameSceneSpec, true, { kind: 'entities', ids: group.members }),
+        selection: { kind: 'entities', ids: group.members },
+        expandedGroups,
+        pendingGroupRestore: { group, attachments },
+      };
+    }
+    case 'group-selection': {
+      if (state.selection.kind !== 'entities' || state.selection.ids.length < 2) return state;
+      const scene = getActiveScene(state);
+
+      const selectionIds = state.selection.ids;
+      const restore = state.pendingGroupRestore;
+      if (restore && idsEqualAsSet(selectionIds, restore.group.members) && !scene.groups[restore.group.id]) {
+        return {
+          ...withScene(state, {
+            ...scene,
+            groups: {
+              ...scene.groups,
+              [restore.group.id]: restore.group,
+            },
+            attachments: {
+              ...scene.attachments,
+              ...restore.attachments,
+            },
+          } as GameSceneSpec, true, { kind: 'group', id: restore.group.id }),
+          selection: { kind: 'group', id: restore.group.id },
+          expandedGroups: {
+            ...state.expandedGroups,
+            [restore.group.id]: true,
+          },
+          pendingGroupRestore: undefined,
+        };
+      }
+
+      const groupId = `g-${Date.now()}`;
+      const newGroup = createGroupSpec(groupId, selectionIds, action.name.trim() || getNextFormationName(scene));
+
+      return {
+        ...withScene(state, {
+          ...scene,
+          groups: {
+            ...scene.groups,
+            [groupId]: newGroup,
+          },
+        } as GameSceneSpec, true, { kind: 'group', id: groupId }),
+        expandedGroups: {
+          ...state.expandedGroups,
+          [groupId]: true,
+        },
+        pendingGroupRestore: undefined,
+      };
+    }
+    case 'delete-group': {
+      const scene = getActiveScene(state);
+      const removed = removeGroupKeepMembers(scene, action.id);
+      if (!removed.removed) return state;
+
+      const { group } = removed.removed;
+      const { [group.id]: _removedExpanded, ...expandedGroups } = state.expandedGroups;
+      void _removedExpanded;
+
+      return {
+        ...withScene(state, removed.scene as GameSceneSpec, true, { kind: 'entities', ids: group.members }),
+        selection: { kind: 'entities', ids: group.members },
+        expandedGroups,
+        pendingGroupRestore: undefined,
       };
     }
     case 'remove-scene-graph-item': {
-      const scene = removeSceneGraphItem(state.scene, action.item);
-      if (scene === state.scene) return state;
-      return {
-        ...state,
-        scene,
-        selection: { kind: 'none' },
-        expandedGroups: defaultExpandedGroups(scene),
-        dirty: true,
-        error: undefined,
-      };
+      const scene = getActiveScene(state);
+      const next = removeSceneGraphItem(scene, action.item);
+      if (next === scene) return state;
+      return withScene({ ...state, selection: { kind: 'none' } }, next as GameSceneSpec, true, { kind: 'none' });
     }
     case 'remove-entity-from-group': {
-      const nextScene = removeEntityFromGroup(state.scene, action.groupId, action.entityId);
-      if (nextScene === state.scene) return state;
+      const scene = getActiveScene(state);
+      const nextScene = removeEntityFromGroup(scene, action.groupId, action.entityId);
+      if (nextScene === scene) return state;
       const groupStillExists = Boolean(nextScene.groups[action.groupId]);
       return {
-        ...state,
-        scene: nextScene,
+        ...withScene(state, nextScene as GameSceneSpec, true, groupStillExists ? { kind: 'group', id: action.groupId } : { kind: 'entity', id: action.entityId }),
         selection: groupStillExists ? { kind: 'group', id: action.groupId } : { kind: 'entity', id: action.entityId },
         expandedGroups: defaultExpandedGroups(nextScene),
-        dirty: true,
-        error: undefined,
       };
     }
     case 'dissolve-group': {
-      const group = state.scene.groups[action.id];
+      const scene = getActiveScene(state);
+      const group = scene.groups[action.id];
       if (!group) return state;
-      const nextScene = dissolveGroup(state.scene, action.id);
+      const nextScene = dissolveGroup(scene, action.id);
 
       return {
-        ...state,
-        scene: nextScene,
+        ...withScene(state, nextScene as GameSceneSpec, true, { kind: 'entities', ids: group.members }),
         selection: { kind: 'entities', ids: group.members },
         expandedGroups: defaultExpandedGroups(nextScene),
-        dirty: true,
-        error: undefined,
       };
     }
     case 'toggle-mode':
@@ -604,13 +900,13 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
   }
 }
 
-function loadStoredSceneYaml(): SceneSpec | null {
+function loadStoredProjectYaml(): ProjectSpec | null {
   if (typeof window === 'undefined') return null;
-  const raw = window.localStorage.getItem(SCENE_STORAGE_KEY) ?? window.localStorage.getItem(SCENE_STORAGE_KEY_V1);
+  const raw = window.localStorage.getItem(PROJECT_STORAGE_KEY);
   if (!raw) return null;
   try {
-    const parsed = parseSceneYaml(raw);
-    validateSceneSpec(parsed);
+    const parsed = parseProjectYaml(raw);
+    for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
     return parsed;
   } catch {
     return null;
@@ -637,9 +933,10 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       const storedUiScale = typeof window !== 'undefined'
         ? coerceUiScale(window.localStorage.getItem(UI_SCALE_STORAGE_KEY), DEFAULT_UI_SCALE)
         : DEFAULT_UI_SCALE;
-      const scene = storedMode === 'reload_last_yaml' ? (loadStoredSceneYaml() ?? createEmptyScene()) : createEmptyScene();
+      const project = storedMode === 'reload_last_yaml' ? (loadStoredProjectYaml() ?? createEmptyProject()) : createEmptyProject();
+      const currentSceneId = project.initialSceneId;
 
-      dispatch({ type: 'initialize', scene, startupMode: storedMode, themeMode: storedThemeMode, uiScale: storedUiScale, registry });
+      dispatch({ type: 'initialize', project, currentSceneId, startupMode: storedMode, themeMode: storedThemeMode, uiScale: storedUiScale, registry });
     };
 
     void initialize();
@@ -678,11 +975,11 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined' || !state.initialized) return;
     try {
-      window.localStorage.setItem(SCENE_STORAGE_KEY, serializeSceneToYaml(state.scene));
+      window.localStorage.setItem(PROJECT_STORAGE_KEY, serializeProjectToYaml(state.project));
     } catch {
       // ignore storage errors
     }
-  }, [state.initialized, state.scene]);
+  }, [state.initialized, state.project]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

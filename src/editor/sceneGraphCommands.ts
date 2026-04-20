@@ -40,13 +40,7 @@ export function removeGroupFromScene(scene: SceneSpec, groupId: Id): SceneSpec {
   const attachments = Object.fromEntries(
     Object.entries(scene.attachments).filter(([_id, attachment]) => !(attachment.target.type === 'group' && attachment.target.groupId === groupId))
   );
-  let nextScene: SceneSpec = { ...scene, attachments };
-
-  // Remove all members (this also cleans up their attachments).
-  for (const memberId of group.members) {
-    nextScene = removeEntityFromScene(nextScene, memberId);
-  }
-
+  const nextScene: SceneSpec = { ...scene, attachments };
   const { [groupId]: _removedGroup, ...remainingGroups } = nextScene.groups;
   return { ...nextScene, groups: remainingGroups };
 }

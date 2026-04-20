@@ -18,6 +18,12 @@ Initial focus:
 - group behavior
 - live parameter editing
 
+## YAML and Preview
+
+`Export YAML` always serializes the current editor `SceneSpec` (the last edited layout). `Preview` mode runs the runtime simulation without rewriting the scene data used for YAML export/load.
+
+In Preview mode, formations are also mirrored into `Phaser.Physics.Arcade.Group` instances for runtime tracking (without changing the YAML schema).
+
 
 ## Requirements
 

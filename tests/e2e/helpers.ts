@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { serializeSceneToYaml } from '../../src/model/serialization';
-import { sampleScene } from '../../src/model/sampleScene';
+import { serializeProjectToYaml } from '../../src/model/serialization';
+import { sampleProject } from '../../src/model/sampleProject';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number; centerX?: number; centerY?: number };
@@ -23,15 +23,15 @@ export async function gotoStudio(page: Page): Promise<void> {
 }
 
 export async function seedSampleScene(page: Page): Promise<void> {
-  const yaml = serializeSceneToYaml(sampleScene);
+  const yaml = serializeProjectToYaml(sampleProject);
   await page.goto('/');
   await page.evaluate(([sceneYaml]) => {
     window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
-    window.localStorage.setItem('phaseractions.sceneYaml.v2', sceneYaml);
-    window.localStorage.setItem('phaseractions.sceneYaml.v1', sceneYaml);
+    window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
     window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
   }, [yaml]);
   await page.reload();
+  await waitForSceneReady(page);
   await waitForSampleScene(page);
 }
 
@@ -43,11 +43,7 @@ export async function waitForSceneReady(page: Page): Promise<void> {
 export async function waitForSampleScene(page: Page): Promise<void> {
   await expect.poll(async () => {
     const state = await getState<{
-      scene?: {
-        entities?: Record<string, unknown>;
-        groups?: Record<string, unknown>;
-        attachments?: Record<string, unknown>;
-      };
+      scene?: { entities?: Record<string, unknown>; groups?: Record<string, unknown>; attachments?: Record<string, unknown> };
     } | null>(page);
     return {
       hasState: Boolean(state),
@@ -104,6 +100,10 @@ export async function getEntitySpriteWorldRect(page: Page, id: string): Promise<
 
 export async function getGroupWorldBounds(page: Page, id: string): Promise<Rect> {
   return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getGroupWorldBounds(groupId), id) as Promise<Rect>;
+}
+
+export async function getFormationPhysicsGroupInfo(page: Page, id: string): Promise<{ memberCount: number } | null> {
+  return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getFormationPhysicsGroupInfo(groupId), id) as Promise<{ memberCount: number } | null>;
 }
 
 export async function getEditableBoundsRect(page: Page): Promise<Rect> {

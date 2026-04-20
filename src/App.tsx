@@ -13,13 +13,16 @@ import './app/layout.css';
 
 function AppShell() {
   const { state, dispatch } = useEditorStore();
+  const activeScene = state.project.scenes[state.currentSceneId];
   const [sceneReady, setSceneReady] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [worldWidthDraft, setWorldWidthDraft] = useState('');
   const [worldHeightDraft, setWorldHeightDraft] = useState('');
   const readyRef = useRef(false);
   const appStateRef = useRef({
-    scene: state.scene,
+    project: state.project,
+    currentSceneId: state.currentSceneId,
+    scene: activeScene,
     selection: state.selection,
     mode: state.mode,
     dirty: state.dirty,
@@ -31,7 +34,7 @@ function AppShell() {
     uiScale: state.uiScale,
     initialized: state.initialized,
   });
-  const world = getSceneWorld(state.scene);
+  const world = getSceneWorld(activeScene);
 
   useEffect(() => {
     setWorldWidthDraft(String(world.width));
@@ -40,7 +43,9 @@ function AppShell() {
 
   useEffect(() => {
     appStateRef.current = {
-      scene: state.scene,
+      project: state.project,
+      currentSceneId: state.currentSceneId,
+      scene: state.project.scenes[state.currentSceneId],
       selection: state.selection,
       mode: state.mode,
       dirty: state.dirty,
@@ -104,8 +109,8 @@ function AppShell() {
 
   useEffect(() => {
     if (!sceneReady) return;
-    EventBus.emit('load-scene', state.scene, state.mode);
-  }, [sceneReady, state.scene, state.mode]);
+    EventBus.emit('load-scene', state.project.scenes[state.currentSceneId], state.mode);
+  }, [sceneReady, state.project, state.currentSceneId, state.mode]);
 
   useEffect(() => {
     EventBus.emit('selection-changed', state.selection);
@@ -153,7 +158,7 @@ function AppShell() {
     };
 
     const handleCanvasUpdateBounds = (bounds: { minX: number; maxX: number; minY: number; maxY: number }) => {
-      const boundsConditionId = getEditableBoundsConditionId(state.scene, state.selection);
+      const boundsConditionId = getEditableBoundsConditionId(activeScene, state.selection);
       if (!boundsConditionId) return;
       dispatch({ type: 'update-bounds', id: boundsConditionId, bounds });
     };
@@ -203,7 +208,7 @@ function AppShell() {
       EventBus.off('canvas-interaction-end', handleCanvasInteractionEnd);
       EventBus.off('canvas-update-bounds', handleCanvasUpdateBounds);
     };
-  }, [dispatch, state.scene, state.selection]);
+  }, [dispatch, activeScene, state.selection]);
 
   const commitWorldDraft = (dimension: 'width' | 'height') => {
     const raw = dimension === 'width' ? worldWidthDraft : worldHeightDraft;

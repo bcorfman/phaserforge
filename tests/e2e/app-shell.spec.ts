@@ -4,8 +4,7 @@ import { dismissViewHint, expectInputValue, getState, gotoStudio, seedSampleScen
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
-    window.localStorage.removeItem('phaseractions.sceneYaml.v2');
-    window.localStorage.removeItem('phaseractions.sceneYaml.v1');
+    window.localStorage.removeItem('phaseractions.projectYaml.v1');
     window.localStorage.removeItem('phaseractions.startupMode.v1');
     window.localStorage.removeItem('phaseractions.themeMode.v1');
     window.localStorage.removeItem('phaseractions.uiScale.v1');

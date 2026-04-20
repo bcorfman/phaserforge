@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
+import { BootScene } from '../phaser/BootScene';
 import { EditorScene } from '../phaser/EditorScene';
+import { GameScene } from '../phaser/GameScene';
 import { SCENE_HEIGHT, SCENE_WIDTH } from '../editor/viewport';
 
 export default function StartGame(container: string): Phaser.Game
@@ -10,7 +12,14 @@ export default function StartGame(container: string): Phaser.Game
         width: SCENE_WIDTH,
         height: SCENE_HEIGHT,
         backgroundColor: '#000000',
-        scene: [EditorScene],
+        scene: [BootScene, EditorScene, GameScene],
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 0 },
+                debug: false,
+            },
+        },
         antialias: true,
         autoRound: true,
         pixelArt: false,

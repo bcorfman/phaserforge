@@ -5,6 +5,7 @@ import { SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
 import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
 import { getRotatedEntityBounds } from '../runtime/geometry';
+import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { clampHitboxToEntity, computeHitboxFromImageData, mapHitboxToEntitySize } from '../editor/hitboxAuto';
 import {
   hitTestCanvas,
@@ -27,10 +28,20 @@ import { getSceneWorld } from '../editor/sceneWorld';
 import { canPanCamera, clampCameraScroll, clampZoom, getFitZoom, getNextZoom, getZoomedScroll } from '../editor/viewport';
 import { getCurrentAppStateSnapshot, registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 
+const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
+
+type PhysicsObject =
+  | Phaser.Types.Physics.Arcade.ImageWithDynamicBody
+  | Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+
 export class EditorScene extends Phaser.Scene {
   private compiled?: CompiledScene;
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
   private entityToGroup = new Map<string, string>();
+  private formationPhysicsGroups = new Map<string, Phaser.Physics.Arcade.Group>();
+  private physicsObjects = new Map<string, PhysicsObject>();
+  private physicsVelocityCache = new Map<string, { vx: number; vy: number }>();
+  private physicsSizeCache = new Map<string, { w: number; h: number }>();
   private boundsGraphics?: Phaser.GameObjects.Graphics;
   private boundsHandles = new Map<string, Phaser.GameObjects.Zone>();
   private readonly autoHitboxCache = new Map<string, { x: number; y: number; width: number; height: number; sourceW: number; sourceH: number }>();
@@ -42,6 +53,7 @@ export class EditorScene extends Phaser.Scene {
   private hoverState: HoverState = { kind: 'none' };
   private dragOverlay?: Phaser.GameObjects.Text;
   private hoverOutline?: Phaser.GameObjects.Graphics;
+  private selectionFrames?: Phaser.GameObjects.Graphics;
   private pendingDrag?: { startPoint: { x: number; y: number }; hitResult: HitTestResult };
   private gridEnabled = false;
   private gridSize = 10;
@@ -74,7 +86,6 @@ export class EditorScene extends Phaser.Scene {
     this.cameras.main.roundPixels = true;
     setActiveScene(this);
     registerSceneGetter(this.sceneBridgeGetter);
-    EventBus.on('load-scene', this.loadScene, this);
     EventBus.on('selection-changed', this.handleSelectionChanged, this);
     EventBus.on('canvas-update-bounds', this.updateBounds, this);
     EventBus.on('scene-zoom-in', this.zoomIn, this);
@@ -86,6 +97,8 @@ export class EditorScene extends Phaser.Scene {
     // Initialize overlays
     this.dragOverlay = createDragOverlayText(this);
     this.hoverOutline = createHoverOutline(this);
+    this.selectionFrames = this.add.graphics();
+    this.selectionFrames.setDepth(11);
 
     this.input.on('pointerdown', this.handlePointerDown, this);
     this.input.on('pointermove', this.handlePointerMove, this);
@@ -101,7 +114,6 @@ export class EditorScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       setActiveScene(null);
       unregisterSceneGetter(this.sceneBridgeGetter);
-      EventBus.off('load-scene', this.loadScene, this);
       EventBus.off('selection-changed', this.handleSelectionChanged, this);
       EventBus.off('canvas-update-bounds', this.updateBounds, this);
       EventBus.off('scene-zoom-in', this.zoomIn, this);
@@ -117,6 +129,10 @@ export class EditorScene extends Phaser.Scene {
       window.removeEventListener('mousedown', this.handleMouseDownBound);
       window.removeEventListener('mouseup', this.handleMouseUpBound);
     });
+  }
+
+  public loadSceneSpec(sceneSpec: SceneSpec): void {
+    this.loadScene(sceneSpec, 'edit');
   }
 
   private readonly handleKeyDownBound = (event: KeyboardEvent) => {
@@ -143,6 +159,7 @@ export class EditorScene extends Phaser.Scene {
 
   public getTestSnapshot(): {
     ready: boolean;
+    sceneKey: string;
     zoom: number;
     scrollX: number;
     scrollY: number;
@@ -151,6 +168,7 @@ export class EditorScene extends Phaser.Scene {
   } {
     return {
       ready: Boolean(this.compiled),
+      sceneKey: this.scene.key,
       zoom: this.currentZoom,
       scrollX: this.cameras.main.scrollX,
       scrollY: this.cameras.main.scrollY,
@@ -248,13 +266,20 @@ export class EditorScene extends Phaser.Scene {
     const group = this.compiled?.groups[id];
     if (!group) return null;
 
-    const bounds = group.getBounds();
+    const bounds = this.getGroupBounds(id, group.getBounds());
     return {
       minX: bounds.minX,
       minY: bounds.minY,
       maxX: bounds.maxX,
       maxY: bounds.maxY,
     };
+  }
+
+  public getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null {
+    if (this.mode !== 'play') return null;
+    const group = this.formationPhysicsGroups.get(groupId);
+    if (!group) return null;
+    return { memberCount: group.getChildren().length };
   }
 
   public getEditableBoundsRect(): { minX: number; minY: number; maxX: number; maxY: number } | null {
@@ -389,8 +414,44 @@ export class EditorScene extends Phaser.Scene {
       if (!sprite) continue;
       sprite.setPosition(entity.x, entity.y);
       this.applyEntityDisplayProps(sprite, entity, this.compiled.scene.entities[entity.id]?.asset);
+      if (this.mode === 'play') this.syncPhysicsState(entity.id, sprite, entity);
     }
+    this.updateSelectionFrames();
     this.updateGroupFrames();
+  }
+
+  private syncPhysicsState(
+    entityId: string,
+    sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite,
+    entity: CompiledScene['entities'][string]
+  ): void {
+    const physicsObject = this.physicsObjects.get(entityId);
+    if (!physicsObject) return;
+    if (physicsObject !== (sprite as any)) return;
+
+    const body = physicsObject.body as Phaser.Physics.Arcade.Body | undefined;
+    if (!body) return;
+
+    const vx = entity.vx ?? 0;
+    const vy = entity.vy ?? 0;
+    const prevVel = this.physicsVelocityCache.get(entityId);
+    if (!prevVel || prevVel.vx !== vx || prevVel.vy !== vy) {
+      body.velocity.set(vx, vy);
+      this.physicsVelocityCache.set(entityId, { vx, vy });
+    }
+
+    const w = sprite instanceof Phaser.GameObjects.Rectangle ? entity.width : sprite.displayWidth;
+    const h = sprite instanceof Phaser.GameObjects.Rectangle ? entity.height : sprite.displayHeight;
+    const prevSize = this.physicsSizeCache.get(entityId);
+    if (!prevSize || prevSize.w !== w || prevSize.h !== h) {
+      body.setSize(w, h, true);
+      this.physicsSizeCache.set(entityId, { w, h });
+    }
+
+    const anyBody = body as any;
+    if (typeof anyBody.updateFromGameObject === 'function') {
+      anyBody.updateFromGameObject();
+    }
   }
 
   private loadScene(sceneSpec: SceneSpec, mode: 'edit' | 'play' = 'edit'): void {
@@ -414,6 +475,7 @@ export class EditorScene extends Phaser.Scene {
     void this.ensureAssetTextures(sceneSpec).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
       this.buildSprites();
+      if (mode === 'play') this.buildFormationPhysicsGroups(sceneSpec);
       this.buildGroupFrames(sceneSpec);
       this.drawWorldFrame(sceneSpec);
       this.refreshBoundsOverlay(sceneSpec);
@@ -431,6 +493,11 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private clearScene(): void {
+    this.formationPhysicsGroups.forEach((group) => group.destroy());
+    this.formationPhysicsGroups.clear();
+    this.physicsObjects.clear();
+    this.physicsVelocityCache.clear();
+    this.physicsSizeCache.clear();
     this.sprites.forEach(sprite => sprite.destroy());
     this.sprites.clear();
     this.entityToGroup.clear();
@@ -447,6 +514,7 @@ export class EditorScene extends Phaser.Scene {
     this.worldFrameGraphics?.destroy();
     this.worldFrameGraphics = undefined;
     this.hoverOutline?.clear();
+    this.selectionFrames?.clear();
     this.dragOverlay?.setVisible(false);
     this.activeBoundsConditionId = undefined;
   }
@@ -463,11 +531,25 @@ export class EditorScene extends Phaser.Scene {
 
   private buildSprites(): void {
     if (!this.compiled) return;
+    const usePhysics = this.mode === 'play';
+    if (usePhysics) this.ensurePlaceholderTexture();
     for (const entity of Object.values(this.compiled.entities)) {
       const asset = this.compiled.scene.entities[entity.id]?.asset;
       const textureKey = asset ? this.getTextureKey(asset) : undefined;
       let sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
-      if (asset && textureKey && this.textures.exists(textureKey)) {
+      if (usePhysics) {
+        if (asset && textureKey && this.textures.exists(textureKey)) {
+          const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+          if (asset.imageType === 'spritesheet') {
+            sprite = this.physics.add.sprite(entity.x, entity.y, textureKey, frame);
+          } else {
+            sprite = this.physics.add.image(entity.x, entity.y, textureKey);
+          }
+        } else {
+          sprite = this.physics.add.image(entity.x, entity.y, PLACEHOLDER_TEXTURE_KEY);
+        }
+        this.configurePhysicsObject(entity.id, sprite as any);
+      } else if (asset && textureKey && this.textures.exists(textureKey)) {
         const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
         if (asset.imageType === 'spritesheet') {
           sprite = this.add.sprite(entity.x, entity.y, textureKey, frame);
@@ -482,6 +564,39 @@ export class EditorScene extends Phaser.Scene {
       sprite.setInteractive();
       this.applyEntityDisplayProps(sprite, entity, asset);
       this.sprites.set(entity.id, sprite);
+    }
+  }
+
+  private ensurePlaceholderTexture(): void {
+    if (this.textures.exists(PLACEHOLDER_TEXTURE_KEY)) return;
+    const gfx = this.add.graphics();
+    gfx.fillStyle(0xffffff, 1);
+    gfx.fillRect(0, 0, 1, 1);
+    gfx.generateTexture(PLACEHOLDER_TEXTURE_KEY, 1, 1);
+    gfx.destroy();
+  }
+
+  private configurePhysicsObject(entityId: string, sprite: PhysicsObject): void {
+    const body = sprite.body as Phaser.Physics.Arcade.Body | undefined;
+    if (!body) return;
+
+    body.setAllowGravity(false);
+    body.moves = false;
+    body.setImmovable(true);
+    this.physicsObjects.set(entityId, sprite);
+  }
+
+  private buildFormationPhysicsGroups(scene: SceneSpec): void {
+    if (this.mode !== 'play') return;
+    if (!this.compiled) return;
+
+    for (const [groupId, groupSpec] of Object.entries(scene.groups)) {
+      const physicsGroup = this.physics.add.group();
+      for (const memberId of groupSpec.members) {
+        const obj = this.physicsObjects.get(memberId);
+        if (obj) physicsGroup.add(obj);
+      }
+      this.formationPhysicsGroups.set(groupId, physicsGroup);
     }
   }
 
@@ -519,7 +634,7 @@ export class EditorScene extends Phaser.Scene {
       const zone = this.groupZones.get(groupId);
       if (!frame || !label || !zone) continue;
 
-      const bounds = group.getBounds();
+      const bounds = this.getGroupBounds(groupId, group.getBounds());
       const selected = this.selection.kind === 'group' && this.selection.id === groupId;
       frame.clear();
       frame.lineStyle(selected ? 3 : 2, selected ? 0xffb86b : 0x5aa9c8, selected ? 0.95 : 0.55);
@@ -537,6 +652,23 @@ export class EditorScene extends Phaser.Scene {
       zone.setPosition((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
       zone.setSize(bounds.maxX - bounds.minX + 20, bounds.maxY - bounds.minY + 20);
     }
+  }
+
+  private getGroupBounds(
+    groupId: string,
+    fallback: { minX: number; minY: number; maxX: number; maxY: number }
+  ): { minX: number; minY: number; maxX: number; maxY: number } {
+    if (this.mode !== 'play') return fallback;
+    const physicsGroup = this.formationPhysicsGroups.get(groupId);
+    if (!physicsGroup) return fallback;
+
+    const rects = physicsGroup.getChildren()
+      .map((child) => (child as any).body as Phaser.Physics.Arcade.Body | undefined)
+      .filter((body): body is Phaser.Physics.Arcade.Body => Boolean(body))
+      .map((body) => ({ minX: body.left, minY: body.top, maxX: body.right, maxY: body.bottom }));
+
+    if (rects.length === 0) return fallback;
+    return computeAabbBounds(rects);
   }
 
   private updateBounds(bounds: { minX: number; minY: number; maxX: number; maxY: number }): void {
@@ -586,6 +718,7 @@ export class EditorScene extends Phaser.Scene {
   private handleSelectionChanged(selection: Selection): void {
     this.selection = selection;
     this.applySelectionStyles();
+    this.updateSelectionFrames();
     this.updateGroupFrames();
     if (this.compiled) this.refreshBoundsOverlay(this.compiled.scene);
   }
@@ -608,6 +741,27 @@ export class EditorScene extends Phaser.Scene {
       } else {
         sprite.setTint(isSelected ? outlineColor : 0xffffff);
       }
+    }
+  }
+
+  private updateSelectionFrames(): void {
+    const gfx = this.selectionFrames;
+    if (!gfx) return;
+    gfx.clear();
+
+    const ids = this.selection.kind === 'entity'
+      ? [this.selection.id]
+      : this.selection.kind === 'entities'
+        ? this.selection.ids
+        : [];
+    if (ids.length === 0) return;
+
+    gfx.lineStyle(2, 0xffb86b, 0.95);
+    for (const id of ids) {
+      const sprite = this.sprites.get(id);
+      if (!sprite) continue;
+      const bounds = sprite.getBounds();
+      gfx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
     }
   }
 

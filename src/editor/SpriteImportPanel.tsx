@@ -40,6 +40,7 @@ function makeEntityId(index: number): string {
 
 export function SpriteImportPanel() {
   const { state, dispatch } = useEditorStore();
+  const scene = state.project.scenes[state.currentSceneId];
   const [sourceMode, setSourceMode] = useState<'embedded' | 'path'>('embedded');
   const [loadedImage, setLoadedImage] = useState<LoadedImage | null>(null);
   const [assetPath, setAssetPath] = useState('');
@@ -49,7 +50,7 @@ export function SpriteImportPanel() {
   const [autoHitbox, setAutoHitbox] = useState(true);
   const [selectedFrames, setSelectedFrames] = useState<number[]>([0]);
   const [error, setError] = useState<string | undefined>();
-  const world = getSceneWorld(state.scene);
+  const world = getSceneWorld(scene);
 
   useEffect(() => {
     if (!loadedImage) return;
