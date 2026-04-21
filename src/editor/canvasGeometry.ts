@@ -2,7 +2,7 @@
  * Canvas geometry utilities for hit testing and spatial calculations
  */
 
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { SceneSpec } from '../model/types';
 
 export interface HitTestResult {

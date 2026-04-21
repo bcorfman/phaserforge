@@ -33,7 +33,7 @@
         "test:all": "npm run test:unit && npm run test:e2e"
     },
     "dependencies": {
-        "phaser": "^3.90.0",
+        "phaser": "^4.0.0",
         "react": "^19.0.0",
         "react-dom": "^19.2.5",
         "yaml": "^2.8.3"

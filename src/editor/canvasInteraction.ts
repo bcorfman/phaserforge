@@ -2,7 +2,7 @@
  * Canvas interaction utilities for drag thresholds, hover states, and overlays
  */
 
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 
 export interface DragState {
   kind: 'entity' | 'group' | 'bounds-handle' | 'marquee';
