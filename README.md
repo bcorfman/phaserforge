@@ -1,7 +1,7 @@
 # PhaserActions Studio
 
 ## Intent
-A browser-based visual editor that pairs with my PhaserActions library to orchestrate 2D game development. Instead of writing scattered, spaghetti logic in a traditional Phaser update loop, users drag and drop sprites on a canvas and assign them structured actions that run based on meaningful ame conditions. The tool allows developers to visually construct scenes, layer behaviors, and instantly toggle into play mode to test inputs and collisions, ultimately exporting a JSON scene configuration that can be modified without recompiling code.
+A browser-based visual editor that pairs with my PhaserActions library to orchestrate 2D game development. Instead of writing scattered, spaghetti logic in a traditional Phaser update loop, users drag and drop sprites on a canvas and assign them structured actions that run based on meaningful game conditions. The tool allows developers to visually construct scenes, layer behaviors, and instantly toggle into play mode to test inputs and collisions, ultimately exporting a JSON scene configuration that can be modified without recompiling code.
 
 
 <img src="res/images/mainwindow.png?raw=true" style="width: 800px"/>
