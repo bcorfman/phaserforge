@@ -3,6 +3,7 @@ import { EventBus, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
 import { SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
+import { getGroupFrameDisplay } from '../editor/groupFrameDisplay';
 import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
 import { getRotatedEntityBounds } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
@@ -273,6 +274,16 @@ export class EditorScene extends Phaser.Scene {
       maxX: bounds.maxX,
       maxY: bounds.maxY,
     };
+  }
+
+  public getGroupFrameVisible(id: string): boolean | null {
+    const frame = this.groupFrames.get(id);
+    return frame ? frame.visible : null;
+  }
+
+  public getGroupLabelVisible(id: string): boolean | null {
+    const label = this.groupLabels.get(id);
+    return label ? label.visible : null;
   }
 
   public getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null {
@@ -635,19 +646,23 @@ export class EditorScene extends Phaser.Scene {
       if (!frame || !label || !zone) continue;
 
       const bounds = this.getGroupBounds(groupId, group.getBounds());
-      const selected = this.selection.kind === 'group' && this.selection.id === groupId;
+      const display = getGroupFrameDisplay(this.selection, groupId);
       frame.clear();
-      frame.lineStyle(selected ? 3 : 2, selected ? 0xffb86b : 0x5aa9c8, selected ? 0.95 : 0.55);
-      frame.strokeRoundedRect(
-        bounds.minX - 10,
-        bounds.minY - 10,
-        bounds.maxX - bounds.minX + 20,
-        bounds.maxY - bounds.minY + 20,
-        10
-      );
+      frame.setVisible(display.showFrame);
+      if (display.showFrame) {
+        frame.lineStyle(display.frameWidth, display.frameColor, display.frameAlpha);
+        frame.strokeRoundedRect(
+          bounds.minX - 10,
+          bounds.minY - 10,
+          bounds.maxX - bounds.minX + 20,
+          bounds.maxY - bounds.minY + 20,
+          10
+        );
+      }
 
       label.setPosition(bounds.minX - 6, bounds.minY - 28);
-      label.setAlpha(selected ? 1 : 0.75);
+      label.setVisible(display.showLabel);
+      label.setAlpha(display.labelAlpha);
 
       zone.setPosition((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
       zone.setSize(bounds.maxX - bounds.minX + 20, bounds.maxY - bounds.minY + 20);

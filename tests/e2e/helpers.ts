@@ -102,6 +102,14 @@ export async function getGroupWorldBounds(page: Page, id: string): Promise<Rect>
   return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getGroupWorldBounds(groupId), id) as Promise<Rect>;
 }
 
+export async function getGroupFrameVisible(page: Page, id: string): Promise<boolean | null> {
+  return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getGroupFrameVisible(groupId), id) as Promise<boolean | null>;
+}
+
+export async function getGroupLabelVisible(page: Page, id: string): Promise<boolean | null> {
+  return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getGroupLabelVisible(groupId), id) as Promise<boolean | null>;
+}
+
 export async function getFormationPhysicsGroupInfo(page: Page, id: string): Promise<{ memberCount: number } | null> {
   return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getFormationPhysicsGroupInfo(groupId), id) as Promise<{ memberCount: number } | null>;
 }

@@ -24,6 +24,34 @@ export class BootScene extends Phaser.Scene {
     });
   }
 
+  private loadIntoEditorScene(scene: SceneSpec): void {
+    const editor = this.scene.get('EditorScene') as EditorScene;
+    const isRunning = this.scene.isActive('EditorScene') || this.scene.isSleeping('EditorScene');
+    if (isRunning) {
+      editor.loadSceneSpec(scene);
+      return;
+    }
+
+    editor.events.once(Phaser.Scenes.Events.CREATE, () => {
+      editor.loadSceneSpec(scene);
+    });
+    this.scene.launch('EditorScene');
+  }
+
+  private loadIntoGameScene(scene: SceneSpec): void {
+    const game = this.scene.get('GameScene') as GameScene;
+    const isRunning = this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene');
+    if (isRunning) {
+      game.loadSceneSpec(scene);
+      return;
+    }
+
+    game.events.once(Phaser.Scenes.Events.CREATE, () => {
+      game.loadSceneSpec(scene);
+    });
+    this.scene.launch('GameScene');
+  }
+
   private handleLoadScene(scene: SceneSpec, mode: 'edit' | 'play' = 'edit'): void {
     this.last = { scene, mode };
 
@@ -31,22 +59,13 @@ export class BootScene extends Phaser.Scene {
       if (this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene')) {
         this.scene.stop('GameScene');
       }
-      if (!this.scene.isActive('EditorScene') && !this.scene.isSleeping('EditorScene')) {
-        this.scene.launch('EditorScene');
-      }
-      const editor = this.scene.get('EditorScene') as EditorScene;
-      editor.loadSceneSpec(scene);
+      this.loadIntoEditorScene(scene);
       return;
     }
 
     if (this.scene.isActive('EditorScene') || this.scene.isSleeping('EditorScene')) {
       this.scene.stop('EditorScene');
     }
-    if (!this.scene.isActive('GameScene') && !this.scene.isSleeping('GameScene')) {
-      this.scene.launch('GameScene');
-    }
-    const game = this.scene.get('GameScene') as GameScene;
-    game.loadSceneSpec(scene);
+    this.loadIntoGameScene(scene);
   }
 }
-
