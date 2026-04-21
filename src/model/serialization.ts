@@ -1,22 +1,6 @@
 import { parse, stringify } from 'yaml';
-import { GameSceneSpec, ProjectSpec, SceneSpec } from './types';
+import { GameSceneSpec, ProjectSpec } from './types';
 import { migrateSceneSpec } from './migrateScene';
-
-export function serializeSceneToYaml(scene: SceneSpec): string {
-  return stringify(scene, {
-    indent: 2,
-    lineWidth: 0,
-    minContentWidth: 0,
-  });
-}
-
-export function parseSceneYaml(text: string): SceneSpec {
-  const parsed = parse(text);
-  if (!parsed || typeof parsed !== 'object') {
-    throw new Error('Invalid YAML scene');
-  }
-  return migrateSceneSpec(parsed);
-}
 
 function coerceRecord<T>(value: unknown): Record<string, T> {
   if (!value || typeof value !== 'object') return {};
@@ -73,20 +57,5 @@ export function parseProjectYaml(text: string): ProjectSpec {
     inputMaps: coerceRecord(raw.inputMaps),
     scenes,
     initialSceneId,
-  };
-}
-
-export function importLegacySceneYamlToProject(sceneYaml: string): ProjectSpec {
-  const scene = parseSceneYaml(sceneYaml);
-  const sceneId = scene.id || 'scene-1';
-  return {
-    id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
-    audio: { sounds: {} },
-    inputMaps: {},
-    scenes: {
-      [sceneId]: { ...(scene as GameSceneSpec), backgroundLayers: [] },
-    },
-    initialSceneId: sceneId,
   };
 }

@@ -16,7 +16,7 @@ import { applyGroupArrangeLayout, applyGroupGridLayout, type GroupGridLayout } f
 import { dissolveGroup, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
 import { syncBoundsToWorldResize } from './worldBounds';
 import { loadEditorConfig, loadEditorRegistry, coerceStartupMode, EMPTY_EDITOR_REGISTRY } from '../model/editorConfig';
-import { importLegacySceneYamlToProject, parseProjectYaml, parseSceneYaml, serializeProjectToYaml } from '../model/serialization';
+import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { createGroupIdFromName, createGroupSpec, getNextFormationName } from './behaviorCommands';
 import { removeSceneGraphItem } from './sceneGraphCommands';
 import { createAttachment, moveAttachmentWithinTarget, removeAttachment, updateAttachment } from './attachmentCommands';
@@ -88,7 +88,6 @@ export type EditorAction =
   | { type: 'export-yaml' }
   | { type: 'load-yaml' }
   | { type: 'load-yaml-text'; text: string; sourceLabel: string }
-  | { type: 'import-legacy-scene-yaml-text'; text: string; sourceLabel: string }
   | { type: 'reset-scene' }
   | { type: 'set-current-scene'; sceneId: Id }
   | { type: 'create-scene'; sceneId?: Id }
@@ -341,33 +340,6 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
           selection: { kind: 'none' },
           yamlText: action.text,
           statusMessage: `Loaded YAML: ${action.sourceLabel}`,
-          statusExpiresAt: expiresAt,
-        };
-      } catch (err) {
-        return {
-          ...state,
-          error: err instanceof Error ? err.message : 'Invalid YAML',
-          statusMessage: undefined,
-          statusExpiresAt: undefined,
-        };
-      }
-    }
-    case 'import-legacy-scene-yaml-text': {
-      try {
-        const project = importLegacySceneYamlToProject(action.text);
-        for (const scene of Object.values(project.scenes)) validateSceneSpec(scene);
-        const currentSceneId = project.initialSceneId;
-        const expiresAt = Date.now() + 4000;
-        return {
-          ...state,
-          project,
-          currentSceneId,
-          expandedGroups: defaultExpandedGroups(project.scenes[currentSceneId]),
-          dirty: false,
-          error: undefined,
-          selection: { kind: 'none' },
-          yamlText: action.text,
-          statusMessage: `Imported legacy YAML: ${action.sourceLabel}`,
           statusExpiresAt: expiresAt,
         };
       } catch (err) {

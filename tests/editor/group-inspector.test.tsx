@@ -31,7 +31,7 @@ const registry = {
 };
 
 describe('Group inspector', () => {
-  it('renders editable formation-level controls and read-only member guidance', () => {
+  it('renders editable formation-level controls without member management panel', () => {
     const group = sampleScene.groups['g-enemies'];
     const markup = renderToStaticMarkup(
       renderGroupInspector(group, sampleScene, {
@@ -54,7 +54,8 @@ describe('Group inspector', () => {
     expect(markup).toContain('Formation Name');
     expect(markup).toContain('Ungroup');
     expect(markup).toContain('Delete Group');
-    expect(markup).toContain('Member sprites are read-only here');
+    expect(markup).not.toContain('Expand Members');
+    expect(markup).not.toContain('Member sprites are read-only here');
   });
 
   it('passes the selected attachment marker through the attached actions panel', () => {

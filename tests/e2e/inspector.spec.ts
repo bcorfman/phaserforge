@@ -56,8 +56,8 @@ test('edits move-until and bounds values from the attachment inspector', async (
 
 test('removes a formation member and keeps the group selected', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
-  await page.getByTestId('inspector').getByLabel('Expand Members').click();
-  await page.getByTestId('group-member-remove-e3').click();
+  await page.getByTestId('toggle-group-g-enemies').click();
+  await page.getByTestId('group-member-remove-g-enemies-e3').click();
 
   await expect.poll(async () => {
     const state = await getState<{ selection: { kind: string; id?: string }; scene: { groups: Record<string, { members: string[]; layout?: { type: string } }> } }>(page);

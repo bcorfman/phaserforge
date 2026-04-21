@@ -134,6 +134,14 @@ export class GameScene extends Phaser.Scene {
     return group.getBounds();
   }
 
+  public getGroupFrameVisible(_id: string): boolean | null {
+    return null;
+  }
+
+  public getGroupLabelVisible(_id: string): boolean | null {
+    return null;
+  }
+
   public getEditableBoundsRect(): { minX: number; minY: number; maxX: number; maxY: number } | null {
     return null;
   }

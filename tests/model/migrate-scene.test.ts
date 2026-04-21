@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { stringify } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { baseScene } from '../helpers';
-import { parseSceneYaml } from '../../src/model/serialization';
+import { migrateSceneSpec } from '../../src/model/migrateScene';
 
 describe('scene migration', () => {
   it('migrates legacy behavior/action graphs into attachments', () => {
@@ -9,7 +9,7 @@ describe('scene migration', () => {
     delete legacy.attachments;
     const yaml = stringify(legacy, { indent: 2, lineWidth: 0, minContentWidth: 0 });
 
-    const migrated = parseSceneYaml(yaml);
+    const migrated = migrateSceneSpec(parse(yaml));
 
     expect(Object.keys(migrated.attachments).length).toBeGreaterThan(0);
     expect(Object.keys(migrated.behaviors).length).toBe(0);
@@ -24,4 +24,3 @@ describe('scene migration', () => {
     expect(move?.condition?.type).toBe('BoundsHit');
   });
 });
-

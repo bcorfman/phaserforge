@@ -23,4 +23,20 @@ describe('EntityList', () => {
     expect(markup).not.toContain('Actions');
     expect(markup).not.toContain('Move Right');
   });
+
+  it('renders per-member remove buttons when a formation is expanded', () => {
+    const markup = renderToStaticMarkup(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleScene}
+        selection={{ kind: 'none' }}
+        expandedGroups={{ 'g-enemies': true }}
+        dispatch={() => {}}
+      />
+    );
+
+    expect(markup).toContain('group-member-g-enemies-e1');
+    expect(markup).toContain('group-member-remove-g-enemies-e1');
+  });
 });
