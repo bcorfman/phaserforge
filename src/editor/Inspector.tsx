@@ -678,36 +678,6 @@ export function renderGroupInspector(
           Layout: {layoutSummary.kind === 'grid' ? `${layoutSummary.rows} x ${layoutSummary.cols} grid` : 'Freeform'}
         </div>
       </InspectorFoldout>
-
-      <InspectorFoldout
-        title="Members"
-        open={handlers.foldouts.isOpen('group.members', false)}
-        onToggle={() => handlers.foldouts.toggle('group.members', false)}
-      >
-        <div className="inspector-row">Member sprites are read-only here. Select one only to inspect it.</div>
-        <div className="member-list">
-          {members.map((member) => (
-            <div key={member.id} className="member-row">
-              <button
-                className="tag-button"
-                data-testid={`group-member-select-${member.id}`}
-                type="button"
-                onClick={() => handlers.onSelectMember(member.id)}
-              >
-                {member.name ?? member.id}
-              </button>
-              <button
-                className="tag-button tag-button-danger"
-                data-testid={`group-member-remove-${member.id}`}
-                type="button"
-                onClick={() => handlers.onRemoveMember(member.id)}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
-      </InspectorFoldout>
     </div>
   );
 }

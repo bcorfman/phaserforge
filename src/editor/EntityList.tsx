@@ -253,6 +253,15 @@ export function EntityListView({
                     >
                       {member.name ?? member.id}
                     </button>
+                    <button
+                      aria-label={`Remove sprite ${member.name ?? member.id} from formation ${group.name ?? group.id}`}
+                      className="scene-graph-button scene-graph-remove"
+                      data-testid={`group-member-remove-${group.id}-${member.id}`}
+                      type="button"
+                      onClick={() => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId: member.id })}
+                    >
+                      🗑
+                    </button>
                   </div>
                 ))}
               </div>

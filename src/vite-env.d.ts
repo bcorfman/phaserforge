@@ -9,6 +9,9 @@ interface PhaserActionsStudioTestBridge {
   getEntityWorldRect(id: string): unknown;
   getEntitySpriteWorldRect(id: string): unknown;
   getGroupWorldBounds(id: string): unknown;
+  getGroupFrameVisible(id: string): unknown;
+  getGroupLabelVisible(id: string): unknown;
+  getFormationPhysicsGroupInfo(groupId: string): unknown;
   getEditableBoundsRect(): unknown;
   worldToClient(point: { x: number; y: number }): unknown;
   tapWorld(point: { x: number; y: number }): void;

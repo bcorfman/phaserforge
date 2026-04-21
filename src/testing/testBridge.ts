@@ -32,6 +32,8 @@ export interface SceneBridge {
   getEntityWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
   getEntitySpriteWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
   getGroupWorldBounds(id: string): Rect | null;
+  getGroupFrameVisible(id: string): boolean | null;
+  getGroupLabelVisible(id: string): boolean | null;
   getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
   getEditableBoundsRect(): Rect | null;
   worldToClient(point: Point): Point | null;
@@ -87,6 +89,14 @@ function ensureBridge(): void {
     getGroupWorldBounds(id: string) {
       const scene = sceneGetter?.();
       return scene ? clone(scene.getGroupWorldBounds(id)) : null;
+    },
+    getGroupFrameVisible(id: string) {
+      const scene = sceneGetter?.();
+      return scene ? clone(scene.getGroupFrameVisible(id)) : null;
+    },
+    getGroupLabelVisible(id: string) {
+      const scene = sceneGetter?.();
+      return scene ? clone(scene.getGroupLabelVisible(id)) : null;
     },
     getFormationPhysicsGroupInfo(groupId: string) {
       const scene = sceneGetter?.();
