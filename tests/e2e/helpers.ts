@@ -45,7 +45,12 @@ export async function seedSampleScene(page: Page): Promise<void> {
     [yaml]
   );
   await page.goto('/');
-  await waitForSceneReady(page);
+  try {
+    await waitForSceneReady(page);
+  } catch {
+    await page.reload();
+    await waitForSceneReady(page);
+  }
   await waitForSampleScene(page);
 }
 
