@@ -677,9 +677,22 @@ html[data-theme='dark'] .phaser-frame {
 
 .group-row,
 .member-row {
+  --member-row-gap: 0.55rem;
   display: flex;
   align-items: stretch;
-  gap: 0.55rem;
+  gap: var(--member-row-gap);
+}
+
+.member-row > .scene-graph-chevron {
+  margin-right: calc(0px - var(--member-row-gap));
+}
+
+.member-row > .scene-graph-chevron + .list-item {
+  padding-left: 0.35rem;
+}
+
+.behavior-block > .member-list > .member-row > .list-item {
+  padding-left: calc(0.85rem + 2rem);
 }
 
 .group-toggle {

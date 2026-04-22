@@ -90,7 +90,6 @@ export function EntityListView({
       <section className="panel-section" aria-labelledby="scene-list">
         <div className="panel-heading-row">
           <h3 className="panel-heading" id="scene-list">Scenes</h3>
-          <span className="panel-count">{Object.keys(project.scenes).length}</span>
         </div>
         <div className="member-list">
           {Object.keys(project.scenes).map((sceneId) => (
@@ -137,7 +136,6 @@ export function EntityListView({
       <section className="panel-section" aria-labelledby="scene-graph-sprites">
         <div className="panel-heading-row">
           <h3 className="panel-heading" id="scene-graph-sprites">Sprites</h3>
-          <span className="panel-count">{Object.values(scene.entities).length}</span>
         </div>
         {ungroupedEntities.map((entity) => (
           <div key={entity.id} className="member-row">
@@ -187,11 +185,19 @@ export function EntityListView({
       <section className="panel-section" aria-labelledby="scene-graph-formations">
         <div className="panel-heading-row">
           <h3 className="panel-heading" id="scene-graph-formations">Formations</h3>
-          <span className="panel-count">{groups.length}</span>
         </div>
         {groups.map(({ group, members }) => (
           <div key={group.id} className="behavior-block">
             <div className="member-row">
+              <button
+                aria-label={`Toggle formation ${group.name ?? group.id}`}
+                className="scene-graph-button scene-graph-chevron"
+                data-testid={`toggle-group-${group.id}`}
+                type="button"
+                onClick={() => dispatch({ type: 'toggle-group-expanded', id: group.id })}
+              >
+                {expandedGroups[group.id] ? '▾' : '▸'}
+              </button>
               {editingId === group.id && editingKind === 'group' ? (
                 <input
                   autoFocus
@@ -213,15 +219,6 @@ export function EntityListView({
                   <span className="list-item-meta">{countAttachmentsForTarget(scene, { type: 'group', groupId: group.id })}</span>
                 </button>
               )}
-              <button
-                aria-label={`Toggle formation ${group.name ?? group.id}`}
-                className="scene-graph-button"
-                data-testid={`toggle-group-${group.id}`}
-                type="button"
-                onClick={() => dispatch({ type: 'toggle-group-expanded', id: group.id })}
-              >
-                {expandedGroups[group.id] ? '▾' : '▸'}
-              </button>
               <button
                 aria-label={`Rename formation ${group.name ?? group.id}`}
                 className="scene-graph-button scene-graph-edit"
@@ -245,13 +242,34 @@ export function EntityListView({
               <div className="member-list">
                 {members.map((member) => (
                   <div key={member.id} className="member-row">
+                    {editingId === member.id && editingKind === 'entity' ? (
+                      <input
+                        autoFocus
+                        className="scene-graph-rename-input"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={saveRename}
+                        onKeyDown={handleKeyDown}
+                        data-testid={`rename-entity-input-${member.id}`}
+                      />
+                    ) : (
+                      <button
+                        className={`list-item ${isSelected(selection, 'entity', member.id) ? 'active' : ''}`}
+                        data-testid={`group-member-${group.id}-${member.id}`}
+                        onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: member.id } })}
+                        type="button"
+                      >
+                        {member.name ?? member.id}
+                      </button>
+                    )}
                     <button
-                      className={`list-item ${isSelected(selection, 'entity', member.id) ? 'active' : ''}`}
-                      data-testid={`group-member-${group.id}-${member.id}`}
-                      onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: member.id } })}
+                      aria-label={`Rename sprite ${member.name ?? member.id}`}
+                      className="scene-graph-button scene-graph-edit"
+                      data-testid={`edit-group-member-${group.id}-${member.id}`}
                       type="button"
+                      onClick={() => startEditing('entity', member.id, member.name ?? member.id)}
                     >
-                      {member.name ?? member.id}
+                      ✏️
                     </button>
                     <button
                       aria-label={`Remove sprite ${member.name ?? member.id} from formation ${group.name ?? group.id}`}
