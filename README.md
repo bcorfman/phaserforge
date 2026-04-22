@@ -1,50 +1,70 @@
 # PhaserActions Studio
 
-## Intent
-A browser-based visual editor that pairs with my PhaserActions library to orchestrate 2D game development. Instead of writing scattered, spaghetti logic in a traditional Phaser update loop, users drag and drop sprites on a canvas and assign them structured actions that run based on meaningful game conditions. The tool allows developers to visually construct scenes, layer behaviors, and instantly toggle into play mode to test inputs and collisions, ultimately exporting a JSON scene configuration that can be modified without recompiling code.
-
+A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, arrange formations, attach simple action scripts, preview them instantly, and round-trip the whole project as YAML.
 
 <img src="res/images/mainwindow.png?raw=true" style="width: 800px"/>
 
-Planned architecture:
+## What’s In The Editor Today
 
-- editor UI in React
-- Phaser runtime embedded in the app
-- declarative scene/behavior model
-- compiler from model -> runtime
-- minimal PhaserActions runtime separate from Phaser scene code
+- **Multi-scene projects** with a per-scene world size.
+- **Sprite import** (embedded file → data URL, or “asset path” reference), including a spritesheet frame picker and optional auto-hitbox.
+- **Canvas editing**: drag sprites and formations, marquee multi-select, group / dissolve, grid snap, undo/redo, pan/zoom, fit/reset view.
+- **Formations (groups)** can use declarative arrange layouts (grid, line, circle, arc, etc.) driven by `public/editor-registry.yaml`.
+- **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, plus `Repeat` as a script-level wrapper.
+- **`Call` actions require a registered handler**. The Studio preview scene registers a small call registry (for example `drop`); unknown `callId` values will fail during preview compile/run.
+- **Inline conditions (current)**: `BoundsHit` and `ElapsedTime` (used by `MoveUntil`).
+- **Preview mode** compiles the authored scene and runs actions; **Edit mode** is for authoring.
 
-Initial focus:
-- formation demo
-- composable actions
-- group behavior
-- live parameter editing
+## YAML Round-Trip
 
-## YAML and Preview
+- `Export YAML` serializes the current `ProjectSpec` (assets + scenes + `initialSceneId`) and saves it to disk.
+- `Load YAML` parses + validates YAML and migrates older scene formats (legacy `behaviors/actions/conditions`) into `attachments` on import.
+- Startup mode `Reload Last YAML` restores the last exported/loaded YAML from `localStorage` (configurable).
 
-`Export YAML` always serializes the current editor `SceneSpec` (the last edited layout). `Preview` mode runs the runtime simulation without rewriting the scene data used for YAML export/load.
+## Controls & Shortcuts
 
-In Preview mode, formations are also mirrored into `Phaser.Physics.Arcade.Group` instances for runtime tracking (without changing the YAML schema).
-
+- **Select**: click a sprite / formation. Shift+click adds to multi-select. Drag on empty space to marquee-select (Shift adds).
+- **Move**: drag selection; Arrow keys nudge (Shift+Arrow = 10px).
+- **Pan / zoom**: mouse wheel zoom; middle-mouse drag or hold Space + drag to pan; use Fit/Reset buttons in the view bar.
+- **Shortcuts** (Ctrl on Windows/Linux, Cmd on macOS):
+  - Undo / redo: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y)
+  - Toggle Edit/Preview: Tab
+  - Toggle grid snap: Ctrl/Cmd+G
+  - Group selection: Ctrl/Cmd+Shift+G
+  - Dissolve selected formation: Ctrl/Cmd+Shift+U
 
 ## Requirements
 
 [Node.js](https://nodejs.org) is required to install dependencies and run scripts via `npm`.
 
-## Available Commands
+## Commands
 
 | Command | Description |
 |---------|-------------|
 | `npm install` | Install project dependencies |
-| `npm run dev` | Launch a development web server |
-| `npm run build` | Create a production build in the `dist` folder |
-| `npm run dev-nolog` | Launch a development web server without sending anonymous data (see "About log.js" below) |
-| `npm run build-nolog` | Create a production build in the `dist` folder without sending anonymous data (see "About log.js" below) |
+| `npm run dev` | Start the dev server (defaults to `http://localhost:8080`) |
+| `npm run build` | Create a production build in `dist/` |
+| `npm test` | Run unit tests (Vitest) |
+| `npm run test:e2e` | Run Playwright end-to-end tests |
+| `npm run test:all` | Run unit + e2e tests |
+| `npm run dev-nolog` | Dev server without anonymous logging (see below) |
+| `npm run build-nolog` | Build without anonymous logging (see below) |
 
-## Writing Code
+> Note: For Playwright tests, you may need to run `npx playwright install` once to install browser binaries.
 
-After cloning the repo, run `npm install` from your project directory. Then, you can start the local development server by running `npm run dev`.
+## Config Files
 
-The local development server runs on `http://localhost:8080` by default. Please see the Vite documentation if you wish to change this, or add SSL support.
+- `public/editor-config.yaml` controls editor startup (e.g. `startupMode`).
+- `public/editor-registry.yaml` defines which arrange layouts, action presets, and conditions the editor exposes (and which are marked `implemented: true`).
 
-Once the server is running you can edit any of the files in the `src` folder. Vite will automatically recompile your code and then reload the browser.
+## Repository Layout (High Level)
+
+- `src/editor/`: React UI + editor store/reducer.
+- `src/phaser/`: Phaser host + `EditorScene` integration (canvas interactions, selection, history, view).
+- `src/model/`: YAML types, validation, and scene migration.
+- `src/compiler/`: Compiles scene specs into runtime scripts.
+- `src/runtime/`: Action/condition runtime used in Preview mode.
+
+## About `log.js`
+
+`npm run dev` / `npm run build` run `node log.js ...` in the background, which sends a lightweight anonymous GET request (event + Phaser version + package name). If you’d rather not send this, use `npm run dev-nolog` / `npm run build-nolog`.
