@@ -6,6 +6,8 @@ import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
 import { getRotatedEntityBounds } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
+import { getSceneWorld } from '../editor/sceneWorld';
+import { clampCameraScroll, clampZoom } from '../editor/viewport';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
 
@@ -20,15 +22,18 @@ export class GameScene extends Phaser.Scene {
   private physicsObjects = new Map<string, PhysicsObject>();
   private physicsVelocityCache = new Map<string, { vx: number; vy: number }>();
   private physicsSizeCache = new Map<string, { w: number; h: number }>();
+  private worldFrameGraphics?: Phaser.GameObjects.Graphics;
   private loadVersion = 0;
   private readonly sceneBridgeGetter = () => this;
+  private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
 
   constructor() {
     super('GameScene');
   }
 
   create(): void {
-    this.cameras.main.setBackgroundColor('#000000');
+    // Match editor canvas background so offscreen space is consistent between edit and preview.
+    this.cameras.main.setBackgroundColor('#0c0f1a');
     this.cameras.main.roundPixels = true;
     setActiveScene(this);
     registerSceneGetter(this.sceneBridgeGetter);
@@ -62,8 +67,40 @@ export class GameScene extends Phaser.Scene {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
       this.buildSprites();
       this.buildFormationPhysicsGroups(sceneSpec);
+      this.applyPendingViewState(sceneSpec);
+      this.drawWorldFrame(sceneSpec);
       this.compiled.startAll();
     });
+  }
+
+  public getViewState(): { zoom: number; scrollX: number; scrollY: number } {
+    return {
+      zoom: this.cameras.main.zoom || 1,
+      scrollX: this.cameras.main.scrollX,
+      scrollY: this.cameras.main.scrollY,
+    };
+  }
+
+  public setPendingViewState(view: { zoom: number; scrollX: number; scrollY: number } | undefined): void {
+    this.pendingViewState = view;
+  }
+
+  private applyPendingViewState(sceneSpec: SceneSpec): void {
+    if (!this.pendingViewState) return;
+    const world = getSceneWorld(sceneSpec);
+    const nextZoom = clampZoom(this.pendingViewState.zoom);
+    const clamped = clampCameraScroll(
+      this.pendingViewState.scrollX,
+      this.pendingViewState.scrollY,
+      this.scale.width,
+      this.scale.height,
+      world.width,
+      world.height,
+      nextZoom
+    );
+    this.cameras.main.setZoom(nextZoom);
+    this.cameras.main.setScroll(clamped.scrollX, clamped.scrollY);
+    this.pendingViewState = undefined;
   }
 
   public getTestSnapshot(): {
@@ -196,6 +233,19 @@ export class GameScene extends Phaser.Scene {
     this.physicsSizeCache.clear();
     this.sprites.forEach(sprite => sprite.destroy());
     this.sprites.clear();
+    this.worldFrameGraphics?.destroy();
+    this.worldFrameGraphics = undefined;
+  }
+
+  private drawWorldFrame(scene: SceneSpec): void {
+    const world = getSceneWorld(scene);
+    const graphics = this.add.graphics();
+    graphics.lineStyle(2, 0x445d8f, 0.95);
+    graphics.strokeRect(0, 0, world.width, world.height);
+    graphics.lineStyle(1, 0x27324d, 0.85);
+    graphics.strokeRect(-1, -1, world.width + 2, world.height + 2);
+    graphics.setDepth(10);
+    this.worldFrameGraphics = graphics;
   }
 
   private syncPhysicsState(

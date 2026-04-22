@@ -71,6 +71,7 @@ export class EditorScene extends Phaser.Scene {
   private worldFrameGraphics?: Phaser.GameObjects.Graphics;
   private currentZoom = 1;
   private hasInitializedView = false;
+  private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
   private isSpacePanning = false;
   private isMiddleMouseDown = false;
   private wheelZoomAnchor?: { pointerX: number; pointerY: number; worldX: number; worldY: number };
@@ -134,6 +135,18 @@ export class EditorScene extends Phaser.Scene {
 
   public loadSceneSpec(sceneSpec: SceneSpec): void {
     this.loadScene(sceneSpec, 'edit');
+  }
+
+  public getViewState(): { zoom: number; scrollX: number; scrollY: number } {
+    return {
+      zoom: this.currentZoom,
+      scrollX: this.cameras.main.scrollX,
+      scrollY: this.cameras.main.scrollY,
+    };
+  }
+
+  public setPendingViewState(view: { zoom: number; scrollX: number; scrollY: number } | undefined): void {
+    this.pendingViewState = view;
   }
 
   private readonly handleKeyDownBound = (event: KeyboardEvent) => {
@@ -491,7 +504,25 @@ export class EditorScene extends Phaser.Scene {
       this.drawWorldFrame(sceneSpec);
       this.refreshBoundsOverlay(sceneSpec);
       this.applySelectionStyles();
-      if (!this.hasInitializedView) {
+      if (this.pendingViewState) {
+        const nextZoom = clampZoom(this.pendingViewState.zoom);
+        const world = getSceneWorld(sceneSpec);
+        const clamped = clampCameraScroll(
+          this.pendingViewState.scrollX,
+          this.pendingViewState.scrollY,
+          this.scale.width,
+          this.scale.height,
+          world.width,
+          world.height,
+          nextZoom
+        );
+        this.currentZoom = nextZoom;
+        this.cameras.main.setZoom(nextZoom);
+        this.cameras.main.setScroll(clamped.scrollX, clamped.scrollY);
+        this.pendingViewState = undefined;
+        this.hasInitializedView = true;
+        this.emitViewState();
+      } else if (!this.hasInitializedView) {
         this.fitView();
         this.hasInitializedView = true;
       } else {
