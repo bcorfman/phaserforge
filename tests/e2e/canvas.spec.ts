@@ -32,6 +32,18 @@ test('selects an entity by clicking it on the canvas', async ({ page }) => {
   await expect(page.getByTestId('inspector')).toContainText('e1');
 });
 
+test('clicking empty canvas clears selection', async ({ page }) => {
+  await dismissViewHint(page);
+
+  await tapWorld(page, { x: 220, y: 140 });
+  await expectSelection(page, { kind: 'entity', id: 'e1' });
+
+  const emptyPoint = await worldToClient(page, { x: 20, y: 20 });
+  await clickCanvasAt(page, emptyPoint);
+
+  await expectSelection(page, { kind: 'none' });
+});
+
 test('marquee selects multiple entities by click-dragging empty canvas', async ({ page }) => {
   await dismissViewHint(page);
 

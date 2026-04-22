@@ -125,7 +125,7 @@ Remove rough edges so the editor feels coherent instead of "barely works."
   - member highlight
   - softer parent formation hull highlight
 
-## Phase 3: Polished Editor
+## Phase 3: Polished Editor ✅ COMPLETED
 ### Goal
 Turn the canvas into a genuinely usable scene editor rather than a geometry patch panel.
 
@@ -135,7 +135,7 @@ Turn the canvas into a genuinely usable scene editor rather than a geometry patc
 - Regroup/ungroup UX: `.plans/mockups/phase-3/phase3-02-regroup-ungroup.svg`
 - Undo/redo + snap + play/edit + pin: `.plans/mockups/phase-3/phase3-04-undo-redo-snap-playmode.svg`
 
-### Behaviors
+### Behaviors ✅ IMPLEMENTED
 - Marquee multi-select for entities
 - Keyboard nudging
 - Optional grid snapping toggle
@@ -162,30 +162,30 @@ Turn the canvas into a genuinely usable scene editor rather than a geometry patc
 
 ## TDD Plan
 ### Phase 1 tests
-- Store reducer tests:
-  - moving entity updates only that entity
-  - moving group updates all members and preserves spacing
-  - updating bounds rewrites only that condition
-- Geometry helper tests:
-  - bounds handle hit detection
-  - selection priority resolution
-- Editor grouping tests:
-  - grouped entities are excluded from ungrouped list
-  - selected action resolves editable bounds condition
-- Integration tests:
-  - selecting `MoveUntil` exposes linked bounds editor
-  - sample scene with `group-extents` + `limit` remains valid
+- ✅ Store reducer tests:
+  - ✅ moving entity updates only that entity
+  - ✅ moving group updates all members and preserves spacing
+  - ✅ updating bounds rewrites only that condition
+- ✅ Geometry helper tests:
+  - ✅ bounds handle hit detection
+  - ✅ selection priority resolution
+- ✅ Editor grouping tests:
+  - ✅ grouped entities are excluded from ungrouped list
+  - ✅ selected action resolves editable bounds condition
+- ✅ Integration tests:
+  - ✅ selecting `MoveUntil` exposes linked bounds editor
+  - ✅ sample scene with `group-extents` + `limit` remains valid
 - If practical, add lightweight scene interaction tests around emitted bus events rather than full Phaser pointer simulation
 
 ### Phase 2 tests
-- Hover/selection precedence tests
-- Empty-canvas clear-selection tests
-- Drag threshold tests
-- Active bounds highlight resolution tests
+- ✅ Hover/selection precedence tests
+- ✅ Empty-canvas clear-selection tests
+- ✅ Drag threshold tests
+- ✅ Active bounds highlight resolution tests
 
 ### Phase 3 tests
-- regroup/ungroup reducer tests
-- undo/redo batching tests
+- ✅ regroup/ungroup reducer tests
+- ✅ undo/redo batching tests
 
 ## Assumptions
 - Phase 1 is the recommended implementation target for the next execution pass.

@@ -9,6 +9,85 @@ import {
 } from '../../src/editor/canvasGeometry';
 
 describe('Canvas Geometry utilities', () => {
+  describe('hitTestCanvas', () => {
+    const emptyScene: any = {
+      id: 'scene',
+      entities: {},
+      groups: {},
+      attachments: {},
+      behaviors: {},
+      actions: {},
+      conditions: {},
+    };
+
+    it('prefers bounds handles over entities and groups', () => {
+      const worldPoint = { x: 5, y: 5 };
+      const boundsHandles = new Map([
+        ['nw', { getBounds: () => ({ contains: () => true }) }],
+      ]) as any;
+      const sprites = new Map([
+        ['e1', { getBounds: () => ({ contains: () => true }) }],
+      ]) as any;
+      const groupZones = new Map([
+        ['g1', { getBounds: () => ({ contains: () => true }) }],
+      ]) as any;
+
+      expect(hitTestCanvas(worldPoint, emptyScene, sprites, groupZones, boundsHandles)).toEqual({ kind: 'bounds-handle', handle: 'nw' });
+    });
+
+    it('prefers entities over groups when both contain the pointer', () => {
+      const worldPoint = { x: 5, y: 5 };
+      const boundsHandles = new Map() as any;
+      const sprites = new Map([
+        ['e1', { getBounds: () => ({ contains: () => true }) }],
+      ]) as any;
+      const groupZones = new Map([
+        ['g1', { getBounds: () => ({ contains: () => true }) }],
+      ]) as any;
+
+      expect(hitTestCanvas(worldPoint, emptyScene, sprites, groupZones, boundsHandles)).toEqual({ kind: 'entity', id: 'e1' });
+    });
+
+    it('returns group when no entity or handle is hit', () => {
+      const worldPoint = { x: 5, y: 5 };
+      const boundsHandles = new Map() as any;
+      const sprites = new Map([
+        ['e1', { getBounds: () => ({ contains: () => false }) }],
+      ]) as any;
+      const groupZones = new Map([
+        ['g1', { getBounds: () => ({ contains: () => true }) }],
+      ]) as any;
+
+      expect(hitTestCanvas(worldPoint, emptyScene, sprites, groupZones, boundsHandles)).toEqual({ kind: 'group', id: 'g1' });
+    });
+
+    it('hit-tests bounds body only when bounds handles are present', () => {
+      const sceneWithBounds: any = {
+        ...emptyScene,
+        attachments: {
+          a1: {
+            id: 'a1',
+            presetId: 'MoveUntil',
+            target: { type: 'group', groupId: 'g1' },
+            condition: { type: 'BoundsHit', bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 }, mode: 'any' },
+          },
+        },
+      };
+
+      const sprites = new Map() as any;
+      const groupZones = new Map() as any;
+
+      const insideBounds = { x: 5, y: 5 };
+
+      expect(hitTestCanvas(insideBounds, sceneWithBounds, sprites, groupZones, new Map() as any)).toEqual({ kind: 'none' });
+
+      const boundsHandles = new Map([
+        ['nw', { getBounds: () => ({ contains: () => false }) }],
+      ]) as any;
+      expect(hitTestCanvas(insideBounds, sceneWithBounds, sprites, groupZones, boundsHandles)).toEqual({ kind: 'bounds-body' });
+    });
+  });
+
   describe('pointInRect', () => {
     it('returns true for point inside rectangle', () => {
       const rect = { x: 0, y: 0, width: 10, height: 10 };
