@@ -42,6 +42,25 @@ export function Inspector() {
           <div className="inspector-row">Size: {entity.width} x {entity.height}</div>
         </div>
       ) : null;
+    } else if (interaction.kind === 'entities') {
+      const ids = interaction.id.split(',').filter(Boolean);
+      const count = ids.length;
+      content = (
+        <div className="inspector-block">
+          <div className="inspector-title">Dragging: Multi-select</div>
+          <div className="inspector-row">{count} sprites</div>
+          <div className="inspector-row">Use Arrow keys to nudge • Shift + Arrow = 10px</div>
+        </div>
+      );
+    } else if (interaction.kind === 'group') {
+      const group = scene.groups[interaction.id];
+      content = group ? (
+        <div className="inspector-block">
+          <div className="inspector-title">Dragging: {group.name ?? group.id}</div>
+          <div className="inspector-row">Members: {group.members.length}</div>
+          <div className="inspector-row">Tip: Tab toggles Edit/Preview</div>
+        </div>
+      ) : null;
     } else if (interaction.kind === 'bounds') {
       const attachment = scene.attachments[interaction.id];
       const condition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
@@ -84,6 +103,7 @@ export function Inspector() {
           onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
           onUpdateGroup={updateGroup}
           onUngroup={() => dispatch({ type: 'ungroup-group', id: group.id })}
+          onDissolve={() => dispatch({ type: 'dissolve-group', id: group.id })}
           onDeleteGroup={() => dispatch({ type: 'delete-group', id: group.id })}
         />
       ) : (
@@ -555,6 +575,7 @@ function GroupInspector({
   onRemoveMember,
   onUpdateGroup,
   onUngroup,
+  onDissolve,
   onDeleteGroup,
 }: {
   group: GroupSpec;
@@ -569,6 +590,7 @@ function GroupInspector({
   onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
   onUngroup: () => void;
+  onDissolve: () => void;
   onDeleteGroup: () => void;
 }) {
   const foldouts = useInspectorFoldouts();
@@ -585,6 +607,7 @@ function GroupInspector({
       onRemoveMember,
       onUpdateGroup,
       onUngroup,
+      onDissolve,
       onDeleteGroup,
       foldouts,
     })
@@ -605,6 +628,7 @@ export function renderGroupInspector(
     onRemoveMember: (id: string) => void;
     onUpdateGroup: (next: GroupSpec) => void;
     onUngroup: () => void;
+    onDissolve: () => void;
     onDeleteGroup: () => void;
     foldouts: { isOpen: (key: string, defaultOpen: boolean) => boolean; toggle: (key: string, defaultOpen: boolean) => void };
   }
@@ -646,6 +670,14 @@ export function renderGroupInspector(
             onClick={handlers.onUngroup}
           >
             Ungroup
+          </button>
+          <button
+            className="button"
+            data-testid="dissolve-group-button"
+            type="button"
+            onClick={handlers.onDissolve}
+          >
+            Dissolve Group
           </button>
           <button
             className="button button-danger"

@@ -129,6 +129,12 @@ Remove rough edges so the editor feels coherent instead of "barely works."
 ### Goal
 Turn the canvas into a genuinely usable scene editor rather than a geometry patch panel.
 
+### Mockups
+- See `.plans/mockups/phase-3/README.md`
+- Marquee multi-select: `.plans/mockups/phase-3/phase3-01-marquee-multiselect.svg`
+- Regroup/ungroup UX: `.plans/mockups/phase-3/phase3-02-regroup-ungroup.svg`
+- Undo/redo + snap + play/edit + pin: `.plans/mockups/phase-3/phase3-04-undo-redo-snap-playmode.svg`
+
 ### Behaviors
 - Marquee multi-select for entities
 - Keyboard nudging
@@ -138,18 +144,9 @@ Turn the canvas into a genuinely usable scene editor rather than a geometry patc
   - create group from selected ungrouped entities
   - remove entity from group
   - dissolve group into ungrouped entities
-- Formation re-layout tools for grid groups:
-  - drag spacing handles
-  - drag anchor/origin
-  - recalculate member positions from formation metadata
-- Optional playback/edit mode toggle
 - Optional pinned inspector for selected object while dragging
 
 ### Architecture decisions
-- Introduce explicit group layout metadata in the scene model for editable formations:
-  - `layout?: { type: 'grid'; rows; cols; startX; startY; spacingX; spacingY } | { type: 'freeform' }`
-- Preserve backward compatibility:
-  - groups without layout metadata are treated as `freeform`
 - Regroup/ungroup operations must update:
   - `groups`
   - entity positions only when needed
@@ -157,13 +154,10 @@ Turn the canvas into a genuinely usable scene editor rather than a geometry patc
 - Undo/redo should batch pointer-drag into a single history entry
 
 ### Implementation changes
-- Extend `GroupSpec` with optional layout metadata
 - Add editor commands:
   - `create-group-from-selection`
   - `remove-entity-from-group`
-  - `dissolve-group`
-  - `reflow-grid-group`
-- Add grid-layout inspector controls and canvas spacing handles
+  - `ungroup`
 - Add history stack reducer or command log layer
 
 ## TDD Plan
@@ -191,15 +185,12 @@ Turn the canvas into a genuinely usable scene editor rather than a geometry patc
 
 ### Phase 3 tests
 - regroup/ungroup reducer tests
-- layout metadata round-trip tests
 - undo/redo batching tests
-- grid reflow spacing tests
 
 ## Assumptions
 - Phase 1 is the recommended implementation target for the next execution pass.
 - Direct manipulation initially covers only entities, groups, and bounds; actions/conditions remain inspector-driven except where geometry is directly editable.
 - Editing gestures update the scene model, not just temporary Phaser display objects.
-- Group dragging edits member entity positions directly in v1; explicit editable group layout metadata is deferred to Phase 3.
 - Canvas direct manipulation should cooperate with the current sample scene and browser editor without replacing the JSON/inspector workflows.
 
 ## Config Schema

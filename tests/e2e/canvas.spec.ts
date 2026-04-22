@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+  clickCanvasAt,
   dragBoundsHandle,
   dismissViewHint,
   dragOnCanvas,
@@ -48,6 +49,60 @@ test('marquee selects multiple entities by click-dragging empty canvas', async (
   }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
 });
 
+test('shift-click additively selects entities on the canvas', async ({ page }) => {
+  await dismissViewHint(page);
+
+  await tapWorld(page, { x: 220, y: 140 });
+  await expectSelection(page, { kind: 'entity', id: 'e1' });
+
+  const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
+  if (!e2) throw new Error('Entity rect unavailable');
+  const e2Client = await worldToClient(page, { x: e2.centerX, y: e2.centerY });
+  await page.keyboard.down('Shift');
+  await clickCanvasAt(page, e2Client);
+  await page.keyboard.up('Shift');
+
+  await expect.poll(async () => {
+    const state = await getState<{ selection?: { kind: string; ids?: string[] } }>(page);
+    return state.selection;
+  }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
+});
+
+test('grid snapping toggles and snaps small drags', async ({ page }) => {
+  await dismissViewHint(page);
+
+  await page.getByTestId('toggle-grid-snap-button').click();
+
+  await dragWorld(page, { x: 220, y: 140 }, { x: 227, y: 140 });
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, { x: number; y: number }> } }>(page);
+    return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
+  }).toEqual({ x: 230, y: 140 });
+});
+
+test('supports undo/redo via viewbar buttons', async ({ page }) => {
+  await dismissViewHint(page);
+
+  await dragWorld(page, { x: 220, y: 140 }, { x: 260, y: 170 });
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, { x: number; y: number }> } }>(page);
+    return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
+  }).toEqual({ x: 260, y: 170 });
+
+  await page.getByTestId('undo-button').click();
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, { x: number; y: number }> } }>(page);
+    return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
+  }).toEqual({ x: 220, y: 140 });
+
+  await page.getByTestId('redo-button').click();
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, { x: number; y: number }> } }>(page);
+    return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
+  }).toEqual({ x: 260, y: 170 });
+});
+
 test('drags an entity on the canvas and supports keyboard undo/redo', async ({ page }) => {
   await dragWorld(page, { x: 220, y: 140 }, { x: 260, y: 170 });
 
@@ -67,6 +122,33 @@ test('drags an entity on the canvas and supports keyboard undo/redo', async ({ p
     const state = await getState<{ scene: { entities: Record<string, { x: number; y: number }> } }>(page);
     return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
   }).toEqual({ x: 260, y: 170 });
+});
+
+test('resizes bounds and supports undo/redo', async ({ page }) => {
+  await selectGroupInSceneGraph(page, 'g-enemies');
+  await page.getByTestId('attachment-open-att-move-right').click();
+  await expect.poll(async () => await getEditableBoundsRect(page)).toMatchObject({
+    minX: 80,
+    minY: 60,
+  });
+
+  await dragBoundsHandle(page, 'nw', { x: 20, y: 20 });
+  await expect.poll(async () => await getEditableBoundsRect(page)).toMatchObject({
+    minX: 100,
+    minY: 80,
+  });
+
+  await triggerUndo(page);
+  await expect.poll(async () => await getEditableBoundsRect(page)).toMatchObject({
+    minX: 80,
+    minY: 60,
+  });
+
+  await triggerRedo(page);
+  await expect.poll(async () => await getEditableBoundsRect(page)).toMatchObject({
+    minX: 100,
+    minY: 80,
+  });
 });
 
 test('drags a formation on the canvas and restores layout metadata on undo', async ({ page }) => {

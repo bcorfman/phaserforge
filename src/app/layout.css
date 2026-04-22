@@ -471,7 +471,7 @@ textarea:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .viewbar-copy-secondary {
@@ -482,7 +482,7 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .viewbar-world {
@@ -490,7 +490,7 @@ textarea:focus-visible {
   align-items: center;
   gap: 0.9rem;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .section-title,
@@ -1047,6 +1047,7 @@ html[data-theme='dark'] .phaser-frame {
 
   .group-row,
   .member-row,
+  .viewbar-controls-row,
   .viewbar-group,
   .viewbar-world {
     flex-wrap: wrap;
