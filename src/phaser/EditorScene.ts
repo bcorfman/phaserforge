@@ -90,6 +90,9 @@ export class EditorScene extends Phaser.Scene {
     registerSceneGetter(this.sceneBridgeGetter);
     EventBus.on('selection-changed', this.handleSelectionChanged, this);
     EventBus.on('canvas-update-bounds', this.updateBounds, this);
+    EventBus.on('history-undo', this.undo, this);
+    EventBus.on('history-redo', this.redo, this);
+    EventBus.on('toggle-grid-snap', this.toggleGridSnap, this);
     EventBus.on('scene-zoom-in', this.zoomIn, this);
     EventBus.on('scene-zoom-out', this.zoomOut, this);
     EventBus.on('scene-fit-view', this.fitView, this);
@@ -118,6 +121,9 @@ export class EditorScene extends Phaser.Scene {
       unregisterSceneGetter(this.sceneBridgeGetter);
       EventBus.off('selection-changed', this.handleSelectionChanged, this);
       EventBus.off('canvas-update-bounds', this.updateBounds, this);
+      EventBus.off('history-undo', this.undo, this);
+      EventBus.off('history-redo', this.redo, this);
+      EventBus.off('toggle-grid-snap', this.toggleGridSnap, this);
       EventBus.off('scene-zoom-in', this.zoomIn, this);
       EventBus.off('scene-zoom-out', this.zoomOut, this);
       EventBus.off('scene-fit-view', this.fitView, this);
@@ -975,7 +981,7 @@ export class EditorScene extends Phaser.Scene {
           if (hitResult.kind === 'entity' && this.selection.kind === 'entities' && this.selection.ids.includes(hitResult.id!)) {
             // Start multi-entity drag
             const beforeState = this.selection.ids.map(id => ({ id, entity: this.compiled?.entities[id] }));
-            this.recordOperation('move-entities' as any, this.selection.ids.join(','), beforeState);
+            this.recordOperation('move-entities', this.selection.ids.join(','), beforeState);
             this.dragState = {
               kind: 'entity', // Use 'entity' kind but with multi-entity logic
               id: hitResult.id!, // Store the clicked entity ID for reference
@@ -1059,7 +1065,7 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
-  private handlePointerUp(): void {
+  private handlePointerUp(pointer: Phaser.Input.Pointer): void {
     if (this.mode !== 'edit') return;
     this.wheelZoomAnchor = undefined;
     if (this.panState) {
@@ -1073,10 +1079,25 @@ export class EditorScene extends Phaser.Scene {
         const endX = this.dragState.currentX || this.dragState.startX;
         const endY = this.dragState.currentY || this.dragState.startY;
         const selectedEntityIds = this.getEntitiesInMarquee(this.dragState.startX, this.dragState.startY, endX, endY);
-        EventBus.emit('canvas-select-multiple', { entityIds: selectedEntityIds, additive: false });
+        const shiftKey = Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
+        if (shiftKey) {
+          const baseIds =
+            this.selection.kind === 'entities'
+              ? this.selection.ids
+              : this.selection.kind === 'entity'
+                ? [this.selection.id]
+                : [];
+          const merged = [...baseIds];
+          for (const id of selectedEntityIds) {
+            if (!merged.includes(id)) merged.push(id);
+          }
+          EventBus.emit('canvas-select-multiple', { entityIds: merged, additive: false });
+        } else {
+          EventBus.emit('canvas-select-multiple', { entityIds: selectedEntityIds, additive: false });
+        }
         this.destroyMarqueeRectangle();
       }
-      if (this.dragState.hasMoved) {
+      if (this.dragState.kind !== 'marquee' && this.dragState.hasMoved) {
         this.finalizeRecordedOperation();
       }
       EventBus.emit('canvas-interaction-end');
@@ -1087,9 +1108,17 @@ export class EditorScene extends Phaser.Scene {
     } else if (this.pendingDrag) {
       const { hitResult } = this.pendingDrag;
       if (hitResult.kind === 'entity' || hitResult.kind === 'group') {
-        EventBus.emit('canvas-select', hitResult);
+        const shiftKey = Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
+        if (shiftKey && hitResult.kind === 'entity') {
+          EventBus.emit('canvas-select-multiple', { entityIds: [hitResult.id], additive: true });
+        } else {
+          EventBus.emit('canvas-select', hitResult);
+        }
       } else if (hitResult.kind === 'none') {
-        EventBus.emit('canvas-select-multiple', { entityIds: [], additive: false });
+        const shiftKey = Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
+        if (!shiftKey) {
+          EventBus.emit('canvas-select-multiple', { entityIds: [], additive: false });
+        }
       }
     }
     this.pendingDrag = undefined;
@@ -1190,6 +1219,12 @@ export class EditorScene extends Phaser.Scene {
 
   private handleKeyDown(event: KeyboardEvent): void {
     if (this.mode !== 'edit') return;
+    if (event.target instanceof HTMLElement) {
+      const tag = event.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || event.target.isContentEditable) {
+        return;
+      }
+    }
     if (event.code === 'Space') {
       event.preventDefault();
       this.isSpacePanning = true;
@@ -1244,8 +1279,7 @@ export class EditorScene extends Phaser.Scene {
           } else {
             // Ctrl+G: Toggle grid
             event.preventDefault();
-            this.gridEnabled = !this.gridEnabled;
-            EventBus.emit('grid-toggled', this.gridEnabled);
+            this.toggleGridSnap();
           }
         }
         return;
@@ -1284,7 +1318,7 @@ export class EditorScene extends Phaser.Scene {
       // For multi-entity selection, record all entity positions
       const beforeState = this.selection.ids.map(id => ({ id, entity: this.compiled?.entities[id] }));
       // Record as a custom operation type for multi-entity move
-      this.recordOperation('move-entities' as any, this.selection.ids.join(','), beforeState);
+      this.recordOperation('move-entities', this.selection.ids.join(','), beforeState);
       EventBus.emit('canvas-move-entities', { entityIds: this.selection.ids, dx, dy });
     }
   }
@@ -1305,7 +1339,7 @@ export class EditorScene extends Phaser.Scene {
     return Math.round(delta / this.gridSize) * this.gridSize;
   }
 
-  private recordOperation(type: 'move-entity' | 'move-group' | 'update-bounds', id: string, beforeState: any): void {
+  private recordOperation(type: 'move-entity' | 'move-group' | 'move-entities' | 'update-bounds', id: string, beforeState: any): void {
     // Remove any operations after current history index (for when user does new operation after undo)
     this.operationHistory = this.operationHistory.slice(0, this.historyIndex + 1);
 
@@ -1421,10 +1455,17 @@ export class EditorScene extends Phaser.Scene {
       case 'move-entities':
         return id.split(',').map((memberId) => ({ id: memberId, entity: latestScene?.entities[memberId] ? { ...latestScene.entities[memberId] } : undefined }));
       case 'update-bounds': {
-        const condition = id ? latestScene?.conditions[id] : undefined;
-        return condition?.type === 'BoundsHit' ? { ...condition.bounds } : undefined;
+        const attachment = id ? latestScene?.attachments[id] : undefined;
+        const condition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+        return condition ? { ...condition.bounds } : undefined;
       }
     }
+  }
+
+  private toggleGridSnap(): void {
+    if (this.mode !== 'edit') return;
+    this.gridEnabled = !this.gridEnabled;
+    EventBus.emit('grid-toggled', this.gridEnabled);
   }
 
   private applyScroll(scrollX: number, scrollY: number, clamp = true): void {

@@ -59,7 +59,7 @@ export interface EditorState {
   error?: string;
   statusMessage?: string;
   statusExpiresAt?: number;
-  interaction?: { kind: 'entity' | 'group' | 'bounds'; id: string; handle?: 'left' | 'right' | 'top' | 'bottom' | 'tl' | 'tr' | 'bl' | 'br' };
+  interaction?: { kind: 'entity' | 'entities' | 'group' | 'bounds'; id: string; handle?: 'left' | 'right' | 'top' | 'bottom' | 'tl' | 'tr' | 'bl' | 'br' };
   mode: 'edit' | 'play';
   hasSeenViewHint: boolean;
   startupMode: StartupMode;
@@ -110,7 +110,7 @@ export type EditorAction =
   | { type: 'arrange-group'; id: Id; arrangeKind: string; params: Record<string, number | string | boolean> }
   | { type: 'create-group-from-arrange'; name: string; templateEntityId: Id; arrangeKind: string; params: Record<string, number | string | boolean>; memberCount?: number }
   | { type: 'update-bounds'; id: Id; bounds: { minX: number; maxX: number; minY: number; maxY: number } }
-  | { type: 'begin-canvas-interaction'; kind: 'entity' | 'group' | 'bounds'; id: string; handle?: string }
+  | { type: 'begin-canvas-interaction'; kind: 'entity' | 'entities' | 'group' | 'bounds'; id: string; handle?: string }
   | { type: 'end-canvas-interaction' }
   | { type: 'create-group-from-selection'; name: string }
   | { type: 'ungroup-group'; id: Id }
@@ -587,13 +587,42 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       }, true);
     }
     case 'select-multiple':
-      if (action.entityIds.length === 0) {
-        return { ...state, selection: { kind: 'none' } };
-      } else if (action.entityIds.length === 1) {
-        return { ...state, selection: { kind: 'entity', id: action.entityIds[0] } };
-      } else {
-        return { ...state, selection: { kind: 'entities', ids: action.entityIds } };
+      if (!action.additive) {
+        if (action.entityIds.length === 0) {
+          return { ...state, selection: { kind: 'none' } };
+        } else if (action.entityIds.length === 1) {
+          return { ...state, selection: { kind: 'entity', id: action.entityIds[0] } };
+        } else {
+          return { ...state, selection: { kind: 'entities', ids: action.entityIds } };
+        }
       }
+
+      // Additive selection toggles ids against the current entity/entities selection.
+      // (Marquee can still implement union by emitting a full replacement selection.)
+      const baseIds =
+        state.selection.kind === 'entities'
+          ? state.selection.ids
+          : state.selection.kind === 'entity'
+            ? [state.selection.id]
+            : [];
+
+      const nextIds = [...baseIds];
+      for (const id of action.entityIds) {
+        const index = nextIds.indexOf(id);
+        if (index >= 0) {
+          nextIds.splice(index, 1);
+        } else {
+          nextIds.push(id);
+        }
+      }
+
+      if (nextIds.length === 0) {
+        return { ...state, selection: { kind: 'none' } };
+      }
+      if (nextIds.length === 1) {
+        return { ...state, selection: { kind: 'entity', id: nextIds[0] } };
+      }
+      return { ...state, selection: { kind: 'entities', ids: nextIds } };
     case 'move-entities': {
       const scene = getActiveScene(state);
       const dx = Math.round(action.dx);

@@ -257,6 +257,20 @@ describe('EditorStore reducer', () => {
     expect(next.selection).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
   });
 
+  it('additively selects multiple entities when requested', () => {
+    const base = reducer(seededState(), { type: 'select', selection: { kind: 'entity', id: 'e1' } });
+    const next = reducer(base, { type: 'select-multiple', entityIds: ['e2'], additive: true });
+
+    expect(next.selection).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
+  });
+
+  it('toggles off entities when additively selecting an already-selected entity', () => {
+    const base = reducer(seededState(), { type: 'select-multiple', entityIds: ['e1', 'e2'], additive: false });
+    const next = reducer(base, { type: 'select-multiple', entityIds: ['e2'], additive: true });
+
+    expect(next.selection).toEqual({ kind: 'entity', id: 'e1' });
+  });
+
   it('selects single entity when selecting multiple with one id', () => {
     const state = initState();
     const action: EditorAction = { type: 'select-multiple', entityIds: ['e1'], additive: false };

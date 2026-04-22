@@ -16,6 +16,7 @@ function AppShell() {
   const activeScene = state.project.scenes[state.currentSceneId];
   const [sceneReady, setSceneReady] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [gridSnapEnabled, setGridSnapEnabled] = useState(false);
   const [worldWidthDraft, setWorldWidthDraft] = useState('');
   const [worldHeightDraft, setWorldHeightDraft] = useState('');
   const readyRef = useRef(false);
@@ -131,6 +132,14 @@ function AppShell() {
   }, [dispatch, state.hasSeenViewHint]);
 
   useEffect(() => {
+    const handleGridToggled = (enabled: boolean) => setGridSnapEnabled(enabled);
+    EventBus.on('grid-toggled', handleGridToggled);
+    return () => {
+      EventBus.off('grid-toggled', handleGridToggled);
+    };
+  }, []);
+
+  useEffect(() => {
     // IMPORTANT: Keep event handler function declarations in sync with EventBus.on calls below
     // Each event handler must be declared before being used in EventBus.on
     const handleCanvasSelect = (target: { kind: 'entity' | 'group'; id: string }) => {
@@ -145,7 +154,7 @@ function AppShell() {
       dispatch({ type: 'move-group', id: payload.id, dx: payload.dx, dy: payload.dy });
     };
 
-    const handleCanvasInteractionStart = (target: { kind: 'entity' | 'group' | 'bounds-handle'; id: string }) => {
+    const handleCanvasInteractionStart = (target: { kind: 'entity' | 'entities' | 'group' | 'bounds-handle'; id: string }) => {
       if (target.kind === 'bounds-handle') {
         dispatch({ type: 'begin-canvas-interaction', kind: 'bounds', id: target.id });
       } else {
@@ -243,6 +252,36 @@ function AppShell() {
             </div>
             <div className="viewbar-controls-row">
               <div className="viewbar-group">
+                <button
+                  aria-label="Undo"
+                  className="button"
+                  data-testid="undo-button"
+                  type="button"
+                  disabled={state.mode !== 'edit'}
+                  onClick={() => EventBus.emit('history-undo')}
+                >
+                  Undo
+                </button>
+                <button
+                  aria-label="Redo"
+                  className="button"
+                  data-testid="redo-button"
+                  type="button"
+                  disabled={state.mode !== 'edit'}
+                  onClick={() => EventBus.emit('history-redo')}
+                >
+                  Redo
+                </button>
+                <button
+                  aria-label="Toggle grid snapping"
+                  className={`button ${gridSnapEnabled ? 'active' : ''}`}
+                  data-testid="toggle-grid-snap-button"
+                  type="button"
+                  disabled={state.mode !== 'edit'}
+                  onClick={() => EventBus.emit('toggle-grid-snap')}
+                >
+                  Snap: {gridSnapEnabled ? 'On' : 'Off'}
+                </button>
                 <button
                   aria-label="Fit view"
                   className="button"
