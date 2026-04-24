@@ -5,10 +5,18 @@ import { EditorProvider, useEditorStore } from './editor/EditorStore';
 import { EntityList } from './editor/EntityList';
 import { Inspector } from './editor/Inspector';
 import { Toolbar } from './editor/Toolbar';
+import { CanvasOverlay } from './editor/CanvasOverlay';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
-import { registerAppStateGetter, registerSelectionSetter, unregisterAppStateGetter, unregisterSelectionSetter } from './testing/testBridge';
+import {
+  registerAppStateGetter,
+  registerSelectionSetter,
+  registerUndoRedoHandlers,
+  unregisterAppStateGetter,
+  unregisterSelectionSetter,
+  unregisterUndoRedoHandlers,
+} from './testing/testBridge';
 import './app/layout.css';
 
 function AppShell() {
@@ -20,6 +28,7 @@ function AppShell() {
   const [worldWidthDraft, setWorldWidthDraft] = useState('');
   const [worldHeightDraft, setWorldHeightDraft] = useState('');
   const readyRef = useRef(false);
+  const runtimeLoadedRef = useRef(false);
   const appStateRef = useRef({
     project: state.project,
     currentSceneId: state.currentSceneId,
@@ -93,6 +102,44 @@ function AppShell() {
   }, [dispatch]);
 
   useEffect(() => {
+    const handlers = {
+      undo: () => dispatch({ type: 'history-undo' }),
+      redo: () => dispatch({ type: 'history-redo' }),
+    };
+    registerUndoRedoHandlers(handlers);
+    return () => {
+      unregisterUndoRedoHandlers(handlers);
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (state.mode !== 'edit') return;
+      if (event.target instanceof HTMLElement) {
+        const tag = event.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || event.target.isContentEditable) {
+          return;
+        }
+      }
+      if (!event.ctrlKey && !event.metaKey) return;
+
+      const key = event.key.toLowerCase();
+      if (key === 'z') {
+        event.preventDefault();
+        dispatch({ type: event.shiftKey ? 'history-redo' : 'history-undo' });
+      } else if (key === 'y') {
+        event.preventDefault();
+        dispatch({ type: 'history-redo' });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [dispatch, state.mode]);
+
+  useEffect(() => {
     const handleReady = () => {
       readyRef.current = true;
       setSceneReady(true);
@@ -110,8 +157,19 @@ function AppShell() {
 
   useEffect(() => {
     if (!sceneReady) return;
-    EventBus.emit('load-scene', state.project.scenes[state.currentSceneId], state.mode);
-  }, [sceneReady, state.project, state.currentSceneId, state.mode]);
+    EventBus.emit('runtime:load-project', state.project, state.currentSceneId, state.mode);
+    runtimeLoadedRef.current = true;
+  }, [sceneReady, state.project]);
+
+  useEffect(() => {
+    if (!sceneReady || !runtimeLoadedRef.current) return;
+    EventBus.emit('runtime:set-active-scene', state.currentSceneId);
+  }, [sceneReady, state.currentSceneId]);
+
+  useEffect(() => {
+    if (!sceneReady || !runtimeLoadedRef.current) return;
+    EventBus.emit('runtime:set-mode', state.mode);
+  }, [sceneReady, state.mode]);
 
   useEffect(() => {
     EventBus.emit('selection-changed', state.selection);
@@ -253,36 +311,6 @@ function AppShell() {
             <div className="viewbar-controls-row">
               <div className="viewbar-group">
                 <button
-                  aria-label="Undo"
-                  className="button"
-                  data-testid="undo-button"
-                  type="button"
-                  disabled={state.mode !== 'edit'}
-                  onClick={() => EventBus.emit('history-undo')}
-                >
-                  Undo
-                </button>
-                <button
-                  aria-label="Redo"
-                  className="button"
-                  data-testid="redo-button"
-                  type="button"
-                  disabled={state.mode !== 'edit'}
-                  onClick={() => EventBus.emit('history-redo')}
-                >
-                  Redo
-                </button>
-                <button
-                  aria-label="Toggle grid snapping"
-                  className={`button ${gridSnapEnabled ? 'active' : ''}`}
-                  data-testid="toggle-grid-snap-button"
-                  type="button"
-                  disabled={state.mode !== 'edit'}
-                  onClick={() => EventBus.emit('toggle-grid-snap')}
-                >
-                  Snap: {gridSnapEnabled ? 'On' : 'Off'}
-                </button>
-                <button
                   aria-label="Fit view"
                   className="button"
                   data-testid="fit-view-button"
@@ -367,6 +395,7 @@ function AppShell() {
             </div>
           </section>
           <div className="phaser-frame" data-testid="phaser-frame">
+            <CanvasOverlay gridSnapEnabled={gridSnapEnabled} />
             {!state.hasSeenViewHint && (
               <div className="view-hint" data-testid="view-hint">
                 <div className="view-hint-title">View Controls</div>

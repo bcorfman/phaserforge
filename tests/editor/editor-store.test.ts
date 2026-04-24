@@ -300,13 +300,37 @@ describe('EditorStore reducer', () => {
   });
 
   it('creates group from selected entities', () => {
-    const state = { ...seededState(), selection: { kind: 'entities' as const, ids: ['e1', 'e2'] } };
+    const state = seededState();
+    const scene = sceneOf(state);
+    const baseScene = {
+      ...scene,
+      groups: {
+        ...scene.groups,
+        'g-enemies': {
+          ...scene.groups['g-enemies'],
+          members: scene.groups['g-enemies'].members.filter((id) => !['e1', 'e2'].includes(id)),
+          layout: { type: 'freeform' as const },
+        },
+      },
+    };
+
+    const stateWithUngrouped = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: baseScene,
+        },
+      },
+      selection: { kind: 'entities' as const, ids: ['e1', 'e2'] },
+    };
     const action: EditorAction = { type: 'create-group-from-selection', name: 'Test Group' };
-    const next = reducer(state, action);
+    const next = reducer(stateWithUngrouped, action);
 
     const groupIds = Object.keys(sceneOf(next).groups);
-    expect(groupIds.length).toBe(Object.keys(sceneOf(state).groups).length + 1);
-    const newGroupId = groupIds.find(id => !sceneOf(state).groups[id]);
+    expect(groupIds.length).toBe(Object.keys(sceneOf(stateWithUngrouped).groups).length + 1);
+    const newGroupId = groupIds.find(id => !sceneOf(stateWithUngrouped).groups[id]);
     expect(newGroupId).toBeDefined();
     expect(sceneOf(next).groups[newGroupId!]).toEqual({
       id: newGroupId,
@@ -320,12 +344,68 @@ describe('EditorStore reducer', () => {
   });
 
   it('defaults the formation name when creating a group from selection with an empty name', () => {
-    const state = { ...seededState(), selection: { kind: 'entities' as const, ids: ['e1', 'e2'] } };
-    const next = reducer(state, { type: 'create-group-from-selection', name: '' });
+    const state = seededState();
+    const scene = sceneOf(state);
+    const baseScene = {
+      ...scene,
+      groups: {
+        ...scene.groups,
+        'g-enemies': {
+          ...scene.groups['g-enemies'],
+          members: scene.groups['g-enemies'].members.filter((id) => !['e1', 'e2'].includes(id)),
+          layout: { type: 'freeform' as const },
+        },
+      },
+    };
 
-    const newGroupId = Object.keys(sceneOf(next).groups).find((id) => !sceneOf(state).groups[id]);
+    const stateWithUngrouped = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: baseScene,
+        },
+      },
+      selection: { kind: 'entities' as const, ids: ['e1', 'e2'] },
+    };
+    const next = reducer(stateWithUngrouped, { type: 'create-group-from-selection', name: '' });
+
+    const newGroupId = Object.keys(sceneOf(next).groups).find((id) => !sceneOf(stateWithUngrouped).groups[id]);
     expect(newGroupId).toBeDefined();
     expect(sceneOf(next).groups[newGroupId!].name).toBe('Formation 1');
+  });
+
+  it('does not create group from selection when fewer than 2 ungrouped entities are selected', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+    const baseScene = {
+      ...scene,
+      groups: {
+        ...scene.groups,
+        'g-enemies': {
+          ...scene.groups['g-enemies'],
+          members: scene.groups['g-enemies'].members.filter((id) => id !== 'e2'),
+          layout: { type: 'freeform' as const },
+        },
+      },
+    };
+
+    const stateWithOneUngrouped = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: baseScene,
+        },
+      },
+      selection: { kind: 'entities' as const, ids: ['e1', 'e2'] },
+    };
+
+    const next = reducer(stateWithOneUngrouped, { type: 'create-group-from-selection', name: 'Should not work' } as any);
+    expect(Object.keys(sceneOf(next).groups)).toEqual(Object.keys(sceneOf(stateWithOneUngrouped).groups));
+    expect(next.selection).toEqual(stateWithOneUngrouped.selection);
   });
 
   it('does not create group when no entities selected', () => {
@@ -368,6 +448,50 @@ describe('EditorStore reducer', () => {
     expect(regrouped.selection).toEqual({ kind: 'group', id: 'g-enemies' });
     expect(Object.keys(sceneOf(regrouped).attachments)).toEqual(attachmentIds);
     expect(regrouped.pendingGroupRestore).toBeUndefined();
+  });
+
+  it('adds entities to an existing group, removing them from any other group memberships', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+
+    const baseScene = {
+      ...scene,
+      groups: {
+        ...scene.groups,
+        'g-alt': {
+          id: 'g-alt',
+          name: 'Alt Formation',
+          members: ['e1', 'e2'],
+          layout: { type: 'freeform' as const },
+        },
+        'g-enemies': {
+          ...scene.groups['g-enemies'],
+          members: scene.groups['g-enemies'].members.filter((id) => !['e1', 'e2'].includes(id)),
+          layout: { type: 'freeform' as const },
+        },
+      },
+    };
+
+    const base = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: baseScene,
+        },
+      },
+      selection: { kind: 'entities' as const, ids: ['e3', 'e4'] },
+    };
+
+    const next = reducer(base, { type: 'add-entities-to-group', groupId: 'g-alt', entityIds: ['e3', 'e4'] } as any);
+
+    expect(sceneOf(next).groups['g-alt'].members).toEqual(['e1', 'e2', 'e3', 'e4']);
+    expect(sceneOf(next).groups['g-enemies'].members).not.toContain('e3');
+    expect(sceneOf(next).groups['g-enemies'].members).not.toContain('e4');
+    expect(sceneOf(next).groups['g-alt'].layout).toEqual({ type: 'freeform' });
+    expect(next.selection).toEqual({ kind: 'group', id: 'g-alt' });
+    expect(next.dirty).toBe(true);
   });
 
   it('does not dissolve non-existent group', () => {
@@ -416,7 +540,7 @@ describe('EditorStore reducer', () => {
   });
 
   it('removes an entity from a group and keeps selection on the group', () => {
-    const state = seededState();
+    const state = { ...seededState(), expandedGroups: { 'g-enemies': true } };
     const next = reducer(state, {
       type: 'remove-entity-from-group',
       groupId: 'g-enemies',
@@ -426,6 +550,47 @@ describe('EditorStore reducer', () => {
     expect(sceneOf(next).groups['g-enemies'].members).not.toContain('e3');
     expect(sceneOf(next).groups['g-enemies'].layout).toEqual({ type: 'freeform' });
     expect(next.selection).toEqual({ kind: 'group', id: 'g-enemies' });
+    expect(next.expandedGroups['g-enemies']).toBe(true);
+  });
+
+  it('removes multiple entities from their groups while preserving multi-selection', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+    const baseScene = {
+      ...scene,
+      groups: {
+        ...scene.groups,
+        'g-alt': {
+          id: 'g-alt',
+          name: 'Alt Formation',
+          members: ['e1', 'e2', 'e3'],
+          layout: { type: 'freeform' as const },
+        },
+        'g-enemies': {
+          ...scene.groups['g-enemies'],
+          members: scene.groups['g-enemies'].members.filter((id) => !['e1', 'e2', 'e3'].includes(id)),
+          layout: { type: 'freeform' as const },
+        },
+      },
+    };
+
+    const base = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: baseScene,
+        },
+      },
+      selection: { kind: 'entities' as const, ids: ['e1', 'e2'] },
+    };
+
+    const next = reducer(base, { type: 'remove-entities-from-groups', entityIds: ['e1', 'e2'] } as any);
+
+    expect(sceneOf(next).groups['g-alt'].members).toEqual(['e3']);
+    expect(next.selection).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
+    expect(next.dirty).toBe(true);
   });
 
   it('removes an ungrouped entity from the scene graph', () => {

@@ -4,9 +4,9 @@
 Today “Play mode” is still `EditorScene`: it compiles one `SceneSpec`, renders entities, and in play mode just runs `compiled.startAll()` while gating most keyboard/pointer handling behind `mode === 'edit'`. This previews NPC/attachment behavior but cannot run an interactive game.
 
 This plan introduces a real game runtime alongside the editor:
-- Promote authored content from a single `SceneSpec` to a `ProjectSpec` with multiple scenes.
-- Persist **project YAML only** as the primary format; legacy scene YAML is import-only.
-- Add a dedicated `GameScene` for Play mode (Arcade physics only).
+- [x] Promote authored content from a single `SceneSpec` to a `ProjectSpec` with multiple scenes.
+- [x] Persist **project YAML only** as the primary format.
+- [x] Add a dedicated `GameScene` for Play mode (Arcade physics only).
 - Keep the attachment compiler, but route engine effects via runtime services (`scene.goto`, audio, input, collisions).
 - Keep `EditorScene` editor-first; it renders the active scene (including backgrounds) but does not own gameplay input.
 
@@ -20,64 +20,58 @@ All phases should be TDD-driven:
 Make the editor capable of owning a project with multiple scenes, without changing core entity/group/attachment editing semantics.
 
 ### Decisions (locked)
-- Persistence is **project YAML only** (authoritative key `phaseractions.projectYaml.v1`).
-- Legacy `SceneSpec` YAML becomes an explicit “Import Scene YAML (legacy)” path, not the default load format.
+- [x] Persistence is **project YAML only** (authoritative key `phaseractions.projectYaml.v1`).
 
 ### Required model additions
-- Add `ProjectSpec`:
+- [x] Add `ProjectSpec`:
   - `id: string`
   - `assets: { images: Record<string, ImageAssetSpec>; spriteSheets: Record<string, SpriteSheetAssetSpec> }`
   - `audio: { sounds: Record<string, AudioAssetSpec> }` (stub for now)
   - `inputMaps: Record<string, InputActionMapSpec>` (stub for now)
   - `scenes: Record<string, GameSceneSpec>`
   - `initialSceneId: string`
-- Add `GameSceneSpec`:
+- [x] Add `GameSceneSpec`:
   - Base: existing `SceneSpec`
   - Add: `backgroundLayers?: BackgroundLayerSpec[]` (can be empty in this phase)
 
 ### Serialization/storage changes
-- Add `parseProjectYaml(text): ProjectSpec` and `serializeProjectToYaml(project): string`.
-- Update load/export UI to use project YAML only.
-- Add import helper `importLegacySceneYaml(text): ProjectSpec` that:
-  - parses via existing `parseSceneYaml`
-  - wraps into a new project with exactly one scene
-  - sets `initialSceneId` and `currentSceneId` to that scene
+- [x] Add `parseProjectYaml(text): ProjectSpec` and `serializeProjectToYaml(project): string`.
+- [x] Update load/export UI to use project YAML only.
 
 ### Store changes
-- Replace `EditorState.scene` with:
+- [x] Replace `EditorState.scene` with:
   - `project: ProjectSpec`
   - `currentSceneId: string`
-- All existing editor reducers (`update-entity`, attachments, grouping, bounds edits) operate on
+- [x] All existing editor reducers (`update-entity`, attachments, grouping, bounds edits) operate on
   `project.scenes[currentSceneId]`.
-- Add new reducer actions:
+- [x] Add new reducer actions:
   - `create-scene`, `duplicate-scene`, `delete-scene`, `rename-scene`, `set-current-scene`
 
 ### UI changes
-- Add a “Scenes” list/picker (left panel, above Entities/Formations):
+- [x] Add a “Scenes” list/picker (left panel, above Entities/Formations):
   - shows scene name/id
   - create/duplicate/delete
   - selecting a scene swaps the canvas and inspector context
 
 ### Tests
 - Unit (Vitest):
-  - project YAML serialize/parse round-trip
-  - legacy scene import creates a project with 1 scene
-  - reducers: editing affects only active scene; switching scenes preserves edits
+  - [x] project YAML serialize/parse round-trip
+  - [x] reducers: editing affects only active scene; switching scenes preserves edits
 - E2E (Playwright):
-  - create a second scene; switch; verify entity counts differ via test bridge state snapshot
+  - [x] create a second scene; switch; verify entity counts differ via test bridge state snapshot
 
 ## Phase 2: Runtime split (BootScene + GameScene) and mode semantics
 ### Goal
 Make Play mode run a dedicated interactive runtime scene, not `EditorScene`.
 
 ### Decisions (locked)
-- Modes remain **two**: Edit and Play. Play is the real interactive runtime.
+- [x] Modes remain **two**: Edit and Play. Play is the real interactive runtime.
 
 ### Phaser boot changes
-- Update game config to register:
-  - `BootScene` (orchestrates which scene is active, owns services)
-  - `EditorScene` (authoring)
-  - `GameScene` (play runtime)
+- [x] Update game config to register:
+  - [x] `BootScene` (orchestrates which scene is active, owns services)
+  - [x] `EditorScene` (authoring)
+  - [x] `GameScene` (play runtime)
 - Replace the current `EventBus.emit('load-scene', state.scene, state.mode)` contract with:
   - `runtime:load-project(project, currentSceneId, mode)`
   - `runtime:set-mode(mode)`
@@ -92,14 +86,14 @@ Make Play mode run a dedicated interactive runtime scene, not `EditorScene`.
 
 ### Tests
 - E2E:
-  - toggling play mode results in `GameScene` being active (expose active scene key via test bridge)
+  - [x] toggling play mode results in `GameScene` being active (expose active scene key via test bridge)
 
 ## Phase 3: Background layers (authoring + rendering parity)
 ### Goal
 Support background images per scene, rendered in both Edit and Play.
 
 ### Model
-- `BackgroundLayerSpec`:
+- [x] `BackgroundLayerSpec`:
   - `assetId: string`
   - `x,y,depth`
   - `alpha?`, `tint?`
@@ -208,8 +202,7 @@ Author collision rules and trigger zones; runtime emits enter/stay/exit events.
 - E2E: move entity into trigger zone -> event fires (bridge snapshot)
 
 ## Acceptance Criteria (end of Phase 4 milestone)
-- Project YAML loads/saves; multiple scenes can be created/switched.
-- Play mode runs `GameScene`, not `EditorScene`.
+- [x] Project YAML loads/saves; multiple scenes can be created/switched.
+- [x] Play mode runs `GameScene`, not `EditorScene`.
 - Background layers render in both modes.
 - A `Call` with `callId: scene.goto` transitions between scenes in Play mode.
-

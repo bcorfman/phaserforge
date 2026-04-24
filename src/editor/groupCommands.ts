@@ -77,6 +77,65 @@ export function dissolveGroup(scene: SceneSpec, groupId: Id): SceneSpec {
   return removeGroupAndRetarget(scene, groupId, { type: 'entity', entityId: fallbackEntityId });
 }
 
+export function addEntitiesToGroup(scene: SceneSpec, groupId: Id, entityIds: Id[]): SceneSpec {
+  const group = scene.groups[groupId];
+  if (!group) return scene;
+  if (entityIds.length === 0) return scene;
+
+  const toAdd = entityIds.filter((id) => Boolean(scene.entities[id]));
+  if (toAdd.length === 0) return scene;
+
+  let nextScene = scene;
+
+  for (const entityId of toAdd) {
+    for (const [otherGroupId, otherGroup] of Object.entries(nextScene.groups)) {
+      if (otherGroupId === groupId) continue;
+      if (!otherGroup.members.includes(entityId)) continue;
+      nextScene = removeEntityFromGroup(nextScene, otherGroupId, entityId);
+      break;
+    }
+  }
+
+  const refreshedGroup = nextScene.groups[groupId];
+  if (!refreshedGroup) return nextScene;
+
+  const memberSet = new Set(refreshedGroup.members);
+  const mergedMembers = [...refreshedGroup.members];
+  for (const entityId of toAdd) {
+    if (memberSet.has(entityId)) continue;
+    memberSet.add(entityId);
+    mergedMembers.push(entityId);
+  }
+
+  if (mergedMembers.length === refreshedGroup.members.length) return nextScene;
+
+  return {
+    ...nextScene,
+    groups: {
+      ...nextScene.groups,
+      [groupId]: {
+        ...refreshedGroup,
+        members: mergedMembers,
+        layout: { type: 'freeform' },
+      },
+    },
+  };
+}
+
+export function removeEntitiesFromGroups(scene: SceneSpec, entityIds: Id[]): SceneSpec {
+  if (entityIds.length === 0) return scene;
+  let nextScene = scene;
+
+  for (const entityId of entityIds) {
+    if (!nextScene.entities[entityId]) continue;
+    const groupId = Object.keys(nextScene.groups).find((id) => nextScene.groups[id]?.members.includes(entityId));
+    if (!groupId) continue;
+    nextScene = removeEntityFromGroup(nextScene, groupId, entityId);
+  }
+
+  return nextScene;
+}
+
 function removeGroupAndRetarget(scene: SceneSpec, groupId: Id, replacement?: TargetRef): SceneSpec {
   const { [groupId]: removedGroup, ...remainingGroups } = scene.groups;
   void removedGroup;

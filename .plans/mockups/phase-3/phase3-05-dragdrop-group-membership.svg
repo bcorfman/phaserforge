@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --danger:#ff6a8f;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:600;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .entitySelected{fill:#1a254a; stroke:var(--accent); stroke-width:2;}
+      .dropTarget{fill:rgba(106,167,255,0.10); stroke:var(--accent); stroke-width:2; stroke-dasharray:6 6;}
+      .dropTarget2{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:2; stroke-dasharray:6 6;}
+      .pill{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .pillText{fill:var(--text); font-size:11px; font-weight:700;}
+      .arrow{stroke:var(--accent); stroke-width:3; fill:none; marker-end:url(#arrowHead);}
+      .arrow2{stroke:var(--accent2); stroke-width:3; fill:none; marker-end:url(#arrowHead2);}
+    </style>
+    <marker id="arrowHead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="var(--accent)"/>
+    </marker>
+    <marker id="arrowHead2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="var(--accent2)"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Canvas Editor — Phase 3: Drag-and-drop Group Membership</text>
+
+  <!-- Left Scene Graph Pane -->
+  <rect x="24" y="86" width="360" height="610" rx="12" class="panel"/>
+  <text x="44" y="118" class="label">Scene Graph</text>
+
+  <!-- Sprites section -->
+  <rect x="44" y="140" width="320" height="210" rx="12" class="panel2"/>
+  <text x="60" y="170" class="label">Sprites</text>
+  <text x="206" y="170" class="small">Shift/Cmd multi-select</text>
+
+  <rect x="60" y="188" width="292" height="34" rx="10" class="entitySelected" opacity="0.9"/>
+  <text x="76" y="210" class="btnText">e1 (Ungrouped)</text>
+  <rect x="60" y="232" width="292" height="34" rx="10" class="entitySelected" opacity="0.9"/>
+  <text x="76" y="254" class="btnText">e2 (Ungrouped)</text>
+  <rect x="60" y="276" width="292" height="34" rx="10" class="btn"/>
+  <text x="76" y="298" class="btnText">e3 (Ungrouped)</text>
+
+  <!-- Selection pill + drag affordance -->
+  <rect x="232" y="196" width="120" height="22" rx="11" class="pill"/>
+  <text x="242" y="212" class="pillText">2 selected</text>
+
+  <!-- Formations section -->
+  <rect x="44" y="366" width="320" height="310" rx="12" class="panel2"/>
+  <text x="60" y="396" class="label">Formations</text>
+
+  <!-- Formation row (drop target while dragging) -->
+  <rect x="60" y="414" width="292" height="40" rx="12" class="dropTarget"/>
+  <text x="78" y="440" class="btnText">▾ Enemy Formation</text>
+  <text x="300" y="440" class="small">drop to add</text>
+
+  <!-- Member rows (expanded) -->
+  <rect x="76" y="462" width="276" height="34" rx="10" class="btn"/>
+  <text x="92" y="484" class="btnText">e10</text>
+  <rect x="322" y="468" width="24" height="22" rx="8" class="pill"/>
+  <text x="332" y="484" class="pillText">-</text>
+
+  <!-- Dragging member row (ghost) -->
+  <rect x="92" y="510" width="276" height="34" rx="10" class="entitySelected" opacity="0.85"/>
+  <text x="108" y="532" class="btnText">e11</text>
+  <rect x="338" y="516" width="24" height="22" rx="8" class="pill"/>
+  <text x="348" y="532" class="pillText">-</text>
+
+  <rect x="76" y="558" width="276" height="34" rx="10" class="btn"/>
+  <text x="92" y="580" class="btnText">e12</text>
+  <rect x="322" y="564" width="24" height="22" rx="8" class="pill"/>
+  <text x="332" y="580" class="pillText">-</text>
+
+  <!-- Sprites drop target for ungrouping -->
+  <rect x="44" y="140" width="320" height="210" rx="12" class="dropTarget2"/>
+  <text x="250" y="170" class="small" fill="var(--accent2)">drop here to ungroup</text>
+
+  <!-- Canvas area (context only) -->
+  <rect x="404" y="86" width="772" height="610" rx="12" class="panel"/>
+  <text x="424" y="118" class="label">Canvas</text>
+  <rect x="520" y="220" width="56" height="40" rx="8" class="entitySelected"/>
+  <rect x="610" y="260" width="72" height="46" rx="8" class="entitySelected"/>
+  <rect x="700" y="220" width="62" height="44" rx="8" class="entitySelected"/>
+  <text x="520" y="206" class="small">Multi-selected sprites</text>
+
+  <!-- Drag arrows -->
+  <!-- From Scene Graph selection to formation row -->
+  <path d="M270 230 C 380 250, 470 320, 320 430" class="arrow"/>
+  <rect x="350" y="270" width="250" height="24" rx="12" class="pill"/>
+  <text x="362" y="287" class="pillText">Drag selected sprites → drop on formation</text>
+
+  <!-- From Canvas selection to formation row -->
+  <path d="M650 250 C 520 300, 420 380, 300 430" class="arrow"/>
+  <rect x="560" y="298" width="210" height="24" rx="12" class="pill"/>
+  <text x="572" y="315" class="pillText">Or drag canvas selection → formation</text>
+
+  <path d="M220 524 C 160 450, 140 330, 170 240" class="arrow2"/>
+  <rect x="168" y="292" width="190" height="24" rx="12" class="pill"/>
+  <text x="180" y="309" class="pillText" fill="var(--text)">Drag member → drop in Sprites</text>
+
+  <!-- Notes -->
+  <rect x="424" y="600" width="720" height="76" rx="12" class="panel2"/>
+  <text x="444" y="630" class="label">Notes</text>
+  <text x="444" y="652" class="small">Drop onto a formation row: dispatch add-entities-to-group(groupId, entityIds)</text>
+  <text x="444" y="672" class="small">Drop into the Sprites section: dispatch remove-entities-from-groups(entityIds)</text>
+</svg>

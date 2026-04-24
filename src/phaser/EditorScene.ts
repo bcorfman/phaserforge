@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { EventBus, setActiveScene } from './EventBus';
+import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
 import { SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
@@ -27,7 +27,7 @@ import {
 import { getEditableBoundsConditionId } from '../editor/boundsCondition';
 import { getSceneWorld } from '../editor/sceneWorld';
 import { canPanCamera, clampCameraScroll, clampZoom, getFitZoom, getNextZoom, getZoomedScroll } from '../editor/viewport';
-import { getCurrentAppStateSnapshot, registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
+import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
 
@@ -57,14 +57,7 @@ export class EditorScene extends Phaser.Scene {
   private selectionFrames?: Phaser.GameObjects.Graphics;
   private pendingDrag?: { startPoint: { x: number; y: number }; hitResult: HitTestResult };
   private gridEnabled = false;
-  private gridSize = 10;
-  private operationHistory: Array<{
-    type: 'move-entity' | 'move-group' | 'move-entities' | 'update-bounds';
-    id: string;
-    before: any;
-    after: any;
-  }> = [];
-  private historyIndex = -1;
+  private gridSize = 8;
   private marqueeGraphics?: Phaser.GameObjects.Graphics;
   private mode: 'edit' | 'play' = 'edit';
   private activeBoundsConditionId?: string;
@@ -86,17 +79,7 @@ export class EditorScene extends Phaser.Scene {
   create(): void {
     this.cameras.main.setBackgroundColor('#0c0f1a');
     this.cameras.main.roundPixels = true;
-    setActiveScene(this);
-    registerSceneGetter(this.sceneBridgeGetter);
-    EventBus.on('selection-changed', this.handleSelectionChanged, this);
-    EventBus.on('canvas-update-bounds', this.updateBounds, this);
-    EventBus.on('history-undo', this.undo, this);
-    EventBus.on('history-redo', this.redo, this);
-    EventBus.on('toggle-grid-snap', this.toggleGridSnap, this);
-    EventBus.on('scene-zoom-in', this.zoomIn, this);
-    EventBus.on('scene-zoom-out', this.zoomOut, this);
-    EventBus.on('scene-fit-view', this.fitView, this);
-    EventBus.on('scene-reset-zoom', this.resetZoom, this);
+    this.bindSceneListeners();
     EventBus.emit('current-scene-ready', this);
 
     // Initialize overlays
@@ -105,37 +88,13 @@ export class EditorScene extends Phaser.Scene {
     this.selectionFrames = this.add.graphics();
     this.selectionFrames.setDepth(11);
 
-    this.input.on('pointerdown', this.handlePointerDown, this);
-    this.input.on('pointermove', this.handlePointerMove, this);
-    this.input.on('pointerup', this.handlePointerUp, this);
-    this.input.on('wheel', this.handleWheel, this);
-
-    // App-level keyboard shortcuts should not depend on canvas focus.
-    window.addEventListener('keydown', this.handleKeyDownBound);
-    window.addEventListener('keyup', this.handleKeyUpBound);
-    window.addEventListener('mousedown', this.handleMouseDownBound);
-    window.addEventListener('mouseup', this.handleMouseUpBound);
+    this.events.on(Phaser.Scenes.Events.SLEEP, this.unbindSceneListeners, this);
+    this.events.on(Phaser.Scenes.Events.WAKE, this.bindSceneListeners, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      setActiveScene(null);
-      unregisterSceneGetter(this.sceneBridgeGetter);
-      EventBus.off('selection-changed', this.handleSelectionChanged, this);
-      EventBus.off('canvas-update-bounds', this.updateBounds, this);
-      EventBus.off('history-undo', this.undo, this);
-      EventBus.off('history-redo', this.redo, this);
-      EventBus.off('toggle-grid-snap', this.toggleGridSnap, this);
-      EventBus.off('scene-zoom-in', this.zoomIn, this);
-      EventBus.off('scene-zoom-out', this.zoomOut, this);
-      EventBus.off('scene-fit-view', this.fitView, this);
-      EventBus.off('scene-reset-zoom', this.resetZoom, this);
-      this.input.off('pointerdown', this.handlePointerDown, this);
-      this.input.off('pointermove', this.handlePointerMove, this);
-      this.input.off('pointerup', this.handlePointerUp, this);
-      this.input.off('wheel', this.handleWheel, this);
-      window.removeEventListener('keydown', this.handleKeyDownBound);
-      window.removeEventListener('keyup', this.handleKeyUpBound);
-      window.removeEventListener('mousedown', this.handleMouseDownBound);
-      window.removeEventListener('mouseup', this.handleMouseUpBound);
+      this.events.off(Phaser.Scenes.Events.SLEEP, this.unbindSceneListeners, this);
+      this.events.off(Phaser.Scenes.Events.WAKE, this.bindSceneListeners, this);
+      this.unbindSceneListeners();
     });
   }
 
@@ -176,6 +135,57 @@ export class EditorScene extends Phaser.Scene {
       this.isMiddleMouseDown = false;
     }
   };
+
+  private listenersBound = false;
+
+  private bindSceneListeners(): void {
+    if (this.listenersBound) return;
+    this.listenersBound = true;
+    setActiveScene(this);
+    registerSceneGetter(this.sceneBridgeGetter);
+    EventBus.on('selection-changed', this.handleSelectionChanged, this);
+    EventBus.on('canvas-update-bounds', this.updateBounds, this);
+    EventBus.on('toggle-grid-snap', this.toggleGridSnap, this);
+    EventBus.on('scene-zoom-in', this.zoomIn, this);
+    EventBus.on('scene-zoom-out', this.zoomOut, this);
+    EventBus.on('scene-fit-view', this.fitView, this);
+    EventBus.on('scene-reset-zoom', this.resetZoom, this);
+
+    this.input.on('pointerdown', this.handlePointerDown, this);
+    this.input.on('pointermove', this.handlePointerMove, this);
+    this.input.on('pointerup', this.handlePointerUp, this);
+    this.input.on('wheel', this.handleWheel, this);
+
+    // App-level keyboard shortcuts should not depend on canvas focus.
+    window.addEventListener('keydown', this.handleKeyDownBound);
+    window.addEventListener('keyup', this.handleKeyUpBound);
+    window.addEventListener('mousedown', this.handleMouseDownBound);
+    window.addEventListener('mouseup', this.handleMouseUpBound);
+  }
+
+  private unbindSceneListeners(): void {
+    if (!this.listenersBound) return;
+    this.listenersBound = false;
+    if (getActiveScene() === this) setActiveScene(null);
+    unregisterSceneGetter(this.sceneBridgeGetter);
+    EventBus.off('selection-changed', this.handleSelectionChanged, this);
+    EventBus.off('canvas-update-bounds', this.updateBounds, this);
+    EventBus.off('toggle-grid-snap', this.toggleGridSnap, this);
+    EventBus.off('scene-zoom-in', this.zoomIn, this);
+    EventBus.off('scene-zoom-out', this.zoomOut, this);
+    EventBus.off('scene-fit-view', this.fitView, this);
+    EventBus.off('scene-reset-zoom', this.resetZoom, this);
+
+    this.input.off('pointerdown', this.handlePointerDown, this);
+    this.input.off('pointermove', this.handlePointerMove, this);
+    this.input.off('pointerup', this.handlePointerUp, this);
+    this.input.off('wheel', this.handleWheel, this);
+
+    window.removeEventListener('keydown', this.handleKeyDownBound);
+    window.removeEventListener('keyup', this.handleKeyUpBound);
+    window.removeEventListener('mousedown', this.handleMouseDownBound);
+    window.removeEventListener('mouseup', this.handleMouseUpBound);
+  }
 
   public getTestSnapshot(): {
     ready: boolean;
@@ -375,34 +385,26 @@ export class EditorScene extends Phaser.Scene {
 
     switch (hitResult.kind) {
       case 'entity':
-        this.recordOperation('move-entity', hitResult.id!, this.compiled?.entities[hitResult.id!]);
         EventBus.emit('canvas-select', hitResult);
+        EventBus.emit('canvas-interaction-start', hitResult);
         EventBus.emit('canvas-move-entity', { id: hitResult.id, dx, dy });
-        if (this.operationHistory[this.historyIndex]?.before) {
-          const before = this.operationHistory[this.historyIndex].before;
-          this.operationHistory[this.historyIndex].after = { ...before, x: before.x + dx, y: before.y + dy };
-        }
+        EventBus.emit('canvas-interaction-end');
         break;
       case 'group': {
-        const groupMembers = this.compiled?.groups[hitResult.id!]?.members || [];
-        const beforeState = groupMembers.map((member) => ({ id: member.id, entity: this.compiled?.entities[member.id] }));
-        this.recordOperation('move-group', hitResult.id!, beforeState);
         EventBus.emit('canvas-select', hitResult);
+        EventBus.emit('canvas-interaction-start', hitResult);
         EventBus.emit('canvas-move-group', { id: hitResult.id, dx, dy });
-        this.operationHistory[this.historyIndex].after = beforeState.map((memberState) => ({
-          id: memberState.id,
-          entity: memberState.entity ? { ...memberState.entity, x: memberState.entity.x + dx, y: memberState.entity.y + dy } : undefined,
-        }));
+        EventBus.emit('canvas-interaction-end');
         break;
       }
       case 'bounds-handle': {
         const attachment = this.activeBoundsConditionId ? this.compiled?.scene.attachments[this.activeBoundsConditionId] : undefined;
         const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
         if (!attachment || !boundsCondition || !hitResult.handle) return;
-        this.recordOperation('update-bounds', attachment.id, boundsCondition.bounds);
+        EventBus.emit('canvas-interaction-start', { kind: 'bounds-handle', id: attachment.id });
         const nextBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, hitResult.handle, dx, dy);
         EventBus.emit('canvas-update-bounds', nextBounds);
-        this.operationHistory[this.historyIndex].after = nextBounds;
+        EventBus.emit('canvas-interaction-end');
         break;
       }
       default:
@@ -415,10 +417,10 @@ export class EditorScene extends Phaser.Scene {
     const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
     if (!attachment || !boundsCondition) return;
 
-    this.recordOperation('update-bounds', attachment.id, boundsCondition.bounds);
+    EventBus.emit('canvas-interaction-start', { kind: 'bounds-handle', id: attachment.id });
     const nextBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, handle, delta.x, delta.y);
     EventBus.emit('canvas-update-bounds', nextBounds);
-    this.operationHistory[this.historyIndex].after = nextBounds;
+    EventBus.emit('canvas-interaction-end');
   }
 
   public testPanByScreenDelta(delta: { x: number; y: number }): void {
@@ -426,14 +428,6 @@ export class EditorScene extends Phaser.Scene {
     const dy = delta.y / this.currentZoom;
     this.applyScroll(this.cameras.main.scrollX - dx, this.cameras.main.scrollY - dy);
     this.emitViewState();
-  }
-
-  public testUndo(): void {
-    this.undo();
-  }
-
-  public testRedo(): void {
-    this.redo();
   }
 
   update(_time: number, delta: number): void {
@@ -960,12 +954,10 @@ export class EditorScene extends Phaser.Scene {
           // Create marquee rectangle
           this.createMarqueeRectangle();
         } else if (hitResult.kind === 'bounds-handle') {
-          // Record bounds operation
           const attachmentId = this.activeBoundsConditionId;
           const attachment = attachmentId ? this.compiled?.scene.attachments[attachmentId] : undefined;
           const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
           if (!attachment || !boundsCondition) return;
-          this.recordOperation('update-bounds', attachment.id, boundsCondition.bounds);
 
           this.dragState = {
             kind: 'bounds-handle',
@@ -980,8 +972,6 @@ export class EditorScene extends Phaser.Scene {
           // Check if this is part of a multi-selection
           if (hitResult.kind === 'entity' && this.selection.kind === 'entities' && this.selection.ids.includes(hitResult.id!)) {
             // Start multi-entity drag
-            const beforeState = this.selection.ids.map(id => ({ id, entity: this.compiled?.entities[id] }));
-            this.recordOperation('move-entities', this.selection.ids.join(','), beforeState);
             this.dragState = {
               kind: 'entity', // Use 'entity' kind but with multi-entity logic
               id: hitResult.id!, // Store the clicked entity ID for reference
@@ -991,15 +981,6 @@ export class EditorScene extends Phaser.Scene {
             };
             EventBus.emit('canvas-interaction-start', { kind: 'entities', id: this.selection.ids.join(',') });
           } else {
-            // Record entity/group operation
-            if (hitResult.kind === 'entity') {
-              this.recordOperation('move-entity', hitResult.id!, this.compiled?.entities[hitResult.id!]);
-            } else if (hitResult.kind === 'group') {
-              const groupMembers = this.compiled?.groups[hitResult.id!]?.members || [];
-              const beforeState = groupMembers.map(member => ({ id: member.id, entity: this.compiled?.entities[member.id] }));
-              this.recordOperation('move-group', hitResult.id!, beforeState);
-            }
-
             EventBus.emit('canvas-select', hitResult);
             this.dragState = {
               kind: hitResult.kind as 'entity' | 'group',
@@ -1030,6 +1011,11 @@ export class EditorScene extends Phaser.Scene {
     // Apply grid snapping to deltas
     const snappedDx = Math.round(this.snapDeltaToGrid(dx));
     const snappedDy = Math.round(this.snapDeltaToGrid(dy));
+
+    if (snappedDx === 0 && snappedDy === 0 && this.dragState.kind !== 'marquee') {
+      // Avoid emitting no-op mutations (prevents useless history entries).
+      return;
+    }
 
     if (this.dragState.kind === 'marquee') {
       // Update marquee rectangle
@@ -1097,9 +1083,6 @@ export class EditorScene extends Phaser.Scene {
         }
         this.destroyMarqueeRectangle();
       }
-      if (this.dragState.kind !== 'marquee' && this.dragState.hasMoved) {
-        this.finalizeRecordedOperation();
-      }
       EventBus.emit('canvas-interaction-end');
       this.dragState = undefined;
       if (this.dragOverlay) {
@@ -1133,8 +1116,14 @@ export class EditorScene extends Phaser.Scene {
     if (!this.compiled || this.dragState || this.panState) return;
     const rawEvent = pointer.event;
     const canvasRect = this.game.canvas.getBoundingClientRect();
-    const pointerX = rawEvent && 'clientX' in rawEvent ? rawEvent.clientX - canvasRect.left : this.input.activePointer.x;
-    const pointerY = rawEvent && 'clientY' in rawEvent ? rawEvent.clientY - canvasRect.top : this.input.activePointer.y;
+    const scaleX = canvasRect.width > 0 ? this.scale.width / canvasRect.width : 1;
+    const scaleY = canvasRect.height > 0 ? this.scale.height / canvasRect.height : 1;
+    const pointerX = rawEvent && 'clientX' in rawEvent
+      ? (rawEvent.clientX - canvasRect.left) * scaleX
+      : this.input.activePointer.x;
+    const pointerY = rawEvent && 'clientY' in rawEvent
+      ? (rawEvent.clientY - canvasRect.top) * scaleY
+      : this.input.activePointer.y;
     this.applyWheelZoom(pointerX, pointerY, deltaX, deltaY);
   }
 
@@ -1251,21 +1240,9 @@ export class EditorScene extends Phaser.Scene {
         break;
       case 'z':
       case 'Z':
-        if (event.ctrlKey || event.metaKey) {
-          event.preventDefault();
-          if (event.shiftKey) {
-            this.redo();
-          } else {
-            this.undo();
-          }
-        }
         return;
       case 'y':
       case 'Y':
-        if (event.ctrlKey || event.metaKey) {
-          event.preventDefault();
-          this.redo();
-        }
         return;
       case 'g':
       case 'G':
@@ -1306,19 +1283,10 @@ export class EditorScene extends Phaser.Scene {
 
     // Apply nudge based on current selection
     if (this.selection.kind === 'entity') {
-      this.recordOperation('move-entity', this.selection.id, this.compiled?.entities[this.selection.id]);
       EventBus.emit('canvas-move-entity', { id: this.selection.id, dx, dy });
     } else if (this.selection.kind === 'group') {
-      // For groups, record all member positions
-      const groupMembers = this.compiled?.groups[this.selection.id]?.members || [];
-      const beforeState = groupMembers.map(member => ({ id: member.id, entity: this.compiled?.entities[member.id] }));
-      this.recordOperation('move-group', this.selection.id, beforeState);
       EventBus.emit('canvas-move-group', { id: this.selection.id, dx, dy });
     } else if (this.selection.kind === 'entities') {
-      // For multi-entity selection, record all entity positions
-      const beforeState = this.selection.ids.map(id => ({ id, entity: this.compiled?.entities[id] }));
-      // Record as a custom operation type for multi-entity move
-      this.recordOperation('move-entities', this.selection.ids.join(','), beforeState);
       EventBus.emit('canvas-move-entities', { entityIds: this.selection.ids, dx, dy });
     }
   }
@@ -1337,129 +1305,6 @@ export class EditorScene extends Phaser.Scene {
   private snapDeltaToGrid(delta: number): number {
     if (!this.gridEnabled) return delta;
     return Math.round(delta / this.gridSize) * this.gridSize;
-  }
-
-  private recordOperation(type: 'move-entity' | 'move-group' | 'move-entities' | 'update-bounds', id: string, beforeState: any): void {
-    // Remove any operations after current history index (for when user does new operation after undo)
-    this.operationHistory = this.operationHistory.slice(0, this.historyIndex + 1);
-
-    // Add new operation
-    this.operationHistory.push({ type, id, before: beforeState, after: null });
-    this.historyIndex = this.operationHistory.length - 1;
-  }
-
-  private finalizeRecordedOperation(): void {
-    const operation = this.operationHistory[this.historyIndex];
-    if (!operation) return;
-    operation.after = this.captureOperationState(operation.type, operation.id);
-  }
-
-  private undo(): void {
-    if (this.historyIndex < 0) return;
-
-    const operation = this.operationHistory[this.historyIndex];
-    this.applyOperationInverse(operation);
-    this.historyIndex--;
-  }
-
-  private redo(): void {
-    if (this.historyIndex >= this.operationHistory.length - 1) return;
-
-    this.historyIndex++;
-    const operation = this.operationHistory[this.historyIndex];
-    this.applyOperationForward(operation);
-  }
-
-  private applyOperationInverse(operation: any): void {
-    switch (operation.type) {
-      case 'move-entity':
-        if (operation.before && operation.after) {
-          EventBus.emit('canvas-move-entity', {
-            id: operation.id,
-            dx: operation.before.x - operation.after.x,
-            dy: operation.before.y - operation.after.y
-          });
-        }
-        break;
-      case 'move-group':
-        if (operation.before.length > 0 && operation.after?.length > 0) {
-          EventBus.emit('canvas-move-group', {
-            id: operation.id,
-            dx: operation.before[0].entity.x - operation.after[0].entity.x,
-            dy: operation.before[0].entity.y - operation.after[0].entity.y
-          });
-        }
-        break;
-      case 'move-entities':
-        if (operation.before.length > 0 && operation.after?.length > 0) {
-          EventBus.emit('canvas-move-entities', {
-            entityIds: operation.id.split(','),
-            dx: operation.before[0].entity.x - operation.after[0].entity.x,
-            dy: operation.before[0].entity.y - operation.after[0].entity.y,
-          });
-        }
-        break;
-      case 'update-bounds':
-        // Restore bounds
-        EventBus.emit('canvas-update-bounds', operation.before);
-        break;
-    }
-  }
-
-  private applyOperationForward(operation: any): void {
-    switch (operation.type) {
-      case 'move-entity':
-        if (operation.before && operation.after) {
-          EventBus.emit('canvas-move-entity', {
-            id: operation.id,
-            dx: operation.after.x - operation.before.x,
-            dy: operation.after.y - operation.before.y,
-          });
-        }
-        break;
-      case 'move-group':
-        if (operation.before.length > 0 && operation.after?.length > 0) {
-          EventBus.emit('canvas-move-group', {
-            id: operation.id,
-            dx: operation.after[0].entity.x - operation.before[0].entity.x,
-            dy: operation.after[0].entity.y - operation.before[0].entity.y,
-          });
-        }
-        break;
-      case 'move-entities':
-        if (operation.before.length > 0 && operation.after?.length > 0) {
-          EventBus.emit('canvas-move-entities', {
-            entityIds: operation.id.split(','),
-            dx: operation.after[0].entity.x - operation.before[0].entity.x,
-            dy: operation.after[0].entity.y - operation.before[0].entity.y,
-          });
-        }
-        break;
-      case 'update-bounds':
-        if (operation.after) {
-          EventBus.emit('canvas-update-bounds', operation.after);
-        }
-        break;
-    }
-  }
-
-  private captureOperationState(type: 'move-entity' | 'move-group' | 'move-entities' | 'update-bounds', id: string): any {
-    const latestScene = getCurrentAppStateSnapshot()?.scene ?? this.compiled?.scene;
-    switch (type) {
-      case 'move-entity':
-        return latestScene?.entities[id] ? { ...latestScene.entities[id] } : undefined;
-      case 'move-group': {
-        const memberIds = latestScene?.groups[id]?.members ?? [];
-        return memberIds.map((memberId) => ({ id: memberId, entity: latestScene?.entities[memberId] ? { ...latestScene.entities[memberId] } : undefined }));
-      }
-      case 'move-entities':
-        return id.split(',').map((memberId) => ({ id: memberId, entity: latestScene?.entities[memberId] ? { ...latestScene.entities[memberId] } : undefined }));
-      case 'update-bounds': {
-        const attachment = id ? latestScene?.attachments[id] : undefined;
-        const condition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
-        return condition ? { ...condition.bounds } : undefined;
-      }
-    }
   }
 
   private toggleGridSnap(): void {
