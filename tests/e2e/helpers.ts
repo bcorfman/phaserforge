@@ -1,3 +1,5 @@
+/// <reference path="../../src/vite-env.d.ts" />
+
 import { expect, type Locator, type Page } from '@playwright/test';
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';

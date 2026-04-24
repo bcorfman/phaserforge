@@ -1,23 +1,33 @@
 /// <reference types="vite/client" />
 
+type PhaserActionsStudioPoint = { x: number; y: number };
+type PhaserActionsStudioRect = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  centerX?: number;
+  centerY?: number;
+};
+
 interface PhaserActionsStudioTestBridge {
   isEnabled: boolean;
   clearStoredScene(): void;
   getState(): unknown;
   isSceneReady(): boolean;
   getSceneSnapshot(): unknown;
-  getEntityWorldRect(id: string): unknown;
-  getEntitySpriteWorldRect(id: string): unknown;
-  getGroupWorldBounds(id: string): unknown;
-  getGroupFrameVisible(id: string): unknown;
-  getGroupLabelVisible(id: string): unknown;
-  getFormationPhysicsGroupInfo(groupId: string): unknown;
-  getEditableBoundsRect(): unknown;
-  worldToClient(point: { x: number; y: number }): unknown;
-  tapWorld(point: { x: number; y: number }): void;
-  dragWorld(start: { x: number; y: number }, end: { x: number; y: number }): void;
-  dragBoundsHandle(handle: string, delta: { x: number; y: number }): void;
-  panByScreenDelta(delta: { x: number; y: number }): void;
+  getEntityWorldRect(id: string): PhaserActionsStudioRect | null;
+  getEntitySpriteWorldRect(id: string): PhaserActionsStudioRect | null;
+  getGroupWorldBounds(id: string): PhaserActionsStudioRect | null;
+  getGroupFrameVisible(id: string): boolean | null;
+  getGroupLabelVisible(id: string): boolean | null;
+  getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
+  getEditableBoundsRect(): PhaserActionsStudioRect | null;
+  worldToClient(point: PhaserActionsStudioPoint): PhaserActionsStudioPoint | null;
+  tapWorld(point: PhaserActionsStudioPoint): void;
+  dragWorld(start: PhaserActionsStudioPoint, end: PhaserActionsStudioPoint): void;
+  dragBoundsHandle(handle: string, delta: PhaserActionsStudioPoint): void;
+  panByScreenDelta(delta: PhaserActionsStudioPoint): void;
   undo(): void;
   redo(): void;
   select(selection: unknown): void;

@@ -19,17 +19,22 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('edits formation details from the inspector', async ({ page }) => {
+test('edits formation details and layout from the inspector', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');
 
   await page.getByTestId('formation-name-input').fill('Invader Block');
+  await page.getByTestId('arrange-preset-select').selectOption('grid');
+  await page.getByTestId('arrange-param-startX').fill('260');
+  await page.getByTestId('arrange-param-spacingX').fill('60');
+  await page.getByTestId('apply-group-layout-button').click();
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { groups: Record<string, { name?: string; layout?: { type: string; startX?: number; spacingX?: number } }> } }>(page);
     return state.scene.groups['g-enemies'];
   }).toMatchObject({
     name: 'Invader Block',
+    layout: { type: 'grid', startX: 260, spacingX: 60 },
   });
 });
 
@@ -56,8 +61,8 @@ test('edits move-until and bounds values from the attachment inspector', async (
 
 test('removes a formation member and keeps the group selected', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
-  await page.getByTestId('toggle-group-g-enemies').click();
-  await page.getByTestId('group-member-remove-g-enemies-e3').click();
+  await page.getByTestId('inspector').getByLabel('Expand Members').click();
+  await page.getByTestId('group-member-remove-e3').click();
 
   await expect.poll(async () => {
     const state = await getState<{ selection: { kind: string; id?: string }; scene: { groups: Record<string, { members: string[]; layout?: { type: string } }> } }>(page);
@@ -181,7 +186,7 @@ test('bounds hit checkbox toggles BoundsHit condition', async ({ page }) => {
   await expect(page.getByTestId('attachment-bounds-behavior-select')).toBeVisible();
 });
 
-test('creates a formation from imported sprites via the Group button', async ({ page }) => {
+test('creates a formation from imported sprites and arranges it into a grid', async ({ page }) => {
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
   await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
   await page.getByTestId('spritesheet-frame-width-input').fill('64');
@@ -191,8 +196,19 @@ test('creates a formation from imported sprites via the Group button', async ({ 
 
   await expect(page.getByTestId('multi-entity-inspector')).toBeVisible();
   await page.getByTestId('new-formation-name-input').fill('Raid Wing');
-  await page.getByTestId('group-selection-button').click();
+  await page.getByTestId('create-formation-from-selection-button').click();
   await expectInputValue(page.getByTestId('formation-name-input'), 'Raid Wing');
+
+  await page.getByTestId('arrange-preset-select').selectOption('grid');
+  await page.getByTestId('arrange-param-rows').fill('1');
+  await page.getByTestId('arrange-param-cols').fill('2');
+  await page.getByTestId('apply-group-layout-button').click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { groups: Record<string, { name?: string; layout?: { type?: string; rows?: number; cols?: number } }> } }>(page);
+    const createdGroup = Object.values(state.scene.groups).find((group) => group.name === 'Raid Wing');
+    return createdGroup?.layout;
+  }).toMatchObject({ type: 'grid', rows: 1, cols: 2 });
 });
 
 test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
@@ -223,7 +239,7 @@ test('assigns a group MoveUntil action to imported sprites and runs it in play m
   await page.getByTestId('spritesheet-frame-height-input').fill('64');
   await page.getByTestId('spritesheet-frame-1').click();
   await page.getByTestId('import-sprites-button').click();
-  await page.getByTestId('group-selection-button').click();
+  await page.getByTestId('create-formation-from-selection-button').click();
 
   await page.getByTestId('add-attachment-MoveUntil').click();
   await page.getByTestId('attachment-velocity-x-input').fill('120');
