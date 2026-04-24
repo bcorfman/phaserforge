@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --danger:#ff6a8f;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .entitySelected{fill:#1a254a; stroke:var(--accent); stroke-width:2;}
+      .groupHull{fill:rgba(124,240,199,0.08); stroke:var(--accent2); stroke-width:2;}
+      .menu{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .menuItem{fill:var(--text); font-size:12px; font-weight:600;}
+      .menuHint{fill:var(--muted); font-size:11px;}
+      .divider{fill:#2a3764;}
+      .callout{fill:rgba(106,167,255,0.10); stroke:var(--accent); stroke-width:1; stroke-dasharray:6 6;}
+      .danger{fill:var(--danger); font-size:12px; font-weight:700;}
+      .cursorFill{fill:#ffffff;}
+      .cursorStroke{stroke:#0b1020; stroke-width:2;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Canvas Editor — Phase 3: Cursor Context Menu (Right‑click)</text>
+
+  <!-- Canvas -->
+  <rect x="24" y="86" width="820" height="610" rx="12" class="panel"/>
+  <text x="44" y="118" class="label">Canvas</text>
+
+  <!-- A freeform group hull (existing group) -->
+  <rect x="90" y="190" width="360" height="220" rx="18" class="groupHull"/>
+  <text x="110" y="216" class="small">Group: Formation A (freeform)</text>
+  <rect x="140" y="250" width="66" height="44" rx="8" class="entity"/>
+  <rect x="240" y="280" width="56" height="40" rx="8" class="entity"/>
+  <rect x="330" y="240" width="62" height="44" rx="8" class="entity"/>
+  <rect x="260" y="350" width="72" height="46" rx="8" class="entity"/>
+
+  <!-- Multi-selected ungrouped entities -->
+  <rect x="520" y="220" width="56" height="40" rx="8" class="entitySelected"/>
+  <rect x="610" y="260" width="72" height="46" rx="8" class="entitySelected"/>
+  <rect x="700" y="220" width="62" height="44" rx="8" class="entitySelected"/>
+  <text x="520" y="206" class="small">Ungrouped selection</text>
+
+  <!-- Cursor (right click) -->
+  <path class="cursorFill cursorStroke" d="M0 0 L0 54 L14 44 L23 64 L33 60 L24 41 L44 41 Z" transform="translate(700 300)"/>
+  <rect x="676" y="280" width="170" height="42" rx="12" class="callout"/>
+  <text x="690" y="306" class="menuItem">Right‑click → Selection Actions</text>
+
+  <!-- Context menu anchored to cursor -->
+  <rect x="760" y="320" width="320" height="250" rx="12" class="menu"/>
+  <text x="778" y="350" class="label">Selection Actions</text>
+
+  <text x="778" y="382" class="menuItem">Create Group from Selection</text>
+  <text x="1042" y="382" class="menuHint">G</text>
+  <text x="778" y="410" class="menuItem">Add to Existing Group…</text>
+  <text x="1026" y="410" class="menuHint">⇧G</text>
+
+  <rect x="778" y="424" width="284" height="1" class="divider"/>
+
+  <text x="778" y="452" class="menuItem">Remove from Group</text>
+  <text x="1028" y="452" class="menuHint">⌥⌫</text>
+  <text x="778" y="480" class="menuItem">Dissolve Group</text>
+  <text x="1024" y="480" class="menuHint">⇧⌥⌫</text>
+  <text x="778" y="508" class="menuItem">Convert Group Layout ▸</text>
+  <text x="1036" y="508" class="menuHint">L</text>
+
+  <rect x="778" y="522" width="284" height="1" class="divider"/>
+
+  <text x="778" y="550" class="danger">Delete Entities</text>
+  <text x="1026" y="550" class="menuHint">⌫</text>
+
+  <!-- Inspector (right) -->
+  <rect x="864" y="86" width="312" height="610" rx="12" class="panel"/>
+  <text x="884" y="118" class="title">Inspector</text>
+
+  <rect x="884" y="140" width="272" height="124" rx="10" class="panel2"/>
+  <text x="898" y="168" class="label">Behavior</text>
+  <text x="898" y="194" class="small">Right‑click on:</text>
+  <text x="898" y="216" class="small">• canvas selection</text>
+  <text x="898" y="238" class="small">• formation hull / member</text>
+
+  <rect x="884" y="284" width="272" height="140" rx="10" class="panel2"/>
+  <text x="898" y="312" class="label">Rules</text>
+  <text x="898" y="336" class="small">Menu appears at cursor position</text>
+  <text x="898" y="358" class="small">If nothing selected, menu omits group actions</text>
+  <text x="898" y="380" class="small">Escape closes menu</text>
+</svg>
+

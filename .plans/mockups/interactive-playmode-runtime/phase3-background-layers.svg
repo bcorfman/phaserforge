@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --danger:#ff6a8f;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnDanger{fill:#1a1730; stroke:rgba(255,106,143,0.8); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--muted); font-size:12px; font-weight:600;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .entityTop{fill:#1a254a; stroke:var(--accent2); stroke-width:2;}
+      .layerTile{fill:#141f3a; stroke:#2a3764; stroke-width:1;}
+      .layerTileSelected{fill:#141f3a; stroke:var(--accent); stroke-width:2;}
+      .layerPreview1{fill:rgba(106,167,255,0.18);}
+      .layerPreview2{fill:rgba(124,240,199,0.12);}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Interactive Play Mode Runtime — Phase 3: Background Layers</text>
+
+  <rect x="800" y="30" width="92" height="30" rx="10" class="chipActive"/>
+  <text x="828" y="50" class="btnText">Edit</text>
+  <rect x="896" y="30" width="92" height="30" rx="10" class="chip"/>
+  <text x="925" y="50" class="btnTextMuted">Play</text>
+
+  <rect x="996" y="30" width="150" height="30" rx="8" class="btn"/>
+  <text x="1014" y="50" class="btnText">Add Background</text>
+
+  <!-- App body -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Scene Graph</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Left: scenes list -->
+  <rect x="44" y="140" width="296" height="76" rx="12" class="panel2"/>
+  <text x="60" y="164" class="small">Scenes</text>
+  <rect x="60" y="176" width="210" height="28" rx="10" class="chipActive"/>
+  <text x="78" y="196" class="btnText">scene-1 (active)</text>
+  <rect x="278" y="176" width="48" height="28" rx="10" class="btn"/>
+  <text x="294" y="196" class="btnText">＋</text>
+
+  <!-- Left: sections placeholders -->
+  <rect x="44" y="232" width="296" height="144" rx="12" class="panel2"/>
+  <text x="60" y="258" class="small">Sprites</text>
+  <rect x="60" y="274" width="260" height="24" rx="10" class="layerTile"/>
+  <text x="74" y="291" class="tiny">player</text>
+  <rect x="60" y="304" width="260" height="24" rx="10" class="layerTile"/>
+  <text x="74" y="321" class="tiny">enemy-1</text>
+  <rect x="60" y="334" width="260" height="24" rx="10" class="layerTile"/>
+  <text x="74" y="351" class="tiny">enemy-2</text>
+
+  <rect x="44" y="390" width="296" height="196" rx="12" class="panel2"/>
+  <text x="60" y="416" class="small">Formations</text>
+  <rect x="60" y="432" width="260" height="24" rx="10" class="layerTile"/>
+  <text x="74" y="449" class="tiny">Enemy Formation ▸</text>
+
+  <!-- Canvas: layered background + sprites -->
+  <rect x="392" y="140" width="476" height="536" rx="16" class="panel2"/>
+  <!-- background layer 1 -->
+  <rect x="412" y="160" width="436" height="200" rx="14" class="layerPreview1"/>
+  <text x="424" y="182" class="tiny">BG Layer 1: starfield (cover)</text>
+  <!-- background layer 2 -->
+  <rect x="412" y="370" width="436" height="170" rx="14" class="layerPreview2"/>
+  <text x="424" y="392" class="tiny">BG Layer 2: fog (tile, scrollFactor 0.2)</text>
+
+  <!-- entities on top -->
+  <rect x="528" y="428" width="54" height="40" rx="8" class="entityTop"/>
+  <rect x="612" y="446" width="62" height="44" rx="8" class="entity"/>
+  <rect x="480" y="478" width="66" height="44" rx="8" class="entity"/>
+  <text x="528" y="416" class="tiny">Sprites render above backgrounds</text>
+
+  <!-- Inspector: scene selected + background layers foldout -->
+  <rect x="920" y="140" width="236" height="44" rx="12" class="panel2"/>
+  <text x="936" y="168" class="btnText">Scene: scene-1</text>
+
+  <rect x="920" y="196" width="236" height="476" rx="12" class="panel2"/>
+  <text x="936" y="222" class="small">Background Layers</text>
+
+  <!-- list -->
+  <rect x="936" y="236" width="204" height="54" rx="12" class="layerTileSelected"/>
+  <text x="950" y="258" class="tiny">1) starfield.png</text>
+  <text x="950" y="276" class="tiny">layout: cover · depth: -100</text>
+  <rect x="1094" y="246" width="22" height="20" rx="6" class="btn"/>
+  <text x="1101" y="261" class="btnText">↑</text>
+  <rect x="1118" y="246" width="22" height="20" rx="6" class="btn"/>
+  <text x="1125" y="261" class="btnText">↓</text>
+  <rect x="1094" y="268" width="46" height="20" rx="6" class="btnDanger"/>
+  <text x="1106" y="283" class="btnText">✕</text>
+
+  <rect x="936" y="298" width="204" height="54" rx="12" class="layerTile"/>
+  <text x="950" y="320" class="tiny">2) fog.png</text>
+  <text x="950" y="338" class="tiny">layout: tile · scrollFactor: 0.2</text>
+
+  <rect x="936" y="362" width="204" height="28" rx="10" class="btn"/>
+  <text x="950" y="382" class="btnText">＋ Add Layer</text>
+
+  <line x1="936" y1="406" x2="1140" y2="406" class="divider"/>
+
+  <!-- selected layer properties -->
+  <text x="936" y="430" class="small">Selected Layer</text>
+
+  <rect x="936" y="442" width="204" height="28" rx="10" class="field"/>
+  <text x="946" y="461" class="fieldText">assetId: starfield</text>
+
+  <rect x="936" y="476" width="204" height="28" rx="10" class="field"/>
+  <text x="946" y="495" class="fieldText">layout: cover</text>
+
+  <rect x="936" y="510" width="98" height="28" rx="10" class="field"/>
+  <text x="946" y="529" class="fieldText">depth: -100</text>
+  <rect x="1042" y="510" width="98" height="28" rx="10" class="field"/>
+  <text x="1052" y="529" class="fieldText">alpha: 1.0</text>
+
+  <rect x="936" y="544" width="98" height="28" rx="10" class="field"/>
+  <text x="946" y="563" class="fieldText">scrollX: 1.0</text>
+  <rect x="1042" y="544" width="98" height="28" rx="10" class="field"/>
+  <text x="1052" y="563" class="fieldText">scrollY: 1.0</text>
+
+  <rect x="936" y="578" width="204" height="28" rx="10" class="field"/>
+  <text x="946" y="597" class="fieldText">tint: (optional)</text>
+
+  <!-- Callout -->
+  <rect x="392" y="622" width="476" height="54" rx="12" class="panel2"/>
+  <text x="412" y="646" class="small">Behavior</text>
+  <text x="412" y="666" class="tiny">Layers render behind entities in both Edit (EditorScene) and Play (GameScene).</text>
+</svg>
+

@@ -634,6 +634,108 @@ html[data-theme='dark'] .phaser-frame {
   box-shadow: var(--shadow);
 }
 
+.canvas-context-menu {
+  position: fixed;
+  z-index: 2000;
+  min-width: 18rem;
+  max-width: min(22rem, 92vw);
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.65rem;
+  border-radius: 1rem;
+  border: 1px solid var(--stroke);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.canvas-context-submenu {
+  position: absolute;
+  z-index: 2001;
+  top: 3.1rem;
+  left: calc(100% + 0.55rem);
+  min-width: 16rem;
+  max-width: min(20rem, 70vw);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.65rem;
+  border-radius: 1rem;
+  border: 1px solid var(--stroke);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.canvas-selection-menu-item.active {
+  background: var(--surface-muted);
+}
+
+.canvas-submenu-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.canvas-submenu-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0.4rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.canvas-submenu-field input {
+  width: 5.2rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(20, 93, 102, 0.45);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+}
+
+.canvas-submenu-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.2rem;
+}
+
+.canvas-selection-actions-top-right {
+  position: absolute;
+  top: 4.4rem;
+  right: 1rem;
+  pointer-events: auto;
+}
+
+.canvas-selection-actions-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.canvas-selection-actions-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 0.35rem;
+  white-space: nowrap;
+}
+
 .canvas-selection-menu-item {
   text-align: left;
   background: transparent;

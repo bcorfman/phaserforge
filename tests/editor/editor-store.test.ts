@@ -515,6 +515,36 @@ describe('EditorStore reducer', () => {
     expect(next.dirty).toBe(true);
   });
 
+  it('converts a group layout to freeform', () => {
+    const state = seededState();
+    const beforeLayout = sceneOf(state).groups['g-enemies'].layout;
+    expect(beforeLayout?.type).toBe('grid');
+
+    const next = reducer(state, { type: 'convert-group-layout-freeform', id: 'g-enemies' } as any);
+
+    expect(sceneOf(next).groups['g-enemies'].layout).toEqual({ type: 'freeform' });
+    expect(next.dirty).toBe(true);
+  });
+
+  it('converts a group layout to grid without resizing member count', () => {
+    const state = seededState();
+    const next = reducer(state, { type: 'convert-group-layout-grid', id: 'g-enemies', rows: 1, cols: 1 } as any);
+
+    expect(sceneOf(next).groups['g-enemies'].layout).toMatchObject({ type: 'grid', rows: 1 });
+    expect(sceneOf(next).groups['g-enemies'].members).toHaveLength(sceneOf(state).groups['g-enemies'].members.length);
+    expect(sceneOf(next).entities.e1).toMatchObject({ x: 220, y: 140 });
+    expect(sceneOf(next).entities.e2).toMatchObject({ x: 268, y: 140 });
+    expect(sceneOf(next).entities.e6).toMatchObject({ x: 460, y: 140 });
+  });
+
+  it('converts a group layout to an arrange preset', () => {
+    const state = seededState();
+    const next = reducer(state, { type: 'convert-group-layout-arrange', id: 'g-enemies', arrangeKind: 'circle' } as any);
+
+    expect(sceneOf(next).groups['g-enemies'].layout).toMatchObject({ type: 'arrange', arrangeKind: 'circle' });
+    expect(next.dirty).toBe(true);
+  });
+
   it('updates scene world size', () => {
     const state = seededState();
     const next = reducer(state, {
@@ -701,5 +731,67 @@ describe('EditorStore reducer', () => {
     const state = seededState();
     const next = reducer(state, { type: 'set-ui-scale', uiScale: 0.2 } as any);
     expect(next.uiScale).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it('adds a background layer from an imported image file and stores it in project assets', () => {
+    const state = seededState();
+    const beforeScene = sceneOf(state);
+    expect(beforeScene.backgroundLayers ?? []).toEqual([]);
+    expect(Object.keys(state.project.assets.images ?? {})).toEqual([]);
+
+    const next = reducer(state, {
+      type: 'add-background-layer-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+        originalName: 'starfield.png',
+        mimeType: 'image/png',
+      },
+      defaults: { layout: 'cover' },
+    } as any);
+
+    const nextScene = sceneOf(next);
+    expect(nextScene.backgroundLayers?.length).toBe(1);
+    const layer = nextScene.backgroundLayers?.[0]!;
+    expect(layer.assetId).toBeTruthy();
+    expect(layer.layout).toBe('cover');
+    expect(layer.depth).toBeLessThan(0);
+    expect(next.project.assets.images[layer.assetId]).toMatchObject({
+      id: layer.assetId,
+      source: {
+        kind: 'embedded',
+        originalName: 'starfield.png',
+        mimeType: 'image/png',
+      },
+    });
+  });
+
+  it('reorders background layers within the scene', () => {
+    const state = seededState();
+    const withTwo = reducer(state, {
+      type: 'set-scene-background-layers',
+      layers: [
+        { assetId: 'a', x: 0, y: 0, depth: -100, layout: 'cover' },
+        { assetId: 'b', x: 0, y: 0, depth: -110, layout: 'tile', scrollFactor: { x: 0.2, y: 0.2 } },
+      ],
+    } as any);
+
+    const moved = reducer(withTwo, { type: 'move-background-layer', fromIndex: 1, toIndex: 0 } as any);
+    expect(sceneOf(moved).backgroundLayers?.map((l: any) => l.assetId)).toEqual(['b', 'a']);
+  });
+
+  it('undo/redo restores background layer edits', () => {
+    const state = reducer(seededState(), {
+      type: 'set-scene-background-layers',
+      layers: [{ assetId: 'a', x: 10, y: 20, depth: -100, layout: 'cover' }],
+    } as any);
+
+    const updated = reducer(state, { type: 'update-background-layer', index: 0, patch: { depth: -222 } } as any);
+    expect(sceneOf(updated).backgroundLayers?.[0]?.depth).toBe(-222);
+
+    const undone = reducer(updated, { type: 'history-undo' });
+    expect(sceneOf(undone).backgroundLayers?.[0]?.depth).toBe(-100);
+
+    const redone = reducer(undone, { type: 'history-redo' });
+    expect(sceneOf(redone).backgroundLayers?.[0]?.depth).toBe(-222);
   });
 });

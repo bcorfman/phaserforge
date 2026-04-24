@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import {
   EditorRegistryConfig,
+  BackgroundLayerSpec,
   GroupSpec,
   Id,
   GameSceneSpec,
@@ -12,7 +13,7 @@ import {
 import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject';
 import { validateSceneSpec } from '../model/validation';
 import { resolveEntityDefaults } from '../model/entityDefaults';
-import { applyGroupArrangeLayout, applyGroupGridLayout, type GroupGridLayout } from './formationLayout';
+import { applyGroupArrangeLayout, applyGroupGridLayout, applyGroupGridLayoutPreserveMembers, inferGroupGridLayout, type GroupGridLayout } from './formationLayout';
 import { addEntitiesToGroup, dissolveGroup, removeEntitiesFromGroups, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
 import { syncBoundsToWorldResize } from './worldBounds';
 import { loadEditorConfig, loadEditorRegistry, coerceStartupMode, EMPTY_EDITOR_REGISTRY } from '../model/editorConfig';
@@ -21,6 +22,7 @@ import { createGroupIdFromName, createGroupSpec, getNextFormationName } from './
 import { removeSceneGraphItem } from './sceneGraphCommands';
 import { createAttachment, moveAttachmentWithinTarget, removeAttachment, updateAttachment } from './attachmentCommands';
 import type { AttachmentSpec, TargetRef } from '../model/types';
+import { getSceneWorld } from './sceneWorld';
 
 export const PROJECT_STORAGE_KEY = 'phaseractions.projectYaml.v1';
 export const SCENE_STORAGE_KEY_V1 = 'phaseractions.sceneYaml.v1';
@@ -173,7 +175,15 @@ export type EditorAction =
   | { type: 'remove-entities-from-groups'; entityIds: Id[] }
   | { type: 'remove-entity-from-group'; groupId: Id; entityId: Id }
   | { type: 'dissolve-group'; id: Id }
+  | { type: 'convert-group-layout-freeform'; id: Id }
+  | { type: 'convert-group-layout-grid'; id: Id; rows: number; cols: number }
+  | { type: 'convert-group-layout-arrange'; id: Id; arrangeKind: string }
   | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'attachment'; id: Id } }
+  | { type: 'add-background-layer-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; defaults?: { layout?: BackgroundLayerSpec['layout'] } }
+  | { type: 'set-scene-background-layers'; layers: BackgroundLayerSpec[] }
+  | { type: 'update-background-layer'; index: number; patch: Partial<BackgroundLayerSpec> }
+  | { type: 'move-background-layer'; fromIndex: number; toIndex: number }
+  | { type: 'remove-background-layer'; index: number }
   | { type: 'toggle-mode' }
   | { type: 'dismiss-view-hint' };
 
@@ -204,6 +214,17 @@ function allocUniqueId(existing: Record<string, unknown>, base: string): string 
   let counter = 2;
   while (existing[`${sanitizedBase}-${counter}`]) counter += 1;
   return `${sanitizedBase}-${counter}`;
+}
+
+function assetIdBaseFromOriginalName(name: string | undefined): string {
+  const raw = (name ?? '').trim();
+  const withoutExt = raw.replace(/\.[a-z0-9]+$/i, '');
+  const base = withoutExt.length > 0 ? withoutExt : 'background';
+  return base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '') || 'background';
 }
 
 function removeGroupKeepMembers(
@@ -347,6 +368,9 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'remove-entities-from-groups':
     case 'remove-entity-from-group':
     case 'dissolve-group':
+    case 'convert-group-layout-freeform':
+    case 'convert-group-layout-grid':
+    case 'convert-group-layout-arrange':
     case 'remove-scene-graph-item':
     case 'update-scene-world':
     case 'create-scene':
@@ -356,6 +380,11 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'reset-scene':
     case 'load-yaml':
     case 'load-yaml-text':
+    case 'add-background-layer-from-file':
+    case 'set-scene-background-layers':
+    case 'update-background-layer':
+    case 'move-background-layer':
+    case 'remove-background-layer':
       return true;
     default:
       return false;
@@ -371,6 +400,7 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'load-yaml':
     case 'load-yaml-text':
     case 'reset-scene':
+    case 'add-background-layer-from-file':
       return 'project';
     default:
       return 'scene';
@@ -846,6 +876,85 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           true,
         );
       })();
+    case 'set-scene-background-layers': {
+      const scene = getActiveScene(state);
+      return withScene(state, { ...scene, backgroundLayers: [...action.layers] }, true);
+    }
+    case 'add-background-layer-from-file': {
+      const scene = getActiveScene(state);
+      const world = getSceneWorld(scene);
+      const images = state.project.assets.images ?? {};
+      const base = assetIdBaseFromOriginalName(action.file.originalName);
+      const assetId = allocUniqueId(images, base);
+      const layout: BackgroundLayerSpec['layout'] = action.defaults?.layout ?? 'cover';
+      const isTiled = layout === 'tile';
+      const depth = -100 * ((scene.backgroundLayers?.length ?? 0) + 1);
+      const layer: BackgroundLayerSpec = {
+        assetId,
+        x: isTiled ? 0 : world.width / 2,
+        y: isTiled ? 0 : world.height / 2,
+        depth,
+        layout,
+      };
+
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          images: {
+            ...images,
+            [assetId]: {
+              id: assetId,
+              source: {
+                kind: 'embedded',
+                dataUrl: action.file.dataUrl,
+                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+              },
+            },
+          },
+        },
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: {
+            ...scene,
+            backgroundLayers: [...(scene.backgroundLayers ?? []), layer],
+          },
+        },
+      };
+
+      return {
+        ...state,
+        project: nextProject,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'update-background-layer': {
+      const scene = getActiveScene(state);
+      const layers = [...(scene.backgroundLayers ?? [])];
+      const existing = layers[action.index];
+      if (!existing) return state;
+      layers[action.index] = { ...existing, ...action.patch };
+      return withScene(state, { ...scene, backgroundLayers: layers }, true);
+    }
+    case 'remove-background-layer': {
+      const scene = getActiveScene(state);
+      const layers = [...(scene.backgroundLayers ?? [])];
+      if (!layers[action.index]) return state;
+      layers.splice(action.index, 1);
+      return withScene(state, { ...scene, backgroundLayers: layers }, true);
+    }
+    case 'move-background-layer': {
+      const scene = getActiveScene(state);
+      const layers = [...(scene.backgroundLayers ?? [])];
+      if (!layers[action.fromIndex]) return state;
+      const clampedTo = Math.max(0, Math.min(layers.length - 1, action.toIndex));
+      if (action.fromIndex === clampedTo) return state;
+      const [moved] = layers.splice(action.fromIndex, 1);
+      layers.splice(clampedTo, 0, moved);
+      return withScene(state, { ...scene, backgroundLayers: layers }, true);
+    }
     case 'update-entity': {
       const scene = getActiveScene(state);
       if (!scene.entities[action.id]) return state;
@@ -1298,6 +1407,52 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         selection: { kind: 'entities', ids: group.members },
         expandedGroups: syncExpandedGroupsToScene(state.expandedGroups, nextScene),
       };
+    }
+    case 'convert-group-layout-freeform': {
+      const scene = getActiveScene(state);
+      const group = scene.groups[action.id];
+      if (!group) return state;
+      const nextScene: GameSceneSpec = {
+        ...scene,
+        groups: {
+          ...scene.groups,
+          [action.id]: {
+            ...group,
+            layout: { type: 'freeform' },
+          },
+        },
+      };
+      return withScene(state, nextScene, true, { kind: 'group', id: action.id });
+    }
+    case 'convert-group-layout-grid': {
+      const scene = getActiveScene(state);
+      const group = scene.groups[action.id];
+      if (!group) return state;
+      const inferred = inferGroupGridLayout(scene, action.id);
+      const templateId = group.members.find((id) => Boolean(scene.entities[id]));
+      const template = templateId ? scene.entities[templateId] : undefined;
+      const fallback: GroupGridLayout = {
+        rows: Math.max(1, Math.floor(Number(action.rows ?? 1))),
+        cols: Math.max(1, Math.floor(Number(action.cols ?? 1))),
+        startX: template ? template.x : 0,
+        startY: template ? template.y : 0,
+        spacingX: 48,
+        spacingY: 40,
+      };
+      const nextLayout: GroupGridLayout = {
+        ...(inferred ?? fallback),
+        rows: Math.max(1, Math.floor(Number(action.rows ?? (inferred?.rows ?? 1)))),
+        cols: Math.max(1, Math.floor(Number(action.cols ?? (inferred?.cols ?? 1)))),
+      };
+      const nextScene = applyGroupGridLayoutPreserveMembers(scene, action.id, nextLayout);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true, { kind: 'group', id: action.id });
+    }
+    case 'convert-group-layout-arrange': {
+      const scene = getActiveScene(state);
+      const nextScene = applyGroupArrangeLayout(scene, action.id, action.arrangeKind, {});
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true, { kind: 'group', id: action.id });
     }
     case 'toggle-mode':
       return {

@@ -42,16 +42,18 @@ export class BootScene extends Phaser.Scene {
   private loadIntoEditorScene(scene: SceneSpec): void {
     const editor = this.scene.get('EditorScene') as EditorScene;
     const isRunning = this.scene.isActive('EditorScene') || this.scene.isSleeping('EditorScene');
+    const project = this.project;
+    if (!project) return;
     if (isRunning) {
       editor.setPendingViewState(this.lastViewState);
-      editor.loadSceneSpec(scene);
+      editor.loadSceneSpec(project, scene);
       this.scene.wake('EditorScene');
       return;
     }
 
     editor.events.once(Phaser.Scenes.Events.CREATE, () => {
       editor.setPendingViewState(this.lastViewState);
-      editor.loadSceneSpec(scene);
+      editor.loadSceneSpec(project, scene);
     });
     this.scene.launch('EditorScene');
   }
@@ -59,16 +61,18 @@ export class BootScene extends Phaser.Scene {
   private loadIntoGameScene(scene: SceneSpec): void {
     const game = this.scene.get('GameScene') as GameScene;
     const isRunning = this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene');
+    const project = this.project;
+    if (!project) return;
     if (isRunning) {
       game.setPendingViewState(this.lastViewState);
-      game.loadSceneSpec(scene);
+      game.loadSceneSpec(project, scene);
       this.scene.wake('GameScene');
       return;
     }
 
     game.events.once(Phaser.Scenes.Events.CREATE, () => {
       game.setPendingViewState(this.lastViewState);
-      game.loadSceneSpec(scene);
+      game.loadSceneSpec(project, scene);
     });
     this.scene.launch('GameScene');
   }
