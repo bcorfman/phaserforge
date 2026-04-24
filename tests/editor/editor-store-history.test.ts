@@ -111,4 +111,27 @@ describe('EditorStore history', () => {
     const state3 = reducer(state2, { type: 'move-entity', id: 'e1', dx: 1, dy: 0 } as any);
     expect(state3.history.past).toHaveLength(2);
   });
+
+  it('batches alt-drag duplication and movement into a single history entry', () => {
+    const state0 = reducer(seededState(), { type: 'select', selection: { kind: 'entity', id: 'e1' } } as any);
+    const scene0 = sceneOf(state0);
+    const entityCount0 = Object.keys(scene0.entities).length;
+
+    const state1 = reducer(state0, { type: 'begin-canvas-interaction', kind: 'entity', id: 'e1' } as any);
+    const state2 = reducer(state1, { type: 'duplicate-entities', entityIds: ['e1'] } as any);
+    expect(Object.keys(sceneOf(state2).entities).length).toBe(entityCount0 + 1);
+
+    const selection = state2.selection;
+    if (selection.kind !== 'entity') throw new Error('Expected entity selection');
+    const duplicateId = selection.id;
+
+    const state3 = reducer(state2, { type: 'move-entity', id: duplicateId, dx: 12, dy: 0 } as any);
+    const state4 = reducer(state3, { type: 'end-canvas-interaction' } as any);
+
+    expect(state4.history.past).toHaveLength(1);
+
+    const undone = reducer(state4, { type: 'history-undo' } as any);
+    expect(Object.keys(sceneOf(undone).entities).length).toBe(entityCount0);
+    expect(sceneOf(undone).entities[duplicateId]).toBeUndefined();
+  });
 });

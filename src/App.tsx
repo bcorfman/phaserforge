@@ -234,6 +234,10 @@ function AppShell() {
       dispatch({ type: 'move-entities', entityIds: payload.entityIds, dx: payload.dx, dy: payload.dy });
     };
 
+    const handleCanvasDuplicateEntities = (payload: { entityIds: string[] }) => {
+      dispatch({ type: 'duplicate-entities', entityIds: payload.entityIds });
+    };
+
     const handleCanvasSelectMultiple = (payload: { entityIds: string[]; additive: boolean }) => {
       dispatch({ type: 'select-multiple', entityIds: payload.entityIds, additive: payload.additive });
     };
@@ -254,6 +258,7 @@ function AppShell() {
     EventBus.on('canvas-move-entity', handleCanvasMoveEntity);
     EventBus.on('canvas-move-group', handleCanvasMoveGroup);
     EventBus.on('canvas-move-entities', handleCanvasMoveEntities);
+    EventBus.on('canvas-duplicate-entities', handleCanvasDuplicateEntities);
     EventBus.on('canvas-select-multiple', handleCanvasSelectMultiple);
     EventBus.on('create-group-from-selection', handleCreateGroupFromSelection);
     EventBus.on('dissolve-group', handleDissolveGroup);
@@ -267,6 +272,7 @@ function AppShell() {
       EventBus.off('canvas-move-entity', handleCanvasMoveEntity);
       EventBus.off('canvas-move-group', handleCanvasMoveGroup);
       EventBus.off('canvas-move-entities', handleCanvasMoveEntities);
+      EventBus.off('canvas-duplicate-entities', handleCanvasDuplicateEntities);
       EventBus.off('canvas-select-multiple', handleCanvasSelectMultiple);
       EventBus.off('create-group-from-selection', handleCreateGroupFromSelection);
       EventBus.off('dissolve-group', handleDissolveGroup);

@@ -70,6 +70,7 @@ export class EditorScene extends Phaser.Scene {
   private isMiddleMouseDown = false;
   private wheelZoomAnchor?: { pointerX: number; pointerY: number; worldX: number; worldY: number };
   private panState?: { startPointerX: number; startPointerY: number; startScrollX: number; startScrollY: number };
+  private lastPointerWorldPoint?: { x: number; y: number };
   private readonly sceneBridgeGetter = () => this;
   private loadVersion = 0;
 
@@ -856,6 +857,21 @@ export class EditorScene extends Phaser.Scene {
 
   private handleSelectionChanged(selection: Selection): void {
     this.selection = selection;
+    if (this.dragState?.kind === 'entity' && this.dragState.awaitingDuplicate) {
+      const ids = selection.kind === 'entity'
+        ? [selection.id]
+        : selection.kind === 'entities'
+          ? selection.ids
+          : [];
+      if (ids.length > 0) {
+        this.dragState.entityIds = ids;
+        this.dragState.awaitingDuplicate = false;
+        if (this.lastPointerWorldPoint) {
+          this.dragState.startX = this.lastPointerWorldPoint.x;
+          this.dragState.startY = this.lastPointerWorldPoint.y;
+        }
+      }
+    }
     this.applySelectionStyles();
     this.updateSelectionFrames();
     this.updateGroupFrames();
@@ -1042,6 +1058,7 @@ export class EditorScene extends Phaser.Scene {
       return;
     }
     const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    this.lastPointerWorldPoint = { x: worldPoint.x, y: worldPoint.y };
 
     // Update hover state and cursor
     const hitResult = hitTestCanvas(
@@ -1057,6 +1074,7 @@ export class EditorScene extends Phaser.Scene {
     // Handle pending drag (drag threshold)
     if (this.pendingDrag && !this.dragState) {
       if (hasExceededDragThreshold(this.pendingDrag.startPoint, worldPoint)) {
+        const altKey = Boolean(pointer.event && 'altKey' in pointer.event && (pointer.event as MouseEvent).altKey);
         // Start actual drag
         const { hitResult } = this.pendingDrag;
         if (hitResult.kind === 'none') {
@@ -1085,17 +1103,26 @@ export class EditorScene extends Phaser.Scene {
           };
           EventBus.emit('canvas-interaction-start', { kind: 'bounds-handle', id: attachment.id });
         } else {
-          // Check if this is part of a multi-selection
-          if (hitResult.kind === 'entity' && this.selection.kind === 'entities' && this.selection.ids.includes(hitResult.id!)) {
-            // Start multi-entity drag
+          if (hitResult.kind === 'entity') {
+            const isMulti = this.selection.kind === 'entities' && this.selection.ids.includes(hitResult.id!);
+            const dragEntityIds = isMulti ? this.selection.ids : [hitResult.id!];
+
             this.dragState = {
-              kind: 'entity', // Use 'entity' kind but with multi-entity logic
-              id: hitResult.id!, // Store the clicked entity ID for reference
+              kind: 'entity',
+              id: hitResult.id!,
+              entityIds: altKey ? [] : dragEntityIds,
+              awaitingDuplicate: altKey,
               startX: worldPoint.x,
               startY: worldPoint.y,
-              hasMoved: false
+              hasMoved: false,
             };
-            EventBus.emit('canvas-interaction-start', { kind: 'entities', id: this.selection.ids.join(',') });
+
+            EventBus.emit('canvas-interaction-start', dragEntityIds.length > 1 ? { kind: 'entities', id: dragEntityIds.join(',') } : hitResult);
+            if (altKey) {
+              EventBus.emit('canvas-duplicate-entities', { entityIds: dragEntityIds });
+            } else if (!isMulti) {
+              EventBus.emit('canvas-select', hitResult);
+            }
           } else {
             EventBus.emit('canvas-select', hitResult);
             this.dragState = {
@@ -1115,6 +1142,13 @@ export class EditorScene extends Phaser.Scene {
 
     // Handle active drag
     if (!this.dragState) return;
+
+    if (this.dragState.kind === 'entity' && this.dragState.awaitingDuplicate) {
+      // Keep drag deltas stable until the store has created/selected the duplicates.
+      this.dragState.startX = worldPoint.x;
+      this.dragState.startY = worldPoint.y;
+      return;
+    }
 
     const dx = worldPoint.x - this.dragState.startX;
     const dy = worldPoint.y - this.dragState.startY;
@@ -1138,11 +1172,11 @@ export class EditorScene extends Phaser.Scene {
       this.dragState.currentX = worldPoint.x;
       this.dragState.currentY = worldPoint.y;
       this.updateMarqueeRectangle(this.dragState.startX, this.dragState.startY, worldPoint.x, worldPoint.y);
-    } else if (this.dragState.kind === 'entity' && this.selection.kind === 'entities' && this.selection.ids.includes(this.dragState.id!)) {
-      // Multi-entity drag
-      EventBus.emit('canvas-move-entities', { entityIds: this.selection.ids, dx: snappedDx, dy: snappedDy });
     } else if (this.dragState.kind === 'entity') {
-      EventBus.emit('canvas-move-entity', { id: this.dragState.id, dx: snappedDx, dy: snappedDy });
+      const entityIds = this.dragState.entityIds ?? (this.dragState.id ? [this.dragState.id] : []);
+      if (entityIds.length > 0) {
+        EventBus.emit('canvas-move-entities', { entityIds, dx: snappedDx, dy: snappedDy });
+      }
     } else if (this.dragState.kind === 'group') {
       EventBus.emit('canvas-move-group', { id: this.dragState.id, dx: snappedDx, dy: snappedDy });
     } else if (this.dragState.kind === 'bounds-handle' && this.dragState.handle) {

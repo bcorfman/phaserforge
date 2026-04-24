@@ -65,12 +65,12 @@ export function EntityListView({
   const { groups, ungroupedEntities } = summarizeSceneGroups(scene);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingKind, setEditingKind] = useState<'entity' | 'group' | null>(null);
+  const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'scene' | null>(null);
   const [editingName, setEditingName] = useState('');
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const [dragOverSprites, setDragOverSprites] = useState(false);
 
-  const startEditing = (kind: 'entity' | 'group', id: string, currentName: string) => {
+  const startEditing = (kind: 'entity' | 'group' | 'scene', id: string, currentName: string) => {
     setEditingKind(kind);
     setEditingId(id);
     setEditingName(currentName);
@@ -93,6 +93,8 @@ export function EntityListView({
       if (group) {
         dispatch({ type: 'update-group', id: editingId, next: { ...group, name: editingName } });
       }
+    } else if (editingKind === 'scene') {
+      dispatch({ type: 'rename-scene', sceneId: editingId, name: editingName });
     } else if (editingKind === 'entity') {
       const entity = scene.entities[editingId];
       if (entity) {
@@ -113,7 +115,29 @@ export function EntityListView({
       dispatch({ type: 'select-multiple', entityIds: [id], additive: true });
       return;
     }
+    if (editingKind == null && isSelected(selection, 'entity', id)) {
+      const entity = scene.entities[id];
+      startEditing('entity', id, entity?.name ?? id);
+      return;
+    }
     dispatch({ type: 'select', selection: { kind: 'entity', id } });
+  };
+
+  const handleGroupClick = (id: string) => {
+    if (editingKind == null && isSelected(selection, 'group', id)) {
+      const group = scene.groups[id];
+      startEditing('group', id, group?.name ?? id);
+      return;
+    }
+    dispatch({ type: 'select', selection: { kind: 'group', id } });
+  };
+
+  const handleSceneClick = (sceneId: string) => {
+    if (editingKind == null && sceneId === currentSceneId) {
+      startEditing('scene', sceneId, sceneId);
+      return;
+    }
+    dispatch({ type: 'set-current-scene', sceneId });
   };
 
   const handleEntityDragStart = (id: string, event: React.DragEvent) => {
@@ -157,14 +181,26 @@ export function EntityListView({
         <div className="member-list">
           {Object.keys(project.scenes).map((sceneId) => (
             <div key={sceneId} className="member-row">
-              <button
-                className={`list-item ${sceneId === currentSceneId ? 'active' : ''}`}
-                data-testid={`scene-item-${sceneId}`}
-                type="button"
-                onClick={() => dispatch({ type: 'set-current-scene', sceneId })}
-              >
-                {sceneId}
-              </button>
+              {editingId === sceneId && editingKind === 'scene' ? (
+                <input
+                  autoFocus
+                  className="scene-graph-rename-input"
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onBlur={saveRename}
+                  onKeyDown={handleKeyDown}
+                  data-testid={`rename-scene-input-${sceneId}`}
+                />
+              ) : (
+                <button
+                  className={`list-item ${sceneId === currentSceneId ? 'active' : ''}`}
+                  data-testid={`scene-item-${sceneId}`}
+                  type="button"
+                  onClick={() => handleSceneClick(sceneId)}
+                >
+                  {sceneId}
+                </button>
+              )}
               <button
                 aria-label={`Duplicate scene ${sceneId}`}
                 className="scene-graph-button"
@@ -237,15 +273,6 @@ export function EntityListView({
               </button>
             )}
             <button
-              aria-label={`Rename sprite ${entity.name ?? entity.id}`}
-              className="scene-graph-button scene-graph-edit"
-              data-testid={`edit-entity-${entity.id}`}
-              type="button"
-              onClick={() => startEditing('entity', entity.id, entity.name ?? entity.id)}
-            >
-              ✏️
-            </button>
-            <button
               aria-label={`Remove sprite ${entity.name ?? entity.id}`}
               className="scene-graph-button scene-graph-remove"
               data-testid={`remove-entity-${entity.id}`}
@@ -289,7 +316,7 @@ export function EntityListView({
                 <button
                   className={`list-item ${isSelected(selection, 'group', group.id) ? 'active' : ''} ${dragOverGroupId === group.id ? 'scene-graph-drop-target scene-graph-drop-target-group' : ''}`}
                   data-testid={`group-item-${group.id}`}
-                  onClick={() => dispatch({ type: 'select', selection: { kind: 'group', id: group.id } })}
+                  onClick={() => handleGroupClick(group.id)}
                   type="button"
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -304,15 +331,6 @@ export function EntityListView({
                   <span className="list-item-meta">{countAttachmentsForTarget(scene, { type: 'group', groupId: group.id })}</span>
                 </button>
               )}
-              <button
-                aria-label={`Rename formation ${group.name ?? group.id}`}
-                className="scene-graph-button scene-graph-edit"
-                data-testid={`edit-group-${group.id}`}
-                type="button"
-                onClick={() => startEditing('group', group.id, group.name ?? group.id)}
-              >
-                ✏️
-              </button>
               <button
                 aria-label={`Remove formation ${group.name ?? group.id}`}
                 className="scene-graph-button scene-graph-remove"
@@ -350,15 +368,6 @@ export function EntityListView({
                         {member.name ?? member.id}
                       </button>
                     )}
-                    <button
-                      aria-label={`Rename sprite ${member.name ?? member.id}`}
-                      className="scene-graph-button scene-graph-edit"
-                      data-testid={`edit-group-member-${group.id}-${member.id}`}
-                      type="button"
-                      onClick={() => startEditing('entity', member.id, member.name ?? member.id)}
-                    >
-                      ✏️
-                    </button>
                     <button
                       aria-label={`Remove sprite ${member.name ?? member.id} from formation ${group.name ?? group.id}`}
                       className="scene-graph-button scene-graph-remove"

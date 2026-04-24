@@ -52,7 +52,6 @@ describe('EntityList', () => {
     );
 
     expect(markup).toContain('group-member-g-enemies-e1');
-    expect(markup).toContain('edit-group-member-g-enemies-e1');
     expect(markup).toContain('group-member-remove-g-enemies-e1');
     const removeIndex = markup.indexOf('group-member-remove-g-enemies-e1');
     expect(removeIndex).toBeGreaterThanOrEqual(0);

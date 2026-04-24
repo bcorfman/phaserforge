@@ -161,6 +161,7 @@ export type EditorAction =
   | { type: 'move-entity'; id: Id; dx: number; dy: number }
   | { type: 'move-group'; id: Id; dx: number; dy: number }
   | { type: 'move-entities'; entityIds: Id[]; dx: number; dy: number }
+  | { type: 'duplicate-entities'; entityIds: Id[] }
   | { type: 'arrange-group-grid'; id: Id; layout: GroupGridLayout }
   | { type: 'arrange-group'; id: Id; arrangeKind: string; params: Record<string, number | string | boolean> }
   | { type: 'create-group-from-arrange'; name: string; templateEntityId: Id; arrangeKind: string; params: Record<string, number | string | boolean>; memberCount?: number }
@@ -356,6 +357,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'move-entity':
     case 'move-group':
     case 'move-entities':
+    case 'duplicate-entities':
     case 'arrange-group-grid':
     case 'arrange-group':
     case 'create-group-from-arrange':
@@ -411,7 +413,8 @@ function isPendingInteractionMutation(action: EditorAction): boolean {
   return action.type === 'move-entity'
     || action.type === 'move-group'
     || action.type === 'move-entities'
-    || action.type === 'update-bounds';
+    || action.type === 'update-bounds'
+    || action.type === 'duplicate-entities';
 }
 
 function groupIdSet(scene: SceneSpec): string {
@@ -1117,6 +1120,42 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         ...scene,
         entities: updatedEntities,
       }, true);
+    }
+    case 'duplicate-entities': {
+      const scene = getActiveScene(state);
+      const uniqueIds = [...new Set(action.entityIds)];
+      if (uniqueIds.length === 0) return state;
+
+      const entities: Record<Id, EntitySpec> = { ...scene.entities };
+      const groups: Record<Id, GroupSpec> = { ...scene.groups };
+      const duplicatedIds: Id[] = [];
+
+      for (const sourceId of uniqueIds) {
+        const source = scene.entities[sourceId];
+        if (!source) continue;
+
+        const nextId = allocUniqueId(entities, `${sourceId}-copy`);
+        duplicatedIds.push(nextId);
+        entities[nextId] = { ...source, id: nextId };
+
+        const containingGroupId = Object.keys(groups).find((groupId) => groups[groupId]?.members.includes(sourceId));
+        if (!containingGroupId) continue;
+        const group = groups[containingGroupId];
+        if (!group) continue;
+        groups[containingGroupId] = {
+          ...group,
+          members: [...group.members, nextId],
+          layout: { type: 'freeform' },
+        };
+      }
+
+      if (duplicatedIds.length === 0) return state;
+
+      const nextScene: GameSceneSpec = { ...scene, entities, groups };
+      const selection: Selection = duplicatedIds.length === 1
+        ? { kind: 'entity', id: duplicatedIds[0] }
+        : { kind: 'entities', ids: duplicatedIds };
+      return withScene(state, nextScene, true, selection, syncExpandedGroupsToScene(state.expandedGroups, nextScene));
     }
     case 'arrange-group-grid': {
       const scene = getActiveScene(state);
