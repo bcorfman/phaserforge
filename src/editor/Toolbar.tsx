@@ -112,15 +112,6 @@ export function Toolbar() {
       </div>
       <div className="toolbar-actions toolbar-actions-bottom" role="toolbar" aria-label="Studio actions">
         <button
-          aria-label="Toggle play mode"
-          className={`button ${state.mode === 'play' ? 'active' : ''}`}
-          data-testid="toggle-mode-button"
-          type="button"
-          onClick={() => dispatch({ type: 'toggle-mode' })}
-        >
-          {state.mode === 'edit' ? 'Preview' : 'Edit Mode'}
-        </button>
-        <button
           aria-label="Export scene YAML"
           className="button"
           data-testid="export-yaml-button"

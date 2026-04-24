@@ -18,7 +18,7 @@ A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, 
 ## YAML Round-Trip
 
 - `Export YAML` serializes the current `ProjectSpec` (assets + scenes + `initialSceneId`) and saves it to disk.
-- `Load YAML` parses + validates YAML and migrates older scene formats (legacy `behaviors/actions/conditions`) into `attachments` on import.
+- `Load YAML` parses + validates YAML and migrates older scene schemas (legacy `behaviors/actions/conditions`) into `attachments`.
 - Startup mode `Reload Last YAML` restores the last exported/loaded YAML from `localStorage` (configurable).
 
 ## Controls & Shortcuts

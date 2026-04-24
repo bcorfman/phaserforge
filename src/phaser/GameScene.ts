@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { EventBus, setActiveScene } from './EventBus';
+import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, type CompiledScene } from '../compiler/compileScene';
 import type { SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
@@ -26,6 +26,26 @@ export class GameScene extends Phaser.Scene {
   private loadVersion = 0;
   private readonly sceneBridgeGetter = () => this;
   private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
+  private readonly handleEscape = () => {
+    EventBus.emit('toggle-mode');
+  };
+  private listenersBound = false;
+
+  private bindSceneListeners(): void {
+    if (this.listenersBound) return;
+    this.listenersBound = true;
+    setActiveScene(this);
+    registerSceneGetter(this.sceneBridgeGetter);
+    this.input.keyboard?.on('keydown-ESC', this.handleEscape);
+  }
+
+  private unbindSceneListeners(): void {
+    if (!this.listenersBound) return;
+    this.listenersBound = false;
+    if (getActiveScene() === this) setActiveScene(null);
+    unregisterSceneGetter(this.sceneBridgeGetter);
+    this.input.keyboard?.off('keydown-ESC', this.handleEscape);
+  }
 
   constructor() {
     super('GameScene');
@@ -35,13 +55,15 @@ export class GameScene extends Phaser.Scene {
     // Match editor canvas background so offscreen space is consistent between edit and preview.
     this.cameras.main.setBackgroundColor('#0c0f1a');
     this.cameras.main.roundPixels = true;
-    setActiveScene(this);
-    registerSceneGetter(this.sceneBridgeGetter);
+    this.bindSceneListeners();
     EventBus.emit('current-scene-ready', this);
+    this.events.on(Phaser.Scenes.Events.SLEEP, this.unbindSceneListeners, this);
+    this.events.on(Phaser.Scenes.Events.WAKE, this.bindSceneListeners, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      setActiveScene(null);
-      unregisterSceneGetter(this.sceneBridgeGetter);
+      this.events.off(Phaser.Scenes.Events.SLEEP, this.unbindSceneListeners, this);
+      this.events.off(Phaser.Scenes.Events.WAKE, this.bindSceneListeners, this);
+      this.unbindSceneListeners();
       this.clearScene();
     });
   }

@@ -4,11 +4,31 @@ import { summarizeSceneGroups } from './grouping';
 import type { ProjectSpec, SceneSpec } from '../model/types';
 import { countAttachmentsForTarget } from './sceneGraphCommands';
 
+const ENTITY_DRAG_MIME = 'application/x-phaseractions-studio-entity-ids';
+
 function isSelected(selection: Selection, kind: Selection['kind'], id: string): boolean {
   if (selection.kind === 'entities') {
     return kind === 'entity' && selection.ids.includes(id);
   }
   return selection.kind === kind && 'id' in selection && selection.id === id;
+}
+
+function getDragEntityIds(selection: Selection, fallbackId: string): string[] {
+  if (selection.kind === 'entities' && selection.ids.includes(fallbackId)) return selection.ids;
+  if (selection.kind === 'entity' && selection.id === fallbackId) return [fallbackId];
+  return [fallbackId];
+}
+
+function readDragEntityIds(dataTransfer: DataTransfer | null): string[] | null {
+  if (!dataTransfer) return null;
+  const raw = dataTransfer.getData(ENTITY_DRAG_MIME);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : null;
+  } catch {
+    return null;
+  }
 }
 
 export function EntityList() {
@@ -47,6 +67,8 @@ export function EntityListView({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingKind, setEditingKind] = useState<'entity' | 'group' | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [dragOverSprites, setDragOverSprites] = useState(false);
 
   const startEditing = (kind: 'entity' | 'group', id: string, currentName: string) => {
     setEditingKind(kind);
@@ -83,6 +105,47 @@ export function EntityListView({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') saveRename();
     if (e.key === 'Escape') cancelEditing();
+  };
+
+  const handleEntityClick = (id: string, event: React.MouseEvent) => {
+    const isMulti = event.shiftKey || event.metaKey || event.ctrlKey;
+    if (isMulti) {
+      dispatch({ type: 'select-multiple', entityIds: [id], additive: true });
+      return;
+    }
+    dispatch({ type: 'select', selection: { kind: 'entity', id } });
+  };
+
+  const handleEntityDragStart = (id: string, event: React.DragEvent) => {
+    const ids = getDragEntityIds(selection, id);
+    try {
+      event.dataTransfer.setData(ENTITY_DRAG_MIME, JSON.stringify(ids));
+      event.dataTransfer.setData('text/plain', ids.join(','));
+      event.dataTransfer.effectAllowed = 'move';
+    } catch {
+      // ignore drag data errors
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDragOverGroupId(null);
+    setDragOverSprites(false);
+  };
+
+  const handleDropOnGroup = (groupId: string, event: React.DragEvent) => {
+    event.preventDefault();
+    const ids = readDragEntityIds(event.dataTransfer);
+    if (!ids || ids.length === 0) return;
+    dispatch({ type: 'add-entities-to-group', groupId, entityIds: ids });
+    setDragOverGroupId(null);
+  };
+
+  const handleDropOnSprites = (event: React.DragEvent) => {
+    event.preventDefault();
+    const ids = readDragEntityIds(event.dataTransfer);
+    if (!ids || ids.length === 0) return;
+    dispatch({ type: 'remove-entities-from-groups', entityIds: ids });
+    setDragOverSprites(false);
   };
 
   return (
@@ -133,7 +196,17 @@ export function EntityListView({
           New Scene
         </button>
       </section>
-      <section className="panel-section" aria-labelledby="scene-graph-sprites">
+      <section
+        className={`panel-section ${dragOverSprites ? 'scene-graph-drop-target scene-graph-drop-target-sprites' : ''}`}
+        aria-labelledby="scene-graph-sprites"
+        data-testid="sprites-dropzone"
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!dragOverSprites) setDragOverSprites(true);
+        }}
+        onDragLeave={() => setDragOverSprites(false)}
+        onDrop={handleDropOnSprites}
+      >
         <div className="panel-heading-row">
           <h3 className="panel-heading" id="scene-graph-sprites">Sprites</h3>
         </div>
@@ -153,7 +226,10 @@ export function EntityListView({
               <button
                 className={`list-item ${isSelected(selection, 'entity', entity.id) ? 'active' : ''}`}
                 data-testid={`ungrouped-entity-${entity.id}`}
-                onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: entity.id } })}
+                draggable={editingKind == null}
+                onDragStart={(e) => handleEntityDragStart(entity.id, e)}
+                onDragEnd={handleDragEnd}
+                onClick={(e) => handleEntityClick(entity.id, e)}
                 type="button"
               >
                 {entity.name ?? entity.id}
@@ -195,6 +271,7 @@ export function EntityListView({
                 data-testid={`toggle-group-${group.id}`}
                 type="button"
                 onClick={() => dispatch({ type: 'toggle-group-expanded', id: group.id })}
+                onDragEnd={handleDragEnd}
               >
                 {expandedGroups[group.id] ? '▾' : '▸'}
               </button>
@@ -210,10 +287,18 @@ export function EntityListView({
                 />
               ) : (
                 <button
-                  className={`list-item ${isSelected(selection, 'group', group.id) ? 'active' : ''}`}
+                  className={`list-item ${isSelected(selection, 'group', group.id) ? 'active' : ''} ${dragOverGroupId === group.id ? 'scene-graph-drop-target scene-graph-drop-target-group' : ''}`}
                   data-testid={`group-item-${group.id}`}
                   onClick={() => dispatch({ type: 'select', selection: { kind: 'group', id: group.id } })}
                   type="button"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dragOverGroupId !== group.id) setDragOverGroupId(group.id);
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverGroupId === group.id) setDragOverGroupId(null);
+                  }}
+                  onDrop={(e) => handleDropOnGroup(group.id, e)}
                 >
                   {group.name ?? group.id}
                   <span className="list-item-meta">{countAttachmentsForTarget(scene, { type: 'group', groupId: group.id })}</span>
@@ -256,7 +341,10 @@ export function EntityListView({
                       <button
                         className={`list-item ${isSelected(selection, 'entity', member.id) ? 'active' : ''}`}
                         data-testid={`group-member-${group.id}-${member.id}`}
-                        onClick={() => dispatch({ type: 'select', selection: { kind: 'entity', id: member.id } })}
+                        draggable={editingKind == null}
+                        onDragStart={(e) => handleEntityDragStart(member.id, e)}
+                        onDragEnd={handleDragEnd}
+                        onClick={(e) => handleEntityClick(member.id, e)}
                         type="button"
                       >
                         {member.name ?? member.id}
@@ -278,7 +366,7 @@ export function EntityListView({
                       type="button"
                       onClick={() => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId: member.id })}
                     >
-                      🗑
+                      -
                     </button>
                   </div>
                 ))}

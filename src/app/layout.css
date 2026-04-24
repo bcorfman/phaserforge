@@ -573,6 +573,102 @@ html[data-theme='dark'] .phaser-frame {
   pointer-events: none;
 }
 
+.canvas-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.canvas-overlay-top-right {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.canvas-selection-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+}
+
+.canvas-selection-pill {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--surface-muted);
+  font-size: 0.8rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.canvas-selection-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.6rem);
+  min-width: 16rem;
+  max-width: min(22rem, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.65rem;
+  border-radius: 1rem;
+  border: 1px solid var(--stroke);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.canvas-selection-menu-item {
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.75rem;
+  color: var(--ink);
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.canvas-selection-menu-item:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.canvas-selection-menu-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.canvas-selection-menu-section {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(20, 93, 102, 0.18);
+}
+
+.canvas-selection-menu-heading {
+  padding: 0.25rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 #game-container,
 #game-container canvas {
   width: 100%;
@@ -779,6 +875,23 @@ html[data-theme='dark'] .phaser-frame {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(20, 93, 102, 0.1);
+}
+
+.scene-graph-drop-target {
+  border-color: rgba(20, 93, 102, 0.65);
+  border-style: dashed;
+}
+
+.scene-graph-drop-target-group {
+  background: rgba(20, 93, 102, 0.08);
+}
+
+.panel-section.scene-graph-drop-target-sprites {
+  border: 2px dashed rgba(79, 210, 219, 0.55);
+  border-radius: 1.1rem;
+  padding: 0.75rem;
+  margin: -0.25rem;
+  background: rgba(79, 210, 219, 0.06);
 }
 
 .action-item {

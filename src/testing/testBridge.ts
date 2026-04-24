@@ -41,8 +41,6 @@ export interface SceneBridge {
   testDragWorld(start: Point, end: Point): void;
   testDragBoundsHandle(handle: string, delta: Point): void;
   testPanByScreenDelta(delta: Point): void;
-  testUndo(): void;
-  testRedo(): void;
 }
 
 function isBridgeEnabled(): boolean {
@@ -56,6 +54,8 @@ function clone<T>(value: T): T {
 let appStateGetter: (() => AppStateSnapshot) | null = null;
 let sceneGetter: (() => SceneBridge | null) | null = null;
 let selectionSetter: ((selection: Selection) => void) | null = null;
+let undoHandler: (() => void) | null = null;
+let redoHandler: (() => void) | null = null;
 
 function ensureBridge(): void {
   if (!isBridgeEnabled() || typeof window === 'undefined') return;
@@ -127,12 +127,10 @@ function ensureBridge(): void {
       scene?.testPanByScreenDelta(delta);
     },
     undo() {
-      const scene = sceneGetter?.();
-      scene?.testUndo();
+      undoHandler?.();
     },
     redo() {
-      const scene = sceneGetter?.();
-      scene?.testRedo();
+      redoHandler?.();
     },
     select(selection: Selection) {
       selectionSetter?.(selection);
@@ -175,4 +173,15 @@ export function unregisterSelectionSetter(setter: (selection: Selection) => void
   if (selectionSetter === setter) {
     selectionSetter = null;
   }
+}
+
+export function registerUndoRedoHandlers(handlers: { undo: () => void; redo: () => void }): void {
+  undoHandler = handlers.undo;
+  redoHandler = handlers.redo;
+  ensureBridge();
+}
+
+export function unregisterUndoRedoHandlers(handlers: { undo: () => void; redo: () => void }): void {
+  if (undoHandler === handlers.undo) undoHandler = null;
+  if (redoHandler === handlers.redo) redoHandler = null;
 }
