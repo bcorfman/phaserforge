@@ -10,6 +10,7 @@ import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
 import { CreateFormationPanel } from './CreateFormationPanel';
+import { BackgroundLayersPanel } from './BackgroundLayersPanel';
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
@@ -151,7 +152,18 @@ export function Inspector() {
         </div>
       );
     } else {
-      content = <CreateFormationPanel scene={scene} registry={state.registry} dispatch={dispatch} />;
+      content = (
+        <>
+          <BackgroundLayersPanel
+            project={state.project}
+            sceneId={state.currentSceneId}
+            layers={scene.backgroundLayers ?? []}
+            dispatch={dispatch}
+            disabled={state.mode !== 'edit'}
+          />
+          <CreateFormationPanel scene={scene} registry={state.registry} dispatch={dispatch} />
+        </>
+      );
     }
   }
 

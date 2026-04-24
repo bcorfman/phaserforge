@@ -101,6 +101,59 @@ export function applyGroupGridLayout(
   };
 }
 
+export function applyGroupGridLayoutPreserveMembers(
+  scene: SceneSpec,
+  groupId: Id,
+  layout: GroupGridLayout
+): SceneSpec {
+  const group = scene.groups[groupId];
+  if (!group) return scene;
+
+  const members = group.members
+    .map((memberId) => scene.entities[memberId])
+    .filter((member): member is EntitySpec => Boolean(member))
+    .map((member) => ({ ...member }));
+  if (members.length === 0) return scene;
+
+  const rows = Math.max(1, Math.floor(Number(layout.rows ?? 1)));
+  let cols = Math.max(1, Math.floor(Number(layout.cols ?? 1)));
+  if (rows * cols < members.length) {
+    cols = Math.max(cols, Math.ceil(members.length / rows));
+  }
+
+  const arrangedLayout: GroupGridLayout = {
+    rows,
+    cols,
+    startX: Math.round(Number(layout.startX ?? members[0].x)),
+    startY: Math.round(Number(layout.startY ?? members[0].y)),
+    spacingX: Math.round(Number(layout.spacingX ?? 0)),
+    spacingY: Math.round(Number(layout.spacingY ?? 0)),
+  };
+
+  arrangeGrid(members, arrangedLayout satisfies GridArrangeOptions<EntitySpec>);
+
+  const nextEntities = { ...scene.entities };
+  for (const member of members) {
+    nextEntities[member.id] = {
+      ...nextEntities[member.id],
+      x: Math.round(member.x),
+      y: Math.round(member.y),
+    };
+  }
+
+  return {
+    ...scene,
+    entities: nextEntities,
+    groups: {
+      ...scene.groups,
+      [groupId]: {
+        ...group,
+        layout: makeGridLayout(arrangedLayout.rows, arrangedLayout.cols, arrangedLayout.startX, arrangedLayout.startY, arrangedLayout.spacingX, arrangedLayout.spacingY),
+      },
+    },
+  };
+}
+
 export function applyGroupArrangeLayout(
   scene: SceneSpec,
   groupId: Id,

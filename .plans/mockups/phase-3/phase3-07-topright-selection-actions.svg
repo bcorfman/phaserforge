@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --danger:#ff6a8f;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .pill{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .pillText{fill:var(--text); font-size:11px; font-weight:700;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .entitySelected{fill:#1a254a; stroke:var(--accent); stroke-width:2;}
+      .groupHull{fill:rgba(124,240,199,0.08); stroke:var(--accent2); stroke-width:2;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Canvas Editor — Phase 3: Top‑right Selection Actions</text>
+
+  <!-- Canvas -->
+  <rect x="24" y="86" width="1152" height="610" rx="12" class="panel"/>
+  <text x="44" y="118" class="label">Canvas</text>
+
+  <!-- Selected entities -->
+  <rect x="430" y="240" width="56" height="40" rx="8" class="entitySelected"/>
+  <rect x="520" y="280" width="72" height="46" rx="8" class="entitySelected"/>
+  <rect x="610" y="240" width="62" height="44" rx="8" class="entitySelected"/>
+  <text x="430" y="226" class="small">3 selected</text>
+
+  <!-- Existing group hull -->
+  <rect x="160" y="180" width="320" height="210" rx="18" class="groupHull"/>
+  <text x="180" y="206" class="small">Group: Enemy Formation</text>
+  <rect x="210" y="250" width="66" height="44" rx="8" class="entity"/>
+  <rect x="305" y="278" width="56" height="40" rx="8" class="entity"/>
+  <rect x="390" y="238" width="62" height="44" rx="8" class="entity"/>
+
+  <!-- Top-right action cluster (appears when selection exists) -->
+  <rect x="760" y="110" width="396" height="52" rx="14" class="pill"/>
+  <text x="778" y="142" class="pillText">Selection</text>
+
+  <rect x="850" y="122" width="110" height="28" rx="10" class="btn"/>
+  <text x="866" y="141" class="btnText">Create Group</text>
+  <rect x="970" y="122" width="126" height="28" rx="10" class="btn"/>
+  <text x="986" y="141" class="btnTextMuted">Add to Group…</text>
+  <rect x="1104" y="122" width="38" height="28" rx="10" class="btn"/>
+  <text x="1118" y="141" class="btnText">…</text>
+
+  <!-- Callout describing when this appears -->
+  <rect x="720" y="170" width="456" height="72" rx="12" class="panel2"/>
+  <text x="740" y="200" class="label">Behavior</text>
+  <text x="740" y="224" class="small">Top‑right actions appear when selection is non‑empty.</text>
+  <text x="740" y="246" class="small">They complement the bottom selection bar (optional).</text>
+</svg>
+

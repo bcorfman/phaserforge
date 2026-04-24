@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { EventBus } from '../phaser/EventBus';
+import { EventBus, getActiveScene } from '../phaser/EventBus';
 import { useEditorStore, type Selection } from './EditorStore';
+import { inferGroupGridLayout } from './formationLayout';
 
 function getSelectedEntityIds(selection: Selection): string[] {
   if (selection.kind === 'entity') return [selection.id];
@@ -12,9 +13,24 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   const { state, dispatch } = useEditorStore();
   const scene = state.project.scenes[state.currentSceneId];
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertMode, setConvertMode] = useState<'root' | 'grid' | 'arrange'>('root');
+  const [gridDraft, setGridDraft] = useState<{ rows: string; cols: string }>({ rows: '1', cols: '1' });
   const menuRootRef = useRef<HTMLDivElement | null>(null);
+  const suppressSelectionCloseRef = useRef(false);
+  const latestSelectionRef = useRef(state.selection);
+  const latestModeRef = useRef(state.mode);
+  const latestSceneIdRef = useRef(state.currentSceneId);
+
+  useEffect(() => {
+    latestSelectionRef.current = state.selection;
+    latestModeRef.current = state.mode;
+    latestSceneIdRef.current = state.currentSceneId;
+  }, [state.selection, state.mode, state.currentSceneId]);
 
   const selectedEntityIds = useMemo(() => getSelectedEntityIds(state.selection), [state.selection]);
+  const hasEntitySelection = state.selection.kind === 'entity' || state.selection.kind === 'entities';
   const entityToGroupId = useMemo(() => {
     const map = new Map<string, string>();
     for (const [groupId, group] of Object.entries(scene.groups)) {
@@ -61,8 +77,57 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   }, [menuOpen]);
 
   useEffect(() => {
+    if (suppressSelectionCloseRef.current) return;
     setMenuOpen(false);
+    setConvertOpen(false);
+    setConvertMode('root');
   }, [state.selection.kind, selectedEntityIds.join(','), state.mode]);
+
+  useEffect(() => {
+    if (state.mode !== 'edit') return;
+    const container = document.querySelector<HTMLDivElement>('#game-container');
+    if (!container) return;
+
+    const handleContextMenu = (event: MouseEvent) => {
+      if (latestModeRef.current !== 'edit') return;
+      const target = event.target;
+      if (!(target instanceof HTMLCanvasElement) && !(target instanceof Node && target.nodeName === 'CANVAS')) return;
+      event.preventDefault();
+
+      const activeScene = getActiveScene() as any;
+      const hit = typeof activeScene?.hitTestAtClientPoint === 'function'
+        ? activeScene.hitTestAtClientPoint(event.clientX, event.clientY)
+        : { kind: 'none' as const };
+
+      const selection = latestSelectionRef.current;
+      if (hit.kind === 'entity' && hit.id) {
+        suppressSelectionCloseRef.current = true;
+        if (selection.kind === 'entities' && selection.ids.includes(hit.id)) {
+          // keep multi-selection
+        } else {
+          dispatch({ type: 'select', selection: { kind: 'entity', id: hit.id } });
+        }
+      } else if (hit.kind === 'group' && hit.id) {
+        suppressSelectionCloseRef.current = true;
+        if (!(selection.kind === 'group' && selection.id === hit.id)) {
+          dispatch({ type: 'select', selection: { kind: 'group', id: hit.id } });
+        }
+      }
+
+      setMenuPosition({ x: event.clientX + 12, y: event.clientY + 12 });
+      setConvertOpen(false);
+      setConvertMode('root');
+      setMenuOpen(true);
+      queueMicrotask(() => {
+        suppressSelectionCloseRef.current = false;
+      });
+    };
+
+    container.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      container.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [dispatch, state.mode]);
 
   const selectionLabel = useMemo(() => {
     if (state.selection.kind === 'entities') return `${state.selection.ids.length} selected`;
@@ -75,6 +140,36 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   }, [scene.groups, state.selection]);
 
   const showSelectionBar = state.mode === 'edit' && (state.selection.kind === 'entities' || state.selection.kind === 'group');
+  const showSelectionTopRight = state.mode === 'edit' && (state.selection.kind === 'entities' || state.selection.kind === 'group');
+
+  const openMenuNearElement = (element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const desiredWidth = 320;
+    const desiredHeight = 360;
+    const padding = 12;
+    const x = Math.min(window.innerWidth - padding, Math.max(padding, rect.right - desiredWidth));
+    let y = rect.bottom + 10;
+    if (y + desiredHeight > window.innerHeight - padding) {
+      y = rect.top - desiredHeight - 10;
+    }
+    y = Math.max(padding, Math.min(window.innerHeight - padding, y));
+
+    setMenuPosition({ x, y });
+    setConvertOpen(false);
+    setConvertMode('root');
+    setMenuOpen(true);
+  };
+
+  const openConvertSubmenu = () => {
+    if (state.selection.kind !== 'group') return;
+    const layout = inferGroupGridLayout(scene, state.selection.id);
+    setGridDraft({
+      rows: String(layout?.rows ?? 3),
+      cols: String(layout?.cols ?? 5),
+    });
+    setConvertMode('root');
+    setConvertOpen(true);
+  };
 
   return (
     <div className="canvas-overlay" data-testid="canvas-overlay">
@@ -120,8 +215,52 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
         </button>
       </div>
 
+      {showSelectionTopRight && (
+        <div className="canvas-selection-actions-top-right" data-testid="canvas-selection-actions-top-right">
+          <div className="canvas-selection-actions-pill">
+            <div className="canvas-selection-actions-label">Selection</div>
+            {state.selection.kind === 'entities' && (
+              <button
+                className="button"
+                data-testid="topright-create-group-button"
+                type="button"
+                disabled={!canGroupSelection}
+                onClick={() => dispatch({ type: 'create-group-from-selection', name: '' })}
+              >
+                Create Group
+              </button>
+            )}
+            {hasEntitySelection && (
+              <button
+                className="button"
+                data-testid="topright-add-to-group-button"
+                type="button"
+                disabled={!canAddToGroup}
+                onClick={(e) => openMenuNearElement(e.currentTarget)}
+              >
+                Add to Group…
+              </button>
+            )}
+            <button
+              className={`button button-compact ${menuOpen ? 'active' : ''}`}
+              data-testid="topright-selection-menu-button"
+              type="button"
+              onClick={(e) => {
+                if (menuOpen) {
+                  setMenuOpen(false);
+                  return;
+                }
+                openMenuNearElement(e.currentTarget);
+              }}
+            >
+              …
+            </button>
+          </div>
+        </div>
+      )}
+
       {showSelectionBar && (
-        <div className="canvas-selection-bar" data-testid="canvas-selection-bar" ref={menuRootRef}>
+        <div className="canvas-selection-bar" data-testid="canvas-selection-bar">
           <div className="canvas-selection-pill" data-testid="canvas-selection-label">{selectionLabel}</div>
           {state.selection.kind === 'entities' && (
             <button
@@ -164,81 +303,230 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
             className={`button button-compact ${menuOpen ? 'active' : ''}`}
             data-testid="canvas-selection-menu-button"
             type="button"
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={(e) => {
+              if (menuOpen) {
+                setMenuOpen(false);
+                return;
+              }
+              openMenuNearElement(e.currentTarget);
+            }}
           >
             …
           </button>
+        </div>
+      )}
 
-          {menuOpen && (
-            <div className="canvas-selection-menu" data-testid="canvas-selection-menu" role="menu" aria-label="Selection actions">
-              {state.selection.kind === 'entities' && (
+      {menuOpen && menuPosition && (
+        <div
+          className="canvas-context-menu"
+          data-testid="canvas-context-menu"
+          role="menu"
+          aria-label="Selection actions"
+          ref={menuRootRef}
+          style={{ left: menuPosition.x, top: menuPosition.y }}
+        >
+          {state.selection.kind === 'entities' && (
+            <button
+              className="canvas-selection-menu-item"
+              data-testid="canvas-menu-create-group"
+              type="button"
+              role="menuitem"
+              disabled={!canGroupSelection}
+              onClick={() => {
+                dispatch({ type: 'create-group-from-selection', name: '' });
+                setMenuOpen(false);
+              }}
+            >
+              Create Group from Selection
+            </button>
+          )}
+
+          {hasEntitySelection && (
+            <div className="canvas-selection-menu-section" data-testid="canvas-menu-add-to-group-section">
+              <div className="canvas-selection-menu-heading">Add to Existing Group</div>
+              {Object.values(scene.groups).map((group) => (
                 <button
+                  key={group.id}
                   className="canvas-selection-menu-item"
-                  data-testid="canvas-menu-create-group"
+                  data-testid={`canvas-menu-add-to-${group.id}`}
                   type="button"
                   role="menuitem"
-                  disabled={!canGroupSelection}
+                  disabled={!canAddToGroup}
                   onClick={() => {
-                    dispatch({ type: 'create-group-from-selection', name: '' });
+                    dispatch({ type: 'add-entities-to-group', groupId: group.id, entityIds: selectedEntityIds });
                     setMenuOpen(false);
                   }}
                 >
-                  Create Group from Selection
+                  {group.name ?? group.id}
                 </button>
+              ))}
+            </div>
+          )}
+
+          {hasEntitySelection && (
+            <button
+              className="canvas-selection-menu-item"
+              data-testid="canvas-menu-remove-from-group"
+              type="button"
+              role="menuitem"
+              disabled={!canUngroupSelection}
+              onClick={() => {
+                dispatch({ type: 'remove-entities-from-groups', entityIds: selectedGroupedIds });
+                setMenuOpen(false);
+              }}
+            >
+              Remove from Group
+            </button>
+          )}
+
+          {state.selection.kind === 'group' && (
+            <button
+              className="canvas-selection-menu-item"
+              data-testid="canvas-menu-dissolve-group"
+              type="button"
+              role="menuitem"
+              disabled={!canDissolveGroup}
+              onClick={() => {
+                dispatch({ type: 'dissolve-group', id: state.selection.id });
+                setMenuOpen(false);
+              }}
+            >
+              Dissolve Group
+            </button>
+          )}
+
+          {state.selection.kind === 'group' && (
+            <button
+              className={`canvas-selection-menu-item ${convertOpen ? 'active' : ''}`}
+              data-testid="canvas-menu-convert-layout"
+              type="button"
+              role="menuitem"
+              disabled={!canDissolveGroup}
+              onClick={() => {
+                if (convertOpen) {
+                  setConvertOpen(false);
+                  setConvertMode('root');
+                } else {
+                  openConvertSubmenu();
+                }
+              }}
+            >
+              Convert Group Layout ▸
+            </button>
+          )}
+
+          {state.selection.kind === 'group' && (
+            <button
+              className="canvas-selection-menu-item"
+              data-testid="canvas-menu-open-layout-inspector"
+              type="button"
+              role="menuitem"
+              onClick={() => setMenuOpen(false)}
+            >
+              Open Layout Inspector…
+            </button>
+          )}
+
+          {convertOpen && state.selection.kind === 'group' && (
+            <div className="canvas-context-submenu" data-testid="canvas-convert-layout-submenu">
+              {convertMode === 'root' && (
+                <>
+                  <button
+                    className="canvas-selection-menu-item"
+                    data-testid="canvas-convert-freeform"
+                    type="button"
+                    onClick={() => {
+                      dispatch({ type: 'convert-group-layout-freeform', id: state.selection.id });
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Freeform
+                  </button>
+                  <button
+                    className="canvas-selection-menu-item"
+                    data-testid="canvas-convert-grid"
+                    type="button"
+                    onClick={() => setConvertMode('grid')}
+                  >
+                    Grid…
+                  </button>
+                  <button
+                    className="canvas-selection-menu-item"
+                    data-testid="canvas-convert-arrange"
+                    type="button"
+                    onClick={() => setConvertMode('arrange')}
+                  >
+                    Arrange…
+                  </button>
+                </>
               )}
 
-              {state.selection.kind === 'entities' && (
-                <div className="canvas-selection-menu-section" data-testid="canvas-menu-add-to-group-section">
-                  <div className="canvas-selection-menu-heading">Add to Existing Group</div>
-                  {Object.values(scene.groups).map((group) => (
+              {convertMode === 'grid' && (
+                <div className="canvas-submenu-form" data-testid="canvas-convert-grid-form">
+                  <div className="canvas-selection-menu-heading">Grid</div>
+                  <label className="canvas-submenu-field">
+                    <span>Rows</span>
+                    <input
+                      value={gridDraft.rows}
+                      onChange={(e) => setGridDraft((draft) => ({ ...draft, rows: e.target.value }))}
+                      inputMode="numeric"
+                    />
+                  </label>
+                  <label className="canvas-submenu-field">
+                    <span>Cols</span>
+                    <input
+                      value={gridDraft.cols}
+                      onChange={(e) => setGridDraft((draft) => ({ ...draft, cols: e.target.value }))}
+                      inputMode="numeric"
+                    />
+                  </label>
+                  <div className="canvas-submenu-actions">
                     <button
-                      key={group.id}
-                      className="canvas-selection-menu-item"
-                      data-testid={`canvas-menu-add-to-${group.id}`}
+                      className="button button-compact"
                       type="button"
-                      role="menuitem"
-                      disabled={!canAddToGroup}
                       onClick={() => {
-                        dispatch({ type: 'add-entities-to-group', groupId: group.id, entityIds: selectedEntityIds });
+                        const rows = Math.max(1, Math.floor(Number(gridDraft.rows || 1)));
+                        const cols = Math.max(1, Math.floor(Number(gridDraft.cols || 1)));
+                        dispatch({ type: 'convert-group-layout-grid', id: state.selection.id, rows, cols });
                         setMenuOpen(false);
                       }}
                     >
-                      {group.name ?? group.id}
+                      Apply
                     </button>
-                  ))}
+                    <button
+                      className="button button-compact"
+                      type="button"
+                      onClick={() => setConvertMode('root')}
+                    >
+                      Back
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {state.selection.kind === 'entities' && (
-                <button
-                  className="canvas-selection-menu-item"
-                  data-testid="canvas-menu-remove-from-group"
-                  type="button"
-                  role="menuitem"
-                  disabled={!canUngroupSelection}
-                  onClick={() => {
-                    dispatch({ type: 'remove-entities-from-groups', entityIds: selectedGroupedIds });
-                    setMenuOpen(false);
-                  }}
-                >
-                  Remove from Group
-                </button>
-              )}
-
-              {state.selection.kind === 'group' && (
-                <button
-                  className="canvas-selection-menu-item"
-                  data-testid="canvas-menu-dissolve-group"
-                  type="button"
-                  role="menuitem"
-                  disabled={!canDissolveGroup}
-                  onClick={() => {
-                    dispatch({ type: 'dissolve-group', id: state.selection.id });
-                    setMenuOpen(false);
-                  }}
-                >
-                  Dissolve Group
-                </button>
+              {convertMode === 'arrange' && (
+                <div className="canvas-submenu-form" data-testid="canvas-convert-arrange-picker">
+                  <div className="canvas-selection-menu-heading">Arrange</div>
+                  {state.registry.arrange
+                    .filter((entry) => entry.implemented && entry.targetKinds.includes('group') && entry.type !== 'grid')
+                    .map((entry) => (
+                      <button
+                        key={entry.type}
+                        className="canvas-selection-menu-item"
+                        type="button"
+                        data-testid={`canvas-arrange-${entry.type}`}
+                        onClick={() => {
+                          dispatch({ type: 'convert-group-layout-arrange', id: state.selection.id, arrangeKind: entry.type });
+                          setMenuOpen(false);
+                        }}
+                      >
+                        {entry.displayName ?? entry.type}
+                      </button>
+                    ))}
+                  <div className="canvas-submenu-actions">
+                    <button className="button button-compact" type="button" onClick={() => setConvertMode('root')}>Back</button>
+                  </div>
+                </div>
               )}
             </div>
           )}

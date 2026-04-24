@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
-import { SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
+import { GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
 import { getGroupFrameDisplay } from '../editor/groupFrameDisplay';
 import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
@@ -65,6 +65,7 @@ export class EditorScene extends Phaser.Scene {
   private currentZoom = 1;
   private hasInitializedView = false;
   private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
+  private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private isSpacePanning = false;
   private isMiddleMouseDown = false;
   private wheelZoomAnchor?: { pointerX: number; pointerY: number; worldX: number; worldY: number };
@@ -98,8 +99,14 @@ export class EditorScene extends Phaser.Scene {
     });
   }
 
-  public loadSceneSpec(sceneSpec: SceneSpec): void {
-    this.loadScene(sceneSpec, 'edit');
+  public loadSceneSpec(sceneSpec: SceneSpec): void;
+  public loadSceneSpec(project: ProjectSpec, sceneSpec: SceneSpec): void;
+  public loadSceneSpec(projectOrScene: ProjectSpec | SceneSpec, maybeScene?: SceneSpec): void {
+    if (maybeScene) {
+      this.loadScene(projectOrScene as ProjectSpec, maybeScene as GameSceneSpec, 'edit');
+      return;
+    }
+    this.loadScene(undefined, projectOrScene as GameSceneSpec, 'edit');
   }
 
   public getViewState(): { zoom: number; scrollX: number; scrollY: number } {
@@ -195,6 +202,7 @@ export class EditorScene extends Phaser.Scene {
     scrollY: number;
     viewportWidth: number;
     viewportHeight: number;
+    backgroundLayerCount: number;
   } {
     return {
       ready: Boolean(this.compiled),
@@ -204,6 +212,7 @@ export class EditorScene extends Phaser.Scene {
       scrollY: this.cameras.main.scrollY,
       viewportWidth: this.scale.width,
       viewportHeight: this.scale.height,
+      backgroundLayerCount: this.backgroundObjects.length,
     };
   }
 
@@ -354,6 +363,35 @@ export class EditorScene extends Phaser.Scene {
     };
   }
 
+  public hitTestAtClientPoint(clientX: number, clientY: number): { kind: 'none' | 'entity' | 'group'; id?: string } {
+    if (this.mode !== 'edit') return { kind: 'none' };
+    const canvas = this.game.canvas;
+    if (!canvas) return { kind: 'none' };
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return { kind: 'none' };
+
+    const scaleX = this.scale.width / rect.width;
+    const scaleY = this.scale.height / rect.height;
+    const pointerX = (clientX - rect.left) * scaleX;
+    const pointerY = (clientY - rect.top) * scaleY;
+    const worldPoint = this.cameras.main.getWorldPoint(pointerX, pointerY);
+
+    const hitResult = hitTestCanvas(
+      worldPoint,
+      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.sprites,
+      this.groupZones,
+      this.boundsHandles
+    );
+
+    if (hitResult.kind === 'entity' || hitResult.kind === 'group') {
+      return { kind: hitResult.kind, id: hitResult.id };
+    }
+
+    return { kind: 'none' };
+  }
+
   public testTapWorld(point: { x: number; y: number }): void {
     const hitResult = hitTestCanvas(
       point,
@@ -478,7 +516,7 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
-  private loadScene(sceneSpec: SceneSpec, mode: 'edit' | 'play' = 'edit'): void {
+  private loadScene(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec, mode: 'edit' | 'play' = 'edit'): void {
     const currentLoadVersion = ++this.loadVersion;
     this.clearScene();
     this.mode = mode;
@@ -496,8 +534,9 @@ export class EditorScene extends Phaser.Scene {
       },
     });
 
-    void this.ensureAssetTextures(sceneSpec).finally(() => {
+    void this.ensureAssetTextures(project, sceneSpec).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
+      this.buildBackgroundLayers(project, sceneSpec);
       this.buildSprites();
       if (mode === 'play') this.buildFormationPhysicsGroups(sceneSpec);
       this.buildGroupFrames(sceneSpec);
@@ -535,6 +574,8 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private clearScene(): void {
+    this.backgroundObjects.forEach((obj) => obj.destroy());
+    this.backgroundObjects = [];
     this.formationPhysicsGroups.forEach((group) => group.destroy());
     this.formationPhysicsGroups.clear();
     this.physicsObjects.clear();
@@ -559,6 +600,58 @@ export class EditorScene extends Phaser.Scene {
     this.selectionFrames?.clear();
     this.dragOverlay?.setVisible(false);
     this.activeBoundsConditionId = undefined;
+  }
+
+  private buildBackgroundLayers(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec): void {
+    const layers = sceneSpec.backgroundLayers ?? [];
+    if (!project || layers.length === 0) return;
+
+    const world = getSceneWorld(sceneSpec);
+    for (const layer of layers) {
+      const asset = project.assets.images?.[layer.assetId];
+      if (!asset) continue;
+      const key = this.getBackgroundTextureKey(asset.id);
+      if (!this.textures.exists(key)) continue;
+
+      const scrollX = layer.scrollFactor?.x ?? 1;
+      const scrollY = layer.scrollFactor?.y ?? 1;
+      const alpha = layer.alpha ?? 1;
+
+      if (layer.layout === 'tile') {
+        const sprite = this.add.tileSprite(layer.x, layer.y, world.width, world.height, key);
+        sprite.setOrigin(0, 0);
+        sprite.setDepth(layer.depth);
+        sprite.setScrollFactor(scrollX, scrollY);
+        sprite.setAlpha(alpha);
+        if (layer.tint != null) sprite.setTint(layer.tint);
+        this.backgroundObjects.push(sprite);
+        continue;
+      }
+
+      const image = this.add.image(layer.x, layer.y, key);
+      image.setOrigin(0.5, 0.5);
+      image.setDepth(layer.depth);
+      image.setScrollFactor(scrollX, scrollY);
+      image.setAlpha(alpha);
+      if (layer.tint != null) image.setTint(layer.tint);
+
+      const texture = this.textures.get(key);
+      const source = (texture as any).getSourceImage?.() as { width: number; height: number } | undefined;
+      const sourceWidth = source?.width ?? image.width;
+      const sourceHeight = source?.height ?? image.height;
+      if (sourceWidth > 0 && sourceHeight > 0) {
+        if (layer.layout === 'stretch') {
+          image.setDisplaySize(world.width, world.height);
+        } else if (layer.layout === 'cover' || layer.layout === 'contain') {
+          const scaleX = world.width / sourceWidth;
+          const scaleY = world.height / sourceHeight;
+          const scale = layer.layout === 'cover' ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
+          image.setDisplaySize(sourceWidth * scale, sourceHeight * scale);
+        }
+      }
+
+      this.backgroundObjects.push(image);
+    }
   }
 
   private drawWorldFrame(scene: SceneSpec): void {
@@ -849,13 +942,32 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
-  private async ensureAssetTextures(sceneSpec: SceneSpec): Promise<void> {
+  private getBackgroundTextureKey(assetId: string): string {
+    return `bg:${assetId}`;
+  }
+
+  private async ensureAssetTextures(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec): Promise<void> {
     const pendingAssets = Object.values(sceneSpec.entities)
       .map((entity) => entity.asset)
       .filter((asset): asset is SpriteAssetSpec => Boolean(asset))
       .filter((asset) => !this.textures.exists(this.getTextureKey(asset)));
 
-    if (pendingAssets.length === 0) return;
+    const pendingBackgrounds: Array<{ key: string; url: string }> = [];
+    const backgroundLayers = sceneSpec.backgroundLayers ?? [];
+    if (project && backgroundLayers.length > 0) {
+      for (const layer of backgroundLayers) {
+        const asset = project.assets.images?.[layer.assetId];
+        if (!asset) continue;
+        const key = this.getBackgroundTextureKey(asset.id);
+        if (this.textures.exists(key)) continue;
+        pendingBackgrounds.push({
+          key,
+          url: asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path,
+        });
+      }
+    }
+
+    if (pendingAssets.length === 0 && pendingBackgrounds.length === 0) return;
 
     for (const asset of pendingAssets) {
       const key = this.getTextureKey(asset);
@@ -867,6 +979,10 @@ export class EditorScene extends Phaser.Scene {
       } else {
         this.load.image(key, asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path);
       }
+    }
+
+    for (const background of pendingBackgrounds) {
+      this.load.image(background.key, background.url);
     }
 
     await new Promise<void>((resolve) => {

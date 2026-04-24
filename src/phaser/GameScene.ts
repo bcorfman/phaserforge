@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, type CompiledScene } from '../compiler/compileScene';
-import type { SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
+import type { GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
 import { getRotatedEntityBounds } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
@@ -26,6 +26,7 @@ export class GameScene extends Phaser.Scene {
   private loadVersion = 0;
   private readonly sceneBridgeGetter = () => this;
   private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
+  private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly handleEscape = () => {
     EventBus.emit('toggle-mode');
   };
@@ -68,7 +69,11 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  public loadSceneSpec(sceneSpec: SceneSpec): void {
+  public loadSceneSpec(sceneSpec: SceneSpec): void;
+  public loadSceneSpec(project: ProjectSpec, sceneSpec: SceneSpec): void;
+  public loadSceneSpec(projectOrScene: ProjectSpec | SceneSpec, maybeScene?: SceneSpec): void {
+    const project = maybeScene ? (projectOrScene as ProjectSpec) : undefined;
+    const sceneSpec = (maybeScene ?? projectOrScene) as GameSceneSpec;
     const currentLoadVersion = ++this.loadVersion;
     this.clearScene();
     this.compiled = compileScene(sceneSpec, {
@@ -85,8 +90,9 @@ export class GameScene extends Phaser.Scene {
       },
     });
 
-    void this.ensureAssetTextures(sceneSpec).finally(() => {
+    void this.ensureAssetTextures(project, sceneSpec).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
+      this.buildBackgroundLayers(project, sceneSpec);
       this.buildSprites();
       this.buildFormationPhysicsGroups(sceneSpec);
       this.applyPendingViewState(sceneSpec);
@@ -133,6 +139,7 @@ export class GameScene extends Phaser.Scene {
     scrollY: number;
     viewportWidth: number;
     viewportHeight: number;
+    backgroundLayerCount: number;
   } {
     return {
       ready: Boolean(this.compiled),
@@ -142,6 +149,7 @@ export class GameScene extends Phaser.Scene {
       scrollY: this.cameras.main.scrollY,
       viewportWidth: this.scale.width,
       viewportHeight: this.scale.height,
+      backgroundLayerCount: this.backgroundObjects.length,
     };
   }
 
@@ -248,6 +256,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private clearScene(): void {
+    this.backgroundObjects.forEach((obj) => obj.destroy());
+    this.backgroundObjects = [];
     this.formationPhysicsGroups.forEach((group) => group.destroy());
     this.formationPhysicsGroups.clear();
     this.physicsObjects.clear();
@@ -397,13 +407,84 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private async ensureAssetTextures(sceneSpec: SceneSpec): Promise<void> {
+  private getBackgroundTextureKey(assetId: string): string {
+    return `bg:${assetId}`;
+  }
+
+  private buildBackgroundLayers(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec): void {
+    const layers = sceneSpec.backgroundLayers ?? [];
+    if (!project || layers.length === 0) return;
+
+    const world = getSceneWorld(sceneSpec);
+    for (const layer of layers) {
+      const asset = project.assets.images?.[layer.assetId];
+      if (!asset) continue;
+      const key = this.getBackgroundTextureKey(asset.id);
+      if (!this.textures.exists(key)) continue;
+
+      const scrollX = layer.scrollFactor?.x ?? 1;
+      const scrollY = layer.scrollFactor?.y ?? 1;
+      const alpha = layer.alpha ?? 1;
+
+      if (layer.layout === 'tile') {
+        const sprite = this.add.tileSprite(layer.x, layer.y, world.width, world.height, key);
+        sprite.setOrigin(0, 0);
+        sprite.setDepth(layer.depth);
+        sprite.setScrollFactor(scrollX, scrollY);
+        sprite.setAlpha(alpha);
+        if (layer.tint != null) sprite.setTint(layer.tint);
+        this.backgroundObjects.push(sprite);
+        continue;
+      }
+
+      const image = this.add.image(layer.x, layer.y, key);
+      image.setOrigin(0.5, 0.5);
+      image.setDepth(layer.depth);
+      image.setScrollFactor(scrollX, scrollY);
+      image.setAlpha(alpha);
+      if (layer.tint != null) image.setTint(layer.tint);
+
+      const texture = this.textures.get(key);
+      const source = (texture as any).getSourceImage?.() as { width: number; height: number } | undefined;
+      const sourceWidth = source?.width ?? image.width;
+      const sourceHeight = source?.height ?? image.height;
+      if (sourceWidth > 0 && sourceHeight > 0) {
+        if (layer.layout === 'stretch') {
+          image.setDisplaySize(world.width, world.height);
+        } else if (layer.layout === 'cover' || layer.layout === 'contain') {
+          const scaleX = world.width / sourceWidth;
+          const scaleY = world.height / sourceHeight;
+          const scale = layer.layout === 'cover' ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
+          image.setDisplaySize(sourceWidth * scale, sourceHeight * scale);
+        }
+      }
+
+      this.backgroundObjects.push(image);
+    }
+  }
+
+  private async ensureAssetTextures(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec): Promise<void> {
     const pendingAssets = Object.values(sceneSpec.entities)
       .map((entity) => entity.asset)
       .filter((asset): asset is SpriteAssetSpec => Boolean(asset))
       .filter((asset) => !this.textures.exists(this.getTextureKey(asset)));
 
-    if (pendingAssets.length === 0) return;
+    const pendingBackgrounds: Array<{ key: string; url: string }> = [];
+    const backgroundLayers = sceneSpec.backgroundLayers ?? [];
+    if (project && backgroundLayers.length > 0) {
+      for (const layer of backgroundLayers) {
+        const asset = project.assets.images?.[layer.assetId];
+        if (!asset) continue;
+        const key = this.getBackgroundTextureKey(asset.id);
+        if (this.textures.exists(key)) continue;
+        pendingBackgrounds.push({
+          key,
+          url: asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path,
+        });
+      }
+    }
+
+    if (pendingAssets.length === 0 && pendingBackgrounds.length === 0) return;
 
     for (const asset of pendingAssets) {
       const key = this.getTextureKey(asset);
@@ -415,6 +496,10 @@ export class GameScene extends Phaser.Scene {
       } else {
         this.load.image(key, asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path);
       }
+    }
+
+    for (const background of pendingBackgrounds) {
+      this.load.image(background.key, background.url);
     }
 
     await new Promise<void>((resolve) => {

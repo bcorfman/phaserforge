@@ -28,6 +28,7 @@ export interface SceneBridge {
     scrollY: number;
     viewportWidth: number;
     viewportHeight: number;
+    backgroundLayerCount?: number;
   };
   getEntityWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
   getEntitySpriteWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
