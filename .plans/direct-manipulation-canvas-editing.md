@@ -134,17 +134,28 @@ Turn the canvas into a genuinely usable scene editor rather than a geometry patc
 - Marquee multi-select: `.plans/mockups/phase-3/phase3-01-marquee-multiselect.svg`
 - Regroup/ungroup UX: `.plans/mockups/phase-3/phase3-02-regroup-ungroup.svg`
 - Undo/redo + snap + play/edit + pin: `.plans/mockups/phase-3/phase3-04-undo-redo-snap-playmode.svg`
+- Scene Graph drag/drop group membership: `.plans/mockups/phase-3/phase3-05-dragdrop-group-membership.svg`
+- Cursor context menu: `.plans/mockups/phase-3/phase3-06-cursor-context-menu.svg`
+- Top-right selection actions: `.plans/mockups/phase-3/phase3-07-topright-selection-actions.svg`
+- Convert group layout submenu: `.plans/mockups/phase-3/phase3-08-convert-group-layout-submenu.svg`
 
 ### Behaviors ✅ IMPLEMENTED
-- Marquee multi-select for entities
-- Keyboard nudging
-- Optional grid snapping toggle
-- Undo/redo integration for drag sequences
-- Regroup/ungroup UX:
-  - create group from selected ungrouped entities
-  - remove entity from group
-  - dissolve group into ungrouped entities
-- Optional pinned inspector for selected object while dragging
+- ✅ Marquee multi-select for entities
+- ✅ Keyboard nudging
+- ✅ Optional grid snapping toggle
+- ✅ Undo/redo integration for drag sequences (batched per canvas interaction)
+- ✅ Regroup/ungroup UX:
+  - ✅ create group from selected ungrouped entities
+  - ✅ remove entity from group
+  - ✅ dissolve group into ungrouped entities
+- ✅ Scene Graph drag/drop group membership:
+  - ✅ drag sprites onto formations to add members
+  - ✅ drag members into Sprites dropzone to remove from formation
+  - ✅ multi-select sprites in Scene Graph and drag into a formation
+- ✅ Cursor context menu (right-click) with selection actions
+- ✅ Convert group layout actions (freeform / grid / arrange) from the canvas context menu
+- ✅ Optional top-right selection actions cluster (for group or multi-selection)
+- ✅ Optional pinned inspector for selected object while dragging
 
 ### Architecture decisions
 - Regroup/ungroup operations must update:

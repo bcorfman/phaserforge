@@ -101,18 +101,18 @@ Support background images per scene, rendered in both Edit and Play.
   - `layout: 'stretch'|'cover'|'contain'|'center'|'tile'`
 
 ### Rendering
-- Both `EditorScene` and `GameScene` create background display objects *before* entities, behind everything, non-interactive.
+- [x] Both `EditorScene` and `GameScene` create background display objects *before* entities, behind everything, non-interactive.
 
 ### Editor UI
-- Inspector section when “no selection” or “scene selected”:
-  - add/remove background layer
-  - reorder layers
-  - pick assetId
-  - set layout + depth + parallax + alpha
+- [x] Inspector section when “no selection” or “scene selected”:
+  - [x] add/remove background layer
+  - [x] reorder layers
+  - [x] pick assetId
+  - [x] set layout + depth + parallax + alpha
 
 ### Tests
-- Unit: reducer tests for adding/reordering layers
-- E2E: verify background layer list in state snapshot; verify canvas still renders entities above (no pixel diffs)
+- [x] Unit: reducer tests for adding/reordering layers
+- [x] E2E: verify background layer list in state snapshot; verify canvas still renders entities above (no pixel diffs)
 
 ## Phase 4: Service-backed Calls + scene transitions (`scene.goto`)
 ### Goal
