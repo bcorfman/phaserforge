@@ -24,6 +24,7 @@ test('edits formation details and layout from the inspector', async ({ page }) =
   await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');
 
   await page.getByTestId('formation-name-input').fill('Invader Block');
+  await page.getByTestId('inspector').getByLabel('Expand Layout Inspector').click();
   await page.getByTestId('arrange-preset-select').selectOption('grid');
   await page.getByTestId('arrange-param-startX').fill('260');
   await page.getByTestId('arrange-param-spacingX').fill('60');
@@ -36,6 +37,28 @@ test('edits formation details and layout from the inspector', async ({ page }) =
     name: 'Invader Block',
     layout: { type: 'grid', startX: 260, spacingX: 60 },
   });
+});
+
+test('converts group layout via the inspector layout type dropdown', async ({ page }) => {
+  await selectGroupInSceneGraph(page, 'g-enemies');
+
+  await page.getByTestId('layout-type-select').selectOption('grid');
+  await page.getByTestId('convert-grid-rows-input').fill('5');
+  await page.getByTestId('convert-grid-cols-input').fill('3');
+  await page.getByTestId('convert-layout-apply-button').click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene?: { groups?: Record<string, { layout?: { type: string; rows?: number; cols?: number } }> } } | null>(page);
+    return state?.scene?.groups?.['g-enemies']?.layout ?? {};
+  }).toMatchObject({ type: 'grid', rows: 5, cols: 3 });
+
+  await page.getByTestId('layout-type-select').selectOption('freeform');
+  await page.getByTestId('convert-layout-apply-button').click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene?: { groups?: Record<string, { layout?: { type: string } }> } } | null>(page);
+    return state?.scene?.groups?.['g-enemies']?.layout?.type ?? null;
+  }).toBe('freeform');
 });
 
 test('edits move-until and bounds values from the attachment inspector', async ({ page }) => {
@@ -199,6 +222,7 @@ test('creates a formation from imported sprites and arranges it into a grid', as
   await page.getByTestId('create-formation-from-selection-button').click();
   await expectInputValue(page.getByTestId('formation-name-input'), 'Raid Wing');
 
+  await page.getByTestId('inspector').getByLabel('Expand Layout Inspector').click();
   await page.getByTestId('arrange-preset-select').selectOption('grid');
   await page.getByTestId('arrange-param-rows').fill('1');
   await page.getByTestId('arrange-param-cols').fill('2');

@@ -106,6 +106,9 @@ export function Inspector() {
           onUpdateGroup={updateGroup}
           onArrangeGroupGrid={(layout) => dispatch({ type: 'arrange-group-grid', id: group.id, layout })}
           onArrangeGroup={(arrangeKind, params) => dispatch({ type: 'arrange-group', id: group.id, arrangeKind, params })}
+          onConvertLayoutFreeform={() => dispatch({ type: 'convert-group-layout-freeform', id: group.id })}
+          onConvertLayoutGrid={(rows, cols) => dispatch({ type: 'convert-group-layout-grid', id: group.id, rows, cols })}
+          onConvertLayoutArrange={(arrangeKind) => dispatch({ type: 'convert-group-layout-arrange', id: group.id, arrangeKind })}
           onUngroup={() => dispatch({ type: 'ungroup-group', id: group.id })}
           onDissolve={() => dispatch({ type: 'dissolve-group', id: group.id })}
           onDeleteGroup={() => dispatch({ type: 'delete-group', id: group.id })}
@@ -591,6 +594,9 @@ function GroupInspector({
   onUpdateGroup,
   onArrangeGroupGrid,
   onArrangeGroup,
+  onConvertLayoutFreeform,
+  onConvertLayoutGrid,
+  onConvertLayoutArrange,
   onUngroup,
   onDissolve,
   onDeleteGroup,
@@ -608,6 +614,9 @@ function GroupInspector({
   onUpdateGroup: (next: GroupSpec) => void;
   onArrangeGroupGrid: (layout: { rows: number; cols: number; startX: number; startY: number; spacingX: number; spacingY: number }) => void;
   onArrangeGroup: (arrangeKind: string, params: Record<string, number | string | boolean>) => void;
+  onConvertLayoutFreeform: () => void;
+  onConvertLayoutGrid: (rows: number, cols: number) => void;
+  onConvertLayoutArrange: (arrangeKind: string) => void;
   onUngroup: () => void;
   onDissolve: () => void;
   onDeleteGroup: () => void;
@@ -619,6 +628,22 @@ function GroupInspector({
     return 'grid';
   });
   const [layoutParams, setLayoutParams] = useState<Record<string, string>>({});
+
+  type ConvertLayoutType = 'freeform' | 'grid' | 'arrange';
+  const supportedArrangeKinds = registry.arrange
+    .filter((entry) => entry.implemented && (entry.targetKinds ?? []).includes('group') && entry.type !== 'grid')
+    .map((entry) => entry.type);
+  const defaultArrangeKind = supportedArrangeKinds[0] ?? 'line';
+  const [convertType, setConvertType] = useState<ConvertLayoutType>(() => {
+    if (group.layout?.type === 'grid') return 'grid';
+    if (group.layout?.type === 'arrange') return 'arrange';
+    return 'freeform';
+  });
+  const [convertGridDraft, setConvertGridDraft] = useState<{ rows: string; cols: string }>({ rows: '', cols: '' });
+  const [convertArrangeKind, setConvertArrangeKind] = useState<string>(() => {
+    if (group.layout?.type === 'arrange') return group.layout.arrangeKind;
+    return defaultArrangeKind;
+  });
 
   useEffect(() => {
     if (group.layout?.type === 'arrange') {
@@ -652,6 +677,28 @@ function GroupInspector({
     });
   }, [group.id]);
 
+  useEffect(() => {
+    // Initialize the convert UI from the current group layout.
+    if (group.layout?.type === 'grid') {
+      setConvertType('grid');
+      setConvertGridDraft({ rows: String(group.layout.rows), cols: String(group.layout.cols) });
+      return;
+    }
+    if (group.layout?.type === 'arrange') {
+      setConvertType('arrange');
+      setConvertArrangeKind(group.layout.arrangeKind);
+      return;
+    }
+
+    setConvertType('freeform');
+    const inferred = inferGroupGridLayout(scene, group.id);
+    setConvertGridDraft({
+      rows: String(inferred?.rows ?? 1),
+      cols: String(inferred?.cols ?? Math.max(1, group.members.length)),
+    });
+    setConvertArrangeKind(defaultArrangeKind);
+  }, [group.id, group.layout?.type]);
+
   const arrangeEntry = registry.arrange.find((entry) => entry.implemented && entry.type === layoutPreset && (entry.targetKinds ?? []).includes('group'));
   const arrangeParams = arrangeEntry?.parameters ?? [];
 
@@ -684,6 +731,21 @@ function GroupInspector({
     onArrangeGroup(layoutPreset, params);
   };
 
+  const applyConvertLayout = () => {
+    if (convertType === 'freeform') {
+      onConvertLayoutFreeform();
+      return;
+    }
+    if (convertType === 'grid') {
+      const rows = Math.max(1, Math.floor(Number(convertGridDraft.rows || 1)));
+      const cols = Math.max(1, Math.floor(Number(convertGridDraft.cols || 1)));
+      onConvertLayoutGrid(rows, cols);
+      return;
+    }
+    const kind = supportedArrangeKinds.includes(convertArrangeKind) ? convertArrangeKind : defaultArrangeKind;
+    onConvertLayoutArrange(kind);
+  };
+
   return (
     renderGroupInspector(group, scene, {
       registry,
@@ -704,6 +766,15 @@ function GroupInspector({
       layoutParams,
       setLayoutParams,
       applyLayout,
+      convertType,
+      setConvertType,
+      convertGridDraft,
+      setConvertGridDraft,
+      supportedArrangeKinds,
+      defaultArrangeKind,
+      convertArrangeKind,
+      setConvertArrangeKind,
+      applyConvertLayout,
     })
   );
 }
@@ -730,6 +801,15 @@ export function renderGroupInspector(
     layoutParams: Record<string, string>;
     setLayoutParams: (next: Record<string, string>) => void;
     applyLayout: () => void;
+    convertType: 'freeform' | 'grid' | 'arrange';
+    setConvertType: (next: 'freeform' | 'grid' | 'arrange') => void;
+    convertGridDraft: { rows: string; cols: string };
+    setConvertGridDraft: (next: { rows: string; cols: string }) => void;
+    supportedArrangeKinds: string[];
+    defaultArrangeKind: string;
+    convertArrangeKind: string;
+    setConvertArrangeKind: (next: string) => void;
+    applyConvertLayout: () => void;
   }
 ) {
   const members = group.members.map((memberId) => scene.entities[memberId]).filter(Boolean);
@@ -808,37 +888,127 @@ export function renderGroupInspector(
         <div className="inspector-row">
           Layout: {layoutSummary.kind === 'grid' ? `${layoutSummary.rows} x ${layoutSummary.cols} grid` : 'Freeform'}
         </div>
-        <div className="inspector-row">
+      </InspectorFoldout>
+
+      <InspectorFoldout
+        title="Layout"
+        open={handlers.foldouts.isOpen('group.layout', true)}
+        onToggle={() => handlers.foldouts.toggle('group.layout', true)}
+      >
+        <div className="inspector-row">Convert the formation layout without adding or removing members.</div>
+        <label className="field">
+          <span>Layout Type</span>
+          <select
+            aria-label="Layout Type"
+            data-testid="layout-type-select"
+            value={handlers.convertType}
+            onChange={(e) => handlers.setConvertType(e.target.value === 'grid' ? 'grid' : e.target.value === 'arrange' ? 'arrange' : 'freeform')}
+          >
+            <option value="freeform">Freeform</option>
+            <option value="grid">Grid</option>
+            <option value="arrange">Arrange…</option>
+          </select>
+        </label>
+
+        {handlers.convertType === 'grid' && (
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Rows</span>
+              <input
+                aria-label="Grid Rows"
+                data-testid="convert-grid-rows-input"
+                value={handlers.convertGridDraft.rows}
+                inputMode="numeric"
+                onChange={(e) => handlers.setConvertGridDraft({ ...handlers.convertGridDraft, rows: e.target.value })}
+              />
+            </label>
+            <label className="field">
+              <span>Cols</span>
+              <input
+                aria-label="Grid Cols"
+                data-testid="convert-grid-cols-input"
+                value={handlers.convertGridDraft.cols}
+                inputMode="numeric"
+                onChange={(e) => handlers.setConvertGridDraft({ ...handlers.convertGridDraft, cols: e.target.value })}
+              />
+            </label>
+          </div>
+        )}
+
+        {handlers.convertType === 'arrange' && (
           <label className="field">
             <span>Arrange Preset</span>
             <select
-              aria-label="Arrange Preset"
-              data-testid="arrange-preset-select"
-              value={handlers.layoutPreset}
-              onChange={(e) => {
-                const nextPreset = e.target.value;
-                handlers.setLayoutPreset(nextPreset);
-                const entry = handlers.registry.arrange.find((it) => it.implemented && it.type === nextPreset && (it.targetKinds ?? []).includes('group'));
-                const nextParams: Record<string, string> = {};
-                for (const param of entry?.parameters ?? []) {
-                  const existing = handlers.layoutParams[param.name];
-                  if (existing != null && existing !== '') {
-                    nextParams[param.name] = existing;
-                  } else if (param.default != null) {
-                    nextParams[param.name] = String(param.default);
-                  }
-                }
-                handlers.setLayoutParams({ ...handlers.layoutParams, ...nextParams });
-              }}
+              aria-label="Convert Arrange Preset"
+              data-testid="convert-arrange-kind-select"
+              value={handlers.convertArrangeKind}
+              onChange={(e) => handlers.setConvertArrangeKind(e.target.value)}
             >
-              {handlers.registry.arrange
-                .filter((entry) => entry.implemented && (entry.targetKinds ?? []).includes('group'))
-                .map((entry) => (
-                  <option key={entry.type} value={entry.type}>{entry.displayName ?? entry.type}</option>
-                ))}
+              {(handlers.supportedArrangeKinds.length > 0 ? handlers.supportedArrangeKinds : [handlers.defaultArrangeKind]).map((kind) => {
+                const entry = handlers.registry.arrange.find((it) => it.type === kind);
+                return (
+                  <option key={kind} value={kind}>{entry?.displayName ?? kind}</option>
+                );
+              })}
             </select>
           </label>
+        )}
+
+        <div className="inspector-row inspector-inline-buttons">
+          <button
+            className="button"
+            data-testid="convert-layout-apply-button"
+            type="button"
+            onClick={handlers.applyConvertLayout}
+          >
+            Convert / Apply
+          </button>
+          <button
+            className="button button-compact"
+            data-testid="open-layout-inspector-button"
+            type="button"
+            onClick={() => handlers.foldouts.toggle('group.layoutInspector', false)}
+          >
+            Layout Inspector…
+          </button>
         </div>
+      </InspectorFoldout>
+
+      <InspectorFoldout
+        title="Layout Inspector"
+        open={handlers.foldouts.isOpen('group.layoutInspector', false)}
+        onToggle={() => handlers.foldouts.toggle('group.layoutInspector', false)}
+      >
+        <div className="inspector-row">Edit layout parameters and apply them immediately to member positions.</div>
+        <label className="field">
+          <span>Arrange Preset</span>
+          <select
+            aria-label="Arrange Preset"
+            data-testid="arrange-preset-select"
+            value={handlers.layoutPreset}
+            onChange={(e) => {
+              const nextPreset = e.target.value;
+              handlers.setLayoutPreset(nextPreset);
+              const entry = handlers.registry.arrange.find((it) => it.implemented && it.type === nextPreset && (it.targetKinds ?? []).includes('group'));
+              const nextParams: Record<string, string> = {};
+              for (const param of entry?.parameters ?? []) {
+                const existing = handlers.layoutParams[param.name];
+                if (existing != null && existing !== '') {
+                  nextParams[param.name] = existing;
+                } else if (param.default != null) {
+                  nextParams[param.name] = String(param.default);
+                }
+              }
+              handlers.setLayoutParams({ ...handlers.layoutParams, ...nextParams });
+            }}
+          >
+            {handlers.registry.arrange
+              .filter((entry) => entry.implemented && (entry.targetKinds ?? []).includes('group'))
+              .map((entry) => (
+                <option key={entry.type} value={entry.type}>{entry.displayName ?? entry.type}</option>
+              ))}
+          </select>
+        </label>
         {handlers.registry.arrange
           .find((entry) => entry.implemented && entry.type === handlers.layoutPreset && (entry.targetKinds ?? []).includes('group'))
           ?.parameters?.map((param) => (

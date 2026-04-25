@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EventBus, getActiveScene } from '../phaser/EventBus';
 import { useEditorStore, type Selection } from './EditorStore';
-import { inferGroupGridLayout } from './formationLayout';
 
 function getSelectedEntityIds(selection: Selection): string[] {
   if (selection.kind === 'entity') return [selection.id];
@@ -14,9 +13,6 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   const scene = state.project.scenes[state.currentSceneId];
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
-  const [convertOpen, setConvertOpen] = useState(false);
-  const [convertMode, setConvertMode] = useState<'root' | 'grid' | 'arrange'>('root');
-  const [gridDraft, setGridDraft] = useState<{ rows: string; cols: string }>({ rows: '1', cols: '1' });
   const menuRootRef = useRef<HTMLDivElement | null>(null);
   const suppressSelectionCloseRef = useRef(false);
   const latestSelectionRef = useRef(state.selection);
@@ -79,8 +75,6 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   useEffect(() => {
     if (suppressSelectionCloseRef.current) return;
     setMenuOpen(false);
-    setConvertOpen(false);
-    setConvertMode('root');
   }, [state.selection.kind, selectedEntityIds.join(','), state.mode]);
 
   useEffect(() => {
@@ -115,8 +109,6 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
       }
 
       setMenuPosition({ x: event.clientX + 12, y: event.clientY + 12 });
-      setConvertOpen(false);
-      setConvertMode('root');
       setMenuOpen(true);
       queueMicrotask(() => {
         suppressSelectionCloseRef.current = false;
@@ -155,20 +147,7 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     y = Math.max(padding, Math.min(window.innerHeight - padding, y));
 
     setMenuPosition({ x, y });
-    setConvertOpen(false);
-    setConvertMode('root');
     setMenuOpen(true);
-  };
-
-  const openConvertSubmenu = () => {
-    if (state.selection.kind !== 'group') return;
-    const layout = inferGroupGridLayout(scene, state.selection.id);
-    setGridDraft({
-      rows: String(layout?.rows ?? 3),
-      cols: String(layout?.cols ?? 5),
-    });
-    setConvertMode('root');
-    setConvertOpen(true);
   };
 
   return (
@@ -397,138 +376,14 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
 
           {state.selection.kind === 'group' && (
             <button
-              className={`canvas-selection-menu-item ${convertOpen ? 'active' : ''}`}
-              data-testid="canvas-menu-convert-layout"
-              type="button"
-              role="menuitem"
-              disabled={!canDissolveGroup}
-              onClick={() => {
-                if (convertOpen) {
-                  setConvertOpen(false);
-                  setConvertMode('root');
-                } else {
-                  openConvertSubmenu();
-                }
-              }}
-            >
-              Convert Group Layout ▸
-            </button>
-          )}
-
-          {state.selection.kind === 'group' && (
-            <button
               className="canvas-selection-menu-item"
               data-testid="canvas-menu-open-layout-inspector"
               type="button"
               role="menuitem"
               onClick={() => setMenuOpen(false)}
             >
-              Open Layout Inspector…
+              Convert Layout (Inspector)…
             </button>
-          )}
-
-          {convertOpen && state.selection.kind === 'group' && (
-            <div className="canvas-context-submenu" data-testid="canvas-convert-layout-submenu">
-              {convertMode === 'root' && (
-                <>
-                  <button
-                    className="canvas-selection-menu-item"
-                    data-testid="canvas-convert-freeform"
-                    type="button"
-                    onClick={() => {
-                      dispatch({ type: 'convert-group-layout-freeform', id: state.selection.id });
-                      setMenuOpen(false);
-                    }}
-                  >
-                    Freeform
-                  </button>
-                  <button
-                    className="canvas-selection-menu-item"
-                    data-testid="canvas-convert-grid"
-                    type="button"
-                    onClick={() => setConvertMode('grid')}
-                  >
-                    Grid…
-                  </button>
-                  <button
-                    className="canvas-selection-menu-item"
-                    data-testid="canvas-convert-arrange"
-                    type="button"
-                    onClick={() => setConvertMode('arrange')}
-                  >
-                    Arrange…
-                  </button>
-                </>
-              )}
-
-              {convertMode === 'grid' && (
-                <div className="canvas-submenu-form" data-testid="canvas-convert-grid-form">
-                  <div className="canvas-selection-menu-heading">Grid</div>
-                  <label className="canvas-submenu-field">
-                    <span>Rows</span>
-                    <input
-                      value={gridDraft.rows}
-                      onChange={(e) => setGridDraft((draft) => ({ ...draft, rows: e.target.value }))}
-                      inputMode="numeric"
-                    />
-                  </label>
-                  <label className="canvas-submenu-field">
-                    <span>Cols</span>
-                    <input
-                      value={gridDraft.cols}
-                      onChange={(e) => setGridDraft((draft) => ({ ...draft, cols: e.target.value }))}
-                      inputMode="numeric"
-                    />
-                  </label>
-                  <div className="canvas-submenu-actions">
-                    <button
-                      className="button button-compact"
-                      type="button"
-                      onClick={() => {
-                        const rows = Math.max(1, Math.floor(Number(gridDraft.rows || 1)));
-                        const cols = Math.max(1, Math.floor(Number(gridDraft.cols || 1)));
-                        dispatch({ type: 'convert-group-layout-grid', id: state.selection.id, rows, cols });
-                        setMenuOpen(false);
-                      }}
-                    >
-                      Apply
-                    </button>
-                    <button
-                      className="button button-compact"
-                      type="button"
-                      onClick={() => setConvertMode('root')}
-                    >
-                      Back
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {convertMode === 'arrange' && (
-                <div className="canvas-submenu-form" data-testid="canvas-convert-arrange-picker">
-                  <div className="canvas-selection-menu-heading">Arrange</div>
-                  {state.registry.arrange
-                    .filter((entry) => entry.implemented && entry.targetKinds.includes('group') && entry.type !== 'grid')
-                    .map((entry) => (
-                      <button
-                        key={entry.type}
-                        className="canvas-selection-menu-item"
-                        type="button"
-                        data-testid={`canvas-arrange-${entry.type}`}
-                        onClick={() => {
-                          dispatch({ type: 'convert-group-layout-arrange', id: state.selection.id, arrangeKind: entry.type });
-                          setMenuOpen(false);
-                        }}
-                      >
-                        {entry.displayName ?? entry.type}
-                      </button>
-                    ))}
-                  <div className="canvas-submenu-actions">
-                    <button className="button button-compact" type="button" onClick={() => setConvertMode('root')}>Back</button>
-                  </div>
-                </div>
-              )}
-            </div>
           )}
         </div>
       )}

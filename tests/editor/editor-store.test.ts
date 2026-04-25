@@ -218,6 +218,112 @@ describe('EditorStore reducer', () => {
     expect(layout.params.centerY).toBe(195);
   });
 
+  it('converts group layout to freeform without changing member positions', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+    const groupId = 'g-enemies';
+    const group = scene.groups[groupId];
+    if (!group) throw new Error('Missing sample group');
+
+    const before = group.members.map((id) => scene.entities[id]).filter(Boolean).map((e) => ({ id: e!.id, x: e!.x, y: e!.y }));
+    const next = reducer(state, { type: 'convert-group-layout-freeform', id: groupId });
+
+    expect(sceneOf(next).groups[groupId].layout).toEqual({ type: 'freeform' });
+    const after = group.members.map((id) => sceneOf(next).entities[id]).filter(Boolean).map((e) => ({ id: e!.id, x: e!.x, y: e!.y }));
+    expect(after).toEqual(before);
+  });
+
+  it('converts group layout to grid while preserving members (no add/remove)', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+    const groupId = 'g-enemies';
+    const group = scene.groups[groupId];
+    if (!group) throw new Error('Missing sample group');
+
+    // Put all members into a known 3x5 grid so inferGroupGridLayout is stable.
+    const members = group.members;
+    const patchedEntities = { ...scene.entities };
+    members.forEach((id, index) => {
+      const row = Math.floor(index / 5);
+      const col = index % 5;
+      patchedEntities[id] = { ...scene.entities[id], x: 100 + col * 40, y: 200 + row * 30 };
+    });
+    const patched = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: {
+            ...scene,
+            groups: {
+              ...scene.groups,
+              [groupId]: { ...group, layout: { type: 'freeform' } },
+            },
+            entities: {
+              ...patchedEntities,
+            },
+          },
+        },
+      },
+    };
+
+    const beforeEntityCount = Object.keys(sceneOf(patched).entities).length;
+    const beforeMembers = [...sceneOf(patched).groups[groupId].members];
+
+    const next = reducer(patched, { type: 'convert-group-layout-grid', id: groupId, rows: 2, cols: 2 });
+    const nextScene = sceneOf(next);
+
+    expect(Object.keys(nextScene.entities).length).toBe(beforeEntityCount);
+    expect(nextScene.groups[groupId].members).toEqual(beforeMembers);
+    expect(nextScene.groups[groupId].layout?.type).toBe('grid');
+    if (nextScene.groups[groupId].layout?.type !== 'grid') throw new Error('Expected grid layout');
+    // Chooses the closest factor pair so `rows * cols === memberCount`.
+    expect(nextScene.groups[groupId].layout.rows).toBe(3);
+    expect(nextScene.groups[groupId].layout.cols).toBe(5);
+    expect(nextScene.groups[groupId].layout.startX).toBe(100);
+    expect(nextScene.groups[groupId].layout.spacingX).toBe(40);
+  });
+
+  it('converts group layout to an arrange preset and updates the group layout type', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+    const groupId = 'g-enemies';
+    const group = scene.groups[groupId];
+    if (!group) throw new Error('Missing sample group');
+    const firstId = group.members[0];
+    const secondId = group.members[1];
+    if (!firstId || !secondId) throw new Error('Expected at least 2 group members');
+
+    const patched = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: {
+            ...scene,
+            entities: {
+              ...scene.entities,
+              [firstId]: { ...scene.entities[firstId], x: 0, y: 0 },
+              [secondId]: { ...scene.entities[secondId], x: 0, y: 0 },
+            },
+          },
+        },
+      },
+    };
+
+    const next = reducer(patched, { type: 'convert-group-layout-arrange', id: groupId, arrangeKind: 'line' });
+    const nextScene = sceneOf(next);
+    const layout = nextScene.groups[groupId].layout;
+    expect(layout?.type).toBe('arrange');
+    if (layout?.type !== 'arrange') throw new Error('Expected arrange layout');
+    expect(layout.arrangeKind).toBe('line');
+
+    // Default line arrange spreads members out.
+    expect(nextScene.entities[secondId].x).not.toBe(nextScene.entities[firstId].x);
+  });
+
   it('updates bounds with clamping', () => {
     const state = seededState();
     const action: EditorAction = { type: 'update-bounds', id: 'att-move-right', bounds: { minX: 100, maxX: 50, minY: 200, maxY: 150 } };
@@ -530,7 +636,7 @@ describe('EditorStore reducer', () => {
     const state = seededState();
     const next = reducer(state, { type: 'convert-group-layout-grid', id: 'g-enemies', rows: 1, cols: 1 } as any);
 
-    expect(sceneOf(next).groups['g-enemies'].layout).toMatchObject({ type: 'grid', rows: 1 });
+    expect(sceneOf(next).groups['g-enemies'].layout).toMatchObject({ type: 'grid', rows: 1, cols: 15 });
     expect(sceneOf(next).groups['g-enemies'].members).toHaveLength(sceneOf(state).groups['g-enemies'].members.length);
     expect(sceneOf(next).entities.e1).toMatchObject({ x: 220, y: 140 });
     expect(sceneOf(next).entities.e2).toMatchObject({ x: 268, y: 140 });

@@ -115,11 +115,45 @@ export function applyGroupGridLayoutPreserveMembers(
     .map((member) => ({ ...member }));
   if (members.length === 0) return scene;
 
-  const rows = Math.max(1, Math.floor(Number(layout.rows ?? 1)));
-  let cols = Math.max(1, Math.floor(Number(layout.cols ?? 1)));
-  if (rows * cols < members.length) {
-    cols = Math.max(cols, Math.ceil(members.length / rows));
+  const desiredRows = Math.max(1, Math.floor(Number(layout.rows ?? 1)));
+  const desiredCols = Math.max(1, Math.floor(Number(layout.cols ?? 1)));
+  const memberCount = members.length;
+
+  // Preserve-member conversion must keep `rows * cols === memberCount` so downstream code that relies on
+  // `arrangeGrid` (and runtime grid semantics) stays consistent.
+  const factorPairs: Array<{ rows: number; cols: number; rowDelta: number; colDelta: number }> = [];
+  const maxRow = Math.floor(Math.sqrt(memberCount));
+  for (let r = 1; r <= maxRow; r += 1) {
+    if (memberCount % r !== 0) continue;
+    const c = memberCount / r;
+    const pushPair = (rows: number, cols: number) => {
+      const rowDelta = Math.abs(rows - desiredRows);
+      const colDelta = Math.abs(cols - desiredCols);
+      factorPairs.push({ rows, cols, rowDelta, colDelta });
+    };
+    pushPair(r, c);
+    if (c !== r) pushPair(c, r);
   }
+
+  let chosenRows = desiredRows;
+  let chosenCols = Math.max(1, Math.ceil(memberCount / desiredRows));
+
+  // Prefer honoring the requested row or column count when it can be exact.
+  if (memberCount % desiredRows === 0) {
+    chosenRows = desiredRows;
+    chosenCols = memberCount / desiredRows;
+  } else if (memberCount % desiredCols === 0) {
+    chosenCols = desiredCols;
+    chosenRows = memberCount / desiredCols;
+  } else if (factorPairs.length > 0) {
+    // Otherwise, pick the factor pair closest to the user's requested shape.
+    factorPairs.sort((a, b) => (a.rowDelta - b.rowDelta) || (a.colDelta - b.colDelta) || (a.rows - b.rows));
+    chosenRows = factorPairs[0].rows;
+    chosenCols = factorPairs[0].cols;
+  }
+
+  const rows = chosenRows;
+  const cols = chosenCols;
 
   const arrangedLayout: GroupGridLayout = {
     rows,
