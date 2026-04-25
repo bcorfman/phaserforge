@@ -988,6 +988,30 @@ html[data-theme='dark'] .phaser-frame {
   background: rgba(20, 93, 102, 0.08);
 }
 
+.scene-graph-drop-overlay {
+  position: absolute;
+  inset: 0;
+  border: 1px dashed rgba(20, 93, 102, 0.35);
+  border-radius: 0.9rem;
+  background: rgba(20, 93, 102, 0.06);
+  opacity: 0;
+  cursor: copy;
+}
+
+.scene-graph-drop-overlay:hover {
+  opacity: 1;
+}
+
+.scene-graph-drop-end {
+  width: 100%;
+  height: 0.9rem;
+  border: 1px dashed rgba(20, 93, 102, 0.35);
+  border-radius: 0.7rem;
+  background: rgba(20, 93, 102, 0.06);
+  opacity: 0.6;
+  cursor: copy;
+}
+
 .panel-section.scene-graph-drop-target-sprites {
   border: 2px dashed rgba(79, 210, 219, 0.55);
   border-radius: 1.1rem;

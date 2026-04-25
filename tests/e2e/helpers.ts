@@ -1,3 +1,5 @@
+/// <reference path="../../src/vite-env.d.ts" />
+
 import { expect, type Locator, type Page } from '@playwright/test';
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';
@@ -35,14 +37,14 @@ export async function gotoStudio(page: Page): Promise<void> {
 export async function seedSampleScene(page: Page): Promise<void> {
   const yaml = serializeProjectToYaml(sampleProject);
   await page.addInitScript(
-    ([sceneYaml]) => {
-      if (window.localStorage.getItem('phaseractions.testSeeded.v1')) return;
-      window.localStorage.setItem('phaseractions.testSeeded.v1', '1');
+    ([sceneYaml, sentinelKey]) => {
+      if (window.localStorage.getItem(sentinelKey)) return;
+      window.localStorage.setItem(sentinelKey, '1');
       window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
       window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
       window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
     },
-    [yaml]
+    [yaml, TEST_SEED_SENTINEL_KEY]
   );
   await page.goto('/');
   try {
@@ -188,6 +190,44 @@ export async function dragWorld(page: Page, start: Point, end: Point): Promise<v
 
 export async function dragBoundsHandle(page: Page, handle: string, delta: Point): Promise<void> {
   await page.evaluate(([nextHandle, nextDelta]) => window.__PHASER_ACTIONS_STUDIO_TEST__?.dragBoundsHandle(nextHandle, nextDelta), [handle, delta]);
+}
+
+export async function dragDropByTestId(
+  page: Page,
+  sourceTestId: string,
+  targetTestId: string,
+  options: { targetYFraction?: number } = {}
+): Promise<void> {
+  const targetYFraction = options.targetYFraction ?? 0.75;
+  await page.evaluate(
+    ([sourceId, targetId, yFraction]) => {
+      const source = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
+      const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
+      if (!source) throw new Error(`dragDropByTestId: missing source ${sourceId}`);
+      if (!target) throw new Error(`dragDropByTestId: missing target ${targetId}`);
+
+      source.scrollIntoView({ block: 'center', inline: 'center' });
+      target.scrollIntoView({ block: 'center', inline: 'center' });
+
+      const dataTransfer = new DataTransfer();
+      const rect = target.getBoundingClientRect();
+      const clientX = rect.left + rect.width * 0.5;
+      const clientY = rect.top + rect.height * yFraction;
+
+      const fire = (el: Element, type: string) => {
+        el.dispatchEvent(
+          new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY })
+        );
+      };
+
+      fire(source, 'dragstart');
+      fire(target, 'dragenter');
+      fire(target, 'dragover');
+      fire(target, 'drop');
+      fire(source, 'dragend');
+    },
+    [sourceTestId, targetTestId, targetYFraction]
+  );
 }
 
 export async function panByScreenDelta(page: Page, delta: Point): Promise<void> {

@@ -794,4 +794,48 @@ describe('EditorStore reducer', () => {
     const redone = reducer(undone, { type: 'history-redo' });
     expect(sceneOf(redone).backgroundLayers?.[0]?.depth).toBe(-222);
   });
+
+  it('duplicates a selected entity and keeps it in its existing group', () => {
+    const state0 = reducer(seededState(), { type: 'select', selection: { kind: 'entity', id: 'e1' } } as any);
+    const scene0 = sceneOf(state0);
+    const group0 = scene0.groups['g-enemies'];
+    expect(group0.members).toContain('e1');
+
+    const next = reducer(state0, { type: 'duplicate-entities', entityIds: ['e1'] } as any);
+    const scene1 = sceneOf(next);
+
+    expect(Object.keys(scene1.entities).length).toBe(Object.keys(scene0.entities).length + 1);
+    expect(next.selection.kind).toBe('entity');
+    if (next.selection.kind !== 'entity') throw new Error('Expected entity selection');
+    expect(next.selection.id).not.toBe('e1');
+    const duplicateId = next.selection.id;
+
+    expect(scene1.entities[duplicateId]).toBeDefined();
+    expect(scene1.entities[duplicateId].asset).toEqual(scene0.entities.e1.asset);
+    expect(scene1.entities[duplicateId].width).toBe(scene0.entities.e1.width);
+    expect(scene1.entities[duplicateId].height).toBe(scene0.entities.e1.height);
+
+    const group1 = scene1.groups['g-enemies'];
+    expect(group1.members).toContain(duplicateId);
+    expect(group1.layout).toEqual({ type: 'freeform' });
+  });
+
+  it('duplicates multiple selected entities and selects the duplicates', () => {
+    const state0 = reducer(seededState(), { type: 'select-multiple', entityIds: ['e1', 'e2'], additive: false } as any);
+    const scene0 = sceneOf(state0);
+
+    const next = reducer(state0, { type: 'duplicate-entities', entityIds: ['e1', 'e2'] } as any);
+    const scene1 = sceneOf(next);
+
+    expect(Object.keys(scene1.entities).length).toBe(Object.keys(scene0.entities).length + 2);
+    expect(next.selection.kind).toBe('entities');
+    if (next.selection.kind !== 'entities') throw new Error('Expected entities selection');
+    expect(next.selection.ids).toHaveLength(2);
+    expect(new Set(next.selection.ids).size).toBe(2);
+    expect(next.selection.ids).not.toContain('e1');
+    expect(next.selection.ids).not.toContain('e2');
+    for (const id of next.selection.ids) {
+      expect(scene1.entities[id]).toBeDefined();
+    }
+  });
 });

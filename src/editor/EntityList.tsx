@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditorStore, type Selection } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
 import type { ProjectSpec, SceneSpec } from '../model/types';
@@ -65,12 +65,27 @@ export function EntityListView({
   const { groups, ungroupedEntities } = summarizeSceneGroups(scene);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingKind, setEditingKind] = useState<'entity' | 'group' | null>(null);
+  const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'scene' | null>(null);
   const [editingName, setEditingName] = useState('');
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [dragInsert, setDragInsert] = useState<{ groupId: string; index: number } | null>(null);
   const [dragOverSprites, setDragOverSprites] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
 
-  const startEditing = (kind: 'entity' | 'group', id: string, currentName: string) => {
+  useEffect(() => {
+    const handleDragStart = () => setIsDragActive(true);
+    const handleDragEnd = () => setIsDragActive(false);
+    window.addEventListener('dragstart', handleDragStart);
+    window.addEventListener('dragend', handleDragEnd);
+    window.addEventListener('drop', handleDragEnd);
+    return () => {
+      window.removeEventListener('dragstart', handleDragStart);
+      window.removeEventListener('dragend', handleDragEnd);
+      window.removeEventListener('drop', handleDragEnd);
+    };
+  }, []);
+
+  const startEditing = (kind: 'entity' | 'group' | 'scene', id: string, currentName: string) => {
     setEditingKind(kind);
     setEditingId(id);
     setEditingName(currentName);
@@ -93,6 +108,8 @@ export function EntityListView({
       if (group) {
         dispatch({ type: 'update-group', id: editingId, next: { ...group, name: editingName } });
       }
+    } else if (editingKind === 'scene') {
+      dispatch({ type: 'rename-scene', sceneId: editingId, name: editingName });
     } else if (editingKind === 'entity') {
       const entity = scene.entities[editingId];
       if (entity) {
@@ -113,7 +130,29 @@ export function EntityListView({
       dispatch({ type: 'select-multiple', entityIds: [id], additive: true });
       return;
     }
+    if (editingKind == null && isSelected(selection, 'entity', id)) {
+      const entity = scene.entities[id];
+      startEditing('entity', id, entity?.name ?? id);
+      return;
+    }
     dispatch({ type: 'select', selection: { kind: 'entity', id } });
+  };
+
+  const handleGroupClick = (id: string) => {
+    if (editingKind == null && isSelected(selection, 'group', id)) {
+      const group = scene.groups[id];
+      startEditing('group', id, group?.name ?? id);
+      return;
+    }
+    dispatch({ type: 'select', selection: { kind: 'group', id } });
+  };
+
+  const handleSceneClick = (sceneId: string) => {
+    if (editingKind == null && sceneId === currentSceneId) {
+      startEditing('scene', sceneId, sceneId);
+      return;
+    }
+    dispatch({ type: 'set-current-scene', sceneId });
   };
 
   const handleEntityDragStart = (id: string, event: React.DragEvent) => {
@@ -129,15 +168,23 @@ export function EntityListView({
 
   const handleDragEnd = () => {
     setDragOverGroupId(null);
+    setDragInsert(null);
     setDragOverSprites(false);
+    setIsDragActive(false);
   };
 
-  const handleDropOnGroup = (groupId: string, event: React.DragEvent) => {
+  const handleDropOnGroup = (groupId: string, event: React.DragEvent, index?: number) => {
     event.preventDefault();
     const ids = readDragEntityIds(event.dataTransfer);
     if (!ids || ids.length === 0) return;
-    dispatch({ type: 'add-entities-to-group', groupId, entityIds: ids });
+    if (typeof index === 'number') {
+      dispatch({ type: 'insert-entities-into-group', groupId, entityIds: ids, index });
+    } else {
+      dispatch({ type: 'add-entities-to-group', groupId, entityIds: ids });
+    }
     setDragOverGroupId(null);
+    setDragInsert(null);
+    setIsDragActive(false);
   };
 
   const handleDropOnSprites = (event: React.DragEvent) => {
@@ -157,14 +204,26 @@ export function EntityListView({
         <div className="member-list">
           {Object.keys(project.scenes).map((sceneId) => (
             <div key={sceneId} className="member-row">
-              <button
-                className={`list-item ${sceneId === currentSceneId ? 'active' : ''}`}
-                data-testid={`scene-item-${sceneId}`}
-                type="button"
-                onClick={() => dispatch({ type: 'set-current-scene', sceneId })}
-              >
-                {sceneId}
-              </button>
+              {editingId === sceneId && editingKind === 'scene' ? (
+                <input
+                  autoFocus
+                  className="scene-graph-rename-input"
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onBlur={saveRename}
+                  onKeyDown={handleKeyDown}
+                  data-testid={`rename-scene-input-${sceneId}`}
+                />
+              ) : (
+                <button
+                  className={`list-item ${sceneId === currentSceneId ? 'active' : ''}`}
+                  data-testid={`scene-item-${sceneId}`}
+                  type="button"
+                  onClick={() => handleSceneClick(sceneId)}
+                >
+                  {sceneId}
+                </button>
+              )}
               <button
                 aria-label={`Duplicate scene ${sceneId}`}
                 className="scene-graph-button"
@@ -237,15 +296,6 @@ export function EntityListView({
               </button>
             )}
             <button
-              aria-label={`Rename sprite ${entity.name ?? entity.id}`}
-              className="scene-graph-button scene-graph-edit"
-              data-testid={`edit-entity-${entity.id}`}
-              type="button"
-              onClick={() => startEditing('entity', entity.id, entity.name ?? entity.id)}
-            >
-              ✏️
-            </button>
-            <button
               aria-label={`Remove sprite ${entity.name ?? entity.id}`}
               className="scene-graph-button scene-graph-remove"
               data-testid={`remove-entity-${entity.id}`}
@@ -289,30 +339,23 @@ export function EntityListView({
                 <button
                   className={`list-item ${isSelected(selection, 'group', group.id) ? 'active' : ''} ${dragOverGroupId === group.id ? 'scene-graph-drop-target scene-graph-drop-target-group' : ''}`}
                   data-testid={`group-item-${group.id}`}
-                  onClick={() => dispatch({ type: 'select', selection: { kind: 'group', id: group.id } })}
+                  onClick={() => handleGroupClick(group.id)}
                   type="button"
                   onDragOver={(e) => {
                     e.preventDefault();
                     if (dragOverGroupId !== group.id) setDragOverGroupId(group.id);
+                    setDragInsert({ groupId: group.id, index: group.members.length });
                   }}
                   onDragLeave={() => {
                     if (dragOverGroupId === group.id) setDragOverGroupId(null);
+                    if (dragInsert?.groupId === group.id) setDragInsert(null);
                   }}
-                  onDrop={(e) => handleDropOnGroup(group.id, e)}
+                  onDrop={(e) => handleDropOnGroup(group.id, e, group.members.length)}
                 >
                   {group.name ?? group.id}
                   <span className="list-item-meta">{countAttachmentsForTarget(scene, { type: 'group', groupId: group.id })}</span>
                 </button>
               )}
-              <button
-                aria-label={`Rename formation ${group.name ?? group.id}`}
-                className="scene-graph-button scene-graph-edit"
-                data-testid={`edit-group-${group.id}`}
-                type="button"
-                onClick={() => startEditing('group', group.id, group.name ?? group.id)}
-              >
-                ✏️
-              </button>
               <button
                 aria-label={`Remove formation ${group.name ?? group.id}`}
                 className="scene-graph-button scene-graph-remove"
@@ -324,9 +367,54 @@ export function EntityListView({
               </button>
             </div>
             {expandedGroups[group.id] && (
-              <div className="member-list">
+              <div
+                className="member-list"
+                onDragLeave={() => {
+                  if (dragOverGroupId === group.id) setDragOverGroupId(null);
+                  if (dragInsert?.groupId === group.id) setDragInsert(null);
+                }}
+              >
                 {members.map((member) => (
-                  <div key={member.id} className="member-row">
+                  <div
+                    key={member.id}
+                    className="member-row"
+                    data-testid={`group-member-row-${group.id}-${member.id}`}
+                    data-member-id={member.id}
+                    style={isDragActive ? { position: 'relative' } : undefined}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                      const memberIndex = group.members.indexOf(member.id);
+                      const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                      setDragInsert({ groupId: group.id, index: Math.max(0, index) });
+                    }}
+                    onDrop={(e) => {
+                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                      const memberIndex = group.members.indexOf(member.id);
+                      const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                      handleDropOnGroup(group.id, e, Math.max(0, index));
+                    }}
+                  >
+                    {isDragActive && (
+                      <button
+                        type="button"
+                        className="scene-graph-drop-overlay"
+                        data-testid={`group-member-drop-overlay-${group.id}-${member.id}`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                          const memberIndex = group.members.indexOf(member.id);
+                          const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                          setDragInsert({ groupId: group.id, index: Math.max(0, index) });
+                        }}
+                        onDrop={(e) => {
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                          const memberIndex = group.members.indexOf(member.id);
+                          const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                          handleDropOnGroup(group.id, e, Math.max(0, index));
+                        }}
+                      />
+                    )}
                     {editingId === member.id && editingKind === 'entity' ? (
                       <input
                         autoFocus
@@ -351,15 +439,6 @@ export function EntityListView({
                       </button>
                     )}
                     <button
-                      aria-label={`Rename sprite ${member.name ?? member.id}`}
-                      className="scene-graph-button scene-graph-edit"
-                      data-testid={`edit-group-member-${group.id}-${member.id}`}
-                      type="button"
-                      onClick={() => startEditing('entity', member.id, member.name ?? member.id)}
-                    >
-                      ✏️
-                    </button>
-                    <button
                       aria-label={`Remove sprite ${member.name ?? member.id} from formation ${group.name ?? group.id}`}
                       className="scene-graph-button scene-graph-remove"
                       data-testid={`group-member-remove-${group.id}-${member.id}`}
@@ -370,6 +449,18 @@ export function EntityListView({
                     </button>
                   </div>
                 ))}
+                {isDragActive && (
+                  <button
+                    type="button"
+                    className="scene-graph-drop-end"
+                    data-testid={`group-member-drop-end-${group.id}`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragInsert({ groupId: group.id, index: members.length });
+                    }}
+                    onDrop={(e) => handleDropOnGroup(group.id, e, members.length)}
+                  />
+                )}
               </div>
             )}
           </div>

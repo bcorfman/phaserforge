@@ -7,6 +7,8 @@ import * as Phaser from 'phaser';
 export interface DragState {
   kind: 'entity' | 'group' | 'bounds-handle' | 'marquee';
   id?: string;
+  entityIds?: string[];
+  awaitingDuplicate?: boolean;
   startX: number;
   startY: number;
   currentX?: number;
