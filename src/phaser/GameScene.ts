@@ -2,12 +2,12 @@ import * as Phaser from 'phaser';
 import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, type CompiledScene } from '../compiler/compileScene';
 import type { GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
-import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
 import { getRotatedEntityBounds } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { getSceneWorld } from '../editor/sceneWorld';
 import { clampCameraScroll, clampZoom } from '../editor/viewport';
+import { OpRegistry } from '../compiler/opRegistry';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
 
@@ -17,6 +17,7 @@ type PhysicsObject =
 
 export class GameScene extends Phaser.Scene {
   private compiled?: CompiledScene;
+  private opRegistry: OpRegistry = new OpRegistry();
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
   private formationPhysicsGroups = new Map<string, Phaser.Physics.Arcade.Group>();
   private physicsObjects = new Map<string, PhysicsObject>();
@@ -52,6 +53,10 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
+  public setRuntimeOps(opRegistry: OpRegistry): void {
+    this.opRegistry = opRegistry;
+  }
+
   create(): void {
     // Match editor canvas background so offscreen space is consistent between edit and preview.
     this.cameras.main.setBackgroundColor('#0c0f1a');
@@ -76,32 +81,7 @@ export class GameScene extends Phaser.Scene {
     const sceneSpec = (maybeScene ?? projectOrScene) as GameSceneSpec;
     const currentLoadVersion = ++this.loadVersion;
     this.clearScene();
-    this.compiled = compileScene(sceneSpec, {
-      callRegistry: {
-        drop: (action, ctx) => {
-          const dy = (action as any).args?.dy ?? 0;
-          if (!(action as any).target) return;
-          const target = resolveTarget((action as any).target, ctx.targets);
-          const targets = flattenTarget(target);
-          for (const t of targets) {
-            t.y += dy;
-          }
-        },
-        'scene.goto': (action) => {
-          const args = (action as any).args ?? {};
-          const sceneId = typeof args.sceneId === 'string' ? args.sceneId : '';
-          if (!sceneId) {
-            console.warn('[phaseractions] scene.goto missing sceneId');
-            return;
-          }
-          const transitionRaw = typeof args.transition === 'string' ? args.transition : 'fade';
-          const transition = transitionRaw === 'none' || transitionRaw === 'fade' ? transitionRaw : 'fade';
-          const durationRaw = typeof args.durationMs === 'number' ? args.durationMs : Number(args.durationMs);
-          const durationMs = Number.isFinite(durationRaw) ? Math.max(0, durationRaw) : 350;
-          EventBus.emit('runtime:request-scene-goto', { sceneId, transition, durationMs });
-        },
-      },
-    });
+    this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry });
 
     void this.ensureAssetTextures(project, sceneSpec).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { compileScene } from '../../src/compiler/compileScene';
 import type { SceneSpec } from '../../src/model/types';
+import { OpRegistry } from '../../src/compiler/opRegistry';
 
 function attachmentScene(params: Record<string, any>): SceneSpec {
   return {
@@ -36,12 +37,12 @@ describe('compileAttachments Call args', () => {
     });
 
     let received: any = undefined;
+    const opRegistry = new OpRegistry();
+    opRegistry.register('onCall', (action) => {
+      received = action.args;
+    });
     const compiled = compileScene(scene, {
-      callRegistry: {
-        onCall: (action) => {
-          received = action.args;
-        },
-      },
+      opRegistry,
     });
 
     compiled.startAll();
@@ -57,12 +58,12 @@ describe('compileAttachments Call args', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const scene = attachmentScene({ callId: 'missing-handler', dx: 1, dy: 2 });
 
-    expect(() => compileScene(scene, { callRegistry: {} })).not.toThrow();
-    const compiled = compileScene(scene, { callRegistry: {} });
+    const opRegistry = new OpRegistry();
+    expect(() => compileScene(scene, { opRegistry })).not.toThrow();
+    const compiled = compileScene(scene, { opRegistry });
     compiled.startAll();
 
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
 });
-

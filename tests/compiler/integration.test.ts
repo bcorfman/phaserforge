@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { compileScene } from '../../src/compiler/compileScene';
 import { SceneSpec } from '../../src/model/types';
+import { OpRegistry } from '../../src/compiler/opRegistry';
 
 function simpleScene(): SceneSpec {
   return {
@@ -71,12 +72,12 @@ describe('compiler/runtime integration', () => {
   it('C1 compile simple entity behavior', () => {
     const scene = simpleScene();
     let called = 0;
+    const opRegistry = new OpRegistry();
+    opRegistry.register('onDone', () => {
+      called += 1;
+    });
     const compiled = compileScene(scene, {
-      callRegistry: {
-        onDone: () => {
-          called += 1;
-        },
-      },
+      opRegistry,
     });
     compiled.startAll();
     compiled.actionManager.update(49);
@@ -88,12 +89,12 @@ describe('compiler/runtime integration', () => {
   it('C2 compile group formation behavior', () => {
     const scene = groupScene(100);
     let called = 0;
+    const opRegistry = new OpRegistry();
+    opRegistry.register('onReverse', () => {
+      called += 1;
+    });
     const compiled = compileScene(scene, {
-      callRegistry: {
-        onReverse: () => {
-          called += 1;
-        },
-      },
+      opRegistry,
     });
     compiled.startAll();
     compiled.actionManager.update(100);
@@ -105,13 +106,17 @@ describe('compiler/runtime integration', () => {
 
   it('C3 recompile with changed params changes behavior', () => {
     const sceneSlow = groupScene(50);
-    const compiledSlow = compileScene(sceneSlow, { callRegistry: { onReverse: () => {} } });
+    const opSlow = new OpRegistry();
+    opSlow.register('onReverse', () => {});
+    const compiledSlow = compileScene(sceneSlow, { opRegistry: opSlow });
     compiledSlow.startAll();
     compiledSlow.actionManager.update(100);
     const slowX = compiledSlow.entities.e1.x;
 
     const sceneFast = groupScene(100);
-    const compiledFast = compileScene(sceneFast, { callRegistry: { onReverse: () => {} } });
+    const opFast = new OpRegistry();
+    opFast.register('onReverse', () => {});
+    const compiledFast = compileScene(sceneFast, { opRegistry: opFast });
     compiledFast.startAll();
     compiledFast.actionManager.update(100);
     const fastX = compiledFast.entities.e1.x;
@@ -121,7 +126,9 @@ describe('compiler/runtime integration', () => {
 
   it('C4 recompile/reset does not duplicate actions', () => {
     const scene = groupScene(50);
-    const compiled = compileScene(scene, { callRegistry: { onReverse: () => {} } });
+    const opRegistry = new OpRegistry();
+    opRegistry.register('onReverse', () => {});
+    const compiled = compileScene(scene, { opRegistry });
     compiled.startAll();
     compiled.actionManager.update(100);
     const first = compiled.entities.e1.x;
@@ -143,7 +150,9 @@ describe('compiler/runtime integration', () => {
     scene.entities.e1.depth = 9;
     scene.entities.e1.flipX = true;
 
-    const compiled = compileScene(scene, { callRegistry: { onDone: () => {} } });
+    const opRegistry = new OpRegistry();
+    opRegistry.register('onDone', () => {});
+    const compiled = compileScene(scene, { opRegistry });
 
     expect(compiled.entities.e1.scaleX).toBe(1.5);
     expect(compiled.entities.e1.scaleY).toBe(0.5);

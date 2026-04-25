@@ -3,6 +3,10 @@ import { EventBus } from './EventBus';
 import { EditorScene } from './EditorScene';
 import { GameScene } from './GameScene';
 import type { ProjectSpec, SceneSpec } from '../model/types';
+import { OpRegistry } from '../compiler/opRegistry';
+import { createRuntimeServices } from './runtimeServices';
+import type { RuntimeServices } from '../runtime/services/RuntimeServices';
+import { resolveTarget, flattenTarget } from '../runtime/targets/resolveTarget';
 
 export class BootScene extends Phaser.Scene {
   private project?: ProjectSpec;
@@ -12,16 +16,20 @@ export class BootScene extends Phaser.Scene {
   private mode: 'edit' | 'play' = 'edit';
   private lastViewState?: { zoom: number; scrollX: number; scrollY: number };
   private gotoVersion = 0;
+  private services: RuntimeServices;
+  private opRegistry: OpRegistry;
 
   constructor() {
     super('BootScene');
+    this.services = createRuntimeServices(this);
+    this.opRegistry = new OpRegistry();
+    this.registerBuiltInOps(this.opRegistry);
   }
 
   create(): void {
     EventBus.on('runtime:load-project', this.handleLoadProject, this);
     EventBus.on('runtime:set-mode', this.handleSetMode, this);
     EventBus.on('runtime:set-active-scene', this.handleSetActiveScene, this);
-    EventBus.on('runtime:request-scene-goto', this.handleRequestSceneGoto, this);
 
     // Start in editor mode so the app can emit `current-scene-ready` and then provide scene data.
     if (!this.scene.isActive('EditorScene') && !this.scene.isSleeping('EditorScene')) {
@@ -32,7 +40,34 @@ export class BootScene extends Phaser.Scene {
       EventBus.off('runtime:load-project', this.handleLoadProject, this);
       EventBus.off('runtime:set-mode', this.handleSetMode, this);
       EventBus.off('runtime:set-active-scene', this.handleSetActiveScene, this);
-      EventBus.off('runtime:request-scene-goto', this.handleRequestSceneGoto, this);
+    });
+  }
+
+  private registerBuiltInOps(registry: OpRegistry): void {
+    registry.register('scene.goto', (action) => {
+      const args = (action as any).args ?? {};
+      const sceneId = typeof args.sceneId === 'string' ? args.sceneId : '';
+      if (!sceneId) {
+        console.warn('[phaseractions] scene.goto missing sceneId');
+        return;
+      }
+      const transitionRaw = typeof args.transition === 'string' ? args.transition : 'fade';
+      const transition = transitionRaw === 'none' || transitionRaw === 'fade' ? transitionRaw : 'fade';
+      const durationRaw = typeof args.durationMs === 'number' ? args.durationMs : Number(args.durationMs);
+      const durationMs = Number.isFinite(durationRaw) ? Math.max(0, durationRaw) : 350;
+      this.services.scene.goto(sceneId, { transition, durationMs });
+    });
+
+    // Sample/demo op used by sample scenes and docs.
+    registry.register('drop', (action, ctx) => {
+      const dy = (action as any).args?.dy ?? 0;
+      const target = (action as any).target;
+      if (!target) return;
+      const resolved = resolveTarget(target, ctx.targets);
+      const targets = flattenTarget(resolved);
+      for (const t of targets) {
+        t.y += dy;
+      }
     });
   }
 
@@ -49,6 +84,7 @@ export class BootScene extends Phaser.Scene {
     const isRunning = this.scene.isActive('EditorScene') || this.scene.isSleeping('EditorScene');
     const project = this.project;
     if (!project) return;
+    editor.setRuntimeOps(this.opRegistry);
     if (isRunning) {
       editor.setPendingViewState(this.lastViewState);
       editor.loadSceneSpec(project, scene);
@@ -57,6 +93,7 @@ export class BootScene extends Phaser.Scene {
     }
 
     editor.events.once(Phaser.Scenes.Events.CREATE, () => {
+      editor.setRuntimeOps(this.opRegistry);
       editor.setPendingViewState(this.lastViewState);
       editor.loadSceneSpec(project, scene);
     });
@@ -68,6 +105,7 @@ export class BootScene extends Phaser.Scene {
     const isRunning = this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene');
     const project = this.project;
     if (!project) return;
+    game.setRuntimeOps(this.opRegistry);
     if (isRunning) {
       game.setPendingViewState(this.lastViewState);
       game.loadSceneSpec(project, scene);
@@ -76,6 +114,7 @@ export class BootScene extends Phaser.Scene {
     }
 
     game.events.once(Phaser.Scenes.Events.CREATE, () => {
+      game.setRuntimeOps(this.opRegistry);
       game.setPendingViewState(this.lastViewState);
       game.loadSceneSpec(project, scene);
     });
@@ -147,11 +186,10 @@ export class BootScene extends Phaser.Scene {
     this.syncActiveScene();
   }
 
-  private handleRequestSceneGoto(payload: { sceneId?: unknown; transition?: unknown; durationMs?: unknown }): void {
+  public requestSceneGoto(sceneId: string, options?: { transition?: unknown; durationMs?: unknown }): void {
     if (!this.project) return;
     if (this.mode !== 'play') return;
 
-    const sceneId = typeof payload.sceneId === 'string' ? payload.sceneId : '';
     if (!sceneId) {
       console.warn('[phaseractions] scene.goto missing sceneId');
       return;
@@ -161,9 +199,9 @@ export class BootScene extends Phaser.Scene {
       return;
     }
 
-    const transitionRaw = typeof payload.transition === 'string' ? payload.transition : 'fade';
+    const transitionRaw = typeof options?.transition === 'string' ? options?.transition : 'fade';
     const transition = transitionRaw === 'none' || transitionRaw === 'fade' ? transitionRaw : 'fade';
-    const durationRaw = typeof payload.durationMs === 'number' ? payload.durationMs : Number(payload.durationMs);
+    const durationRaw = typeof options?.durationMs === 'number' ? options?.durationMs : Number(options?.durationMs);
     const durationMs = Number.isFinite(durationRaw) ? Math.max(0, durationRaw) : 350;
 
     const game = this.scene.get('GameScene') as GameScene;

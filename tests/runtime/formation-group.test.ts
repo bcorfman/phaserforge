@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { compileScene } from '../../src/compiler/compileScene';
 import { FormationGroup } from '../../src/runtime/targets/types';
 import { baseScene } from '../helpers';
+import { OpRegistry } from '../../src/compiler/opRegistry';
 
 describe('formation group runtime', () => {
   it('records stable home slots from compiled entity positions', () => {
-    const compiled = compileScene(baseScene(), {
-      callRegistry: { reverse: () => {} },
-    });
+    const opRegistry = new OpRegistry();
+    opRegistry.register('reverse', () => {});
+    const compiled = compileScene(baseScene(), { opRegistry });
     const group = compiled.groups.g1 as FormationGroup;
 
     expect(group.homeSlots.e1).toEqual({ x: 0, y: 0 });
@@ -18,9 +19,9 @@ describe('formation group runtime', () => {
   });
 
   it('computes current and home bounds from member edges', () => {
-    const compiled = compileScene(baseScene(), {
-      callRegistry: { reverse: () => {} },
-    });
+    const opRegistry = new OpRegistry();
+    opRegistry.register('reverse', () => {});
+    const compiled = compileScene(baseScene(), { opRegistry });
     const group = compiled.groups.g1 as FormationGroup;
 
     expect(group.getBounds()).toEqual({
@@ -38,9 +39,9 @@ describe('formation group runtime', () => {
   });
 
   it('translates all members while preserving spacing', () => {
-    const compiled = compileScene(baseScene(), {
-      callRegistry: { reverse: () => {} },
-    });
+    const opRegistry = new OpRegistry();
+    opRegistry.register('reverse', () => {});
+    const compiled = compileScene(baseScene(), { opRegistry });
     const group = compiled.groups.g1 as FormationGroup;
 
     const before = group.members.map((member) => member.x);
@@ -54,9 +55,9 @@ describe('formation group runtime', () => {
   });
 
   it('sets and stops member velocities through the group API', () => {
-    const compiled = compileScene(baseScene(), {
-      callRegistry: { reverse: () => {} },
-    });
+    const opRegistry = new OpRegistry();
+    opRegistry.register('reverse', () => {});
+    const compiled = compileScene(baseScene(), { opRegistry });
     const group = compiled.groups.g1 as FormationGroup;
 
     group.setVelocity(30, -12);

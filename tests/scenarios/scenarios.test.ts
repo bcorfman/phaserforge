@@ -3,6 +3,7 @@ import { compileScene } from '../../src/compiler/compileScene';
 import { SceneSpec } from '../../src/model/types';
 import { RuntimeEntity } from '../../src/runtime/targets/types';
 import { baseScene } from '../helpers';
+import { OpRegistry } from '../../src/compiler/opRegistry';
 
 function patrolScene(speed: number): SceneSpec {
   return {
@@ -62,14 +63,14 @@ describe('scenario/regression', () => {
   it('D1 formation patrol scenario', () => {
     const scene = patrolScene(100);
     let entities: RuntimeEntity[] = [];
+    const opRegistry = new OpRegistry();
+    opRegistry.register('drop', () => {
+      for (const e of entities) {
+        e.y += 5;
+      }
+    });
     const compiled = compileScene(scene, {
-      callRegistry: {
-        drop: () => {
-          for (const e of entities) {
-            e.y += 5;
-          }
-        },
-      },
+      opRegistry,
     });
     entities = Object.values(compiled.entities);
     const startX = entities.map((e) => e.x);
@@ -91,9 +92,9 @@ describe('scenario/regression', () => {
     const json = JSON.stringify(scene);
     const parsed = JSON.parse(json) as SceneSpec;
 
-    const compiled = compileScene(parsed, {
-      callRegistry: { reverse: () => {} },
-    });
+    const opRegistry = new OpRegistry();
+    opRegistry.register('reverse', () => {});
+    const compiled = compileScene(parsed, { opRegistry });
     compiled.startAll();
     compiled.actionManager.update(100);
     expect(Object.values(compiled.entities).some((e) => e.x !== 0)).toBe(true);
@@ -101,9 +102,9 @@ describe('scenario/regression', () => {
 
   it('D3 parameter patch scenario', () => {
     const scene = baseScene();
-    const compiledA = compileScene(scene, {
-      callRegistry: { reverse: () => {} },
-    });
+    const opA = new OpRegistry();
+    opA.register('reverse', () => {});
+    const compiledA = compileScene(scene, { opRegistry: opA });
     compiledA.startAll();
     compiledA.actionManager.update(100);
     const before = compiledA.entities.e1.x;
@@ -117,7 +118,7 @@ describe('scenario/regression', () => {
       conditionId: 'c1',
     };
     const compiledB = compileScene(patched, {
-      callRegistry: { reverse: () => {} },
+      opRegistry: opA,
     });
     compiledB.startAll();
     compiledB.actionManager.update(100);

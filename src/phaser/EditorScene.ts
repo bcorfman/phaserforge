@@ -1,10 +1,10 @@
 import * as Phaser from 'phaser';
 import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
+import { OpRegistry } from '../compiler/opRegistry';
 import { GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
 import { getGroupFrameDisplay } from '../editor/groupFrameDisplay';
-import { flattenTarget, resolveTarget } from '../runtime/targets/resolveTarget';
 import { getRotatedEntityBounds } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { clampHitboxToEntity, computeHitboxFromImageData, mapHitboxToEntitySize } from '../editor/hitboxAuto';
@@ -37,6 +37,7 @@ type PhysicsObject =
 
 export class EditorScene extends Phaser.Scene {
   private compiled?: CompiledScene;
+  private opRegistry: OpRegistry = new OpRegistry();
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
   private entityToGroup = new Map<string, string>();
   private formationPhysicsGroups = new Map<string, Phaser.Physics.Arcade.Group>();
@@ -76,6 +77,10 @@ export class EditorScene extends Phaser.Scene {
 
   constructor() {
     super('EditorScene');
+  }
+
+  public setRuntimeOps(opRegistry: OpRegistry): void {
+    this.opRegistry = opRegistry;
   }
 
   create(): void {
@@ -523,23 +528,7 @@ export class EditorScene extends Phaser.Scene {
     const currentLoadVersion = ++this.loadVersion;
     this.clearScene();
     this.mode = mode;
-    this.compiled = compileScene(sceneSpec, {
-      callRegistry: {
-        drop: (action, ctx) => {
-          const dy = action.args?.dy ?? 0;
-          if (!action.target) return;
-          const target = resolveTarget(action.target, ctx.targets);
-          const targets = flattenTarget(target);
-          for (const t of targets) {
-            t.y += dy;
-          }
-        },
-        'scene.goto': (action) => {
-          const sceneId = typeof action.args?.sceneId === 'string' ? String(action.args.sceneId) : '';
-          console.warn(`[phaseractions] scene.goto ignored in Edit mode (sceneId=${sceneId || '""'})`);
-        },
-      },
-    });
+    this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry });
 
     void this.ensureAssetTextures(project, sceneSpec).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;

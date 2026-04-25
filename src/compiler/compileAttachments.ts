@@ -43,13 +43,7 @@ function instantiateInlineCondition(condition: InlineConditionSpec | undefined) 
 
 function compileCallAttachment(attachment: AttachmentSpec, ctx: CompileContext): Action {
   const callId = String(attachment.params?.callId ?? attachment.presetId);
-  const callRegistry = ctx.options?.callRegistry ?? {};
-  const callback = callRegistry[callId];
-  const handler =
-    callback ??
-    ((_action: CallActionSpec, _ctx: CompileContext) => {
-      console.warn(`[phaseractions] Missing call handler for ${callId}`);
-    });
+  const opRegistry = ctx.options?.opRegistry;
 
   const spec: CallActionSpec = {
     id: attachment.id,
@@ -61,7 +55,13 @@ function compileCallAttachment(attachment: AttachmentSpec, ctx: CompileContext):
       Object.entries(attachment.params ?? {}).filter(([key, value]) => key !== 'callId' && isCallArgPrimitive(value))
     ) as Record<string, CallArgPrimitive>,
   };
-  return new Call(() => handler(spec, ctx));
+  return new Call(() => {
+    if (!opRegistry) {
+      console.warn(`[phaseractions] Missing opRegistry for Call ${callId}`);
+      return;
+    }
+    opRegistry.invoke(callId, spec, ctx);
+  });
 }
 
 function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext, targetOverride?: TargetRef): Action {

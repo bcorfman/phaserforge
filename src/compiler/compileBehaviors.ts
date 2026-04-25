@@ -15,9 +15,10 @@ import { ElapsedTime } from '../runtime/conditions/ElapsedTime';
 import { Condition } from '../runtime/conditions/Condition';
 import { resolveTarget, TargetContext } from '../runtime/targets/resolveTarget';
 import { CallActionSpec } from '../model/types';
+import type { OpRegistry } from './opRegistry';
 
 export interface CompileOptions {
-  callRegistry?: Record<string, CallHandler>;
+  opRegistry?: OpRegistry;
 }
 
 export interface CompileContext {
@@ -29,7 +30,6 @@ export interface CompileContext {
 export type CallHandler = (action: CallActionSpec, ctx: CompileContext) => void;
 
 export function compileBehavior(behavior: BehaviorSpec, ctx: CompileContext): Action {
-  const callRegistry = ctx.options?.callRegistry ?? {};
   const stack = new Set<string>();
   const built = new Map<string, Action>();
 
@@ -43,7 +43,7 @@ export function compileBehavior(behavior: BehaviorSpec, ctx: CompileContext): Ac
       throw new Error(`Unknown action ${actionId}`);
     }
     stack.add(actionId);
-    const instance = instantiateAction(action, buildAction, ctx, callRegistry);
+    const instance = instantiateAction(action, buildAction, ctx);
     built.set(actionId, instance);
     stack.delete(actionId);
     return instance;
@@ -59,8 +59,7 @@ export function compileBehavior(behavior: BehaviorSpec, ctx: CompileContext): Ac
 function instantiateAction(
   action: ActionSpec,
   buildAction: (id: string) => Action,
-  ctx: CompileContext,
-  callRegistry: Record<string, CallHandler>
+  ctx: CompileContext
 ): Action {
   switch (action.type) {
     case 'Sequence': {
@@ -70,13 +69,14 @@ function instantiateAction(
     case 'Wait':
       return new Wait(action.durationMs);
     case 'Call': {
-      const callback = callRegistry[action.callId];
-      const handler =
-        callback ??
-        ((_action: CallActionSpec, _ctx: CompileContext) => {
-          console.warn(`[phaseractions] Missing call handler for ${action.callId}`);
-        });
-      return new Call(() => handler(action, ctx));
+      const opRegistry = ctx.options?.opRegistry;
+      return new Call(() => {
+        if (!opRegistry) {
+          console.warn(`[phaseractions] Missing opRegistry for Call ${action.callId}`);
+          return;
+        }
+        opRegistry.invoke(action.callId, action, ctx);
+      });
     }
     case 'Repeat': {
       const child = buildAction(action.childId);
