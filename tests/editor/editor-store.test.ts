@@ -651,6 +651,21 @@ describe('EditorStore reducer', () => {
     expect(next.dirty).toBe(true);
   });
 
+  it('sets an asset on multiple entities at once', () => {
+    const state = seededState();
+    const asset = {
+      source: { kind: 'path', path: '/images/enemy_A.png' },
+      imageType: 'image',
+      frame: { kind: 'single' },
+    } as any;
+
+    const next = reducer(state, { type: 'set-entities-asset', entityIds: ['e1', 'e2'], asset } as any);
+
+    expect(sceneOf(next).entities.e1.asset).toEqual(asset);
+    expect(sceneOf(next).entities.e2.asset).toEqual(asset);
+    expect(next.dirty).toBe(true);
+  });
+
   it('updates scene world size', () => {
     const state = seededState();
     const next = reducer(state, {

@@ -1,11 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
 import { inferGroupGridLayout } from './formationLayout';
 import { SpriteImportPanel } from './SpriteImportPanel';
 import { AttachedActionsPanel } from './AttachedActionsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
-import { AttachmentSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, type EditorRegistryConfig } from '../model/types';
+import { AttachmentSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
@@ -127,6 +127,7 @@ export function Inspector() {
           onSelectAttachment: (id) => dispatch({ type: 'select', selection: { kind: 'attachment', id } }),
           onMoveAttachment: (id, direction) => dispatch({ type: 'move-attachment', id, direction }),
           onRemoveAttachment: (id) => dispatch({ type: 'remove-attachment', id }),
+          onSetEntitiesAsset: (entityIds, asset) => dispatch({ type: 'set-entities-asset', entityIds, asset }),
         })
       ) : (
         <div className="muted">Sprite not found.</div>
@@ -209,6 +210,7 @@ export function renderEntityInspector(
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
     onRemoveAttachment: (id: string) => void;
+    onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   }
 ) {
   return <EntityInspector entity={entity} onUpdate={onUpdate} actionProps={actionProps} />;
@@ -229,11 +231,55 @@ function EntityInspector({
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
     onRemoveAttachment: (id: string) => void;
+    onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   };
 }) {
   const resolved = resolveEntityDefaults(entity);
   const update = (patch: Partial<EntitySpec>) => onUpdate({ ...entity, ...patch });
   const foldouts = useInspectorFoldouts();
+  const scene = actionProps?.scene;
+
+  const keyForAsset = (asset: SpriteAssetSpec): string => {
+    const base = asset.source.kind === 'path'
+      ? `path:${asset.source.path}`
+      : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
+    const grid = asset.imageType === 'spritesheet' && asset.grid
+      ? `:${asset.grid.frameWidth}x${asset.grid.frameHeight}:${asset.grid.columns}x${asset.grid.rows}`
+      : '';
+    return `${base}:${asset.imageType}${grid}`;
+  };
+
+  const labelForAsset = (asset: SpriteAssetSpec): string => {
+    const name = asset.source.kind === 'path'
+      ? (asset.source.path.split('/').pop() ?? asset.source.path)
+      : (asset.source.originalName ?? 'embedded');
+    return `${name} (${asset.imageType})`;
+  };
+
+  const assetOptions = useMemo(() => {
+    if (!scene) return [];
+    const seen = new Set<string>();
+    const options: Array<{ key: string; label: string; asset: SpriteAssetSpec }> = [];
+
+    for (const candidate of Object.values(scene.entities)) {
+      if (!candidate.asset) continue;
+      const key = keyForAsset(candidate.asset);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      options.push({ key, label: labelForAsset(candidate.asset), asset: candidate.asset });
+    }
+
+    options.sort((a, b) => a.label.localeCompare(b.label));
+    return options;
+  }, [scene]);
+
+  const currentAssetKey = resolved.asset ? keyForAsset(resolved.asset) : '__none__';
+
+  const containingGroup = useMemo(() => {
+    if (!scene) return null;
+    const groupEntry = Object.values(scene.groups).find((group) => group.members.includes(entity.id));
+    return groupEntry ?? null;
+  }, [entity.id, scene]);
 
   return (
     <div className="inspector-block">
@@ -512,9 +558,40 @@ function EntityInspector({
             onCommit={(next) => update({ depth: next })}
           />
         </label>
-        <div className="inspector-row">
-          Asset: {resolved.asset ? `${resolved.asset.imageType} (${resolved.asset.source.kind})` : 'Placeholder rectangle'}
-        </div>
+        <label className="field">
+          <span>Asset</span>
+          <select
+            aria-label="Asset"
+            data-testid="entity-asset-select"
+            value={currentAssetKey}
+            onChange={(e) => {
+              const key = e.target.value;
+              if (key === '__none__') {
+                update({ asset: undefined });
+                return;
+              }
+              const selected = assetOptions.find((it) => it.key === key);
+              if (!selected) return;
+              update({ asset: selected.asset });
+            }}
+          >
+            <option value="__none__">None (placeholder)</option>
+            {assetOptions.map((option) => (
+              <option key={option.key} value={option.key}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+        {containingGroup && actionProps?.onSetEntitiesAsset && (
+          <button
+            className="button"
+            data-testid="apply-asset-to-formation-button"
+            type="button"
+            disabled={!resolved.asset}
+            onClick={() => actionProps.onSetEntitiesAsset?.(containingGroup.members, resolved.asset)}
+          >
+            Apply Asset to Formation
+          </button>
+        )}
       </InspectorFoldout>
       {resolved.asset && (
         <InspectorFoldout

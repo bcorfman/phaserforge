@@ -9,6 +9,7 @@ import {
   SceneSpec,
   StartupMode,
   type EntitySpec,
+  type SpriteAssetSpec,
 } from '../model/types';
 import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject';
 import { validateSceneSpec } from '../model/validation';
@@ -162,6 +163,7 @@ export type EditorAction =
   | { type: 'move-group'; id: Id; dx: number; dy: number }
   | { type: 'move-entities'; entityIds: Id[]; dx: number; dy: number }
   | { type: 'duplicate-entities'; entityIds: Id[] }
+  | { type: 'set-entities-asset'; entityIds: Id[]; asset?: SpriteAssetSpec }
   | { type: 'arrange-group-grid'; id: Id; layout: GroupGridLayout }
   | { type: 'arrange-group'; id: Id; arrangeKind: string; params: Record<string, number | string | boolean> }
   | { type: 'create-group-from-arrange'; name: string; templateEntityId: Id; arrangeKind: string; params: Record<string, number | string | boolean>; memberCount?: number }
@@ -1158,6 +1160,21 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         ? { kind: 'entity', id: duplicatedIds[0] }
         : { kind: 'entities', ids: duplicatedIds };
       return withScene(state, nextScene, true, selection, syncExpandedGroupsToScene(state.expandedGroups, nextScene));
+    }
+    case 'set-entities-asset': {
+      const scene = getActiveScene(state);
+      const uniqueIds = [...new Set(action.entityIds)].filter((id) => Boolean(scene.entities[id]));
+      if (uniqueIds.length === 0) return state;
+
+      const entities: Record<Id, EntitySpec> = { ...scene.entities };
+      for (const id of uniqueIds) {
+        entities[id] = {
+          ...entities[id],
+          asset: action.asset,
+        };
+      }
+
+      return withScene(state, { ...scene, entities } as GameSceneSpec, true);
     }
     case 'arrange-group-grid': {
       const scene = getActiveScene(state);
