@@ -206,7 +206,7 @@ export interface AttachmentSpec {
    * For v1, this will typically match an action `type` like "MoveUntil".
    */
   presetId: string;
-  params?: Record<string, number | string | boolean>;
+  params?: Record<string, number | string | boolean | null>;
   condition?: InlineConditionSpec;
   tag?: string;
 }
@@ -254,7 +254,7 @@ export interface CallActionSpec {
   name?: string;
   callId: Id;
   target?: TargetRef;
-  args?: Record<string, number>;
+  args?: Record<string, number | string | boolean | null>;
 }
 
 export interface RepeatActionSpec {

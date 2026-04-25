@@ -22,8 +22,8 @@ This plan is split into **MVP (Laser Gates)**, **Add-ons (soon)**, and **Future*
 
 ### 2) Editor UX: “stage reuse” + base selection
 - Scenes panel:
-  - Keep **Duplicate** for “copy stage and modify”.
-  - Add **Rename scene** UI (store already has `rename-scene`; wire it up).
+  - Keep **Duplicate** for “copy stage and modify”. ✅
+  - Add **Rename scene** UI (store already has `rename-scene`; wire it up). ✅
   - Add “Set Base” control:
     - One scene can be base at a time; clicking sets `project.baseSceneId = sceneId`.
     - Clicking again on the base scene clears `baseSceneId` (optional base).
@@ -62,11 +62,10 @@ This plan is split into **MVP (Laser Gates)**, **Add-ons (soon)**, and **Future*
   - `AppShell` listens and dispatches `set-current-scene` when in play mode.
   - This triggers the existing `EventBus.emit('load-scene', ...)` path so Phaser reloads consistently.
 
-### 6) EventBus load contract: pass project context (required for base composition)
-- Update the `load-scene` event payload from `(sceneSpec, mode)` to `(project, currentSceneId, mode)`.
-- `BootScene` becomes the router:
-  - In edit mode: calls `editor.loadSceneSpec({ active, reference })` if base ghosting applies.
-  - In play mode: calls `game.loadProject({ project, currentSceneId })` (GameScene decides base + active compilation).
+### 6) EventBus load contract: pass project context (required for base composition) ✅
+- Implemented via `runtime:load-project (project, currentSceneId, mode)` + `runtime:set-active-scene` with `BootScene` routing. ✅
+- In edit mode: `BootScene` calls `editor.loadSceneSpec(project, sceneSpec)`. ✅
+- In play mode: `BootScene` calls `game.loadSceneSpec(project, sceneSpec)`. ✅
 
 ---
 
@@ -121,4 +120,3 @@ This plan is split into **MVP (Laser Gates)**, **Add-ons (soon)**, and **Future*
 - MVP uses **two layers only** (base + active) but structures code so named layer slots can be added without rewrites.
 - **Separate namespaces** in MVP: wave scripts cannot directly target base entities; cross-layer interaction is deferred to collisions/events later.
 - Edit mode continues to author exactly one scene at a time; base is reference-only “ghost”.
-

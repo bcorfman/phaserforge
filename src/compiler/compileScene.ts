@@ -2,6 +2,7 @@ import { SceneSpec } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { validateSceneSpec } from '../model/validation';
 import { ActionManager } from '../runtime/ActionManager';
+import type { Action } from '../runtime/Action';
 import { RuntimeEntity, RuntimeGroup } from '../runtime/targets/types';
 import { createFormationGroup } from '../runtime/targets/createFormationGroup';
 import { CompileOptions } from './compileBehaviors';
@@ -12,7 +13,7 @@ export interface CompiledScene {
   scene: SceneSpec;
   entities: Record<string, RuntimeEntity>;
   groups: Record<string, RuntimeGroup>;
-  behaviors: Record<string, ReturnType<typeof compileBehavior>>;
+  behaviors: Record<string, Action>;
   actionManager: ActionManager;
   startAll(): void;
   reset(): void;

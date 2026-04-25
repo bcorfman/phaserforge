@@ -23,6 +23,7 @@ export interface SceneBridge {
   getTestSnapshot(): {
     ready: boolean;
     sceneKey?: string;
+    compiledSceneId?: string;
     zoom: number;
     scrollX: number;
     scrollY: number;

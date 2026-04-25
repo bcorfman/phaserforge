@@ -119,26 +119,26 @@ Support background images per scene, rendered in both Edit and Play.
 Enable transitions between scenes driven by authored actions (`Call`).
 
 ### Runtime services (new)
-- `RuntimeServices`:
-  - `scene: SceneService` with `goto(sceneId, { transition, durationMs })`
-  - stubs for `audio`, `input`, `collisions`, `vars` (implemented later)
+- [x] `RuntimeServices`:
+  - [x] `scene: SceneService` with `goto(sceneId, { transition, durationMs })`
+  - [x] stubs for `audio`, `input`, `collisions`, `vars` (implemented later)
 
 ### Compiler changes
-- Expand `Call` attachment args to allow `string|number|boolean` in params.
-- Replace current narrow `callRegistry` injection with a service op registry:
-  - built-in op: `scene.goto`
+- [x] Expand `Call` attachment args to allow `string|number|boolean|null` in params.
+- [x] Replace current narrow `callRegistry` injection with a service op registry.
+- [x] Add built-in op: `scene.goto`.
 
 ### Editor UI for Call
-- Keep free-text `callId`.
-- If `callId === 'scene.goto'`, show structured fields:
-  - `sceneId` (dropdown from `project.scenes` keys)
-  - `transition` (enum: `cut|fade`)
-  - `durationMs` (number)
-- For other callIds, keep current numeric dx/dy editing (plus an “advanced args” JSON textarea for non-numeric).
+- [x] Keep free-text `callId`.
+- [x] If `callId === 'scene.goto'`, show structured fields:
+  - [x] `sceneId` (dropdown from `project.scenes` keys)
+  - [x] `transition` (enum: `none|fade`)
+  - [x] `durationMs` (number)
+- [x] For other callIds, keep numeric dx/dy editing + an “Advanced args (JSON)” textarea for shallow primitive args.
 
 ### Tests
-- Unit: compiler integration test that `Call` with string args reaches handler with correct payload
-- E2E: a sample scene with a Call action triggers scene switch in Play mode
+- [x] Unit: compiler integration test that `Call` with string args reaches handler with correct payload
+- [x] E2E: a sample scene with a Call action triggers scene switch in Play mode
 
 ## Phase 5: Audio (project library + scene ambience/music)
 ### Goal

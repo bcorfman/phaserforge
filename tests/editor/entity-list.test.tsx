@@ -13,6 +13,7 @@ describe('EntityList', () => {
         scene={sampleScene}
         selection={{ kind: 'none' }}
         expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
         dispatch={() => {}}
       />
     );
@@ -32,6 +33,7 @@ describe('EntityList', () => {
         scene={sampleScene}
         selection={{ kind: 'none' }}
         expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
         dispatch={() => {}}
       />
     );
@@ -47,6 +49,7 @@ describe('EntityList', () => {
         scene={sampleScene}
         selection={{ kind: 'none' }}
         expandedGroups={{ 'g-enemies': true }}
+        mode="edit"
         dispatch={() => {}}
       />
     );
@@ -66,6 +69,7 @@ describe('EntityList', () => {
         scene={sampleScene}
         selection={{ kind: 'none' }}
         expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
         dispatch={() => {}}
       />
     );
@@ -75,5 +79,22 @@ describe('EntityList', () => {
     expect(toggleIndex).toBeGreaterThanOrEqual(0);
     expect(labelIndex).toBeGreaterThanOrEqual(0);
     expect(toggleIndex).toBeLessThan(labelIndex);
+  });
+
+  it('disables scene switching in play mode', () => {
+    const markup = renderToStaticMarkup(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleScene}
+        selection={{ kind: 'none' }}
+        expandedGroups={{ 'g-enemies': false }}
+        mode="play"
+        dispatch={() => {}}
+      />
+    );
+
+    expect(markup).toContain(`data-testid=\"scene-item-${sampleProject.initialSceneId}\"`);
+    expect(markup).toContain('disabled');
   });
 });

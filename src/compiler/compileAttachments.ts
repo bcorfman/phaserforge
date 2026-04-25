@@ -13,6 +13,12 @@ import { resolveTarget, type TargetContext } from '../runtime/targets/resolveTar
 import type { CompileOptions, CompileContext } from './compileBehaviors';
 import type { CallActionSpec } from '../model/types';
 
+type CallArgPrimitive = number | string | boolean | null;
+
+function isCallArgPrimitive(value: unknown): value is CallArgPrimitive {
+  return value === null || typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean';
+}
+
 function attachmentEnabled(attachment: AttachmentSpec): boolean {
   return attachment.enabled !== false;
 }
@@ -37,11 +43,8 @@ function instantiateInlineCondition(condition: InlineConditionSpec | undefined) 
 
 function compileCallAttachment(attachment: AttachmentSpec, ctx: CompileContext): Action {
   const callId = String(attachment.params?.callId ?? attachment.presetId);
-  const callRegistry = ctx.options?.callRegistry ?? {};
-  const callback = callRegistry[callId];
-  if (!callback) {
-    throw new Error(`Missing call handler for ${callId}`);
-  }
+  const opRegistry = ctx.options?.opRegistry;
+
   const spec: CallActionSpec = {
     id: attachment.id,
     type: 'Call',
@@ -49,10 +52,16 @@ function compileCallAttachment(attachment: AttachmentSpec, ctx: CompileContext):
     callId,
     target: attachment.target,
     args: Object.fromEntries(
-      Object.entries(attachment.params ?? {}).filter(([key, value]) => key !== 'callId' && typeof value === 'number')
-    ) as Record<string, number>,
+      Object.entries(attachment.params ?? {}).filter(([key, value]) => key !== 'callId' && isCallArgPrimitive(value))
+    ) as Record<string, CallArgPrimitive>,
   };
-  return new Call(() => callback(spec, ctx));
+  return new Call(() => {
+    if (!opRegistry) {
+      console.warn(`[phaseractions] Missing opRegistry for Call ${callId}`);
+      return;
+    }
+    opRegistry.invoke(callId, spec, ctx);
+  });
 }
 
 function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext, targetOverride?: TargetRef): Action {
@@ -126,4 +135,3 @@ export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetConte
 
   return scripts;
 }
-
