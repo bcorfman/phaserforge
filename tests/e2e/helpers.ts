@@ -11,6 +11,7 @@ const IS_CI = Boolean(process.env.CI);
 const APP_BOOT_TIMEOUT_MS = IS_CI ? 60000 : 10000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 30000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
+const TEST_SEED_SENTINEL_KEY = 'phaseractions.testSeeded.v1';
 
 export async function gotoStudio(page: Page): Promise<void> {
   const existingAppRoot = page.getByTestId('app-root');
@@ -36,12 +37,14 @@ export async function gotoStudio(page: Page): Promise<void> {
 export async function seedSampleScene(page: Page): Promise<void> {
   const yaml = serializeProjectToYaml(sampleProject);
   await page.addInitScript(
-    ([sceneYaml]) => {
+    ([sceneYaml, sentinelKey]) => {
+      if (window.localStorage.getItem(sentinelKey)) return;
+      window.localStorage.setItem(sentinelKey, '1');
       window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
       window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
       window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
     },
-    [yaml]
+    [yaml, TEST_SEED_SENTINEL_KEY]
   );
   await page.goto('/');
   try {
