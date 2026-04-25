@@ -56,6 +56,22 @@ export async function seedSampleScene(page: Page): Promise<void> {
   await waitForSampleScene(page);
 }
 
+export async function seedProject(page: Page, project: any): Promise<void> {
+  const yaml = serializeProjectToYaml(project);
+  await page.addInitScript((sceneYaml) => {
+    window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
+    window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
+    window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
+  }, yaml);
+  await page.goto('/');
+  try {
+    await waitForSceneReady(page);
+  } catch {
+    await page.reload();
+    await waitForSceneReady(page);
+  }
+}
+
 export async function waitForSceneReady(page: Page): Promise<void> {
   await page.waitForFunction(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.isSceneReady?.(), { timeout: SCENE_READY_TIMEOUT_MS });
   await expect(page.locator('#game-container canvas')).toBeVisible({ timeout: SCENE_READY_TIMEOUT_MS });

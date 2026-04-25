@@ -6,9 +6,12 @@ import type { ProjectSpec, SceneSpec } from '../model/types';
 
 export class BootScene extends Phaser.Scene {
   private project?: ProjectSpec;
-  private currentSceneId?: string;
+  private authoredSceneId?: string;
+  private runtimeSceneId?: string;
+  private playStartSceneId?: string;
   private mode: 'edit' | 'play' = 'edit';
   private lastViewState?: { zoom: number; scrollX: number; scrollY: number };
+  private gotoVersion = 0;
 
   constructor() {
     super('BootScene');
@@ -18,6 +21,7 @@ export class BootScene extends Phaser.Scene {
     EventBus.on('runtime:load-project', this.handleLoadProject, this);
     EventBus.on('runtime:set-mode', this.handleSetMode, this);
     EventBus.on('runtime:set-active-scene', this.handleSetActiveScene, this);
+    EventBus.on('runtime:request-scene-goto', this.handleRequestSceneGoto, this);
 
     // Start in editor mode so the app can emit `current-scene-ready` and then provide scene data.
     if (!this.scene.isActive('EditorScene') && !this.scene.isSleeping('EditorScene')) {
@@ -28,6 +32,7 @@ export class BootScene extends Phaser.Scene {
       EventBus.off('runtime:load-project', this.handleLoadProject, this);
       EventBus.off('runtime:set-mode', this.handleSetMode, this);
       EventBus.off('runtime:set-active-scene', this.handleSetActiveScene, this);
+      EventBus.off('runtime:request-scene-goto', this.handleRequestSceneGoto, this);
     });
   }
 
@@ -79,8 +84,10 @@ export class BootScene extends Phaser.Scene {
 
   private syncActiveScene(): void {
     if (!this.project) return;
-    const sceneSpec = this.resolveSceneSpec(this.project, this.currentSceneId);
-    this.currentSceneId = sceneSpec.id;
+    const activeSceneId = this.mode === 'play' ? (this.runtimeSceneId ?? this.authoredSceneId) : this.authoredSceneId;
+    const sceneSpec = this.resolveSceneSpec(this.project, activeSceneId);
+    this.runtimeSceneId = sceneSpec.id;
+    if (!this.authoredSceneId) this.authoredSceneId = sceneSpec.id;
 
     if (this.mode === 'edit') {
       if (this.scene.isActive('GameScene')) this.scene.sleep('GameScene');
@@ -110,22 +117,80 @@ export class BootScene extends Phaser.Scene {
 
   private handleLoadProject(project: ProjectSpec, currentSceneId: string, mode: 'edit' | 'play' = 'edit'): void {
     this.project = project;
-    this.currentSceneId = currentSceneId;
+    this.authoredSceneId = currentSceneId;
+    this.runtimeSceneId = currentSceneId;
     this.captureViewStateForModeSwitch(mode);
     this.mode = mode;
+    this.playStartSceneId = mode === 'play' ? currentSceneId : undefined;
     this.syncActiveScene();
   }
 
   private handleSetMode(mode: 'edit' | 'play'): void {
     if (!this.project) return;
     this.captureViewStateForModeSwitch(mode);
+    if (mode === 'play') {
+      this.playStartSceneId = this.authoredSceneId ?? this.runtimeSceneId;
+      if (this.playStartSceneId) this.runtimeSceneId = this.playStartSceneId;
+    } else {
+      this.playStartSceneId = undefined;
+      if (this.authoredSceneId) this.runtimeSceneId = this.authoredSceneId;
+    }
     this.mode = mode;
     this.syncActiveScene();
   }
 
   private handleSetActiveScene(sceneId: string): void {
     if (!this.project) return;
-    this.currentSceneId = sceneId;
+    this.authoredSceneId = sceneId;
+    if (this.mode === 'play' && !this.playStartSceneId) this.playStartSceneId = sceneId;
+    this.runtimeSceneId = sceneId;
     this.syncActiveScene();
+  }
+
+  private handleRequestSceneGoto(payload: { sceneId?: unknown; transition?: unknown; durationMs?: unknown }): void {
+    if (!this.project) return;
+    if (this.mode !== 'play') return;
+
+    const sceneId = typeof payload.sceneId === 'string' ? payload.sceneId : '';
+    if (!sceneId) {
+      console.warn('[phaseractions] scene.goto missing sceneId');
+      return;
+    }
+    if (!this.project.scenes[sceneId]) {
+      console.warn(`[phaseractions] scene.goto target scene not found: ${sceneId}`);
+      return;
+    }
+
+    const transitionRaw = typeof payload.transition === 'string' ? payload.transition : 'fade';
+    const transition = transitionRaw === 'none' || transitionRaw === 'fade' ? transitionRaw : 'fade';
+    const durationRaw = typeof payload.durationMs === 'number' ? payload.durationMs : Number(payload.durationMs);
+    const durationMs = Number.isFinite(durationRaw) ? Math.max(0, durationRaw) : 350;
+
+    const game = this.scene.get('GameScene') as GameScene;
+    const isRunning = this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene');
+    const view = isRunning ? game.getViewState() : this.lastViewState;
+    const version = ++this.gotoVersion;
+
+    const switchScene = () => {
+      if (version !== this.gotoVersion) return;
+      this.runtimeSceneId = sceneId;
+      if (view) game.setPendingViewState(view);
+      this.loadIntoGameScene(this.project!.scenes[sceneId]);
+    };
+
+    if (!isRunning || transition === 'none' || durationMs <= 0) {
+      switchScene();
+      return;
+    }
+
+    const fadeOutMs = Math.floor(durationMs / 2);
+    const fadeInMs = Math.max(0, durationMs - fadeOutMs);
+    const camera = game.cameras.main;
+    camera.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      if (version !== this.gotoVersion) return;
+      switchScene();
+      camera.fadeIn(fadeInMs, 0, 0, 0);
+    });
+    camera.fadeOut(fadeOutMs, 0, 0, 0);
   }
 }

@@ -71,10 +71,12 @@ function instantiateAction(
       return new Wait(action.durationMs);
     case 'Call': {
       const callback = callRegistry[action.callId];
-      if (!callback) {
-        throw new Error(`Missing call handler for ${action.callId}`);
-      }
-      return new Call(() => callback(action, ctx));
+      const handler =
+        callback ??
+        ((_action: CallActionSpec, _ctx: CompileContext) => {
+          console.warn(`[phaseractions] Missing call handler for ${action.callId}`);
+        });
+      return new Call(() => handler(action, ctx));
     }
     case 'Repeat': {
       const child = buildAction(action.childId);

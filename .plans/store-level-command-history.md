@@ -61,62 +61,62 @@ Behavior:
 ## Implementation Changes (Concrete Steps)
 
 ### A) Refactor `EditorStore` reducer into “apply” + “history wrapper”
-1. Split reducer logic into:
-   - `applyAction(state, action): EditorState` (existing switch cases; **no history manipulation**)
-   - `reducer(state, action): EditorState` (wraps `applyAction` to record history or perform undo/redo)
-2. Implement helpers:
-   - `isUndoableAction(action): boolean`
-   - `getHistoryScope(action): 'scene' | 'project'` (scene by default; project for scene CRUD, YAML load, reset)
-   - `pushHistoryEntry(stateBefore, stateAfter, scope): EditorState` (caps, clears future, handles pending merge rules)
+- [x] Split reducer logic into:
+  - [x] `applyAction(state, action): EditorState` (existing switch cases; **no history manipulation**)
+  - [x] `reducer(state, action): EditorState` (wraps `applyAction` to record history or perform undo/redo)
+- [x] Implement helpers:
+  - [x] `isUndoableAction(action): boolean`
+  - [x] `getHistoryScope(action): 'scene' | 'project'` (scene by default; project for scene CRUD, YAML load, reset)
+  - [x] `pushHistoryEntry(stateBefore, stateAfter, scope): EditorState` (caps, clears future, handles pending merge rules)
 
 ### B) Replace Phaser-local history
-1. In `EditorScene`:
-   - Remove `operationHistory/historyIndex` and all `undo/redo/recordOperation/finalizeRecordedOperation` logic.
-   - Stop subscribing to `EventBus.on('history-undo'/'history-redo')`.
-   - Keyboard shortcuts (Ctrl/Cmd+Z/Y) should be removed in favor of App-level keydown.
-2. In `AppShell`:
-   - Add a window `keydown` handler (ignore when focused in input/textarea/select/contenteditable) that dispatches:
-     - Ctrl/Cmd+Z → `history-undo`
-     - Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y → `history-redo`
+- [x] In `EditorScene`:
+  - [x] Remove `operationHistory/historyIndex` and all `undo/redo/recordOperation/finalizeRecordedOperation` logic.
+  - [x] Stop subscribing to `EventBus.on('history-undo'/'history-redo')`.
+  - [x] Remove keyboard shortcuts (Ctrl/Cmd+Z/Y) in favor of App-level keydown.
+- [x] In `AppShell`:
+  - [x] Add a window `keydown` handler (ignore when focused in input/textarea/select/contenteditable) that dispatches:
+    - [x] Ctrl/Cmd+Z → `history-undo`
+    - [x] Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y → `history-redo`
 
 ### C) UI wiring
-1. Update `CanvasOverlay` Undo/Redo buttons to `dispatch({type:'history-undo'})` / `dispatch({type:'history-redo'})` (stop using `EventBus.emit('history-undo')`).
-2. Keep the visual layout exactly as the Phase 3 mockups (Undo/Redo/Snap/Mode in-canvas overlay).
+- [x] Update `CanvasOverlay` Undo/Redo buttons to `dispatch({type:'history-undo'})` / `dispatch({type:'history-redo'})` (stop using `EventBus.emit('history-undo')`).
+- [x] Keep the visual layout exactly as the Phase 3 mockups (Undo/Redo/Snap/Mode in-canvas overlay).
 
 ### D) Test bridge + existing tests compatibility
-1. Update `src/testing/testBridge.ts` so `window.__PHASER_ACTIONS_STUDIO_TEST__.undo()` / `redo()` triggers Store-level undo/redo (not Phaser scene methods).
-   - Add `registerHistoryDispatcher((action) => dispatch(action))` or a dedicated `registerUndoRedoHandlers({undo, redo})` called from `AppShell`.
-2. Update/extend Playwright tests:
-   - Ensure Undo/Redo works for:
-     - move entity
-     - create/remove entity
-     - add to group/remove from group (including drag/drop)
-     - dissolve group / ungroup / regroup
-     - attachment add/remove/reorder
-     - scene create/delete/rename
-   - Ensure drag sequences still undo as a single step (existing `begin/end-canvas-interaction` path).
+- [x] Update `src/testing/testBridge.ts` so `window.__PHASER_ACTIONS_STUDIO_TEST__.undo()` / `redo()` triggers Store-level undo/redo (not Phaser scene methods).
+  - [x] Add `registerUndoRedoHandlers({undo, redo})` called from `AppShell`.
+- [x] Update/extend Playwright tests:
+  - [x] Ensure Undo/Redo works for:
+    - [x] move entity
+    - [x] create/remove entity
+    - [x] add to group/remove from group (including drag/drop)
+    - [x] dissolve group / ungroup / regroup
+    - [x] attachment add/remove/reorder
+    - [x] scene create/delete/rename
+  - [x] Ensure drag sequences still undo as a single step (existing `begin/end-canvas-interaction` path).
 
 ## Test Plan (TDD-Driven)
 
 ### Unit (Vitest)
-Add a new suite focused on history behavior (or extend `tests/editor/editor-store.test.ts`):
-- `history-undo`/`history-redo` restores `project` and `selection` correctly for:
-  - `update-entity`
-  - `remove-scene-graph-item` for entity + group + attachment
-  - `add-entities-to-group` / `remove-entities-from-groups`
-  - `create-scene` + undo/redo
-- Drag batching:
-  - `begin-canvas-interaction` → multiple `move-entity` → `end-canvas-interaction` creates **one** history entry
-  - Undo restores exact pre-drag positions
-- Merge window (nudges):
-  - repeated `move-entity` actions within 500ms merge into one history entry
+- [x] Add a new suite focused on history behavior (or extend `tests/editor/editor-store.test.ts`):
+  - [x] `history-undo`/`history-redo` restores `project` and `selection` correctly for:
+    - [x] `update-entity`
+    - [x] `remove-scene-graph-item` for entity + group + attachment
+    - [x] `add-entities-to-group` / `remove-entities-from-groups`
+    - [x] `create-scene` + undo/redo
+  - [x] Drag batching:
+    - [x] `begin-canvas-interaction` → multiple `move-entity` → `end-canvas-interaction` creates **one** history entry
+    - [x] Undo restores exact pre-drag positions
+  - [x] Merge window (nudges):
+    - [x] repeated `move-entity` actions within 500ms merge into one history entry
 
 ### E2E (Playwright)
-- Undo/redo after drag (existing coverage should remain but now validates Store path)
-- Undo/redo for group membership drag/drop in Scene Graph
-- Undo/redo for delete sprite + restore
-- Undo/redo for dissolve group + restore
-- Undo/redo for attachment removal + restore
+- [x] Undo/redo after drag (existing coverage should remain but now validates Store path)
+- [x] Undo/redo for group membership drag/drop in Scene Graph
+- [x] Undo/redo for delete sprite + restore
+- [x] Undo/redo for dissolve group + restore
+- [x] Undo/redo for attachment removal + restore
 
 ## Assumptions / Defaults
 - History cap: `100`.
@@ -125,4 +125,3 @@ Add a new suite focused on history behavior (or extend `tests/editor/editor-stor
 - `expandedGroups` is treated as UI state:
   - Not tracked for most commands, but commands that create/delete/restore groups record enough to avoid surprising collapses after undo.
 - `dirty` handling default: store `dirty` in the snapshots and restore it with undo/redo (simple and predictable).
-

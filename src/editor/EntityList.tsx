@@ -33,7 +33,7 @@ function readDragEntityIds(dataTransfer: DataTransfer | null): string[] | null {
 
 export function EntityList() {
   const { state, dispatch } = useEditorStore();
-  const { project, currentSceneId, selection, expandedGroups } = state;
+  const { project, currentSceneId, selection, expandedGroups, mode } = state;
   const scene = project.scenes[currentSceneId];
   return (
     <EntityListView
@@ -42,6 +42,7 @@ export function EntityList() {
       scene={scene}
       selection={selection}
       expandedGroups={expandedGroups}
+      mode={mode}
       dispatch={dispatch}
     />
   );
@@ -53,6 +54,7 @@ export function EntityListView({
   scene,
   selection,
   expandedGroups,
+  mode,
   dispatch,
 }: {
   project: ProjectSpec;
@@ -60,6 +62,7 @@ export function EntityListView({
   scene: SceneSpec;
   selection: Selection;
   expandedGroups: Record<string, boolean>;
+  mode: 'edit' | 'play';
   dispatch: (action: any) => void;
 }) {
   const { groups, ungroupedEntities } = summarizeSceneGroups(scene);
@@ -148,6 +151,7 @@ export function EntityListView({
   };
 
   const handleSceneClick = (sceneId: string) => {
+    if (mode === 'play') return;
     if (editingKind == null && sceneId === currentSceneId) {
       startEditing('scene', sceneId, sceneId);
       return;
@@ -219,6 +223,7 @@ export function EntityListView({
                   className={`list-item ${sceneId === currentSceneId ? 'active' : ''}`}
                   data-testid={`scene-item-${sceneId}`}
                   type="button"
+                  disabled={mode === 'play'}
                   onClick={() => handleSceneClick(sceneId)}
                 >
                   {sceneId}

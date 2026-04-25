@@ -198,6 +198,7 @@ export class EditorScene extends Phaser.Scene {
   public getTestSnapshot(): {
     ready: boolean;
     sceneKey: string;
+    compiledSceneId?: string;
     zoom: number;
     scrollX: number;
     scrollY: number;
@@ -208,6 +209,7 @@ export class EditorScene extends Phaser.Scene {
     return {
       ready: Boolean(this.compiled),
       sceneKey: this.scene.key,
+      compiledSceneId: this.compiled?.scene.id,
       zoom: this.currentZoom,
       scrollX: this.cameras.main.scrollX,
       scrollY: this.cameras.main.scrollY,
@@ -531,6 +533,10 @@ export class EditorScene extends Phaser.Scene {
           for (const t of targets) {
             t.y += dy;
           }
+        },
+        'scene.goto': (action) => {
+          const sceneId = typeof action.args?.sceneId === 'string' ? String(action.args.sceneId) : '';
+          console.warn(`[phaseractions] scene.goto ignored in Edit mode (sceneId=${sceneId || '""'})`);
         },
       },
     });

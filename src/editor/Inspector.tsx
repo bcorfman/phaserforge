@@ -5,13 +5,14 @@ import { inferGroupGridLayout } from './formationLayout';
 import { SpriteImportPanel } from './SpriteImportPanel';
 import { AttachedActionsPanel } from './AttachedActionsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
-import { AttachmentSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
+import { AttachmentSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
 import { CreateFormationPanel } from './CreateFormationPanel';
 import { BackgroundLayersPanel } from './BackgroundLayersPanel';
+import { parseCallArgsJson } from './callArgsJson';
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
@@ -83,6 +84,7 @@ export function Inspector() {
       content = attachment
         ? renderAttachmentInspector(
           attachment,
+          state.project,
           scene,
           state.registry,
           (next) => dispatch({ type: 'update-attachment', id: next.id, next }),
@@ -1141,6 +1143,7 @@ export function renderGroupInspector(
 
 export function renderAttachmentInspector(
   attachment: AttachmentSpec,
+  project: ProjectSpec,
   scene: SceneSpec,
   registry: EditorRegistryConfig,
   onUpdate: (next: AttachmentSpec) => void,
@@ -1149,6 +1152,7 @@ export function renderAttachmentInspector(
   return (
     <AttachmentInspector
       attachment={attachment}
+      project={project}
       scene={scene}
       registry={registry}
       onUpdate={onUpdate}
@@ -1159,12 +1163,14 @@ export function renderAttachmentInspector(
 
 function AttachmentInspector({
   attachment,
+  project,
   scene,
   registry,
   onUpdate,
   onRemove,
 }: {
   attachment: AttachmentSpec;
+  project: ProjectSpec;
   scene: SceneSpec;
   registry: EditorRegistryConfig;
   onUpdate: (next: AttachmentSpec) => void;
@@ -1178,6 +1184,23 @@ function AttachmentInspector({
   const params = attachment.params ?? {};
   const world = getSceneWorld(scene);
   const foldouts = useInspectorFoldouts();
+  const callId = String(params.callId ?? '');
+  const isSceneGoto = callId === 'scene.goto';
+  const [advancedArgsText, setAdvancedArgsText] = useState('');
+  const [advancedArgsError, setAdvancedArgsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (attachment.presetId !== 'Call') return;
+    if (isSceneGoto) return;
+    const extra: Record<string, any> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (key === 'callId' || key === 'dx' || key === 'dy') continue;
+      extra[key] = value;
+    }
+    setAdvancedArgsText(JSON.stringify(extra, null, 2));
+    setAdvancedArgsError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachment.id, attachment.presetId, isSceneGoto]);
 
   const ensureBoundsCondition = (): InlineBoundsHitConditionSpec => {
     if (attachment.condition?.type === 'BoundsHit') return attachment.condition;
@@ -1415,30 +1438,136 @@ function AttachmentInspector({
               aria-label="Call Id"
               data-testid="attachment-call-id-input"
               type="text"
-              value={String(params.callId ?? '')}
-              onChange={(e) => onUpdate({ ...attachment, params: { ...params, callId: e.target.value } })}
+              value={callId}
+              onChange={(e) => {
+                const nextCallId = e.target.value;
+                if (nextCallId === 'scene.goto') {
+                  const sceneIds = Object.keys(project.scenes);
+                  const defaultSceneId = sceneIds.find((id) => id !== scene.id) ?? scene.id ?? sceneIds[0] ?? '';
+                  onUpdate({
+                    ...attachment,
+                    params: {
+                      ...params,
+                      callId: nextCallId,
+                      sceneId: typeof params.sceneId === 'string' ? params.sceneId : defaultSceneId,
+                      transition: typeof params.transition === 'string' ? params.transition : 'fade',
+                      durationMs: typeof params.durationMs === 'number' ? params.durationMs : 350,
+                    },
+                  });
+                  return;
+                }
+                onUpdate({ ...attachment, params: { ...params, callId: nextCallId } });
+              }}
             />
           </label>
-	          <div className="inspector-grid-2">
-	            <label className="field">
-	              <span>dx</span>
-	              <ValidatedNumberInput
-	                aria-label="dx"
-	                data-testid="attachment-call-dx-input"
-	                value={Number(params.dx ?? 0)}
-	                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, dx: next } })}
-	              />
-	            </label>
-	            <label className="field">
-	              <span>dy</span>
-	              <ValidatedNumberInput
-	                aria-label="dy"
-	                data-testid="attachment-call-dy-input"
-	                value={Number(params.dy ?? 0)}
-	                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, dy: next } })}
-	              />
-	            </label>
-	          </div>
+
+          {isSceneGoto ? (
+            <>
+              <label className="field">
+                <span>Scene</span>
+                <select
+                  aria-label="Scene"
+                  data-testid="attachment-call-scene-goto-scene-select"
+                  value={typeof params.sceneId === 'string' ? params.sceneId : ''}
+                  onChange={(e) => onUpdate({ ...attachment, params: { ...params, sceneId: e.target.value } })}
+                >
+                  {Object.keys(project.scenes).map((id) => (
+                    <option key={id} value={id}>{id}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Transition</span>
+                <select
+                  aria-label="Transition"
+                  data-testid="attachment-call-scene-goto-transition-select"
+                  value={typeof params.transition === 'string' ? params.transition : 'fade'}
+                  onChange={(e) => onUpdate({ ...attachment, params: { ...params, transition: e.target.value } })}
+                >
+                  <option value="none">none</option>
+                  <option value="fade">fade</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Duration (ms)</span>
+                <ValidatedNumberInput
+                  aria-label="Duration (ms)"
+                  data-testid="attachment-call-scene-goto-duration-input"
+                  min={0}
+                  value={Number(params.durationMs ?? 350)}
+                  clamp={(next) => Math.max(0, next || 0)}
+                  onCommit={(next) => onUpdate({ ...attachment, params: { ...params, durationMs: next } })}
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <div className="inspector-grid-2">
+                <label className="field">
+                  <span>dx</span>
+                  <ValidatedNumberInput
+                    aria-label="dx"
+                    data-testid="attachment-call-dx-input"
+                    value={Number(params.dx ?? 0)}
+                    onCommit={(next) => onUpdate({ ...attachment, params: { ...params, dx: next } })}
+                  />
+                </label>
+                <label className="field">
+                  <span>dy</span>
+                  <ValidatedNumberInput
+                    aria-label="dy"
+                    data-testid="attachment-call-dy-input"
+                    value={Number(params.dy ?? 0)}
+                    onCommit={(next) => onUpdate({ ...attachment, params: { ...params, dy: next } })}
+                  />
+                </label>
+              </div>
+              <InspectorFoldout
+                title="Advanced args (JSON)"
+                open={foldouts.isOpen('attachment.call.advanced', false)}
+                onToggle={() => foldouts.toggle('attachment.call.advanced', false)}
+              >
+                <label className="field">
+                  <span>Args</span>
+                  <textarea
+                    aria-label="Advanced args (JSON)"
+                    data-testid="attachment-call-advanced-json-textarea"
+                    value={advancedArgsText}
+                    onChange={(e) => {
+                      setAdvancedArgsText(e.target.value);
+                      setAdvancedArgsError(null);
+                    }}
+                    onBlur={() => {
+                      const parsed = parseCallArgsJson(advancedArgsText);
+                      if (!parsed.ok) {
+                        setAdvancedArgsError(parsed.error);
+                        return;
+                      }
+                      const reserved = new Set(['callId', 'dx', 'dy']);
+                      const nextParams: Record<string, any> = { ...params };
+                      for (const key of Object.keys(nextParams)) {
+                        if (reserved.has(key)) continue;
+                        delete nextParams[key];
+                      }
+                      for (const [key, value] of Object.entries(parsed.value)) {
+                        if (reserved.has(key)) continue;
+                        nextParams[key] = value;
+                      }
+                      onUpdate({ ...attachment, params: nextParams });
+                      setAdvancedArgsText(JSON.stringify(parsed.value, null, 2));
+                      setAdvancedArgsError(null);
+                    }}
+                    rows={6}
+                  />
+                </label>
+                {advancedArgsError ? (
+                  <div className="inspector-row error" data-testid="attachment-call-advanced-json-error">
+                    {advancedArgsError}
+                  </div>
+                ) : null}
+              </InspectorFoldout>
+            </>
+          )}
         </InspectorFoldout>
       )}
 

@@ -87,6 +87,19 @@ export class GameScene extends Phaser.Scene {
             t.y += dy;
           }
         },
+        'scene.goto': (action) => {
+          const args = (action as any).args ?? {};
+          const sceneId = typeof args.sceneId === 'string' ? args.sceneId : '';
+          if (!sceneId) {
+            console.warn('[phaseractions] scene.goto missing sceneId');
+            return;
+          }
+          const transitionRaw = typeof args.transition === 'string' ? args.transition : 'fade';
+          const transition = transitionRaw === 'none' || transitionRaw === 'fade' ? transitionRaw : 'fade';
+          const durationRaw = typeof args.durationMs === 'number' ? args.durationMs : Number(args.durationMs);
+          const durationMs = Number.isFinite(durationRaw) ? Math.max(0, durationRaw) : 350;
+          EventBus.emit('runtime:request-scene-goto', { sceneId, transition, durationMs });
+        },
       },
     });
 
@@ -134,6 +147,7 @@ export class GameScene extends Phaser.Scene {
   public getTestSnapshot(): {
     ready: boolean;
     sceneKey: string;
+    compiledSceneId?: string;
     zoom: number;
     scrollX: number;
     scrollY: number;
@@ -144,6 +158,7 @@ export class GameScene extends Phaser.Scene {
     return {
       ready: Boolean(this.compiled),
       sceneKey: this.scene.key,
+      compiledSceneId: this.compiled?.scene.id,
       zoom: this.cameras.main.zoom,
       scrollX: this.cameras.main.scrollX,
       scrollY: this.cameras.main.scrollY,
