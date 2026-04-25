@@ -14,7 +14,7 @@ import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject'
 import { validateSceneSpec } from '../model/validation';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { applyGroupArrangeLayout, applyGroupGridLayout, applyGroupGridLayoutPreserveMembers, inferGroupGridLayout, type GroupGridLayout } from './formationLayout';
-import { addEntitiesToGroup, dissolveGroup, removeEntitiesFromGroups, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
+import { addEntitiesToGroup, dissolveGroup, insertEntitiesIntoGroup, removeEntitiesFromGroups, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
 import { syncBoundsToWorldResize } from './worldBounds';
 import { loadEditorConfig, loadEditorRegistry, coerceStartupMode, EMPTY_EDITOR_REGISTRY } from '../model/editorConfig';
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
@@ -173,6 +173,7 @@ export type EditorAction =
   | { type: 'group-selection'; name: string }
   | { type: 'delete-group'; id: Id }
   | { type: 'add-entities-to-group'; groupId: Id; entityIds: Id[] }
+  | { type: 'insert-entities-into-group'; groupId: Id; entityIds: Id[]; index: number }
   | { type: 'remove-entities-from-groups'; entityIds: Id[] }
   | { type: 'remove-entity-from-group'; groupId: Id; entityId: Id }
   | { type: 'dissolve-group'; id: Id }
@@ -367,6 +368,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'group-selection':
     case 'delete-group':
     case 'add-entities-to-group':
+    case 'insert-entities-into-group':
     case 'remove-entities-from-groups':
     case 'remove-entity-from-group':
     case 'dissolve-group':
@@ -1378,6 +1380,20 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     case 'add-entities-to-group': {
       const scene = getActiveScene(state);
       const nextScene = addEntitiesToGroup(scene, action.groupId, action.entityIds);
+      if (nextScene === scene) return state;
+      return {
+        ...withScene(state, nextScene as GameSceneSpec, true, { kind: 'group', id: action.groupId }),
+        selection: { kind: 'group', id: action.groupId },
+        expandedGroups: {
+          ...syncExpandedGroupsToScene(state.expandedGroups, nextScene),
+          [action.groupId]: true,
+        },
+        pendingGroupRestore: undefined,
+      };
+    }
+    case 'insert-entities-into-group': {
+      const scene = getActiveScene(state);
+      const nextScene = insertEntitiesIntoGroup(scene, action.groupId, action.entityIds, action.index);
       if (nextScene === scene) return state;
       return {
         ...withScene(state, nextScene as GameSceneSpec, true, { kind: 'group', id: action.groupId }),

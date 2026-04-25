@@ -122,6 +122,63 @@ export function addEntitiesToGroup(scene: SceneSpec, groupId: Id, entityIds: Id[
   };
 }
 
+export function insertEntitiesIntoGroup(scene: SceneSpec, groupId: Id, entityIds: Id[], index: number): SceneSpec {
+  const group = scene.groups[groupId];
+  if (!group) return scene;
+  if (entityIds.length === 0) return scene;
+
+  const toInsert: Id[] = [];
+  const seen = new Set<Id>();
+  for (const id of entityIds) {
+    if (!scene.entities[id]) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    toInsert.push(id);
+  }
+  if (toInsert.length === 0) return scene;
+
+  let nextScene = scene;
+
+  // Remove from other groups first.
+  for (const entityId of toInsert) {
+    for (const [otherGroupId, otherGroup] of Object.entries(nextScene.groups)) {
+      if (!otherGroup.members.includes(entityId)) continue;
+      if (otherGroupId === groupId) continue;
+      nextScene = removeEntityFromGroup(nextScene, otherGroupId, entityId);
+      break;
+    }
+  }
+
+  const refreshedGroup = nextScene.groups[groupId];
+  if (!refreshedGroup) return nextScene;
+
+  // Reorder within same group by first removing any existing occurrences.
+  const remainingMembers = refreshedGroup.members.filter((memberId) => !seen.has(memberId));
+
+  const clampedIndex = Math.max(0, Math.min(Math.floor(index), remainingMembers.length));
+  const nextMembers = [
+    ...remainingMembers.slice(0, clampedIndex),
+    ...toInsert,
+    ...remainingMembers.slice(clampedIndex),
+  ];
+
+  if (nextMembers.length === refreshedGroup.members.length && nextMembers.every((id, i) => id === refreshedGroup.members[i])) {
+    return nextScene;
+  }
+
+  return {
+    ...nextScene,
+    groups: {
+      ...nextScene.groups,
+      [groupId]: {
+        ...refreshedGroup,
+        members: nextMembers,
+        layout: { type: 'freeform' },
+      },
+    },
+  };
+}
+
 export function removeEntitiesFromGroups(scene: SceneSpec, entityIds: Id[]): SceneSpec {
   if (entityIds.length === 0) return scene;
   let nextScene = scene;

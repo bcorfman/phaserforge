@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
+import { inferGroupGridLayout } from './formationLayout';
 import { SpriteImportPanel } from './SpriteImportPanel';
 import { AttachedActionsPanel } from './AttachedActionsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
@@ -103,6 +104,8 @@ export function Inspector() {
           onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
           onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
           onUpdateGroup={updateGroup}
+          onArrangeGroupGrid={(layout) => dispatch({ type: 'arrange-group-grid', id: group.id, layout })}
+          onArrangeGroup={(arrangeKind, params) => dispatch({ type: 'arrange-group', id: group.id, arrangeKind, params })}
           onUngroup={() => dispatch({ type: 'ungroup-group', id: group.id })}
           onDissolve={() => dispatch({ type: 'dissolve-group', id: group.id })}
           onDeleteGroup={() => dispatch({ type: 'delete-group', id: group.id })}
@@ -143,7 +146,7 @@ export function Inspector() {
           </label>
           <button
             className="button"
-            data-testid="group-selection-button"
+            data-testid="create-formation-from-selection-button"
             type="button"
             onClick={() => dispatch({ type: 'group-selection', name: formationNameDraft })}
           >
@@ -586,6 +589,8 @@ function GroupInspector({
   onSelectMember,
   onRemoveMember,
   onUpdateGroup,
+  onArrangeGroupGrid,
+  onArrangeGroup,
   onUngroup,
   onDissolve,
   onDeleteGroup,
@@ -601,11 +606,83 @@ function GroupInspector({
   onSelectMember: (id: string) => void;
   onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
+  onArrangeGroupGrid: (layout: { rows: number; cols: number; startX: number; startY: number; spacingX: number; spacingY: number }) => void;
+  onArrangeGroup: (arrangeKind: string, params: Record<string, number | string | boolean>) => void;
   onUngroup: () => void;
   onDissolve: () => void;
   onDeleteGroup: () => void;
 }) {
   const foldouts = useInspectorFoldouts();
+  const [layoutPreset, setLayoutPreset] = useState<string>(() => {
+    if (group.layout?.type === 'arrange') return group.layout.arrangeKind;
+    if (group.layout?.type === 'grid') return 'grid';
+    return 'grid';
+  });
+  const [layoutParams, setLayoutParams] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (group.layout?.type === 'arrange') {
+      setLayoutPreset(group.layout.arrangeKind);
+      setLayoutParams(Object.fromEntries(Object.entries(group.layout.params ?? {}).map(([key, value]) => [key, String(value)])));
+      return;
+    }
+    if (group.layout?.type === 'grid') {
+      setLayoutPreset('grid');
+      setLayoutParams({
+        rows: String(group.layout.rows),
+        cols: String(group.layout.cols),
+        startX: String(group.layout.startX),
+        startY: String(group.layout.startY),
+        spacingX: String(group.layout.spacingX),
+        spacingY: String(group.layout.spacingY),
+      });
+      return;
+    }
+
+    // Freeform -> start from the inferred grid so "Grid" editing is immediately useful.
+    const inferred = inferGroupGridLayout(scene, group.id);
+    setLayoutPreset('grid');
+    setLayoutParams({
+      rows: String(inferred?.rows ?? 1),
+      cols: String(inferred?.cols ?? Math.max(1, group.members.length)),
+      startX: String(inferred?.startX ?? 0),
+      startY: String(inferred?.startY ?? 0),
+      spacingX: String(inferred?.spacingX ?? 0),
+      spacingY: String(inferred?.spacingY ?? 0),
+    });
+  }, [group.id]);
+
+  const arrangeEntry = registry.arrange.find((entry) => entry.implemented && entry.type === layoutPreset && (entry.targetKinds ?? []).includes('group'));
+  const arrangeParams = arrangeEntry?.parameters ?? [];
+
+  const applyLayout = () => {
+    if (layoutPreset === 'grid') {
+      const fallback = inferGroupGridLayout(scene, group.id);
+      const rows = Math.max(1, Math.floor(Number(layoutParams.rows ?? fallback?.rows ?? 1)));
+      const cols = Math.max(1, Math.floor(Number(layoutParams.cols ?? fallback?.cols ?? 1)));
+      const startX = Math.round(Number(layoutParams.startX ?? fallback?.startX ?? 0));
+      const startY = Math.round(Number(layoutParams.startY ?? fallback?.startY ?? 0));
+      const spacingX = Math.round(Number(layoutParams.spacingX ?? fallback?.spacingX ?? 0));
+      const spacingY = Math.round(Number(layoutParams.spacingY ?? fallback?.spacingY ?? 0));
+      onArrangeGroupGrid({ rows, cols, startX, startY, spacingX, spacingY });
+      return;
+    }
+
+    const params: Record<string, number | string | boolean> = {};
+    for (const param of arrangeParams) {
+      const raw = layoutParams[param.name];
+      if (raw == null || raw === '') continue;
+      if (param.type === 'number') {
+        const parsed = Number(raw);
+        if (Number.isFinite(parsed)) params[param.name] = Math.round(parsed);
+      } else if (param.type === 'boolean') {
+        params[param.name] = raw === 'true';
+      } else {
+        params[param.name] = raw;
+      }
+    }
+    onArrangeGroup(layoutPreset, params);
+  };
 
   return (
     renderGroupInspector(group, scene, {
@@ -622,6 +699,11 @@ function GroupInspector({
       onDissolve,
       onDeleteGroup,
       foldouts,
+      layoutPreset,
+      setLayoutPreset,
+      layoutParams,
+      setLayoutParams,
+      applyLayout,
     })
   );
 }
@@ -643,6 +725,11 @@ export function renderGroupInspector(
     onDissolve: () => void;
     onDeleteGroup: () => void;
     foldouts: { isOpen: (key: string, defaultOpen: boolean) => boolean; toggle: (key: string, defaultOpen: boolean) => void };
+    layoutPreset: string;
+    setLayoutPreset: (next: string) => void;
+    layoutParams: Record<string, string>;
+    setLayoutParams: (next: Record<string, string>) => void;
+    applyLayout: () => void;
   }
 ) {
   const members = group.members.map((memberId) => scene.entities[memberId]).filter(Boolean);
@@ -721,6 +808,85 @@ export function renderGroupInspector(
         <div className="inspector-row">
           Layout: {layoutSummary.kind === 'grid' ? `${layoutSummary.rows} x ${layoutSummary.cols} grid` : 'Freeform'}
         </div>
+        <div className="inspector-row">
+          <label className="field">
+            <span>Arrange Preset</span>
+            <select
+              aria-label="Arrange Preset"
+              data-testid="arrange-preset-select"
+              value={handlers.layoutPreset}
+              onChange={(e) => {
+                const nextPreset = e.target.value;
+                handlers.setLayoutPreset(nextPreset);
+                const entry = handlers.registry.arrange.find((it) => it.implemented && it.type === nextPreset && (it.targetKinds ?? []).includes('group'));
+                const nextParams: Record<string, string> = {};
+                for (const param of entry?.parameters ?? []) {
+                  const existing = handlers.layoutParams[param.name];
+                  if (existing != null && existing !== '') {
+                    nextParams[param.name] = existing;
+                  } else if (param.default != null) {
+                    nextParams[param.name] = String(param.default);
+                  }
+                }
+                handlers.setLayoutParams({ ...handlers.layoutParams, ...nextParams });
+              }}
+            >
+              {handlers.registry.arrange
+                .filter((entry) => entry.implemented && (entry.targetKinds ?? []).includes('group'))
+                .map((entry) => (
+                  <option key={entry.type} value={entry.type}>{entry.displayName ?? entry.type}</option>
+                ))}
+            </select>
+          </label>
+        </div>
+        {handlers.registry.arrange
+          .find((entry) => entry.implemented && entry.type === handlers.layoutPreset && (entry.targetKinds ?? []).includes('group'))
+          ?.parameters?.map((param) => (
+            <label key={param.name} className="field">
+              <span>{param.name}</span>
+              <input
+                aria-label={param.name}
+                data-testid={`arrange-param-${param.name}`}
+                value={handlers.layoutParams[param.name] ?? ''}
+                inputMode={param.type === 'number' ? 'numeric' : undefined}
+                onChange={(e) => handlers.setLayoutParams({ ...handlers.layoutParams, [param.name]: e.target.value })}
+              />
+            </label>
+          ))}
+        <button
+          className="button"
+          data-testid="apply-group-layout-button"
+          type="button"
+          onClick={handlers.applyLayout}
+        >
+          Apply Layout
+        </button>
+      </InspectorFoldout>
+
+      <InspectorFoldout
+        title="Members"
+        open={handlers.foldouts.isOpen('group.members', false)}
+        onToggle={() => handlers.foldouts.toggle('group.members', false)}
+      >
+        {members.map((member) => (
+          <div key={member.id} className="inspector-row">
+            <button
+              className="button button-compact"
+              type="button"
+              onClick={() => handlers.onSelectMember(member.id)}
+            >
+              Select {member.name ?? member.id}
+            </button>
+            <button
+              className="button button-compact button-danger"
+              data-testid={`group-member-remove-${member.id}`}
+              type="button"
+              onClick={() => handlers.onRemoveMember(member.id)}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
       </InspectorFoldout>
     </div>
   );

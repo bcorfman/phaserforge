@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { getState, gotoStudio, seedSampleScene, waitForSampleScene } from './helpers';
+import { dragDropByTestId, getState, gotoStudio, seedSampleScene, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
@@ -28,6 +28,9 @@ test('Scene Graph: multi-select sprites and drag into a formation to add members
     hasUngroupedE2: true,
   });
 
+  const beforeState = await getState<{ scene: { groups: Record<string, { members: string[] }> } }>(page);
+  const beforeMembers = beforeState.scene.groups['g-enemies'].members;
+
   // Multi-select in Sprites list via shift-click.
   await page.getByTestId('ungrouped-entity-e1').click();
   await page.keyboard.down('Shift');
@@ -39,25 +42,37 @@ test('Scene Graph: multi-select sprites and drag into a formation to add members
     return state.selection;
   }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
 
-  // Drag the selection onto the formation row to add.
-  await page.dragAndDrop('[data-testid="ungrouped-entity-e1"]', '[data-testid="group-item-g-enemies"]');
+  // Drag onto the member list (not just the formation label) to insert at that location.
+  await dragDropByTestId(page, 'ungrouped-entity-e1', 'group-member-row-g-enemies-e4', { targetYFraction: 0.75 });
+  const targetIndex = beforeMembers.indexOf('e4');
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { groups: Record<string, { members: string[] }> } }>(page);
     const members = state.scene.groups['g-enemies'].members;
-    return { hasE1: members.includes('e1'), hasE2: members.includes('e2') };
-  }).toEqual({ hasE1: true, hasE2: true });
+    return {
+      hasE1: members.includes('e1'),
+      hasE2: members.includes('e2'),
+      e1Index: members.indexOf('e1'),
+      e2Index: members.indexOf('e2'),
+      e4Index: members.indexOf('e4'),
+    };
+  }).toEqual({
+    hasE1: true,
+    hasE2: true,
+    e1Index: targetIndex + 1,
+    e2Index: targetIndex + 2,
+    e4Index: targetIndex,
+  });
 });
 
 test('Scene Graph: drag formation member into Sprites dropzone to remove from group', async ({ page }) => {
   await page.getByTestId('toggle-group-g-enemies').click();
   await expect(page.getByTestId('group-member-g-enemies-e3')).toBeVisible();
 
-  await page.dragAndDrop('[data-testid="group-member-g-enemies-e3"]', '[data-testid="sprites-dropzone"]');
+  await dragDropByTestId(page, 'group-member-g-enemies-e3', 'sprites-dropzone');
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { groups: Record<string, { members: string[] }> } }>(page);
     return state.scene.groups['g-enemies'].members.includes('e3');
   }).toBe(false);
 });
-

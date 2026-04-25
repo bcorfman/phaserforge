@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditorStore, type Selection } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
 import type { ProjectSpec, SceneSpec } from '../model/types';
@@ -68,7 +68,22 @@ export function EntityListView({
   const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'scene' | null>(null);
   const [editingName, setEditingName] = useState('');
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [dragInsert, setDragInsert] = useState<{ groupId: string; index: number } | null>(null);
   const [dragOverSprites, setDragOverSprites] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
+
+  useEffect(() => {
+    const handleDragStart = () => setIsDragActive(true);
+    const handleDragEnd = () => setIsDragActive(false);
+    window.addEventListener('dragstart', handleDragStart);
+    window.addEventListener('dragend', handleDragEnd);
+    window.addEventListener('drop', handleDragEnd);
+    return () => {
+      window.removeEventListener('dragstart', handleDragStart);
+      window.removeEventListener('dragend', handleDragEnd);
+      window.removeEventListener('drop', handleDragEnd);
+    };
+  }, []);
 
   const startEditing = (kind: 'entity' | 'group' | 'scene', id: string, currentName: string) => {
     setEditingKind(kind);
@@ -153,15 +168,23 @@ export function EntityListView({
 
   const handleDragEnd = () => {
     setDragOverGroupId(null);
+    setDragInsert(null);
     setDragOverSprites(false);
+    setIsDragActive(false);
   };
 
-  const handleDropOnGroup = (groupId: string, event: React.DragEvent) => {
+  const handleDropOnGroup = (groupId: string, event: React.DragEvent, index?: number) => {
     event.preventDefault();
     const ids = readDragEntityIds(event.dataTransfer);
     if (!ids || ids.length === 0) return;
-    dispatch({ type: 'add-entities-to-group', groupId, entityIds: ids });
+    if (typeof index === 'number') {
+      dispatch({ type: 'insert-entities-into-group', groupId, entityIds: ids, index });
+    } else {
+      dispatch({ type: 'add-entities-to-group', groupId, entityIds: ids });
+    }
     setDragOverGroupId(null);
+    setDragInsert(null);
+    setIsDragActive(false);
   };
 
   const handleDropOnSprites = (event: React.DragEvent) => {
@@ -321,11 +344,13 @@ export function EntityListView({
                   onDragOver={(e) => {
                     e.preventDefault();
                     if (dragOverGroupId !== group.id) setDragOverGroupId(group.id);
+                    setDragInsert({ groupId: group.id, index: group.members.length });
                   }}
                   onDragLeave={() => {
                     if (dragOverGroupId === group.id) setDragOverGroupId(null);
+                    if (dragInsert?.groupId === group.id) setDragInsert(null);
                   }}
-                  onDrop={(e) => handleDropOnGroup(group.id, e)}
+                  onDrop={(e) => handleDropOnGroup(group.id, e, group.members.length)}
                 >
                   {group.name ?? group.id}
                   <span className="list-item-meta">{countAttachmentsForTarget(scene, { type: 'group', groupId: group.id })}</span>
@@ -342,9 +367,54 @@ export function EntityListView({
               </button>
             </div>
             {expandedGroups[group.id] && (
-              <div className="member-list">
+              <div
+                className="member-list"
+                onDragLeave={() => {
+                  if (dragOverGroupId === group.id) setDragOverGroupId(null);
+                  if (dragInsert?.groupId === group.id) setDragInsert(null);
+                }}
+              >
                 {members.map((member) => (
-                  <div key={member.id} className="member-row">
+                  <div
+                    key={member.id}
+                    className="member-row"
+                    data-testid={`group-member-row-${group.id}-${member.id}`}
+                    data-member-id={member.id}
+                    style={isDragActive ? { position: 'relative' } : undefined}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                      const memberIndex = group.members.indexOf(member.id);
+                      const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                      setDragInsert({ groupId: group.id, index: Math.max(0, index) });
+                    }}
+                    onDrop={(e) => {
+                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                      const memberIndex = group.members.indexOf(member.id);
+                      const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                      handleDropOnGroup(group.id, e, Math.max(0, index));
+                    }}
+                  >
+                    {isDragActive && (
+                      <button
+                        type="button"
+                        className="scene-graph-drop-overlay"
+                        data-testid={`group-member-drop-overlay-${group.id}-${member.id}`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                          const memberIndex = group.members.indexOf(member.id);
+                          const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                          setDragInsert({ groupId: group.id, index: Math.max(0, index) });
+                        }}
+                        onDrop={(e) => {
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                          const memberIndex = group.members.indexOf(member.id);
+                          const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                          handleDropOnGroup(group.id, e, Math.max(0, index));
+                        }}
+                      />
+                    )}
                     {editingId === member.id && editingKind === 'entity' ? (
                       <input
                         autoFocus
@@ -379,6 +449,18 @@ export function EntityListView({
                     </button>
                   </div>
                 ))}
+                {isDragActive && (
+                  <button
+                    type="button"
+                    className="scene-graph-drop-end"
+                    data-testid={`group-member-drop-end-${group.id}`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragInsert({ groupId: group.id, index: members.length });
+                    }}
+                    onDrop={(e) => handleDropOnGroup(group.id, e, members.length)}
+                  />
+                )}
               </div>
             )}
           </div>
