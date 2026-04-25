@@ -19,20 +19,17 @@ test('right-click opens a cursor context menu and selects the entity under the c
   await expect(page.getByTestId('canvas-context-menu')).toBeVisible();
 });
 
-test('convert group layout submenu converts to freeform', async ({ page }) => {
+test('context menu routes layout conversion through the inspector (no nested submenu)', async ({ page }) => {
   await dismissViewHint(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
 
   await page.getByTestId('canvas-selection-menu-button').click();
   await expect(page.getByTestId('canvas-context-menu')).toBeVisible();
-  await page.getByTestId('canvas-menu-convert-layout').click();
-  await expect(page.getByTestId('canvas-convert-layout-submenu')).toBeVisible();
-  await page.getByTestId('canvas-convert-freeform').click();
+  await expect(page.getByTestId('canvas-menu-convert-layout')).toHaveCount(0);
+  await page.getByTestId('canvas-menu-open-layout-inspector').click();
+  await expect(page.getByTestId('canvas-context-menu')).toBeHidden();
 
-  await expect.poll(async () => {
-    const state = await getState<{ scene: { groups: Record<string, { layout?: { type: string } }> } }>(page);
-    return state.scene.groups['g-enemies'].layout?.type ?? null;
-  }).toBe('freeform');
+  await expect(page.getByTestId('layout-type-select')).toBeVisible();
 });
 
 test('top-right selection actions appear when selection is non-empty', async ({ page }) => {

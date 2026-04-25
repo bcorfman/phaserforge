@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .chip{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .chipOn{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .chipText{fill:var(--text); font-size:11px; font-weight:800;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .groupHull{fill:rgba(124,240,199,0.08); stroke:var(--accent2); stroke-width:2;}
+      .floating{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Canvas Editor — Phase 3: Convert Layout Inline Chips</text>
+
+  <!-- Canvas -->
+  <rect x="24" y="86" width="1152" height="610" rx="12" class="panel"/>
+  <text x="44" y="118" class="label">Canvas</text>
+
+  <!-- Selected group -->
+  <rect x="170" y="220" width="520" height="320" rx="18" class="groupHull"/>
+  <text x="190" y="246" class="small">Group selected: Enemy Formation</text>
+  <rect x="280" y="300" width="66" height="44" rx="8" class="entity"/>
+  <rect x="390" y="345" width="56" height="40" rx="8" class="entity"/>
+  <rect x="500" y="300" width="62" height="44" rx="8" class="entity"/>
+  <rect x="430" y="430" width="72" height="46" rx="8" class="entity"/>
+
+  <!-- Floating layout quick-pick near selection -->
+  <rect x="320" y="176" width="520" height="44" rx="14" class="floating"/>
+  <text x="340" y="204" class="label">Layout</text>
+  <rect x="404" y="186" width="96" height="24" rx="10" class="chipOn"/>
+  <text x="430" y="203" class="chipText">Freeform</text>
+  <rect x="508" y="186" width="68" height="24" rx="10" class="chip"/>
+  <text x="528" y="203" class="chipText">Grid</text>
+  <rect x="584" y="186" width="96" height="24" rx="10" class="chip"/>
+  <text x="604" y="203" class="chipText">Arrange…</text>
+  <rect x="688" y="186" width="62" height="24" rx="10" class="chip"/>
+  <text x="707" y="203" class="chipText">More</text>
+
+  <!-- Notes -->
+  <rect x="760" y="530" width="416" height="130" rx="14" class="panel2"/>
+  <text x="780" y="560" class="label">Why this works</text>
+  <text x="780" y="582" class="small">No nested menu: single‑click to switch common layouts.</text>
+  <text x="780" y="604" class="small">“More” can open a full inspector/modal for advanced options.</text>
+  <text x="780" y="626" class="small">Stays on‑screen by anchoring to the selection bounds.</text>
+</svg>
+

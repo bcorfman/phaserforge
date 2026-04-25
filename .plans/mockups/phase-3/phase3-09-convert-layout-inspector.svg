@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:600;}
+      .menu{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .menuItem{fill:var(--text); font-size:12px; font-weight:600;}
+      .menuHint{fill:var(--muted); font-size:11px;}
+      .hover{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.0); stroke-width:1;}
+      .divider{fill:#2a3764;}
+      .groupHull{fill:rgba(124,240,199,0.08); stroke:var(--accent2); stroke-width:2;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .callout{fill:rgba(255,184,106,0.10); stroke:var(--warn); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:700;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Canvas Editor — Phase 3: Convert Layout via Inspector</text>
+
+  <!-- Canvas -->
+  <rect x="24" y="86" width="820" height="610" rx="12" class="panel"/>
+  <text x="44" y="118" class="label">Canvas</text>
+
+  <!-- Selected group -->
+  <rect x="140" y="210" width="420" height="260" rx="18" class="groupHull"/>
+  <text x="160" y="236" class="small">Group selected: Enemy Formation</text>
+  <rect x="210" y="280" width="66" height="44" rx="8" class="entity"/>
+  <rect x="310" y="310" width="56" height="40" rx="8" class="entity"/>
+  <rect x="410" y="270" width="62" height="44" rx="8" class="entity"/>
+  <rect x="345" y="390" width="72" height="46" rx="8" class="entity"/>
+
+  <!-- Right inspector -->
+  <rect x="864" y="86" width="312" height="610" rx="12" class="panel"/>
+  <text x="884" y="118" class="label">Inspector</text>
+
+  <!-- Group section -->
+  <rect x="884" y="136" width="272" height="132" rx="12" class="panel2"/>
+  <text x="904" y="162" class="label">Group</text>
+  <text x="904" y="190" class="small">Name</text>
+  <rect x="964" y="176" width="192" height="26" rx="8" class="field"/>
+  <text x="976" y="194" class="fieldText">Enemy Formation</text>
+  <text x="904" y="224" class="small">Members</text>
+  <text x="964" y="224" class="small">4</text>
+
+  <!-- Layout section (recommended alternative to submenu) -->
+  <rect x="884" y="282" width="272" height="274" rx="12" class="panel2"/>
+  <text x="904" y="308" class="label">Layout</text>
+  <text x="904" y="338" class="small">Layout Type</text>
+  <rect x="984" y="324" width="172" height="28" rx="8" class="field"/>
+  <text x="996" y="343" class="fieldText">Freeform</text>
+  <text x="1138" y="343" class="menuHint">▾</text>
+
+  <!-- Dropdown open -->
+  <rect x="984" y="356" width="172" height="142" rx="10" class="menu"/>
+  <rect x="992" y="366" width="156" height="28" rx="10" class="hover"/>
+  <text x="996" y="386" class="menuItem">Freeform</text>
+  <text x="1126" y="386" class="menuHint">keeps</text>
+  <text x="996" y="414" class="menuItem">Grid</text>
+  <text x="1110" y="414" class="menuHint">rows/cols</text>
+  <text x="996" y="442" class="menuItem">Arrange…</text>
+  <text x="1114" y="442" class="menuHint">presets</text>
+  <rect x="996" y="452" width="152" height="1" class="divider"/>
+  <text x="996" y="476" class="menuItem">Layout Inspector…</text>
+
+  <!-- Apply button -->
+  <rect x="904" y="512" width="252" height="32" rx="10" class="btn"/>
+  <text x="990" y="534" class="btnText">Convert / Apply</text>
+
+  <!-- Callout -->
+  <rect x="120" y="520" width="704" height="72" rx="12" class="callout"/>
+  <text x="140" y="548" class="calloutText">Alternative: move “Convert Group Layout” into Inspector with a normal dropdown + Apply.</text>
+  <text x="140" y="570" class="small">Avoids nested menus, clipping, and scrollbars; supports preview + parameters in the same place.</text>
+</svg>
+
