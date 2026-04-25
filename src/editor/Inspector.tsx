@@ -12,6 +12,7 @@ import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
 import { CreateFormationPanel } from './CreateFormationPanel';
 import { BackgroundLayersPanel } from './BackgroundLayersPanel';
+import { SceneAudioPanel } from './SceneAudioPanel';
 import { parseCallArgsJson } from './callArgsJson';
 
 export function Inspector() {
@@ -167,6 +168,13 @@ export function Inspector() {
             project={state.project}
             sceneId={state.currentSceneId}
             layers={scene.backgroundLayers ?? []}
+            dispatch={dispatch}
+            disabled={state.mode !== 'edit'}
+          />
+          <SceneAudioPanel
+            project={state.project}
+            sceneId={state.currentSceneId}
+            scene={scene}
             dispatch={dispatch}
             disabled={state.mode !== 'edit'}
           />

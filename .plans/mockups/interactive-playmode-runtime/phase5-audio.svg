@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnDanger{fill:rgba(255,184,106,0.10); stroke:var(--warn); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:600;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .groupHull{fill:rgba(124,240,199,0.08); stroke:var(--accent2); stroke-width:2;}
+      .foldHeader{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .foldTitle{fill:var(--text); font-size:12px; font-weight:800;}
+      .kbd{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .kbdText{fill:var(--text); font-size:11px; font-weight:800;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Interactive Play Mode Runtime — Phase 5: Audio</text>
+
+  <rect x="760" y="30" width="92" height="30" rx="10" class="chipActive"/>
+  <text x="788" y="50" class="btnText">Edit</text>
+  <rect x="856" y="30" width="92" height="30" rx="10" class="chip"/>
+  <text x="885" y="50" class="btnTextMuted">Play</text>
+
+  <rect x="1040" y="30" width="54" height="30" rx="10" class="kbd"/>
+  <text x="1056" y="50" class="kbdText">Esc</text>
+  <text x="1100" y="50" class="tiny">Return to Edit</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Project</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Left: scene context -->
+  <rect x="44" y="140" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="162" class="fieldText">Scene: scene-1</text>
+
+  <rect x="44" y="188" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="210" class="fieldText">Scenes ▾</text>
+
+  <line x1="44" y1="238" x2="340" y2="238" class="divider"/>
+
+  <!-- Left: audio library -->
+  <text x="44" y="264" class="label">Assets — Audio Library</text>
+  <rect x="44" y="282" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="304" class="fieldText">music_theme</text>
+  <text x="262" y="304" class="tiny">mp3</text>
+
+  <rect x="44" y="322" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="344" class="fieldText">forest_ambience</text>
+  <text x="262" y="344" class="tiny">ogg</text>
+
+  <rect x="44" y="362" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="384" class="fieldText">jump_sfx</text>
+  <text x="262" y="384" class="tiny">wav</text>
+
+  <rect x="44" y="414" width="140" height="32" rx="10" class="btnPrimary"/>
+  <text x="74" y="436" class="btnText">+ Add Audio</text>
+  <rect x="200" y="414" width="140" height="32" rx="10" class="btn"/>
+  <text x="242" y="436" class="btnTextMuted">Import…</text>
+
+  <rect x="44" y="466" width="296" height="88" rx="12" class="panel2"/>
+  <text x="58" y="494" class="small">Selected asset</text>
+  <text x="58" y="516" class="tiny">id: forest_ambience</text>
+  <text x="58" y="536" class="tiny">src: /assets/audio/forest.ogg</text>
+
+  <rect x="242" y="510" width="98" height="32" rx="10" class="btnDanger"/>
+  <text x="270" y="532" class="btnText">Remove</text>
+
+  <!-- Canvas -->
+  <rect x="408" y="170" width="444" height="410" rx="12" class="panel2"/>
+  <rect x="468" y="240" width="324" height="216" rx="18" class="groupHull"/>
+  <rect x="528" y="304" width="56" height="40" rx="8" class="entity"/>
+  <rect x="612" y="304" width="56" height="40" rx="8" class="entity"/>
+  <rect x="696" y="304" width="56" height="40" rx="8" class="entity"/>
+  <text x="420" y="610" class="tiny">In Play mode, entering a scene applies its music/ambience settings via AudioService.</text>
+
+  <!-- Inspector: Scene Audio -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="foldHeader"/>
+  <text x="936" y="162" class="foldTitle">Scene: scene-1</text>
+
+  <rect x="920" y="188" width="236" height="34" rx="10" class="foldHeader"/>
+  <text x="936" y="210" class="foldTitle">▾ Audio</text>
+
+  <!-- Music -->
+  <text x="920" y="244" class="small">Music</text>
+  <rect x="920" y="252" width="236" height="30" rx="10" class="field"/>
+  <text x="934" y="272" class="fieldText">music_theme</text>
+  <text x="1128" y="272" class="tiny">▾</text>
+
+  <rect x="920" y="292" width="72" height="26" rx="10" class="chipActive"/>
+  <text x="944" y="310" class="btnText">Loop</text>
+  <rect x="998" y="292" width="72" height="26" rx="10" class="chip"/>
+  <text x="1022" y="310" class="btnTextMuted">Once</text>
+
+  <text x="920" y="350" class="small">Volume</text>
+  <rect x="920" y="358" width="152" height="30" rx="10" class="field"/>
+  <text x="934" y="378" class="fieldText">0.65</text>
+  <rect x="1078" y="358" width="78" height="30" rx="10" class="btn"/>
+  <text x="1096" y="378" class="btnTextMuted">Preview</text>
+
+  <text x="920" y="416" class="small">Fade (ms)</text>
+  <rect x="920" y="424" width="236" height="30" rx="10" class="field"/>
+  <text x="934" y="444" class="fieldText">250</text>
+
+  <line x1="920" y1="470" x2="1156" y2="470" class="divider"/>
+
+  <!-- Ambience list -->
+  <text x="920" y="496" class="small">Ambience</text>
+  <rect x="920" y="506" width="236" height="30" rx="10" class="field"/>
+  <text x="934" y="526" class="fieldText">forest_ambience</text>
+  <text x="1128" y="526" class="tiny">▾</text>
+
+  <rect x="920" y="540" width="72" height="26" rx="10" class="chipActive"/>
+  <text x="944" y="558" class="btnText">Loop</text>
+  <text x="1002" y="558" class="tiny">Vol</text>
+  <rect x="1026" y="542" width="70" height="24" rx="10" class="field"/>
+  <text x="1040" y="558" class="fieldText">0.35</text>
+  <rect x="1102" y="540" width="54" height="26" rx="10" class="btnDanger"/>
+  <text x="1116" y="558" class="btnText">✕</text>
+
+  <rect x="920" y="584" width="236" height="32" rx="10" class="btnPrimary"/>
+  <text x="984" y="606" class="btnText">+ Add Ambience</text>
+
+  <rect x="920" y="630" width="236" height="66" rx="12" class="panel2"/>
+  <text x="936" y="658" class="tiny">Runtime status (Play)</text>
+  <text x="936" y="678" class="tiny">music: music_theme • ambience: forest_ambience</text>
+
+  <!-- Callout -->
+  <rect x="372" y="628" width="516" height="58" rx="12" class="callout"/>
+  <text x="392" y="658" class="calloutText">Author per-scene music/ambience from project audio assets; runtime applies on scene enter.</text>
+  <text x="392" y="678" class="tiny">AudioService owns instances; tests can snapshot “current music assetId” rather than assert playback.</text>
+</svg>

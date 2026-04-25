@@ -184,6 +184,11 @@ export type EditorAction =
   | { type: 'convert-group-layout-arrange'; id: Id; arrangeKind: string }
   | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'attachment'; id: Id } }
   | { type: 'add-background-layer-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; defaults?: { layout?: BackgroundLayerSpec['layout'] } }
+  | { type: 'add-audio-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
+  | { type: 'add-audio-asset-from-path'; path: string; suggestedId?: string }
+  | { type: 'remove-audio-asset'; assetId: Id }
+  | { type: 'set-scene-music'; music: GameSceneSpec['music'] | undefined }
+  | { type: 'set-scene-ambience'; ambience: NonNullable<GameSceneSpec['ambience']> }
   | { type: 'set-scene-background-layers'; layers: BackgroundLayerSpec[] }
   | { type: 'update-background-layer'; index: number; patch: Partial<BackgroundLayerSpec> }
   | { type: 'move-background-layer'; fromIndex: number; toIndex: number }
@@ -220,10 +225,10 @@ function allocUniqueId(existing: Record<string, unknown>, base: string): string 
   return `${sanitizedBase}-${counter}`;
 }
 
-function assetIdBaseFromOriginalName(name: string | undefined): string {
+function assetIdBaseFromOriginalName(name: string | undefined, fallbackBase: string = 'background'): string {
   const raw = (name ?? '').trim();
   const withoutExt = raw.replace(/\.[a-z0-9]+$/i, '');
-  const base = withoutExt.length > 0 ? withoutExt : 'background';
+  const base = withoutExt.length > 0 ? withoutExt : fallbackBase;
   return base
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -387,6 +392,11 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'load-yaml':
     case 'load-yaml-text':
     case 'add-background-layer-from-file':
+    case 'add-audio-asset-from-file':
+    case 'add-audio-asset-from-path':
+    case 'remove-audio-asset':
+    case 'set-scene-music':
+    case 'set-scene-ambience':
     case 'set-scene-background-layers':
     case 'update-background-layer':
     case 'move-background-layer':
@@ -407,6 +417,9 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'load-yaml-text':
     case 'reset-scene':
     case 'add-background-layer-from-file':
+    case 'add-audio-asset-from-file':
+    case 'add-audio-asset-from-path':
+    case 'remove-audio-asset':
       return 'project';
     default:
       return 'scene';
@@ -887,11 +900,118 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const scene = getActiveScene(state);
       return withScene(state, { ...scene, backgroundLayers: [...action.layers] }, true);
     }
+    case 'add-audio-asset-from-file': {
+      const sounds = state.project.audio?.sounds ?? {};
+      const base = assetIdBaseFromOriginalName(action.file.originalName, 'sound');
+      const assetId = allocUniqueId(sounds, base);
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        audio: {
+          ...state.project.audio,
+          sounds: {
+            ...sounds,
+            [assetId]: {
+              id: assetId,
+              source: {
+                kind: 'embedded',
+                dataUrl: action.file.dataUrl,
+                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+              },
+            },
+          },
+        },
+      };
+      return {
+        ...state,
+        project: nextProject,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'add-audio-asset-from-path': {
+      const sounds = state.project.audio?.sounds ?? {};
+      const rawSuggested = (action.suggestedId ?? '').trim();
+      const derived = action.path.split('/').pop() ?? action.path;
+      const base = rawSuggested.length > 0 ? rawSuggested : assetIdBaseFromOriginalName(derived, 'sound');
+      const assetId = allocUniqueId(sounds, base);
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        audio: {
+          ...state.project.audio,
+          sounds: {
+            ...sounds,
+            [assetId]: {
+              id: assetId,
+              source: { kind: 'path', path: action.path },
+            },
+          },
+        },
+      };
+      return {
+        ...state,
+        project: nextProject,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'remove-audio-asset': {
+      const sounds = state.project.audio?.sounds ?? {};
+      if (!sounds[action.assetId]) return state;
+      const { [action.assetId]: _removed, ...remaining } = sounds;
+      void _removed;
+
+      const scenes: Record<Id, GameSceneSpec> = {};
+      for (const [sceneId, scene] of Object.entries(state.project.scenes)) {
+        let nextScene: any = scene;
+
+        if (scene.music?.assetId === action.assetId) {
+          const { music: _music, ...rest } = nextScene as any;
+          void _music;
+          nextScene = rest;
+        }
+
+        if (Array.isArray(scene.ambience)) {
+          const filtered = scene.ambience.filter((entry) => entry.assetId !== action.assetId);
+          if (filtered.length === 0) {
+            const { ambience: _ambience, ...rest } = nextScene as any;
+            void _ambience;
+            nextScene = rest;
+          } else if (filtered.length !== scene.ambience.length) {
+            nextScene = { ...(nextScene as any), ambience: filtered };
+          }
+        }
+
+        scenes[sceneId] = nextScene as GameSceneSpec;
+      }
+
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        audio: { ...state.project.audio, sounds: remaining },
+        scenes,
+      };
+
+      return {
+        ...state,
+        project: nextProject,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'set-scene-music': {
+      const scene = getActiveScene(state);
+      return withScene(state, { ...scene, music: action.music }, true);
+    }
+    case 'set-scene-ambience': {
+      const scene = getActiveScene(state);
+      const ambience = action.ambience.length > 0 ? action.ambience.map((entry) => ({ ...entry })) : [];
+      return withScene(state, { ...scene, ambience }, true);
+    }
     case 'add-background-layer-from-file': {
       const scene = getActiveScene(state);
       const world = getSceneWorld(scene);
       const images = state.project.assets.images ?? {};
-      const base = assetIdBaseFromOriginalName(action.file.originalName);
+      const base = assetIdBaseFromOriginalName(action.file.originalName, 'background');
       const assetId = allocUniqueId(images, base);
       const layout: BackgroundLayerSpec['layout'] = action.defaults?.layout ?? 'cover';
       const isTiled = layout === 'tile';

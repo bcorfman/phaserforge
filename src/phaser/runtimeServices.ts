@@ -1,7 +1,15 @@
 import type { RuntimeServices, SceneTransition } from '../runtime/services/RuntimeServices';
 import type { BootScene } from './BootScene';
+import type { GameScene } from './GameScene';
 
 export function createRuntimeServices(boot: BootScene): RuntimeServices {
+  const getGameScene = (): GameScene | null => {
+    try {
+      return boot.scene.get('GameScene') as GameScene;
+    } catch {
+      return null;
+    }
+  };
   return {
     scene: {
       goto: (sceneId: string, options?: { transition?: SceneTransition; durationMs?: number }) => {
@@ -11,10 +19,16 @@ export function createRuntimeServices(boot: BootScene): RuntimeServices {
         });
       },
     },
-    audio: {},
+    audio: {
+      playMusic: (assetId, options) => getGameScene()?.playMusic(assetId, options),
+      stopMusic: (options) => getGameScene()?.stopMusic(options),
+      playSfx: (assetId, options) => getGameScene()?.playSfx(assetId, options),
+      applySceneAudio: (scene, project) => getGameScene()?.applySceneAudio(scene as any, project as any),
+      getSnapshot: () => getGameScene()?.getAudioSnapshot() ?? { musicAssetId: undefined, ambienceAssetIds: [] },
+      stopAll: () => getGameScene()?.stopAllAudio(),
+    },
     input: {},
     collisions: {},
     vars: {},
   };
 }
-
