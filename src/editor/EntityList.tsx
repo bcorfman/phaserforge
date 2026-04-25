@@ -3,6 +3,7 @@ import { useEditorStore, type Selection } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
 import type { ProjectSpec, SceneSpec } from '../model/types';
 import { countAttachmentsForTarget } from './sceneGraphCommands';
+import { AudioLibraryPanel } from './AudioLibraryPanel';
 
 const ENTITY_DRAG_MIME = 'application/x-phaseractions-studio-entity-ids';
 
@@ -260,6 +261,9 @@ export function EntityListView({
           New Scene
         </button>
       </section>
+
+      <AudioLibraryPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
+
       <section
         className={`panel-section ${dragOverSprites ? 'scene-graph-drop-target scene-graph-drop-target-sprites' : ''}`}
         aria-labelledby="scene-graph-sprites"

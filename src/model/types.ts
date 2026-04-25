@@ -36,8 +36,23 @@ export interface BackgroundLayerSpec {
   layout: 'stretch' | 'cover' | 'contain' | 'center' | 'tile';
 }
 
+export interface SceneMusicSpec {
+  assetId: Id;
+  loop: boolean;
+  volume: number;
+  fadeMs: number;
+}
+
+export interface SceneAmbienceSpec {
+  assetId: Id;
+  loop: boolean;
+  volume: number;
+}
+
 export interface GameSceneSpec extends SceneSpec {
   backgroundLayers?: BackgroundLayerSpec[];
+  music?: SceneMusicSpec;
+  ambience?: SceneAmbienceSpec[];
 }
 
 export interface ImageAssetSpec {

@@ -144,18 +144,25 @@ Enable transitions between scenes driven by authored actions (`Call`).
 ### Goal
 Load and play audio in GameScene; author per-scene ambience/music.
 
+### Mockups
+- Audio library + scene audio inspector: `.plans/mockups/interactive-playmode-runtime/phase5-audio.svg`
+
 ### Model
-- Project-level audio library: asset id -> URL/dataUrl
-- Scene-level:
-  - `music?: { assetId, loop, volume, fadeMs }`
-  - `ambience?: Array<{ assetId, loop, volume }>`
+- [x] Project-level audio library: asset id -> URL/dataUrl
+- [x] Scene-level:
+  - [x] `music?: { assetId, loop, volume, fadeMs }`
+  - [x] `ambience?: Array<{ assetId, loop, volume }>`
 
 ### Runtime
-- `AudioService` manages Phaser sound instances; supports `playMusic`, `stopMusic`, `playSfx`.
+- [x] `AudioService` manages Phaser sound instances; supports `playMusic`, `stopMusic`, `playSfx`.
+
+### Editor UI
+- [x] Project audio library panel (add/remove sounds)
+- [x] Scene audio inspector (music + ambience authoring)
 
 ### Tests
-- Unit: AudioService state tests (no real audio playback assertions)
-- E2E: entering a scene sets “current music assetId” in a bridge snapshot
+- [x] Unit: AudioService state tests (no real audio playback assertions)
+- [x] E2E: entering a scene sets “current music assetId” in a bridge snapshot
 
 ## Phase 6: Input maps (keyboard + mouse + gamepad)
 ### Goal

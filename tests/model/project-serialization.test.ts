@@ -7,10 +7,20 @@ describe('project YAML serialization', () => {
     const project = {
       id: 'project-1',
       assets: { images: {}, spriteSheets: {} },
-      audio: { sounds: {} },
+      audio: {
+        sounds: {
+          music_theme: { id: 'music_theme', source: { kind: 'path', path: '/assets/audio/theme.mp3' } },
+          forest_ambience: { id: 'forest_ambience', source: { kind: 'embedded', dataUrl: 'data:audio/wav;base64,AAAA', originalName: 'forest.wav', mimeType: 'audio/wav' } },
+        },
+      },
       inputMaps: {},
       scenes: {
-        'scene-1': { ...sampleScene, backgroundLayers: [] },
+        'scene-1': {
+          ...sampleScene,
+          backgroundLayers: [],
+          music: { assetId: 'music_theme', loop: true, volume: 0.65, fadeMs: 250 },
+          ambience: [{ assetId: 'forest_ambience', loop: true, volume: 0.35 }],
+        },
       },
       initialSceneId: 'scene-1',
     };

@@ -8,6 +8,7 @@ import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridg
 import { getSceneWorld } from '../editor/sceneWorld';
 import { clampCameraScroll, clampZoom } from '../editor/viewport';
 import { OpRegistry } from '../compiler/opRegistry';
+import { BasicAudioService } from '../runtime/services/BasicAudioService';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
 
@@ -28,6 +29,7 @@ export class GameScene extends Phaser.Scene {
   private readonly sceneBridgeGetter = () => this;
   private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
+  private audioService?: BasicAudioService;
   private readonly handleEscape = () => {
     EventBus.emit('toggle-mode');
   };
@@ -47,6 +49,7 @@ export class GameScene extends Phaser.Scene {
     if (getActiveScene() === this) setActiveScene(null);
     unregisterSceneGetter(this.sceneBridgeGetter);
     this.input.keyboard?.off('keydown-ESC', this.handleEscape);
+    this.audioService?.stopAll();
   }
 
   constructor() {
@@ -61,6 +64,7 @@ export class GameScene extends Phaser.Scene {
     // Match editor canvas background so offscreen space is consistent between edit and preview.
     this.cameras.main.setBackgroundColor('#0c0f1a');
     this.cameras.main.roundPixels = true;
+    this.audioService = new BasicAudioService(this.sound as any);
     this.bindSceneListeners();
     EventBus.emit('current-scene-ready', this);
     this.events.on(Phaser.Scenes.Events.SLEEP, this.unbindSceneListeners, this);
@@ -83,7 +87,13 @@ export class GameScene extends Phaser.Scene {
     this.clearScene();
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry });
 
-    void this.ensureAssetTextures(project, sceneSpec).finally(() => {
+    if (project) {
+      this.audioService?.applySceneAudio(sceneSpec, project);
+    } else {
+      this.audioService?.stopAll();
+    }
+
+    void this.ensureSceneAssets(project, sceneSpec).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
       this.buildBackgroundLayers(project, sceneSpec);
       this.buildSprites();
@@ -134,7 +144,9 @@ export class GameScene extends Phaser.Scene {
     viewportWidth: number;
     viewportHeight: number;
     backgroundLayerCount: number;
+    audio?: { musicAssetId?: string; ambienceAssetIds: string[] };
   } {
+    const audio = this.audioService?.getSnapshot();
     return {
       ready: Boolean(this.compiled),
       sceneKey: this.scene.key,
@@ -145,7 +157,32 @@ export class GameScene extends Phaser.Scene {
       viewportWidth: this.scale.width,
       viewportHeight: this.scale.height,
       backgroundLayerCount: this.backgroundObjects.length,
+      ...(audio ? { audio } : {}),
     };
+  }
+
+  public playMusic(assetId: string, options?: { loop?: boolean; volume?: number; fadeMs?: number }): void {
+    this.audioService?.playMusic(assetId, options);
+  }
+
+  public stopMusic(options?: { fadeMs?: number }): void {
+    this.audioService?.stopMusic(options);
+  }
+
+  public playSfx(assetId: string, options?: { volume?: number }): void {
+    this.audioService?.playSfx(assetId, options);
+  }
+
+  public applySceneAudio(scene: Pick<GameSceneSpec, 'music' | 'ambience'>, project: Pick<ProjectSpec, 'audio'>): void {
+    this.audioService?.applySceneAudio(scene, project);
+  }
+
+  public getAudioSnapshot(): { musicAssetId?: string; ambienceAssetIds: string[] } {
+    return this.audioService?.getSnapshot() ?? { musicAssetId: undefined, ambienceAssetIds: [] };
+  }
+
+  public stopAllAudio(): void {
+    this.audioService?.stopAll();
   }
 
   public getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null {
@@ -458,7 +495,11 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private async ensureAssetTextures(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec): Promise<void> {
+  private getAudioKey(assetId: string): string {
+    return `audio:${assetId}`;
+  }
+
+  private async ensureSceneAssets(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec): Promise<void> {
     const pendingAssets = Object.values(sceneSpec.entities)
       .map((entity) => entity.asset)
       .filter((asset): asset is SpriteAssetSpec => Boolean(asset))
@@ -479,7 +520,27 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    if (pendingAssets.length === 0 && pendingBackgrounds.length === 0) return;
+    const pendingAudio: Array<{ key: string; url: string }> = [];
+    if (project) {
+      const sounds = project.audio?.sounds ?? {};
+      const ids: string[] = [];
+      if (sceneSpec.music?.assetId) ids.push(sceneSpec.music.assetId);
+      for (const a of sceneSpec.ambience ?? []) ids.push(a.assetId);
+      for (const id of ids) {
+        const asset = sounds[id];
+        if (!asset) continue;
+        const key = this.getAudioKey(asset.id);
+        const cache = (this.cache as any).audio;
+        const exists = typeof cache?.exists === 'function' ? cache.exists(key) : Boolean(cache?.get?.(key));
+        if (exists) continue;
+        pendingAudio.push({
+          key,
+          url: asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path,
+        });
+      }
+    }
+
+    if (pendingAssets.length === 0 && pendingBackgrounds.length === 0 && pendingAudio.length === 0) return;
 
     for (const asset of pendingAssets) {
       const key = this.getTextureKey(asset);
@@ -497,9 +558,17 @@ export class GameScene extends Phaser.Scene {
       this.load.image(background.key, background.url);
     }
 
+    for (const audio of pendingAudio) {
+      (this.load as any).audio(audio.key, audio.url);
+    }
+
     await new Promise<void>((resolve) => {
-      this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
-      this.load.once(Phaser.Loader.Events.LOAD_ERROR, () => resolve());
+      const timeout = globalThis.setTimeout(() => resolve(), 2500);
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+        globalThis.clearTimeout(timeout);
+        resolve();
+      });
+      // Some loaders don't surface global errors reliably (especially for audio); rely on timeout as fallback.
       this.load.start();
     });
   }
