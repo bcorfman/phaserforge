@@ -256,6 +256,37 @@ test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
   }).toEqual({ selectionKind: 'attachment', velocityX: 140, minX: 48 });
 });
 
+test('reassigns a sprite asset from another sprite via the inspector', async ({ page }) => {
+  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
+  await page.getByTestId('import-sprites-button').click();
+  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_B.png');
+  await page.getByTestId('import-sprites-button').click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene?: { entities?: Record<string, { id: string; name?: string }> } } | null>(page);
+    const entities = Object.values(state?.scene?.entities ?? {});
+    const a = entities.find((e) => e.name === 'enemy_A.png-0')?.id ?? null;
+    const b = entities.find((e) => e.name === 'enemy_B.png-0')?.id ?? null;
+    return { a, b };
+  }).toEqual({ a: expect.any(String), b: expect.any(String) });
+
+  const stateAfterImport = await getState<{ scene?: { entities?: Record<string, { id: string; name?: string }> } } | null>(page);
+  const entitiesAfterImport = Object.values(stateAfterImport?.scene?.entities ?? {});
+  const entityAId = entitiesAfterImport.find((e) => e.name === 'enemy_A.png-0')?.id ?? null;
+  const entityBId = entitiesAfterImport.find((e) => e.name === 'enemy_B.png-0')?.id ?? null;
+  if (!entityAId || !entityBId) throw new Error('Expected imported entity ids');
+
+  await page.getByTestId(`ungrouped-entity-${entityAId}`).click();
+  await page.getByTestId('entity-asset-select').selectOption({ label: 'enemy_B.png (image)' });
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene?: { entities?: Record<string, { asset?: { source?: { kind: string; originalName?: string } } }> } } | null>(page);
+    const asset = state?.scene?.entities?.[entityAId]?.asset;
+    if (!asset || asset.source?.kind !== 'embedded') return null;
+    return asset.source.originalName ?? null;
+  }).toBe('enemy_B.png');
+});
+
 test('assigns a group MoveUntil action to imported sprites and runs it in play mode', async ({ page }) => {
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
   await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
