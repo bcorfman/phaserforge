@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { EntityListView } from '../../src/editor/EntityList';
-import { sampleScene } from '../../src/model/sampleScene';
 import { sampleProject } from '../../src/model/sampleProject';
 
 describe('EntityList', () => {
@@ -10,7 +9,7 @@ describe('EntityList', () => {
       <EntityListView
         project={sampleProject}
         currentSceneId={sampleProject.initialSceneId}
-        scene={sampleScene}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
         expandedGroups={{ 'g-enemies': false }}
         mode="edit"
@@ -19,6 +18,7 @@ describe('EntityList', () => {
     );
 
     expect(markup).toContain('Sprites');
+    expect(markup).toContain('Trigger Zones');
     expect(markup).toContain('Formations');
     expect(markup).toContain('Enemy Formation');
     expect(markup).not.toContain('Actions');
@@ -30,7 +30,7 @@ describe('EntityList', () => {
       <EntityListView
         project={sampleProject}
         currentSceneId={sampleProject.initialSceneId}
-        scene={sampleScene}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
         expandedGroups={{ 'g-enemies': false }}
         mode="edit"
@@ -46,7 +46,7 @@ describe('EntityList', () => {
       <EntityListView
         project={sampleProject}
         currentSceneId={sampleProject.initialSceneId}
-        scene={sampleScene}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
         expandedGroups={{ 'g-enemies': true }}
         mode="edit"
@@ -66,7 +66,7 @@ describe('EntityList', () => {
       <EntityListView
         project={sampleProject}
         currentSceneId={sampleProject.initialSceneId}
-        scene={sampleScene}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
         expandedGroups={{ 'g-enemies': false }}
         mode="edit"
@@ -86,7 +86,7 @@ describe('EntityList', () => {
       <EntityListView
         project={sampleProject}
         currentSceneId={sampleProject.initialSceneId}
-        scene={sampleScene}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
         expandedGroups={{ 'g-enemies': false }}
         mode="play"

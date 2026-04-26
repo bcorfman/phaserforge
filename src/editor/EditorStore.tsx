@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import {
+  CollisionRuleSpec,
   EditorRegistryConfig,
   BackgroundLayerSpec,
   GroupSpec,
@@ -8,6 +9,7 @@ import {
   ProjectSpec,
   SceneSpec,
   StartupMode,
+  TriggerZoneSpec,
   type EntitySpec,
   type InputBindingSpec,
   type SpriteAssetSpec,
@@ -51,7 +53,8 @@ export type Selection =
   | { kind: 'entity'; id: Id }
   | { kind: 'entities'; ids: Id[] }
   | { kind: 'group'; id: Id }
-  | { kind: 'attachment'; id: Id };
+  | { kind: 'attachment'; id: Id }
+  | { kind: 'trigger'; id: Id };
 
 type HistoryScope = 'scene' | 'project';
 
@@ -201,6 +204,12 @@ export type EditorAction =
   | { type: 'update-background-layer'; index: number; patch: Partial<BackgroundLayerSpec> }
   | { type: 'move-background-layer'; fromIndex: number; toIndex: number }
   | { type: 'remove-background-layer'; index: number }
+  | { type: 'add-collision-rule' }
+  | { type: 'update-collision-rule'; id: Id; patch: Partial<CollisionRuleSpec> }
+  | { type: 'remove-collision-rule'; id: Id }
+  | { type: 'add-trigger-zone' }
+  | { type: 'update-trigger-zone'; id: Id; patch: Partial<TriggerZoneSpec> }
+  | { type: 'remove-trigger-zone'; id: Id }
   | { type: 'toggle-mode' }
   | { type: 'dismiss-view-hint' };
 
@@ -1244,6 +1253,81 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const [moved] = layers.splice(action.fromIndex, 1);
       layers.splice(clampedTo, 0, moved);
       return withScene(state, { ...scene, backgroundLayers: layers }, true);
+    }
+    case 'add-collision-rule': {
+      const scene = getActiveScene(state);
+      const existing = scene.collisionRules ?? [];
+      const existingIds = Object.fromEntries(existing.map((r) => [r.id, true]));
+      const id = allocUniqueId(existingIds, 'rule-1');
+      const rule: CollisionRuleSpec = {
+        id,
+        a: { type: 'layer', layer: 'player' },
+        b: { type: 'layer', layer: 'world' },
+        interaction: 'block',
+      };
+      return withScene(state, { ...scene, collisionRules: [...existing, rule] } as GameSceneSpec, true);
+    }
+    case 'update-collision-rule': {
+      const scene = getActiveScene(state);
+      const rules = [...(scene.collisionRules ?? [])];
+      const index = rules.findIndex((r) => r.id === action.id);
+      if (index < 0) return state;
+      rules[index] = { ...rules[index], ...action.patch };
+      return withScene(state, { ...scene, collisionRules: rules } as GameSceneSpec, true);
+    }
+    case 'remove-collision-rule': {
+      const scene = getActiveScene(state);
+      const rules = [...(scene.collisionRules ?? [])];
+      const index = rules.findIndex((r) => r.id === action.id);
+      if (index < 0) return state;
+      rules.splice(index, 1);
+      return withScene(state, { ...scene, collisionRules: rules } as GameSceneSpec, true);
+    }
+    case 'add-trigger-zone': {
+      const scene = getActiveScene(state);
+      const existing = scene.triggers ?? [];
+      const existingIds = Object.fromEntries(existing.map((z) => [z.id, true]));
+      const id = allocUniqueId(existingIds, 'trigger-1');
+      const world = getSceneWorld(scene);
+      const zone: TriggerZoneSpec = {
+        id,
+        name: id,
+        enabled: true,
+        rect: {
+          x: Math.max(0, Math.round(world.width / 2 - 64)),
+          y: Math.max(0, Math.round(world.height / 2 - 48)),
+          width: 128,
+          height: 96,
+        },
+      };
+      return withScene(
+        { ...state, selection: { kind: 'trigger', id } },
+        { ...scene, triggers: [...existing, zone] } as GameSceneSpec,
+        true,
+        { kind: 'trigger', id },
+      );
+    }
+    case 'update-trigger-zone': {
+      const scene = getActiveScene(state);
+      const zones = [...(scene.triggers ?? [])];
+      const index = zones.findIndex((z) => z.id === action.id);
+      if (index < 0) return state;
+      zones[index] = { ...zones[index], ...action.patch } as TriggerZoneSpec;
+      return withScene(state, { ...scene, triggers: zones } as GameSceneSpec, true);
+    }
+    case 'remove-trigger-zone': {
+      const scene = getActiveScene(state);
+      const zones = [...(scene.triggers ?? [])];
+      const index = zones.findIndex((z) => z.id === action.id);
+      if (index < 0) return state;
+      zones.splice(index, 1);
+      const nextSelection = state.selection.kind === 'trigger' && state.selection.id === action.id ? ({ kind: 'none' } as const) : state.selection;
+      return withScene(
+        { ...state, selection: nextSelection },
+        { ...scene, triggers: zones } as GameSceneSpec,
+        true,
+        nextSelection,
+      );
     }
     case 'update-entity': {
       const scene = getActiveScene(state);

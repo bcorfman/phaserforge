@@ -1,5 +1,5 @@
 import { parse, stringify } from 'yaml';
-import { GameSceneSpec, ProjectSpec } from './types';
+import { CollisionRuleSpec, GameSceneSpec, ProjectSpec, TriggerZoneSpec } from './types';
 import { migrateSceneSpec } from './migrateScene';
 
 function coerceRecord<T>(value: unknown): Record<string, T> {
@@ -36,6 +36,58 @@ function coerceSceneAmbience(value: unknown): GameSceneSpec['ambience'] | undefi
   return items.length > 0 ? items : [];
 }
 
+function coerceCollisionRules(value: unknown): CollisionRuleSpec[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const rules = value
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null;
+      const raw = entry as any;
+      const id = typeof raw.id === 'string' && raw.id.length > 0 ? raw.id : null;
+      const aLayer = typeof raw.a?.layer === 'string' ? raw.a.layer : null;
+      const bLayer = typeof raw.b?.layer === 'string' ? raw.b.layer : null;
+      const interaction = raw.interaction === 'block' || raw.interaction === 'overlap' ? raw.interaction : null;
+      if (!id || !aLayer || !bLayer || !interaction) return null;
+      return { id, a: { type: 'layer', layer: aLayer }, b: { type: 'layer', layer: bLayer }, interaction } satisfies CollisionRuleSpec;
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  return rules.length > 0 ? rules : [];
+}
+
+function coerceTriggerZones(value: unknown): TriggerZoneSpec[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const zones = value
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null;
+      const raw = entry as any;
+      const id = typeof raw.id === 'string' && raw.id.length > 0 ? raw.id : null;
+      const rect = raw.rect;
+      if (!id || !rect || typeof rect !== 'object') return null;
+      const x = Number(rect.x);
+      const y = Number(rect.y);
+      const width = Number(rect.width);
+      const height = Number(rect.height);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) return null;
+      const coerceCall = (value: unknown) => {
+        if (!value || typeof value !== 'object') return undefined;
+        const c = value as any;
+        if (typeof c.callId !== 'string' || c.callId.length === 0) return undefined;
+        const args = c.args && typeof c.args === 'object' ? (c.args as any) : undefined;
+        return { callId: c.callId, ...(args ? { args } : {}) };
+      };
+      return {
+        id,
+        ...(typeof raw.name === 'string' && raw.name.length > 0 ? { name: raw.name } : {}),
+        ...(raw.enabled != null ? { enabled: Boolean(raw.enabled) } : {}),
+        rect: { x, y, width, height },
+        ...(coerceCall(raw.onEnter) ? { onEnter: coerceCall(raw.onEnter) } : {}),
+        ...(coerceCall(raw.onExit) ? { onExit: coerceCall(raw.onExit) } : {}),
+        ...(coerceCall(raw.onClick) ? { onClick: coerceCall(raw.onClick) } : {}),
+      } satisfies TriggerZoneSpec;
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  return zones.length > 0 ? zones : [];
+}
+
 export function serializeProjectToYaml(project: ProjectSpec): string {
   return stringify(project, {
     indent: 2,
@@ -66,12 +118,16 @@ export function parseProjectYaml(text: string): ProjectSpec {
     const music = coerceSceneMusic((sceneRaw as any)?.music);
     const ambience = coerceSceneAmbience((sceneRaw as any)?.ambience);
     const input = (sceneRaw as any)?.input && typeof (sceneRaw as any).input === 'object' ? (sceneRaw as any).input : undefined;
+    const collisionRules = coerceCollisionRules((sceneRaw as any)?.collisionRules);
+    const triggers = coerceTriggerZones((sceneRaw as any)?.triggers);
     scenes[sceneId] = {
       ...(migrated as GameSceneSpec),
       ...(backgroundLayers ? { backgroundLayers } : {}),
       ...(music ? { music } : {}),
       ...(ambience ? { ambience } : {}),
       ...(input ? { input } : {}),
+      ...(collisionRules ? { collisionRules } : {}),
+      ...(triggers ? { triggers } : {}),
     };
   }
 

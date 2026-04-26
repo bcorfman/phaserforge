@@ -60,11 +60,47 @@ export interface SceneInputSpec {
   };
 }
 
+export interface EntityBodySpec {
+  kind: 'static' | 'dynamic';
+  enabled?: boolean;
+}
+
+export interface EntityCollisionSpec {
+  enabled?: boolean;
+  layer?: string;
+}
+
+export type CollisionInteraction = 'block' | 'overlap';
+
+export interface CollisionRuleSpec {
+  id: Id;
+  a: { type: 'layer'; layer: string };
+  b: { type: 'layer'; layer: string };
+  interaction: CollisionInteraction;
+}
+
+export interface TriggerCallSpec {
+  callId: string;
+  args?: Record<string, number | string | boolean | null>;
+}
+
+export interface TriggerZoneSpec {
+  id: Id;
+  name?: string;
+  enabled?: boolean;
+  rect: { x: number; y: number; width: number; height: number };
+  onEnter?: TriggerCallSpec;
+  onExit?: TriggerCallSpec;
+  onClick?: TriggerCallSpec;
+}
+
 export interface GameSceneSpec extends SceneSpec {
   backgroundLayers?: BackgroundLayerSpec[];
   music?: SceneMusicSpec;
   ambience?: SceneAmbienceSpec[];
   input?: SceneInputSpec;
+  collisionRules?: CollisionRuleSpec[];
+  triggers?: TriggerZoneSpec[];
 }
 
 export interface ImageAssetSpec {
@@ -132,6 +168,8 @@ export interface EntitySpec {
   flipX?: boolean;
   flipY?: boolean;
   asset?: SpriteAssetSpec;
+  body?: EntityBodySpec;
+  collision?: EntityCollisionSpec;
 }
 
 export interface HitboxSpec {

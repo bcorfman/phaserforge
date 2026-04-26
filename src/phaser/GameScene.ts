@@ -10,6 +10,7 @@ import { clampCameraScroll, clampZoom } from '../editor/viewport';
 import { OpRegistry } from '../compiler/opRegistry';
 import { BasicAudioService } from '../runtime/services/BasicAudioService';
 import { BasicInputService } from '../runtime/services/BasicInputService';
+import { BasicCollisionService } from '../runtime/services/BasicCollisionService';
 import type { InputActionMapSpec } from '../model/types';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
@@ -33,6 +34,7 @@ export class GameScene extends Phaser.Scene {
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private audioService?: BasicAudioService;
   private inputService?: BasicInputService;
+  private collisionService?: BasicCollisionService;
   private lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
   private mouseOptions: { hideOsCursorInPlay: boolean; driveEntityId?: string; affectX: boolean; affectY: boolean } = {
     hideOsCursorInPlay: false,
@@ -51,6 +53,7 @@ export class GameScene extends Phaser.Scene {
   };
   private readonly handleMouseDown = (pointer: Phaser.Input.Pointer) => {
     this.inputService?.handleMouseDown(pointer.button);
+    this.collisionService?.handlePointerDown({ worldX: pointer.worldX, worldY: pointer.worldY, button: pointer.button });
   };
   private readonly handleMouseUp = (pointer: Phaser.Input.Pointer) => {
     this.inputService?.handleMouseUp(pointer.button);
@@ -104,6 +107,7 @@ export class GameScene extends Phaser.Scene {
         return { x: p.x, y: p.y, worldX: p.worldX, worldY: p.worldY };
       },
     });
+    this.collisionService = new BasicCollisionService();
     this.bindSceneListeners();
     EventBus.emit('current-scene-ready', this);
     this.events.on(Phaser.Scenes.Events.SLEEP, this.unbindSceneListeners, this);
@@ -125,6 +129,15 @@ export class GameScene extends Phaser.Scene {
     const currentLoadVersion = ++this.loadVersion;
     this.clearScene();
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry });
+    this.collisionService?.setTriggers(sceneSpec.triggers ?? []);
+    this.collisionService?.setCollisionRules(sceneSpec.collisionRules ?? []);
+    this.collisionService?.setEntities(this.compiled.entities as any);
+    for (const [id, spec] of Object.entries(sceneSpec.entities ?? {})) {
+      const runtimeEntity = (this.compiled.entities as any)[id];
+      if (!runtimeEntity) continue;
+      runtimeEntity.body = (spec as any).body;
+      runtimeEntity.collision = (spec as any).collision;
+    }
 
     if (project) {
       this.audioService?.applySceneAudio(sceneSpec, project);
@@ -189,10 +202,12 @@ export class GameScene extends Phaser.Scene {
     backgroundLayerCount: number;
     audio?: { musicAssetId?: string; ambienceAssetIds: string[] };
     input?: any;
+    collisions?: any;
     lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
   } {
     const audio = this.audioService?.getSnapshot();
     const input = this.inputService?.getSnapshot();
+    const collisions = this.collisionService?.getSnapshot();
     return {
       ready: Boolean(this.compiled),
       sceneKey: this.scene.key,
@@ -205,6 +220,7 @@ export class GameScene extends Phaser.Scene {
       backgroundLayerCount: this.backgroundObjects.length,
       ...(audio ? { audio } : {}),
       ...(input ? { input } : {}),
+      ...(collisions ? { collisions } : {}),
       ...(this.lastEntityPointerDown ? { lastEntityPointerDown: { ...this.lastEntityPointerDown } } : {}),
     };
   }
@@ -378,6 +394,8 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+
+    this.collisionService?.update();
 
     for (const entity of Object.values(this.compiled.entities)) {
       const sprite = this.sprites.get(entity.id);

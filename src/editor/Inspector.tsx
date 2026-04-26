@@ -15,6 +15,8 @@ import { BackgroundLayersPanel } from './BackgroundLayersPanel';
 import { SceneAudioPanel } from './SceneAudioPanel';
 import { parseCallArgsJson } from './callArgsJson';
 import { SceneInputPanel } from './SceneInputPanel';
+import { SceneCollisionsPanel } from './SceneCollisionsPanel';
+import { TriggerZoneInspector } from './TriggerZoneInspector';
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
@@ -136,6 +138,17 @@ export function Inspector() {
       ) : (
         <div className="muted">Sprite not found.</div>
       );
+    } else if (selection.kind === 'trigger') {
+      const zone = (scene.triggers ?? []).find((z) => z.id === selection.id);
+      content = zone ? (
+        <TriggerZoneInspector
+          zone={zone}
+          dispatch={dispatch}
+          disabled={state.mode !== 'edit'}
+        />
+      ) : (
+        <div className="muted">Trigger zone not found.</div>
+      );
     } else if (selection.kind === 'entities') {
       content = (
         <div className="inspector-block" data-testid="multi-entity-inspector">
@@ -182,6 +195,11 @@ export function Inspector() {
           <SceneInputPanel
             project={state.project}
             sceneId={state.currentSceneId}
+            scene={scene}
+            dispatch={dispatch}
+            disabled={state.mode !== 'edit'}
+          />
+          <SceneCollisionsPanel
             scene={scene}
             dispatch={dispatch}
             disabled={state.mode !== 'edit'}
@@ -542,6 +560,68 @@ function EntityInspector({
             </div>
           </>
         )}
+      </InspectorFoldout>
+      <InspectorFoldout
+        title="Physics"
+        open={foldouts.isOpen('entity.physics', false)}
+        onToggle={() => foldouts.toggle('entity.physics', false)}
+      >
+        <label className="field field-checkbox">
+          <span>Enable Body</span>
+          <input
+            aria-label="Enable Body"
+            data-testid="entity-body-enabled-input"
+            type="checkbox"
+            checked={Boolean(entity.body?.enabled)}
+            onChange={(e) => {
+              if (!e.target.checked) {
+                update({ body: undefined });
+                return;
+              }
+              update({ body: { enabled: true, kind: entity.body?.kind ?? 'dynamic' } });
+            }}
+          />
+        </label>
+        <label className="field">
+          <span>Body Kind</span>
+          <select
+            aria-label="Body Kind"
+            data-testid="entity-body-kind-select"
+            disabled={!entity.body?.enabled}
+            value={entity.body?.kind ?? 'dynamic'}
+            onChange={(e) => update({ body: { enabled: true, kind: e.target.value === 'static' ? 'static' : 'dynamic' } })}
+          >
+            <option value="dynamic">dynamic</option>
+            <option value="static">static</option>
+          </select>
+        </label>
+
+        <label className="field field-checkbox">
+          <span>Enable Collision</span>
+          <input
+            aria-label="Enable Collision"
+            data-testid="entity-collision-enabled-input"
+            type="checkbox"
+            checked={Boolean(entity.collision?.enabled)}
+            onChange={(e) => {
+              if (!e.target.checked) {
+                update({ collision: undefined });
+                return;
+              }
+              update({ collision: { enabled: true, layer: entity.collision?.layer ?? 'player' } });
+            }}
+          />
+        </label>
+        <label className="field">
+          <span>Collision Layer</span>
+          <input
+            aria-label="Collision Layer"
+            data-testid="entity-collision-layer-input"
+            disabled={!entity.collision?.enabled}
+            value={entity.collision?.layer ?? ''}
+            onChange={(e) => update({ collision: { enabled: true, layer: e.target.value } })}
+          />
+        </label>
       </InspectorFoldout>
       <InspectorFoldout
         title="Visual"
