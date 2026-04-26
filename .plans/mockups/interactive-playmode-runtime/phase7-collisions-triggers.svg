@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --good:#7cf0c7;
+        --danger:#ff6a8a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnGood{fill:rgba(124,240,199,0.14); stroke:var(--good); stroke-width:1;}
+      .btnDanger{fill:rgba(255,106,138,0.12); stroke:var(--danger); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:600;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .entity2{fill:#172042; stroke:#2a3764; stroke-width:1;}
+      .groupHull{fill:rgba(124,240,199,0.08); stroke:var(--accent2); stroke-width:2;}
+      .foldHeader{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .foldTitle{fill:var(--text); font-size:12px; font-weight:800;}
+      .pill{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .pillText{fill:var(--text); font-size:11px; font-weight:800;}
+      .tag{fill:rgba(124,240,199,0.12); stroke:rgba(124,240,199,0.55); stroke-width:1;}
+      .tagText{fill:var(--text); font-size:11px; font-weight:800;}
+      .trigger{fill:rgba(255,184,106,0.08); stroke:rgba(255,184,106,0.85); stroke-width:2; stroke-dasharray:8 6;}
+      .handle{fill:rgba(255,184,106,0.25); stroke:rgba(255,184,106,0.85); stroke-width:1;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Interactive Play Mode Runtime — Phase 7: Collisions + Triggers</text>
+
+  <rect x="760" y="30" width="92" height="30" rx="10" class="chip"/>
+  <text x="788" y="50" class="btnTextMuted">Edit</text>
+  <rect x="856" y="30" width="92" height="30" rx="10" class="chipActive"/>
+  <text x="885" y="50" class="btnText">Play</text>
+
+  <rect x="968" y="30" width="100" height="30" rx="10" class="btn"/>
+  <text x="986" y="50" class="btnTextMuted">Triggers</text>
+  <rect x="1074" y="30" width="90" height="30" rx="10" class="btnPrimary"/>
+  <text x="1090" y="50" class="btnText">Add Zone</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Project</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Left: scene context -->
+  <rect x="44" y="140" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="162" class="fieldText">Scene: dungeon_entry</text>
+  <line x1="44" y1="186" x2="340" y2="186" class="divider"/>
+
+  <!-- Left: entities list -->
+  <text x="44" y="212" class="label">Entities</text>
+  <rect x="44" y="230" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="252" class="fieldText">player</text>
+  <rect x="44" y="270" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="292" class="fieldText">slime_1</text>
+  <rect x="44" y="310" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="332" class="fieldText">wall_01</text>
+  <rect x="44" y="350" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="372" class="fieldText">door_exit</text>
+
+  <line x1="44" y1="402" x2="340" y2="402" class="divider"/>
+
+  <!-- Left: trigger zones list -->
+  <text x="44" y="428" class="label">Trigger Zones</text>
+  <rect x="44" y="446" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="468" class="fieldText">pit_zone</text>
+  <rect x="44" y="486" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="508" class="fieldText">exit_door</text>
+
+  <rect x="44" y="534" width="92" height="30" rx="10" class="btnGood"/>
+  <text x="62" y="554" class="btnText">+ Zone</text>
+  <rect x="142" y="534" width="92" height="30" rx="10" class="btnDanger"/>
+  <text x="160" y="554" class="btnText">Delete</text>
+
+  <!-- Canvas: background + entities -->
+  <rect x="392" y="140" width="476" height="536" rx="12" class="panel2"/>
+
+  <!-- A few entities -->
+  <rect x="450" y="240" width="46" height="46" rx="10" class="entity"/>
+  <text x="450" y="232" class="tiny">player</text>
+  <rect x="600" y="320" width="40" height="40" rx="10" class="entity2"/>
+  <text x="600" y="312" class="tiny">slime_1</text>
+  <rect x="520" y="430" width="120" height="18" rx="8" class="entity2"/>
+  <text x="520" y="422" class="tiny">wall_01</text>
+
+  <!-- Trigger zone in canvas -->
+  <rect x="520" y="210" width="260" height="140" rx="10" class="trigger"/>
+  <rect x="516" y="206" width="12" height="12" rx="3" class="handle"/>
+  <rect x="770" y="206" width="12" height="12" rx="3" class="handle"/>
+  <rect x="516" y="342" width="12" height="12" rx="3" class="handle"/>
+  <rect x="770" y="342" width="12" height="12" rx="3" class="handle"/>
+  <text x="532" y="236" class="btnTextMuted">Trigger: pit_zone</text>
+  <rect x="660" y="220" width="84" height="22" rx="10" class="pill"/>
+  <text x="674" y="236" class="pillText">onEnter</text>
+
+  <!-- Callout: runtime events -->
+  <rect x="412" y="602" width="436" height="58" rx="12" class="callout"/>
+  <text x="430" y="626" class="calloutText">Bridge snapshot</text>
+  <text x="430" y="646" class="small">triggerEvents: [ { id: "pit_zone", type: "enter", entityId: "player" } ]</text>
+
+  <!-- Inspector: collision rules -->
+  <rect x="920" y="140" width="236" height="32" rx="10" class="foldHeader"/>
+  <text x="934" y="161" class="foldTitle">Scene — Collisions</text>
+
+  <text x="920" y="196" class="label">Collision Rules</text>
+  <rect x="920" y="212" width="236" height="34" rx="10" class="field"/>
+  <text x="934" y="234" class="fieldText">player × world → block</text>
+  <rect x="920" y="252" width="236" height="34" rx="10" class="field"/>
+  <text x="934" y="274" class="fieldText">player × enemy → overlap</text>
+  <rect x="920" y="292" width="236" height="34" rx="10" class="field"/>
+  <text x="934" y="314" class="fieldText">enemy × world → block</text>
+
+  <rect x="920" y="336" width="74" height="30" rx="10" class="btnGood"/>
+  <text x="938" y="356" class="btnText">+ Rule</text>
+  <rect x="1000" y="336" width="74" height="30" rx="10" class="btn"/>
+  <text x="1019" y="356" class="btnTextMuted">Edit</text>
+  <rect x="1082" y="336" width="74" height="30" rx="10" class="btnDanger"/>
+  <text x="1101" y="356" class="btnText">Del</text>
+
+  <line x1="920" y1="384" x2="1156" y2="384" class="divider"/>
+
+  <!-- Inspector: selected trigger -->
+  <rect x="920" y="404" width="236" height="32" rx="10" class="foldHeader"/>
+  <text x="934" y="425" class="foldTitle">Trigger — pit_zone</text>
+
+  <text x="920" y="456" class="label">Rect</text>
+  <rect x="920" y="472" width="112" height="30" rx="10" class="field"/>
+  <text x="934" y="492" class="fieldText">x: 520</text>
+  <rect x="1044" y="472" width="112" height="30" rx="10" class="field"/>
+  <text x="1058" y="492" class="fieldText">y: 210</text>
+  <rect x="920" y="508" width="112" height="30" rx="10" class="field"/>
+  <text x="934" y="528" class="fieldText">w: 260</text>
+  <rect x="1044" y="508" width="112" height="30" rx="10" class="field"/>
+  <text x="1058" y="528" class="fieldText">h: 140</text>
+
+  <text x="920" y="560" class="label">onEnter</text>
+  <rect x="920" y="576" width="236" height="34" rx="10" class="field"/>
+  <text x="934" y="598" class="fieldText">Call: audio.play_sfx (assetId: hit)</text>
+
+  <text x="920" y="634" class="label">onExit</text>
+  <rect x="920" y="650" width="236" height="26" rx="10" class="field"/>
+  <text x="934" y="667" class="tiny">—</text>
+
+  <!-- Entity collision metadata hint -->
+  <rect x="392" y="152" width="148" height="26" rx="10" class="tag"/>
+  <text x="406" y="170" class="tagText">player layer: player</text>
+  <rect x="548" y="152" width="152" height="26" rx="10" class="tag"/>
+  <text x="562" y="170" class="tagText">slime_1 layer: enemy</text>
+</svg>

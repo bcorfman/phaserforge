@@ -1,4 +1,5 @@
 import {
+  CollisionRuleSpec,
   SpriteAssetSpec,
   SceneSpec,
   ActionSpec,
@@ -7,12 +8,14 @@ import {
   CallActionSpec,
   RepeatActionSpec,
   TargetRef,
+  TriggerZoneSpec,
 } from './types';
 import { resolveEntityDefaults } from './entityDefaults';
 
 export function validateSceneSpec(scene: SceneSpec): void {
   validateEntities(scene);
   validateGroups(scene);
+  validateCollisionsAndTriggers(scene);
   validateActions(scene);
   validateBehaviors(scene);
   detectCycles(scene);
@@ -106,6 +109,43 @@ function validateGroups(scene: SceneSpec): void {
         throw new Error(`Group ${id} grid layout does not match member count`);
       }
     }
+  }
+}
+
+function validateCollisionsAndTriggers(scene: SceneSpec): void {
+  const anyScene = scene as any as { collisionRules?: CollisionRuleSpec[]; triggers?: TriggerZoneSpec[] };
+
+  const collisionRules = anyScene.collisionRules ?? [];
+  if (!Array.isArray(collisionRules)) {
+    throw new Error('Scene collisionRules must be an array');
+  }
+  for (const rule of collisionRules) {
+    if (!rule || typeof rule !== 'object') throw new Error('Collision rule must be an object');
+    if (typeof (rule as any).id !== 'string' || (rule as any).id.length === 0) throw new Error('Collision rule must have an id');
+    if ((rule as any).a?.type !== 'layer' || typeof (rule as any).a?.layer !== 'string' || (rule as any).a.layer.length === 0) {
+      throw new Error(`Collision rule ${(rule as any).id} must have a.layer`);
+    }
+    if ((rule as any).b?.type !== 'layer' || typeof (rule as any).b?.layer !== 'string' || (rule as any).b.layer.length === 0) {
+      throw new Error(`Collision rule ${(rule as any).id} must have b.layer`);
+    }
+    if ((rule as any).interaction !== 'block' && (rule as any).interaction !== 'overlap') {
+      throw new Error(`Collision rule ${(rule as any).id} must have interaction=block|overlap`);
+    }
+  }
+
+  const triggers = anyScene.triggers ?? [];
+  if (!Array.isArray(triggers)) throw new Error('Scene triggers must be an array');
+  for (const zone of triggers) {
+    if (!zone || typeof zone !== 'object') throw new Error('Trigger zone must be an object');
+    if (typeof (zone as any).id !== 'string' || (zone as any).id.length === 0) throw new Error('Trigger zone must have an id');
+    const rect = (zone as any).rect;
+    if (!rect || typeof rect !== 'object') throw new Error(`Trigger zone ${(zone as any).id} must have rect`);
+    const w = Number(rect.width);
+    const h = Number(rect.height);
+    if (!Number.isFinite(Number(rect.x)) || !Number.isFinite(Number(rect.y)) || !Number.isFinite(w) || !Number.isFinite(h)) {
+      throw new Error(`Trigger zone ${(zone as any).id} rect must be numeric`);
+    }
+    if (w <= 0 || h <= 0) throw new Error(`Trigger zone ${(zone as any).id} rect must have positive width/height`);
   }
 }
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useEditorStore, type Selection } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
-import type { ProjectSpec, SceneSpec } from '../model/types';
+import type { GameSceneSpec, ProjectSpec } from '../model/types';
 import { countAttachmentsForTarget } from './sceneGraphCommands';
 import { AudioLibraryPanel } from './AudioLibraryPanel';
 import { InputMapsPanel } from './InputMapsPanel';
+import { TriggerZonesPanel } from './TriggerZonesPanel';
 
 const ENTITY_DRAG_MIME = 'application/x-phaseractions-studio-entity-ids';
 
@@ -61,7 +62,7 @@ export function EntityListView({
 }: {
   project: ProjectSpec;
   currentSceneId: string;
-  scene: SceneSpec;
+  scene: GameSceneSpec;
   selection: Selection;
   expandedGroups: Record<string, boolean>;
   mode: 'edit' | 'play';
@@ -319,6 +320,8 @@ export function EntityListView({
           </div>
         ))}
       </section>
+
+      <TriggerZonesPanel scene={scene} selection={selection} dispatch={dispatch} disabled={mode !== 'edit'} />
 
       <section className="panel-section" aria-labelledby="scene-graph-formations">
         <div className="panel-heading-row">

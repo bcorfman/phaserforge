@@ -205,21 +205,25 @@ Semantic input actions usable by conditions/calls, without leaking raw device ke
 ### Goal
 Author collision rules and trigger zones; runtime emits enter/stay/exit events.
 
+### Mockups
+- Collisions + triggers authoring (rules + zones): `.plans/mockups/interactive-playmode-runtime/phase7-collisions-triggers.svg`
+
 ### Model
-- Entity:
-  - reuse existing `hitbox` for body size; add `body` + `collision` metadata
-- Scene:
-  - `collisionRules`: overlap/block between layers or specific targets
-  - `triggers`: rectangular zones with scripts (onEnter/onExit/onClick)
+- [x] Entity:
+  - [x] reuse existing `hitbox` for body size; add `body` + `collision` metadata
+- [x] Scene:
+  - [x] `collisionRules`: overlap/block between layers or specific targets
+  - [x] `triggers`: rectangular zones with scripts (onEnter/onExit/onClick)
 
 ### Runtime
-- `CollisionService` builds Arcade bodies, registers overlaps, collects enter/stay/exit.
-- Actions remain attachment-driven; responses are primarily service-backed Calls:
-  - `audio.play_sfx`, `scene.goto`, `entity.destroy` (as future ops)
+- [x] `CollisionService` computes AABB overlaps, collects enter/stay/exit/click events.
+- [x] `collisionRules` support `overlap` and `block` interactions (simple separation for `block`).
+- [ ] Trigger scripts execute service-backed Calls (future; model/UI support exists):
+  - [ ] `audio.play_sfx`, `scene.goto`, `entity.destroy`
 
 ### Tests
-- Unit: CollisionService emits enter/exit correctly
-- E2E: move entity into trigger zone -> event fires (bridge snapshot)
+- [x] Unit: CollisionService emits enter/exit correctly
+- [x] E2E: move entity into trigger zone -> event fires (bridge snapshot)
 
 ## Acceptance Criteria (end of Phase 4 milestone)
 - [x] Project YAML loads/saves; multiple scenes can be created/switched.

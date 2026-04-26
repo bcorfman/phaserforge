@@ -7,6 +7,8 @@ export function createEmptyGameScene(sceneId: string = 'scene-1'): GameSceneSpec
     ...base,
     id: sceneId,
     backgroundLayers: [],
+    collisionRules: [],
+    triggers: [],
   };
 }
 
@@ -21,4 +23,3 @@ export function createEmptyProject(): ProjectSpec {
     initialSceneId: scene.id,
   };
 }
-
