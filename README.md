@@ -10,6 +10,8 @@ A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, 
 - **Sprite import** (embedded file → data URL, or “asset path” reference), including a spritesheet frame picker and optional auto-hitbox.
 - **Canvas editing**: drag sprites and formations, marquee multi-select, group / dissolve, grid snap, undo/redo, pan/zoom, fit/reset view.
 - **Formations (groups)** can use declarative arrange layouts (grid, line, circle, arc, etc.) driven by `public/editor-registry.yaml`.
+- **Input maps (semantic controls)**: author project-level action bindings (keyboard / mouse / gamepad buttons), choose active/fallback maps per scene, and preview runtime action states in Play mode.
+- **Play mode mouse controls**: optional hide OS cursor, and mouse-driven entity motion with independent X/Y axis locks.
 - **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, plus `Repeat` as a script-level wrapper.
 - **`Call` actions require a registered handler**. The Studio preview scene registers a small call registry (for example `drop`); unknown `callId` values will fail during preview compile/run.
 - **Inline conditions (current)**: `BoundsHit` and `ElapsedTime` (used by `MoveUntil`).

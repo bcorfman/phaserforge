@@ -14,6 +14,7 @@ import { CreateFormationPanel } from './CreateFormationPanel';
 import { BackgroundLayersPanel } from './BackgroundLayersPanel';
 import { SceneAudioPanel } from './SceneAudioPanel';
 import { parseCallArgsJson } from './callArgsJson';
+import { SceneInputPanel } from './SceneInputPanel';
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
@@ -172,6 +173,13 @@ export function Inspector() {
             disabled={state.mode !== 'edit'}
           />
           <SceneAudioPanel
+            project={state.project}
+            sceneId={state.currentSceneId}
+            scene={scene}
+            dispatch={dispatch}
+            disabled={state.mode !== 'edit'}
+          />
+          <SceneInputPanel
             project={state.project}
             sceneId={state.currentSceneId}
             scene={scene}

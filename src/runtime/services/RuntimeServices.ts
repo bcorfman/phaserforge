@@ -1,4 +1,5 @@
 import type { GameSceneSpec, ProjectSpec } from '../../model/types';
+import type { InputActionMapSpec } from '../../model/types';
 
 export type SceneTransition = 'none' | 'fade';
 
@@ -14,7 +15,15 @@ export interface AudioService {
   getSnapshot(): { musicAssetId?: string; ambienceAssetIds: string[] };
   stopAll(): void;
 }
-export interface InputService {}
+export interface InputService {
+  setActiveMaps(maps: InputActionMapSpec[]): void;
+  handleKeyDown(event: { code: string; key?: string }): void;
+  handleKeyUp(event: { code: string; key?: string }): void;
+  handleMouseDown(button: number): void;
+  handleMouseUp(button: number): void;
+  update(): void;
+  getSnapshot(): unknown;
+}
 export interface CollisionService {}
 export interface VarsService {}
 
@@ -41,7 +50,15 @@ export function createStubRuntimeServices(overrides: Partial<RuntimeServices> = 
       getSnapshot: () => ({ musicAssetId: undefined, ambienceAssetIds: [] }),
       stopAll: () => console.warn('[phaseractions] AudioService.stopAll stub invoked'),
     },
-    input: {},
+    input: {
+      setActiveMaps: () => console.warn('[phaseractions] InputService.setActiveMaps stub invoked'),
+      handleKeyDown: () => console.warn('[phaseractions] InputService.handleKeyDown stub invoked'),
+      handleKeyUp: () => console.warn('[phaseractions] InputService.handleKeyUp stub invoked'),
+      handleMouseDown: () => console.warn('[phaseractions] InputService.handleMouseDown stub invoked'),
+      handleMouseUp: () => console.warn('[phaseractions] InputService.handleMouseUp stub invoked'),
+      update: () => console.warn('[phaseractions] InputService.update stub invoked'),
+      getSnapshot: () => ({}),
+    },
     collisions: {},
     vars: {},
   };

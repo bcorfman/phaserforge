@@ -9,6 +9,7 @@ import {
   SceneSpec,
   StartupMode,
   type EntitySpec,
+  type InputBindingSpec,
   type SpriteAssetSpec,
 } from '../model/types';
 import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject';
@@ -189,6 +190,13 @@ export type EditorAction =
   | { type: 'remove-audio-asset'; assetId: Id }
   | { type: 'set-scene-music'; music: GameSceneSpec['music'] | undefined }
   | { type: 'set-scene-ambience'; ambience: NonNullable<GameSceneSpec['ambience']> }
+  | { type: 'create-input-map'; mapId?: Id }
+  | { type: 'duplicate-input-map'; sourceMapId: Id; nextMapId?: Id }
+  | { type: 'remove-input-map'; mapId: Id }
+  | { type: 'add-input-binding'; mapId: Id; actionId: string; binding: InputBindingSpec }
+  | { type: 'remove-input-binding'; mapId: Id; actionId: string; index: number }
+  | { type: 'set-project-default-input-map'; mapId?: Id }
+  | { type: 'set-scene-input'; input: GameSceneSpec['input'] | undefined }
   | { type: 'set-scene-background-layers'; layers: BackgroundLayerSpec[] }
   | { type: 'update-background-layer'; index: number; patch: Partial<BackgroundLayerSpec> }
   | { type: 'move-background-layer'; fromIndex: number; toIndex: number }
@@ -397,6 +405,13 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'remove-audio-asset':
     case 'set-scene-music':
     case 'set-scene-ambience':
+    case 'create-input-map':
+    case 'duplicate-input-map':
+    case 'remove-input-map':
+    case 'add-input-binding':
+    case 'remove-input-binding':
+    case 'set-project-default-input-map':
+    case 'set-scene-input':
     case 'set-scene-background-layers':
     case 'update-background-layer':
     case 'move-background-layer':
@@ -420,6 +435,12 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'add-audio-asset-from-file':
     case 'add-audio-asset-from-path':
     case 'remove-audio-asset':
+    case 'create-input-map':
+    case 'duplicate-input-map':
+    case 'remove-input-map':
+    case 'add-input-binding':
+    case 'remove-input-binding':
+    case 'set-project-default-input-map':
       return 'project';
     default:
       return 'scene';
@@ -1006,6 +1027,148 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const scene = getActiveScene(state);
       const ambience = action.ambience.length > 0 ? action.ambience.map((entry) => ({ ...entry })) : [];
       return withScene(state, { ...scene, ambience }, true);
+    }
+    case 'create-input-map': {
+      const inputMaps = state.project.inputMaps ?? {};
+      const baseId = (action.mapId ?? '').trim();
+      const mapId = baseId.length > 0 ? baseId : allocUniqueId(inputMaps, 'input-map');
+      if (inputMaps[mapId]) return state;
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        inputMaps: {
+          ...inputMaps,
+          [mapId]: { actions: {} },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'duplicate-input-map': {
+      const inputMaps = state.project.inputMaps ?? {};
+      const source = inputMaps[action.sourceMapId];
+      if (!source) return state;
+      const nextIdBase = (action.nextMapId ?? '').trim();
+      const nextMapId = nextIdBase.length > 0 ? nextIdBase : allocUniqueId(inputMaps, `${action.sourceMapId}_copy`);
+      if (inputMaps[nextMapId]) return state;
+      const clonedActions: Record<string, InputBindingSpec[]> = {};
+      for (const [actionId, bindings] of Object.entries(source.actions ?? {})) {
+        clonedActions[actionId] = Array.isArray(bindings) ? bindings.map((b) => ({ ...(b as any) })) : [];
+      }
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        inputMaps: {
+          ...inputMaps,
+          [nextMapId]: { actions: clonedActions },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'remove-input-map': {
+      const inputMaps = state.project.inputMaps ?? {};
+      if (!inputMaps[action.mapId]) return state;
+      const { [action.mapId]: _removed, ...remaining } = inputMaps;
+      void _removed;
+
+      const scenes: Record<Id, GameSceneSpec> = {};
+      for (const [sceneId, scene] of Object.entries(state.project.scenes)) {
+        const input = scene.input;
+        if (!input || (input.activeMapId !== action.mapId && input.fallbackMapId !== action.mapId)) {
+          scenes[sceneId] = scene;
+          continue;
+        }
+        const nextInput: any = { ...input };
+        if (nextInput.activeMapId === action.mapId) delete nextInput.activeMapId;
+        if (nextInput.fallbackMapId === action.mapId) delete nextInput.fallbackMapId;
+        const hasAny = typeof nextInput.activeMapId === 'string' || typeof nextInput.fallbackMapId === 'string';
+        const nextScene: any = hasAny ? { ...scene, input: nextInput } : (() => {
+          const { input: _input, ...rest } = scene as any;
+          void _input;
+          return rest;
+        })();
+        scenes[sceneId] = nextScene as GameSceneSpec;
+      }
+
+      const nextProject: any = {
+        ...state.project,
+        inputMaps: remaining,
+        scenes,
+      };
+      if (nextProject.defaultInputMapId === action.mapId) delete nextProject.defaultInputMapId;
+
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'add-input-binding': {
+      const inputMaps = state.project.inputMaps ?? {};
+      const map = inputMaps[action.mapId];
+      if (!map) return state;
+      const actionId = action.actionId.trim();
+      if (!actionId) return state;
+      const existing = map.actions?.[actionId] ?? [];
+      const nextBindings = [...existing.map((b) => ({ ...(b as any) })), { ...(action.binding as any) }];
+      const nextMap = {
+        ...map,
+        actions: {
+          ...(map.actions ?? {}),
+          [actionId]: nextBindings,
+        },
+      };
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        inputMaps: {
+          ...inputMaps,
+          [action.mapId]: nextMap,
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'remove-input-binding': {
+      const inputMaps = state.project.inputMaps ?? {};
+      const map = inputMaps[action.mapId];
+      if (!map) return state;
+      const bindings = map.actions?.[action.actionId];
+      if (!Array.isArray(bindings) || bindings.length === 0) return state;
+      if (action.index < 0 || action.index >= bindings.length) return state;
+      const next = bindings.slice();
+      next.splice(action.index, 1);
+      const nextActions: any = { ...(map.actions ?? {}) };
+      if (next.length === 0) {
+        delete nextActions[action.actionId];
+      } else {
+        nextActions[action.actionId] = next.map((b: any) => ({ ...b }));
+      }
+      const nextMap = { ...map, actions: nextActions };
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        inputMaps: { ...inputMaps, [action.mapId]: nextMap },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'set-project-default-input-map': {
+      const mapId = (action.mapId ?? '').trim();
+      if (mapId && !state.project.inputMaps?.[mapId]) return state;
+      const nextProject: any = { ...state.project };
+      if (!mapId) {
+        delete nextProject.defaultInputMapId;
+      } else {
+        nextProject.defaultInputMapId = mapId;
+      }
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'set-scene-input': {
+      const scene = getActiveScene(state);
+      const input = action.input;
+      const hasAny = Boolean(
+        input
+        && (input.activeMapId || input.fallbackMapId || (input as any).mouse)
+      );
+      if (!hasAny) {
+        const { input: _input, ...rest } = scene as any;
+        void _input;
+        return withScene(state, rest as GameSceneSpec, true);
+      }
+      const nextInput: any = { ...(input ?? {}) };
+      if (!nextInput.activeMapId) delete nextInput.activeMapId;
+      if (!nextInput.fallbackMapId) delete nextInput.fallbackMapId;
+      return withScene(state, { ...scene, input: nextInput } as GameSceneSpec, true);
     }
     case 'add-background-layer-from-file': {
       const scene = getActiveScene(state);

@@ -4,6 +4,7 @@ import { summarizeSceneGroups } from './grouping';
 import type { ProjectSpec, SceneSpec } from '../model/types';
 import { countAttachmentsForTarget } from './sceneGraphCommands';
 import { AudioLibraryPanel } from './AudioLibraryPanel';
+import { InputMapsPanel } from './InputMapsPanel';
 
 const ENTITY_DRAG_MIME = 'application/x-phaseractions-studio-entity-ids';
 
@@ -261,6 +262,8 @@ export function EntityListView({
           New Scene
         </button>
       </section>
+
+      <InputMapsPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
 
       <AudioLibraryPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
 

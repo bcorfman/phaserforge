@@ -65,11 +65,13 @@ export function parseProjectYaml(text: string): ProjectSpec {
       : undefined;
     const music = coerceSceneMusic((sceneRaw as any)?.music);
     const ambience = coerceSceneAmbience((sceneRaw as any)?.ambience);
+    const input = (sceneRaw as any)?.input && typeof (sceneRaw as any).input === 'object' ? (sceneRaw as any).input : undefined;
     scenes[sceneId] = {
       ...(migrated as GameSceneSpec),
       ...(backgroundLayers ? { backgroundLayers } : {}),
       ...(music ? { music } : {}),
       ...(ambience ? { ambience } : {}),
+      ...(input ? { input } : {}),
     };
   }
 
@@ -88,6 +90,7 @@ export function parseProjectYaml(text: string): ProjectSpec {
       sounds: coerceRecord(raw.audio?.sounds),
     },
     inputMaps: coerceRecord(raw.inputMaps),
+    ...(typeof raw.defaultInputMapId === 'string' ? { defaultInputMapId: raw.defaultInputMapId } : {}),
     scenes,
     initialSceneId,
   };

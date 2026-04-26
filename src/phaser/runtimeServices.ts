@@ -27,7 +27,26 @@ export function createRuntimeServices(boot: BootScene): RuntimeServices {
       getSnapshot: () => getGameScene()?.getAudioSnapshot() ?? { musicAssetId: undefined, ambienceAssetIds: [] },
       stopAll: () => getGameScene()?.stopAllAudio(),
     },
-    input: {},
+    input: {
+      setActiveMaps: (maps) => getGameScene()?.setActiveInputMaps(maps as any),
+      handleKeyDown: (event) => {
+        // Runtime owns input wiring; this exists primarily for tests/ops parity.
+        void event;
+      },
+      handleKeyUp: (event) => {
+        void event;
+      },
+      handleMouseDown: (button) => {
+        void button;
+      },
+      handleMouseUp: (button) => {
+        void button;
+      },
+      update: () => {
+        // GameScene calls update() each frame.
+      },
+      getSnapshot: () => getGameScene()?.getInputSnapshot() ?? {},
+    },
     collisions: {},
     vars: {},
   };
