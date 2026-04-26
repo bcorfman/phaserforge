@@ -11,3 +11,5 @@ Lightweight SVG wireframes for `.plans/interactive-playmode-runtime.md`.
   - Runtime: semantic `pressed/held/released` action states + pointer position/deltas in Play mode test snapshots
 - `phase6b-mouse-gamepad.svg`: Play-mode mouse cursor + left-click behavior, plus gamepad *button* binding capture (mockup for next Phase 6 follow-up)
 - `phase7-collisions-triggers.svg`: collision rules authoring + trigger zone authoring + runtime enter/exit snapshots (mockup)
+- `phase7b-trigger-scripts.svg`: trigger scripts executing service calls (audio.play_sfx / scene.goto / entity.destroy) + runtime event log (mockup)
+- `phase7c-trigger-call-presets.svg`: structured trigger call editor presets (mockup)

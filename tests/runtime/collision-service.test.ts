@@ -49,5 +49,25 @@ describe('BasicCollisionService', () => {
     svc.update();
     expect(svc.getSnapshot().triggerEvents.at(-1)).toEqual({ id: 't1', type: 'click', button: 0 });
   });
-});
 
+  it('includes the clicked entity id for trigger click events when available', () => {
+    const svc = new BasicCollisionService();
+    svc.setTriggers([
+      {
+        id: 't1',
+        enabled: true,
+        rect: { x: 100, y: 100, width: 50, height: 40 },
+      },
+    ]);
+
+    svc.setEntities({
+      e1: { id: 'e1', x: 110, y: 120, width: 10, height: 10 },
+      e2: { id: 'e2', x: 300, y: 300, width: 10, height: 10 },
+    });
+
+    svc.handlePointerDown({ worldX: 110, worldY: 120, button: 0 });
+    svc.update();
+    const click = svc.getSnapshot().triggerEvents.findLast((event) => event.type === 'click');
+    expect(click).toEqual({ id: 't1', type: 'click', button: 0, entityId: 'e1' });
+  });
+});

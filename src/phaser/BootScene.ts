@@ -58,6 +58,38 @@ export class BootScene extends Phaser.Scene {
       this.services.scene.goto(sceneId, { transition, durationMs });
     });
 
+    registry.register('audio.play_sfx', (action) => {
+      const args = (action as any).args ?? {};
+      const assetId = typeof args.assetId === 'string' ? args.assetId : '';
+      if (!assetId) {
+        console.warn('[phaseractions] audio.play_sfx missing assetId');
+        return;
+      }
+      const volumeRaw = typeof args.volume === 'number' ? args.volume : Number(args.volume);
+      const volume = Number.isFinite(volumeRaw) ? Math.max(0, Math.min(1, volumeRaw)) : undefined;
+      this.services.audio.playSfx(assetId, volume == null ? undefined : { volume });
+    });
+
+    registry.register('entity.destroy', (action, ctx) => {
+      const args = (action as any).args ?? {};
+      const explicitId = typeof args.entityId === 'string' ? args.entityId : '';
+      const target = (action as any).target ?? (explicitId ? { type: 'entity', entityId: explicitId } : undefined);
+      if (!target) {
+        console.warn('[phaseractions] entity.destroy missing target');
+        return;
+      }
+      const resolved = resolveTarget(target, ctx.targets);
+      const targets = flattenTarget(resolved);
+      for (const t of targets) {
+        (t as any).destroyed = true;
+        (t as any).visible = false;
+        (t as any).vx = 0;
+        (t as any).vy = 0;
+        if ((t as any).body) (t as any).body.enabled = false;
+        if ((t as any).collision) (t as any).collision.enabled = false;
+      }
+    });
+
     // Sample/demo op used by sample scenes and docs.
     registry.register('drop', (action, ctx) => {
       const dy = (action as any).args?.dy ?? 0;

@@ -175,6 +175,8 @@ export function Inspector() {
       const zone = (scene.triggers ?? []).find((z) => z.id === selection.id);
       content = zone ? (
         <TriggerZoneInspector
+          project={state.project}
+          scene={scene}
           zone={zone}
           dispatch={dispatch}
           disabled={state.mode !== 'edit'}

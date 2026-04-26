@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --good:#7cf0c7;
+        --danger:#ff6a8a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnGood{fill:rgba(124,240,199,0.14); stroke:var(--good); stroke-width:1;}
+      .btnDanger{fill:rgba(255,106,138,0.12); stroke:var(--danger); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:600;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .pill{fill:rgba(106,167,255,0.16); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .pillGood{fill:rgba(124,240,199,0.14); stroke:rgba(124,240,199,0.55); stroke-width:1;}
+      .pillText{fill:var(--text); font-size:11px; font-weight:800;}
+      .canvas{fill:#0a0f1f; stroke:#1a254a; stroke-width:1;}
+      .zone{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.75); stroke-width:2; stroke-dasharray:8 6;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .entity2{fill:#172042; stroke:#2a3764; stroke-width:1;}
+      .foldHeader{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .foldTitle{fill:var(--text); font-size:12px; font-weight:800;}
+      .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" fill="var(--bg)"/>
+  <text x="44" y="50" class="title">Interactive Play Mode Runtime — Phase 7 (last bits): Trigger Scripts Execute Service Calls</text>
+  <text x="44" y="76" class="small">Goal: triggers run service-backed ops (audio.play_sfx, scene.goto, entity.destroy) with structured authoring.</text>
+
+  <!-- Left: canvas / play preview -->
+  <rect x="44" y="110" width="740" height="560" rx="14" class="canvas"/>
+  <text x="66" y="140" class="btnTextMuted">Play mode: GameScene</text>
+
+  <!-- Entities -->
+  <rect x="110" y="210" width="120" height="44" rx="12" class="entity"/>
+  <text x="128" y="238" class="fieldText">player</text>
+
+  <rect x="320" y="262" width="110" height="38" rx="12" class="entity2"/>
+  <text x="336" y="286" class="fieldText">slime_1</text>
+
+  <!-- Trigger zone -->
+  <rect x="180" y="300" width="320" height="190" rx="14" class="zone"/>
+  <rect x="188" y="270" width="164" height="26" rx="10" class="pill"/>
+  <text x="202" y="288" class="pillText mono">Trigger: pit_zone</text>
+
+  <!-- Event chips over canvas -->
+  <rect x="520" y="270" width="120" height="26" rx="10" class="pillGood"/>
+  <text x="536" y="288" class="pillText mono">onEnter</text>
+  <rect x="646" y="270" width="120" height="26" rx="10" class="pill"/>
+  <text x="664" y="288" class="pillText mono">onClick</text>
+
+  <!-- Runtime event log callout -->
+  <rect x="520" y="520" width="232" height="132" rx="14" class="callout"/>
+  <text x="540" y="548" class="calloutText">Runtime Events</text>
+  <text x="540" y="574" class="tiny mono">trigger.enter pit_zone</text>
+  <text x="540" y="594" class="tiny mono">  entity: player</text>
+  <text x="540" y="614" class="tiny mono">  op: audio.play_sfx</text>
+  <text x="540" y="634" class="tiny mono">  args: { assetId: \"hit\" }</text>
+
+  <!-- Right: inspector -->
+  <rect x="820" y="110" width="336" height="560" rx="14" class="panel"/>
+  <text x="844" y="142" class="title">Inspector</text>
+  <rect x="844" y="160" width="288" height="30" rx="10" class="chipActive"/>
+  <text x="862" y="180" class="btnTextMuted">Trigger selected</text>
+
+  <!-- Foldout header -->
+  <rect x="844" y="208" width="288" height="32" rx="10" class="foldHeader"/>
+  <text x="858" y="229" class="foldTitle">Trigger — pit_zone</text>
+
+  <!-- Rect fields -->
+  <text x="844" y="268" class="label">Rect</text>
+  <rect x="844" y="284" width="136" height="30" rx="10" class="field"/>
+  <text x="858" y="304" class="fieldText mono">x: 520</text>
+  <rect x="996" y="284" width="136" height="30" rx="10" class="field"/>
+  <text x="1010" y="304" class="fieldText mono">y: 210</text>
+  <rect x="844" y="320" width="136" height="30" rx="10" class="field"/>
+  <text x="858" y="340" class="fieldText mono">w: 260</text>
+  <rect x="996" y="320" width="136" height="30" rx="10" class="field"/>
+  <text x="1010" y="340" class="fieldText mono">h: 140</text>
+
+  <line x1="844" y1="370" x2="1132" y2="370" class="divider"/>
+
+  <!-- onEnter structured call editor -->
+  <text x="844" y="400" class="label">onEnter</text>
+  <rect x="844" y="414" width="288" height="30" rx="10" class="field"/>
+  <text x="858" y="434" class="fieldText">Op: audio.play_sfx</text>
+
+  <text x="844" y="470" class="small">Sound</text>
+  <rect x="844" y="484" width="288" height="30" rx="10" class="field"/>
+  <text x="858" y="504" class="fieldText">(hit) · hit.wav</text>
+
+  <text x="844" y="536" class="small">Volume</text>
+  <rect x="844" y="548" width="200" height="22" rx="10" class="field"/>
+  <rect x="844" y="548" width="138" height="22" rx="10" class="btnPrimary"/>
+  <text x="1054" y="565" class="tiny mono">0.35</text>
+
+  <line x1="844" y1="590" x2="1132" y2="590" class="divider"/>
+
+  <!-- onClick structured call editor -->
+  <text x="844" y="620" class="label">onClick</text>
+  <rect x="844" y="634" width="288" height="30" rx="10" class="field"/>
+  <text x="858" y="654" class="fieldText">Op: entity.destroy</text>
+
+  <!-- Popover / helper (side note) -->
+  <rect x="460" y="160" width="300" height="90" rx="14" class="panel2"/>
+  <text x="482" y="188" class="calloutText">Trigger script target</text>
+  <text x="482" y="212" class="tiny">For entity.destroy, default target = the entity that entered/clicked.</text>
+  <text x="482" y="232" class="tiny">Optional override: choose a specific entityId.</text>
+
+  <!-- Mini editor for entity.destroy args -->
+  <rect x="844" y="676" width="288" height="30" rx="10" class="field"/>
+  <text x="858" y="696" class="fieldText">Target: instigator (entering entity)</text>
+</svg>
+

@@ -2,7 +2,7 @@ import type { CollisionRuleSpec, TriggerZoneSpec } from '../../model/types';
 
 export type TriggerEvent =
   | { id: string; type: 'enter' | 'stay' | 'exit'; entityId: string }
-  | { id: string; type: 'click'; button: number };
+  | { id: string; type: 'click'; button: number; entityId?: string };
 
 export type CollisionEvent = { ruleId: string; type: 'enter' | 'stay' | 'exit'; aId: string; bId: string; interaction: 'block' | 'overlap' };
 
@@ -19,6 +19,7 @@ type SimpleEntity = {
   height: number;
   body?: { enabled?: boolean; kind?: 'static' | 'dynamic' };
   collision?: { enabled?: boolean; layer?: string };
+  destroyed?: boolean;
 };
 
 function intersectsAabb(a: { minX: number; minY: number; maxX: number; maxY: number }, b: { minX: number; minY: number; maxX: number; maxY: number }): boolean {
@@ -90,10 +91,25 @@ export class BasicCollisionService {
         if (zone.enabled === false) continue;
         const aabb = zoneAabb(zone);
         if (point.worldX >= aabb.minX && point.worldX <= aabb.maxX && point.worldY >= aabb.minY && point.worldY <= aabb.maxY) {
-          this.triggerEvents.push({ id: zone.id, type: 'click', button: point.button });
+          const entityId = this.findEntityAtPoint(point.worldX, point.worldY);
+          this.triggerEvents.push(entityId ? { id: zone.id, type: 'click', button: point.button, entityId } : { id: zone.id, type: 'click', button: point.button });
         }
       }
     }
+  }
+
+  private findEntityAtPoint(worldX: number, worldY: number): string | undefined {
+    const ids = Object.keys(this.entities).sort();
+    for (const id of ids) {
+      const entity = this.entities[id];
+      if (!entity || entity.destroyed) continue;
+      const halfW = entity.width / 2;
+      const halfH = entity.height / 2;
+      if (worldX >= entity.x - halfW && worldX <= entity.x + halfW && worldY >= entity.y - halfH && worldY <= entity.y + halfH) {
+        return entity.id;
+      }
+    }
+    return undefined;
   }
 
   private processTriggerOverlaps(): void {
@@ -103,6 +119,7 @@ export class BasicCollisionService {
       if (zone.enabled === false) continue;
       const z = zoneAabb(zone);
       for (const entity of Object.values(this.entities)) {
+        if (entity.destroyed) continue;
         const e = entityAabb(entity);
         const key = `${zone.id}|${entity.id}`;
         if (intersectsAabb(e, z)) {
@@ -126,6 +143,7 @@ export class BasicCollisionService {
 
     const layers = new Map<string, SimpleEntity[]>();
     for (const entity of Object.values(this.entities)) {
+      if (entity.destroyed) continue;
       const collision = entity.collision;
       if (!collision || collision.enabled === false) continue;
       const layer = typeof collision.layer === 'string' ? collision.layer : '';
