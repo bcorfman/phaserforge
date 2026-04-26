@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --good:#7cf0c7;
+        --danger:#ff6a6a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnGood{fill:rgba(124,240,199,0.14); stroke:var(--good); stroke-width:1;}
+      .btnDanger{fill:rgba(255,106,106,0.10); stroke:var(--danger); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:600;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .kbd{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .kbdText{fill:var(--text); font-size:11px; font-weight:800;}
+      .pill{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .pillText{fill:var(--text); font-size:11px; font-weight:800;}
+      .checkbox{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .checkMark{stroke:var(--good); stroke-width:3; fill:none; stroke-linecap:round; stroke-linejoin:round;}
+      .cursor{fill:rgba(106,167,255,0.22); stroke:rgba(106,167,255,0.7); stroke-width:2;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .entityHot{fill:rgba(124,240,199,0.18); stroke:rgba(124,240,199,0.7); stroke-width:2;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Interactive Play Mode Runtime — Phase 6b: Mouse + Gamepad Buttons</text>
+
+  <rect x="760" y="30" width="92" height="30" rx="10" class="chip"/>
+  <text x="788" y="50" class="btnTextMuted">Edit</text>
+  <rect x="856" y="30" width="92" height="30" rx="10" class="chipActive"/>
+  <text x="885" y="50" class="btnText">Play</text>
+
+  <rect x="1040" y="30" width="54" height="30" rx="10" class="kbd"/>
+  <text x="1051" y="50" class="kbdText">mouse</text>
+  <text x="1100" y="50" class="tiny">cursor</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Project</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Left: input map editor focusing capture -->
+  <text x="44" y="152" class="label">Input Maps</text>
+  <rect x="44" y="166" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="188" class="fieldText">Editing: default_controls</text>
+
+  <rect x="44" y="216" width="296" height="344" rx="12" class="panel2"/>
+  <text x="58" y="244" class="small">Action: Fire</text>
+  <rect x="58" y="258" width="268" height="30" rx="10" class="field"/>
+  <text x="72" y="278" class="fieldText">Bindings: mouse.left, gamepad.button.0</text>
+
+  <text x="58" y="318" class="small">Action: MouseMove</text>
+  <rect x="58" y="332" width="268" height="30" rx="10" class="field"/>
+  <text x="72" y="352" class="fieldText">Bindings: pointer.move (axes: x,y)</text>
+
+  <rect x="58" y="404" width="128" height="32" rx="10" class="btnGood"/>
+  <text x="86" y="426" class="btnText">Bind…</text>
+  <rect x="198" y="404" width="128" height="32" rx="10" class="btn"/>
+  <text x="229" y="426" class="btnTextMuted">+ Action</text>
+
+  <!-- Capture state -->
+  <rect x="58" y="460" width="268" height="84" rx="12" class="callout"/>
+  <text x="74" y="486" class="calloutText">Binding capture (buttons)</text>
+  <text x="74" y="506" class="tiny">Press a key, click mouse-left, or press a gamepad button…</text>
+  <text x="74" y="526" class="tiny">Stored as: keyboard.X / mouse.left / gamepad.button.N</text>
+
+  <rect x="44" y="582" width="296" height="86" rx="12" class="panel2"/>
+  <text x="58" y="610" class="label">Note</text>
+  <text x="58" y="632" class="tiny">SNES-style pads work well for button bindings.</text>
+  <text x="58" y="652" class="tiny">Analog axes capture can be added later (optional).</text>
+
+  <!-- Canvas: cursor + clickable entity -->
+  <rect x="408" y="150" width="444" height="430" rx="12" class="panel2"/>
+  <rect x="476" y="236" width="80" height="60" rx="10" class="entity"/>
+  <rect x="610" y="318" width="90" height="70" rx="10" class="entityHot"/>
+  <rect x="734" y="258" width="78" height="58" rx="10" class="entity"/>
+
+  <!-- Cursor -->
+  <path class="cursor" d="M560 210 L580 270 L566 262 L560 278 L552 275 L558 258 L546 258 Z"/>
+  <rect x="420" y="604" width="210" height="26" rx="12" class="pill"/>
+  <text x="432" y="622" class="pillText">Pointer: (560, 210)</text>
+  <rect x="624" y="604" width="228" height="26" rx="12" class="pill"/>
+  <text x="636" y="622" class="pillText">Last click: entity=e2 (left)</text>
+  <text x="420" y="652" class="tiny">Play-mode overlay: pointer + last click for debugging/tests.</text>
+
+  <!-- Inspector: mouse options + apply -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="field"/>
+  <text x="934" y="162" class="fieldText">Scene: scene-1</text>
+
+  <rect x="920" y="188" width="236" height="34" rx="10" class="field"/>
+  <text x="934" y="210" class="fieldText">▾ Input</text>
+
+  <text x="920" y="250" class="small">Mouse</text>
+  <rect x="920" y="260" width="236" height="132" rx="12" class="panel2"/>
+  <rect x="936" y="282" width="18" height="18" rx="4" class="checkbox"/>
+  <path d="M940 291 L945 297 L952 286" class="checkMark"/>
+  <text x="962" y="296" class="fieldText">Hide OS cursor (Play mode)</text>
+  <text x="936" y="324" class="tiny">Only affects Play mode. Edit mode always shows cursor.</text>
+
+  <text x="936" y="356" class="tiny">Mouse control axis locks (when driving an entity)</text>
+  <rect x="936" y="368" width="18" height="18" rx="4" class="checkbox"/>
+  <path d="M940 377 L945 383 L952 372" class="checkMark"/>
+  <text x="962" y="382" class="fieldText">Affect X</text>
+  <rect x="1042" y="368" width="18" height="18" rx="4" class="checkbox"/>
+  <text x="1068" y="382" class="fieldText">Affect Y</text>
+
+  <line x1="920" y1="410" x2="1156" y2="410" class="divider"/>
+
+  <text x="920" y="436" class="small">Click behavior</text>
+  <rect x="920" y="446" width="236" height="64" rx="12" class="panel2"/>
+  <text x="936" y="472" class="tiny">Left-click → emits an input action (e.g. Fire) and</text>
+  <text x="936" y="492" class="tiny">reports clicked entity id (if any) for gameplay/tests.</text>
+
+  <rect x="920" y="536" width="236" height="32" rx="10" class="btnPrimary"/>
+  <text x="990" y="558" class="btnText">Apply</text>
+
+  <!-- Callout -->
+  <rect x="372" y="628" width="804" height="58" rx="12" class="callout"/>
+  <text x="392" y="658" class="calloutText">Mouse-driven entity motion supports independent X/Y axis locks; left-click is first-class; gamepad buttons bind without analog sticks.</text>
+  <text x="392" y="678" class="tiny">Axis/stick authoring is optional later; focus now is on pointer + click parity with invaders-style controls.</text>
+</svg>

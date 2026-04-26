@@ -9,6 +9,8 @@ import { getSceneWorld } from '../editor/sceneWorld';
 import { clampCameraScroll, clampZoom } from '../editor/viewport';
 import { OpRegistry } from '../compiler/opRegistry';
 import { BasicAudioService } from '../runtime/services/BasicAudioService';
+import { BasicInputService } from '../runtime/services/BasicInputService';
+import type { InputActionMapSpec } from '../model/types';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
 
@@ -30,8 +32,28 @@ export class GameScene extends Phaser.Scene {
   private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private audioService?: BasicAudioService;
+  private inputService?: BasicInputService;
+  private lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
+  private mouseOptions: { hideOsCursorInPlay: boolean; driveEntityId?: string; affectX: boolean; affectY: boolean } = {
+    hideOsCursorInPlay: false,
+    driveEntityId: undefined,
+    affectX: true,
+    affectY: true,
+  };
   private readonly handleEscape = () => {
     EventBus.emit('toggle-mode');
+  };
+  private readonly handleKeyDown = (event: KeyboardEvent) => {
+    this.inputService?.handleKeyDown({ code: event.code, key: event.key });
+  };
+  private readonly handleKeyUp = (event: KeyboardEvent) => {
+    this.inputService?.handleKeyUp({ code: event.code, key: event.key });
+  };
+  private readonly handleMouseDown = (pointer: Phaser.Input.Pointer) => {
+    this.inputService?.handleMouseDown(pointer.button);
+  };
+  private readonly handleMouseUp = (pointer: Phaser.Input.Pointer) => {
+    this.inputService?.handleMouseUp(pointer.button);
   };
   private listenersBound = false;
 
@@ -41,6 +63,10 @@ export class GameScene extends Phaser.Scene {
     setActiveScene(this);
     registerSceneGetter(this.sceneBridgeGetter);
     this.input.keyboard?.on('keydown-ESC', this.handleEscape);
+    this.input.keyboard?.on('keydown', this.handleKeyDown as any);
+    this.input.keyboard?.on('keyup', this.handleKeyUp as any);
+    this.input.on('pointerdown', this.handleMouseDown, this);
+    this.input.on('pointerup', this.handleMouseUp, this);
   }
 
   private unbindSceneListeners(): void {
@@ -49,7 +75,12 @@ export class GameScene extends Phaser.Scene {
     if (getActiveScene() === this) setActiveScene(null);
     unregisterSceneGetter(this.sceneBridgeGetter);
     this.input.keyboard?.off('keydown-ESC', this.handleEscape);
+    this.input.keyboard?.off('keydown', this.handleKeyDown as any);
+    this.input.keyboard?.off('keyup', this.handleKeyUp as any);
+    this.input.off('pointerdown', this.handleMouseDown, this);
+    this.input.off('pointerup', this.handleMouseUp, this);
     this.audioService?.stopAll();
+    this.applyCursorHidden(false);
   }
 
   constructor() {
@@ -65,6 +96,14 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#0c0f1a');
     this.cameras.main.roundPixels = true;
     this.audioService = new BasicAudioService(this.sound as any);
+    this.inputService = new BasicInputService({
+      getGamepads: () => (typeof navigator !== 'undefined' && navigator.getGamepads ? Array.from(navigator.getGamepads()) : []),
+      getPointer: () => {
+        const p = this.input?.activePointer;
+        if (!p) return null;
+        return { x: p.x, y: p.y, worldX: p.worldX, worldY: p.worldY };
+      },
+    });
     this.bindSceneListeners();
     EventBus.emit('current-scene-ready', this);
     this.events.on(Phaser.Scenes.Events.SLEEP, this.unbindSceneListeners, this);
@@ -89,8 +128,12 @@ export class GameScene extends Phaser.Scene {
 
     if (project) {
       this.audioService?.applySceneAudio(sceneSpec, project);
+      this.applySceneInput(sceneSpec, project);
     } else {
       this.audioService?.stopAll();
+      this.inputService?.setActiveMaps([]);
+      this.mouseOptions = { hideOsCursorInPlay: false, driveEntityId: undefined, affectX: true, affectY: true };
+      this.applyCursorHidden(false);
     }
 
     void this.ensureSceneAssets(project, sceneSpec).finally(() => {
@@ -145,8 +188,11 @@ export class GameScene extends Phaser.Scene {
     viewportHeight: number;
     backgroundLayerCount: number;
     audio?: { musicAssetId?: string; ambienceAssetIds: string[] };
+    input?: any;
+    lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
   } {
     const audio = this.audioService?.getSnapshot();
+    const input = this.inputService?.getSnapshot();
     return {
       ready: Boolean(this.compiled),
       sceneKey: this.scene.key,
@@ -158,6 +204,8 @@ export class GameScene extends Phaser.Scene {
       viewportHeight: this.scale.height,
       backgroundLayerCount: this.backgroundObjects.length,
       ...(audio ? { audio } : {}),
+      ...(input ? { input } : {}),
+      ...(this.lastEntityPointerDown ? { lastEntityPointerDown: { ...this.lastEntityPointerDown } } : {}),
     };
   }
 
@@ -183,6 +231,44 @@ export class GameScene extends Phaser.Scene {
 
   public stopAllAudio(): void {
     this.audioService?.stopAll();
+  }
+
+  public setActiveInputMaps(maps: InputActionMapSpec[]): void {
+    this.inputService?.setActiveMaps(maps);
+  }
+
+  public getInputSnapshot(): unknown {
+    return this.inputService?.getSnapshot() ?? {};
+  }
+
+  private applySceneInput(sceneSpec: GameSceneSpec, project: ProjectSpec): void {
+    const inputMaps = project.inputMaps ?? {};
+    const projectDefault = project.defaultInputMapId;
+    const activeMapId = sceneSpec.input?.activeMapId ?? projectDefault;
+    const fallbackMapId = sceneSpec.input?.fallbackMapId ?? projectDefault;
+    const ids = [activeMapId, fallbackMapId].filter((id): id is string => typeof id === 'string' && id.length > 0);
+    const uniqueIds: string[] = [];
+    for (const id of ids) if (!uniqueIds.includes(id)) uniqueIds.push(id);
+    const maps: InputActionMapSpec[] = uniqueIds.map((id) => inputMaps[id]).filter(Boolean) as any;
+    this.inputService?.setActiveMaps(maps);
+
+    const mouse = sceneSpec.input?.mouse ?? {};
+    const hideOsCursorInPlay = Boolean(mouse.hideOsCursorInPlay);
+    const driveEntityId = typeof mouse.driveEntityId === 'string' ? mouse.driveEntityId : undefined;
+    const affectX = Boolean(mouse.affectX ?? true);
+    const affectY = Boolean(mouse.affectY ?? true);
+    this.mouseOptions = { hideOsCursorInPlay, driveEntityId, affectX, affectY };
+    this.applyCursorHidden(hideOsCursorInPlay);
+  }
+
+  private applyCursorHidden(hidden: boolean): void {
+    const canvas = this.game.canvas;
+    if (canvas) canvas.style.cursor = hidden ? 'none' : 'default';
+    try {
+      this.input.setDefaultCursor(hidden ? 'none' : 'default');
+    } catch {
+      // ignore cursor errors
+    }
   }
 
   public getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null {
@@ -277,7 +363,22 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (!this.compiled) return;
+    this.inputService?.update();
     this.compiled.actionManager.update(delta);
+
+    const driveEntityId = this.mouseOptions.driveEntityId;
+    if (driveEntityId) {
+      const entity = this.compiled.entities[driveEntityId];
+      if (entity) {
+        const pointer = this.input?.activePointer;
+        if (pointer) {
+          const world = getSceneWorld(this.compiled.scene);
+          if (this.mouseOptions.affectX) entity.x = Math.max(0, Math.min(world.width, pointer.worldX));
+          if (this.mouseOptions.affectY) entity.y = Math.max(0, Math.min(world.height, pointer.worldY));
+        }
+      }
+    }
+
     for (const entity of Object.values(this.compiled.entities)) {
       const sprite = this.sprites.get(entity.id);
       if (!sprite) continue;
@@ -421,6 +522,16 @@ export class GameScene extends Phaser.Scene {
       }
       this.configurePhysicsObject(entity.id, sprite as any);
       sprite.setInteractive();
+      sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        this.lastEntityPointerDown = {
+          entityId: entity.id,
+          button: pointer.button,
+          worldX: pointer.worldX,
+          worldY: pointer.worldY,
+          x: pointer.x,
+          y: pointer.y,
+        };
+      });
       this.applyEntityDisplayProps(sprite, entity, asset);
       this.sprites.set(entity.id, sprite);
     }

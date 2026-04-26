@@ -49,10 +49,22 @@ export interface SceneAmbienceSpec {
   volume: number;
 }
 
+export interface SceneInputSpec {
+  activeMapId?: Id;
+  fallbackMapId?: Id;
+  mouse?: {
+    hideOsCursorInPlay?: boolean;
+    driveEntityId?: Id;
+    affectX?: boolean;
+    affectY?: boolean;
+  };
+}
+
 export interface GameSceneSpec extends SceneSpec {
   backgroundLayers?: BackgroundLayerSpec[];
   music?: SceneMusicSpec;
   ambience?: SceneAmbienceSpec[];
+  input?: SceneInputSpec;
 }
 
 export interface ImageAssetSpec {
@@ -91,6 +103,7 @@ export interface ProjectSpec {
     sounds: Record<Id, AudioAssetSpec>;
   };
   inputMaps: Record<Id, InputActionMapSpec>;
+  defaultInputMapId?: Id;
   scenes: Record<Id, GameSceneSpec>;
   initialSceneId: Id;
 }

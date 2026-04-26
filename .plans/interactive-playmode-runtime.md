@@ -168,25 +168,38 @@ Load and play audio in GameScene; author per-scene ambience/music.
 ### Goal
 Semantic input actions usable by conditions/calls, without leaking raw device keys into authored logic.
 
+### Mockups
+- Input Maps panel + scene binding: `.plans/mockups/interactive-playmode-runtime/phase6-input-maps.svg`
+- Mouse cursor + click + gamepad button capture (follow-up): `.plans/mockups/interactive-playmode-runtime/phase6b-mouse-gamepad.svg`
+
 ### Model
-- `InputActionMapSpec`:
-  - actions -> bindings (`keyboard`, `mouse`, `pointer`, `gamepad`)
-- Scene chooses active input map id(s) or uses a project default.
+- [x] `InputActionMapSpec`: actions -> bindings (`keyboard`, `mouse`, `pointer`, `gamepad`)
+- [x] Project-level default input map id
+- [x] Scene chooses active + fallback input map ids (or uses project default)
 
 ### Runtime
-- `InputService` updates per frame:
-  - pressed/held/released for semantic actions
-  - pointer position + deltas
-  - gamepad buttons/axes (Phaser-supported)
+- [x] `InputService` updates per frame:
+  - [x] pressed/held/released for semantic actions
+  - [x] pointer position + deltas
+  - [x] basic gamepad buttons/axes via `navigator.getGamepads()`
 
 ### Editor UI
-- Input Maps panel:
-  - create action
-  - bind keys/buttons/axes
+- [x] Input Maps panel:
+  - [x] create/duplicate/remove input maps
+  - [x] set project default input map
+  - [x] bind keyboard + mouse buttons via capture
+  - [x] bind gamepad *buttons* via capture (SNES-style pads)
+  - [ ] bind gamepad axes via capture (optional)
+  - [ ] pointer bindings UI (move/drag regions)
+- [x] Scene inspector: choose active/fallback maps + preview actions
+- [ ] Scene inspector: Mouse options
+  - [x] Hide/show OS cursor (Play mode only)
+  - [x] Mouse-driven entity motion axis locks (Affect X / Affect Y) + drive entity picker
 
 ### Tests
-- Unit: pressed/held/released semantics across frames
-- E2E: dispatch key event -> input action becomes pressed (bridge snapshot)
+- [x] Unit: pressed/held/released semantics across frames
+- [x] E2E: dispatch key event -> input action becomes pressed (bridge snapshot)
+- [x] E2E: click entity in Play mode -> snapshot reports clicked entity id
 
 ## Phase 7: Collisions + triggers (Arcade-only)
 ### Goal
