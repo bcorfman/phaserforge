@@ -47,6 +47,40 @@ export function BackgroundLayersPanel({
   disabled: boolean;
 }) {
   const foldouts = useInspectorFoldouts();
+  return (
+    <div className="inspector-block" data-testid="background-layers-panel">
+      <div className="inspector-title">Scene: {sceneId}</div>
+      <InspectorFoldout
+        title="Background Layers"
+        open={foldouts.isOpen('scene.backgroundLayers', true)}
+        onToggle={() => foldouts.toggle('scene.backgroundLayers', true)}
+        testId="background-layers-foldout"
+      >
+        <BackgroundLayersBody
+          project={project}
+          sceneId={sceneId}
+          layers={layers}
+          dispatch={dispatch}
+          disabled={disabled}
+        />
+      </InspectorFoldout>
+    </div>
+  );
+}
+
+export function BackgroundLayersBody({
+  project,
+  sceneId,
+  layers,
+  dispatch,
+  disabled,
+}: {
+  project: ProjectSpec;
+  sceneId: string;
+  layers: BackgroundLayerSpec[];
+  dispatch: React.Dispatch<EditorAction>;
+  disabled: boolean;
+}) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const world = useMemo(() => getSceneWorld(project.scenes[sceneId]), [project.scenes, sceneId]);
@@ -69,14 +103,7 @@ export function BackgroundLayersPanel({
   };
 
   return (
-    <div className="inspector-block" data-testid="background-layers-panel">
-      <div className="inspector-title">Scene: {sceneId}</div>
-      <InspectorFoldout
-        title="Background Layers"
-        open={foldouts.isOpen('scene.backgroundLayers', true)}
-        onToggle={() => foldouts.toggle('scene.backgroundLayers', true)}
-        testId="background-layers-foldout"
-      >
+    <>
         {layers.length === 0 && (
           <div className="inspector-row muted">
             No background layers yet. Add an image to render behind sprites in Edit and Play mode.
@@ -209,7 +236,7 @@ export function BackgroundLayersPanel({
               </select>
             </label>
 
-            <div className="inspector-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="inspector-grid-2">
               <label className="field">
                 <span>depth</span>
                 <ValidatedNumberInput
@@ -230,7 +257,7 @@ export function BackgroundLayersPanel({
               </label>
             </div>
 
-            <div className="inspector-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="inspector-grid-2">
               <label className="field">
                 <span>scrollFactor.x</span>
                 <ValidatedOptionalNumberInput
@@ -278,8 +305,6 @@ export function BackgroundLayersPanel({
             </label>
           </>
         )}
-      </InspectorFoldout>
-    </div>
+    </>
   );
 }
-

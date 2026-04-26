@@ -53,12 +53,14 @@ export function useInspectorFoldouts() {
 
 export function InspectorFoldout({
   title,
+  summary,
   open,
   onToggle,
   children,
   testId,
 }: {
   title: string;
+  summary?: ReactNode;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
@@ -76,9 +78,9 @@ export function InspectorFoldout({
           {open ? '▾' : '▸'}
         </button>
         <div className="inspector-foldout-title">{title}</div>
+        {summary ? <div className="inspector-foldout-summary">{summary}</div> : null}
       </div>
       {open && <div className="inspector-foldout-body">{children}</div>}
     </div>
   );
 }
-

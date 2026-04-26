@@ -50,6 +50,33 @@ export function SceneInputPanel({
   disabled: boolean;
 }) {
   const foldouts = useInspectorFoldouts();
+
+  return (
+    <div className="inspector-block" data-testid="scene-input-panel">
+      <div className="inspector-title">Scene: {sceneId}</div>
+      <InspectorFoldout
+        title="Input"
+        open={foldouts.isOpen('scene.input', true)}
+        onToggle={() => foldouts.toggle('scene.input', true)}
+        testId="scene-input-foldout"
+      >
+        <SceneInputBody project={project} scene={scene} dispatch={dispatch} disabled={disabled} />
+      </InspectorFoldout>
+    </div>
+  );
+}
+
+export function SceneInputBody({
+  project,
+  scene,
+  dispatch,
+  disabled,
+}: {
+  project: ProjectSpec;
+  scene: GameSceneSpec;
+  dispatch: React.Dispatch<EditorAction>;
+  disabled: boolean;
+}) {
   const mapIds = useMemo(() => Object.keys(project.inputMaps ?? {}).sort(), [project.inputMaps]);
   const preview = useMemo(() => summarizeActionPreview(scene, project), [scene, project]);
   const entityIds = useMemo(() => Object.keys(scene.entities ?? {}).sort(), [scene.entities]);
@@ -93,127 +120,119 @@ export function SceneInputPanel({
   };
 
   return (
-    <div className="inspector-block" data-testid="scene-input-panel">
-      <div className="inspector-title">Scene: {sceneId}</div>
-      <InspectorFoldout
-        title="Input"
-        open={foldouts.isOpen('scene.input', true)}
-        onToggle={() => foldouts.toggle('scene.input', true)}
-        testId="scene-input-foldout"
-      >
-        {mapIds.length === 0 && (
-          <div className="inspector-row muted">
-            Create an input map in the left panel to enable scene bindings.
+    <>
+      {mapIds.length === 0 && (
+        <div className="inspector-row muted">
+          Create an input map in the left panel to enable scene bindings.
+        </div>
+      )}
+
+      <label className="field">
+        <span>Active Input Map</span>
+        <select
+          aria-label="Scene active input map"
+          data-testid="scene-active-input-map-select"
+          value={activeValue}
+          disabled={disabled || mapIds.length === 0}
+          onChange={(e) => setSceneInput({ activeMapId: e.target.value || undefined })}
+        >
+          <option value="">{projectDefault ? '(project default)' : '(none)'}</option>
+          {mapIds.map((id) => (
+            <option key={id} value={id}>{id}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>Fallback</span>
+        <select
+          aria-label="Scene fallback input map"
+          data-testid="scene-fallback-input-map-select"
+          value={fallbackValue}
+          disabled={disabled || mapIds.length === 0}
+          onChange={(e) => setSceneInput({ fallbackMapId: e.target.value || undefined })}
+        >
+          <option value="">{projectDefault ? '(project default)' : '(none)'}</option>
+          {mapIds.map((id) => (
+            <option key={id} value={id}>{id}</option>
+          ))}
+        </select>
+      </label>
+
+      <div className="inspector-row" style={{ marginTop: 10, fontWeight: 700 }}>Actions (preview)</div>
+      {preview.length === 0 && (
+        <div className="inspector-row muted">No actions found in the active/fallback maps.</div>
+      )}
+      {preview.map((entry) => (
+        <div key={entry.actionId} className="inspector-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 4 }}>
+          <div className="muted" style={{ fontSize: 12 }}>
+            <span style={{ fontWeight: 800, color: 'var(--text)' }}>{entry.actionId}</span> → {entry.summary}
           </div>
-        )}
+        </div>
+      ))}
 
-        <label className="field">
-          <span>Active Input Map</span>
-          <select
-            aria-label="Scene active input map"
-            data-testid="scene-active-input-map-select"
-            value={activeValue}
-            disabled={disabled || mapIds.length === 0}
-            onChange={(e) => setSceneInput({ activeMapId: e.target.value || undefined })}
-          >
-            <option value="">{projectDefault ? '(project default)' : '(none)'}</option>
-            {mapIds.map((id) => (
-              <option key={id} value={id}>{id}</option>
-            ))}
-          </select>
-        </label>
+      <div className="inspector-row" style={{ marginTop: 12, fontWeight: 700 }}>Mouse</div>
+      <label className="field field-checkbox">
+        <span>Hide OS cursor (Play mode)</span>
+        <input
+          aria-label="Hide OS cursor in play mode"
+          data-testid="scene-mouse-hide-cursor-checkbox"
+          type="checkbox"
+          checked={hideOsCursorInPlay}
+          disabled={disabled}
+          onChange={(e) => setSceneMouse({ hideOsCursorInPlay: e.target.checked })}
+        />
+      </label>
 
-        <label className="field">
-          <span>Fallback</span>
-          <select
-            aria-label="Scene fallback input map"
-            data-testid="scene-fallback-input-map-select"
-            value={fallbackValue}
-            disabled={disabled || mapIds.length === 0}
-            onChange={(e) => setSceneInput({ fallbackMapId: e.target.value || undefined })}
-          >
-            <option value="">{projectDefault ? '(project default)' : '(none)'}</option>
-            {mapIds.map((id) => (
-              <option key={id} value={id}>{id}</option>
-            ))}
-          </select>
-        </label>
+      <label className="field">
+        <span>Drive Entity</span>
+        <select
+          aria-label="Mouse drives entity"
+          data-testid="scene-mouse-drive-entity-select"
+          value={driveEntityId}
+          disabled={disabled || entityIds.length === 0}
+          onChange={(e) => {
+            const next = e.target.value || undefined;
+            setSceneMouse({
+              driveEntityId: next,
+              ...(next ? { affectX, affectY } : {}),
+            } as any);
+          }}
+        >
+          <option value="">(none)</option>
+          {entityIds.map((id) => (
+            <option key={id} value={id}>{id}</option>
+          ))}
+        </select>
+      </label>
 
-        <div className="inspector-row" style={{ marginTop: 10, fontWeight: 700 }}>Actions (preview)</div>
-        {preview.length === 0 && (
-          <div className="inspector-row muted">No actions found in the active/fallback maps.</div>
-        )}
-        {preview.map((entry) => (
-          <div key={entry.actionId} className="inspector-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 4 }}>
-            <div className="muted" style={{ fontSize: 12 }}>
-              <span style={{ fontWeight: 800, color: 'var(--text)' }}>{entry.actionId}</span> → {entry.summary}
-            </div>
-          </div>
-        ))}
-
-        <div className="inspector-row" style={{ marginTop: 12, fontWeight: 700 }}>Mouse</div>
+      <div className="inspector-row muted" style={{ fontSize: 12, marginTop: 4 }}>
+        Axis locks (when driving an entity)
+      </div>
+      <div className="inspector-grid-2">
         <label className="field field-checkbox">
-          <span>Hide OS cursor (Play mode)</span>
+          <span>Affect X</span>
           <input
-            aria-label="Hide OS cursor in play mode"
-            data-testid="scene-mouse-hide-cursor-checkbox"
+            aria-label="Mouse affects X"
+            data-testid="scene-mouse-affect-x-checkbox"
             type="checkbox"
-            checked={hideOsCursorInPlay}
-            disabled={disabled}
-            onChange={(e) => setSceneMouse({ hideOsCursorInPlay: e.target.checked })}
+            checked={Boolean(driveEntityId) ? Boolean(affectX) : false}
+            disabled={disabled || !driveEntityId}
+            onChange={(e) => setSceneMouse({ affectX: e.target.checked })}
           />
         </label>
-
-        <label className="field">
-          <span>Drive Entity</span>
-          <select
-            aria-label="Mouse drives entity"
-            data-testid="scene-mouse-drive-entity-select"
-            value={driveEntityId}
-            disabled={disabled || entityIds.length === 0}
-            onChange={(e) => {
-              const next = e.target.value || undefined;
-              setSceneMouse({
-                driveEntityId: next,
-                ...(next ? { affectX, affectY } : {}),
-              } as any);
-            }}
-          >
-            <option value="">(none)</option>
-            {entityIds.map((id) => (
-              <option key={id} value={id}>{id}</option>
-            ))}
-          </select>
+        <label className="field field-checkbox">
+          <span>Affect Y</span>
+          <input
+            aria-label="Mouse affects Y"
+            data-testid="scene-mouse-affect-y-checkbox"
+            type="checkbox"
+            checked={Boolean(driveEntityId) ? Boolean(affectY) : false}
+            disabled={disabled || !driveEntityId}
+            onChange={(e) => setSceneMouse({ affectY: e.target.checked })}
+          />
         </label>
-
-        <div className="inspector-row muted" style={{ fontSize: 12, marginTop: 4 }}>
-          Axis locks (when driving an entity)
-        </div>
-        <div className="inspector-grid-2">
-          <label className="field field-checkbox">
-            <span>Affect X</span>
-            <input
-              aria-label="Mouse affects X"
-              data-testid="scene-mouse-affect-x-checkbox"
-              type="checkbox"
-              checked={Boolean(driveEntityId) ? Boolean(affectX) : false}
-              disabled={disabled || !driveEntityId}
-              onChange={(e) => setSceneMouse({ affectX: e.target.checked })}
-            />
-          </label>
-          <label className="field field-checkbox">
-            <span>Affect Y</span>
-            <input
-              aria-label="Mouse affects Y"
-              data-testid="scene-mouse-affect-y-checkbox"
-              type="checkbox"
-              checked={Boolean(driveEntityId) ? Boolean(affectY) : false}
-              disabled={disabled || !driveEntityId}
-              onChange={(e) => setSceneMouse({ affectY: e.target.checked })}
-            />
-          </label>
-        </div>
-      </InspectorFoldout>
-    </div>
+      </div>
+    </>
   );
 }

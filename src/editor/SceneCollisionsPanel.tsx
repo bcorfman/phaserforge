@@ -20,6 +20,27 @@ export function SceneCollisionsPanel({
   disabled: boolean;
 }) {
   const foldouts = useInspectorFoldouts();
+
+  return (
+    <InspectorFoldout
+      title="Scene — Collisions"
+      open={foldouts.isOpen('scene.collisions', false)}
+      onToggle={() => foldouts.toggle('scene.collisions', false)}
+    >
+      <SceneCollisionsBody scene={scene} dispatch={dispatch} disabled={disabled} />
+    </InspectorFoldout>
+  );
+}
+
+export function SceneCollisionsBody({
+  scene,
+  dispatch,
+  disabled,
+}: {
+  scene: GameSceneSpec;
+  dispatch: (action: any) => void;
+  disabled: boolean;
+}) {
   const rules = scene.collisionRules ?? [];
   const layers = uniqueLayers(scene);
 
@@ -39,11 +60,7 @@ export function SceneCollisionsPanel({
   };
 
   return (
-    <InspectorFoldout
-      title="Scene — Collisions"
-      open={foldouts.isOpen('scene.collisions', false)}
-      onToggle={() => foldouts.toggle('scene.collisions', false)}
-    >
+    <>
       <div className="inspector-row">Define overlap or block behavior between collision layers in Play mode.</div>
       <button
         className="button"
@@ -108,6 +125,6 @@ export function SceneCollisionsPanel({
           </div>
         ))
       )}
-    </InspectorFoldout>
+    </>
   );
 }

@@ -46,4 +46,41 @@ describe('CreateFormationPanel', () => {
     expect(markup).toContain('Go to Import Sprites');
     expect(markup).toContain('disabled=""');
   });
+
+  it('renders paired arrange parameters on the same row for grid presets', () => {
+    const gridRegistry = {
+      arrange: [
+        {
+          type: 'grid',
+          displayName: 'Grid',
+          category: 'formation',
+          targetKinds: ['group'],
+          implemented: true,
+          parameters: [
+            { name: 'rows', type: 'number', default: 0 },
+            { name: 'cols', type: 'number', default: 0 },
+            { name: 'startX', type: 'number', default: 0 },
+            { name: 'startY', type: 'number', default: 0 },
+            { name: 'spacingX', type: 'number', default: 0 },
+            { name: 'spacingY', type: 'number', default: 0 },
+          ],
+        },
+      ],
+      actions: [],
+      conditions: [],
+    };
+
+    const markup = renderToStaticMarkup(
+      <CreateFormationPanel scene={sampleScene} registry={gridRegistry as any} dispatch={() => {}} />
+    );
+
+    const expectPairedInGridRow = (a: string, b: string) => {
+      const pattern = `<div class="inspector-grid-2">[\\s\\S]*data-testid="formation-arrange-param-${a}"[\\s\\S]*data-testid="formation-arrange-param-${b}"[\\s\\S]*<\\/div>`;
+      expect(markup).toMatch(new RegExp(pattern));
+    };
+
+    expectPairedInGridRow('rows', 'cols');
+    expectPairedInGridRow('startX', 'startY');
+    expectPairedInGridRow('spacingX', 'spacingY');
+  });
 });

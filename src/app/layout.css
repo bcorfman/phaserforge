@@ -1161,11 +1161,36 @@ html[data-theme='dark'] .phaser-frame {
   color: var(--muted);
 }
 
+.inspector-foldout-summary {
+  margin-left: auto;
+  font-size: 0.82rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+  color: rgba(205, 197, 185, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .inspector-foldout-body {
   padding: 0.65rem;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.inspector-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.inspector-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .inspector-title {
