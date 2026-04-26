@@ -218,8 +218,8 @@ Author collision rules and trigger zones; runtime emits enter/stay/exit events.
 ### Runtime
 - [x] `CollisionService` computes AABB overlaps, collects enter/stay/exit/click events.
 - [x] `collisionRules` support `overlap` and `block` interactions (simple separation for `block`).
-- [ ] Trigger scripts execute service-backed Calls (future; model/UI support exists):
-  - [ ] `audio.play_sfx`, `scene.goto`, `entity.destroy`
+- [x] Trigger scripts execute service-backed Calls (future; model/UI support exists):
+  - [x] `audio.play_sfx`, `scene.goto`, `entity.destroy`
 
 ### Tests
 - [x] Unit: CollisionService emits enter/exit correctly
