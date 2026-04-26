@@ -12,6 +12,8 @@ import { BasicAudioService } from '../runtime/services/BasicAudioService';
 import { BasicInputService } from '../runtime/services/BasicInputService';
 import { BasicCollisionService } from '../runtime/services/BasicCollisionService';
 import type { InputActionMapSpec } from '../model/types';
+import { createTriggerCompileContext, executeTriggerScripts } from '../runtime/triggers/triggerScripts';
+import type { TriggerZoneSpec } from '../model/types';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
 
@@ -35,6 +37,8 @@ export class GameScene extends Phaser.Scene {
   private audioService?: BasicAudioService;
   private inputService?: BasicInputService;
   private collisionService?: BasicCollisionService;
+  private triggerZones: TriggerZoneSpec[] = [];
+  private lastProcessedTriggerEventCount = 0;
   private lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
   private mouseOptions: { hideOsCursorInPlay: boolean; driveEntityId?: string; affectX: boolean; affectY: boolean } = {
     hideOsCursorInPlay: false,
@@ -129,6 +133,8 @@ export class GameScene extends Phaser.Scene {
     const currentLoadVersion = ++this.loadVersion;
     this.clearScene();
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry });
+    this.triggerZones = sceneSpec.triggers ?? [];
+    this.lastProcessedTriggerEventCount = 0;
     this.collisionService?.setTriggers(sceneSpec.triggers ?? []);
     this.collisionService?.setCollisionRules(sceneSpec.collisionRules ?? []);
     this.collisionService?.setEntities(this.compiled.entities as any);
@@ -396,14 +402,46 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.collisionService?.update();
+    this.executeTriggerScriptsFromCollisionSnapshot();
 
     for (const entity of Object.values(this.compiled.entities)) {
       const sprite = this.sprites.get(entity.id);
+      if ((entity as any).destroyed) {
+        if (sprite) {
+          sprite.destroy();
+          this.sprites.delete(entity.id);
+        }
+        const physicsObject = this.physicsObjects.get(entity.id);
+        if (physicsObject) {
+          physicsObject.destroy();
+          this.physicsObjects.delete(entity.id);
+        }
+        this.physicsVelocityCache.delete(entity.id);
+        this.physicsSizeCache.delete(entity.id);
+        continue;
+      }
       if (!sprite) continue;
       sprite.setPosition(entity.x, entity.y);
       this.applyEntityDisplayProps(sprite, entity, this.compiled.scene.entities[entity.id]?.asset as any);
       this.syncPhysicsState(entity.id, sprite, entity);
     }
+  }
+
+  private executeTriggerScriptsFromCollisionSnapshot(): void {
+    if (!this.compiled) return;
+    if (!this.collisionService) return;
+    const snapshot = this.collisionService.getSnapshot();
+    const events = snapshot.triggerEvents;
+    if (!Array.isArray(events) || events.length === 0) return;
+
+    const previous = this.lastProcessedTriggerEventCount;
+    const startIndex = events.length < previous ? 0 : previous;
+    const pending = events.slice(startIndex);
+    this.lastProcessedTriggerEventCount = events.length;
+    if (pending.length === 0) return;
+
+    const ctx = createTriggerCompileContext(this.compiled.scene, { entities: this.compiled.entities as any, groups: this.compiled.groups as any }, this.opRegistry);
+    executeTriggerScripts(this.triggerZones, pending as any, this.opRegistry, ctx);
   }
 
   private clearScene(): void {

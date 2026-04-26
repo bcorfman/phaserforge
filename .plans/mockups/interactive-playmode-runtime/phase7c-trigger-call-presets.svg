@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --good:#7cf0c7;
+        --danger:#ff6a8a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnGood{fill:rgba(124,240,199,0.14); stroke:var(--good); stroke-width:1;}
+      .btnDanger{fill:rgba(255,106,138,0.12); stroke:var(--danger); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:600;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .foldHeader{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .foldTitle{fill:var(--text); font-size:12px; font-weight:800;}
+      .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" fill="var(--bg)"/>
+  <text x="44" y="50" class="title">Phase 7 — Trigger Call Presets (structured editor)</text>
+  <text x="44" y="76" class="small">Same TriggerZoneSpec (single call per event), but “op” selection drives a friendly args UI (no raw JSON unless advanced).</text>
+
+  <!-- Column A: onEnter = audio.play_sfx -->
+  <rect x="44" y="110" width="360" height="560" rx="14" class="panel"/>
+  <text x="68" y="144" class="title">Preset A</text>
+  <text x="68" y="168" class="label">onEnter → audio.play_sfx</text>
+
+  <rect x="68" y="196" width="312" height="32" rx="10" class="foldHeader"/>
+  <text x="82" y="217" class="foldTitle">onEnter</text>
+
+  <text x="68" y="258" class="small">Op</text>
+  <rect x="68" y="272" width="312" height="30" rx="10" class="field"/>
+  <text x="82" y="292" class="fieldText">audio.play_sfx</text>
+
+  <text x="68" y="332" class="small">Sound</text>
+  <rect x="68" y="346" width="312" height="30" rx="10" class="field"/>
+  <text x="82" y="366" class="fieldText">(hit) · hit.wav</text>
+
+  <text x="68" y="402" class="small">Volume</text>
+  <rect x="68" y="416" width="228" height="22" rx="10" class="field"/>
+  <rect x="68" y="416" width="140" height="22" rx="10" class="btnPrimary"/>
+  <text x="306" y="433" class="tiny mono">0.35</text>
+
+  <text x="68" y="468" class="small">Advanced args (JSON)</text>
+  <rect x="68" y="482" width="312" height="96" rx="10" class="field"/>
+  <text x="82" y="506" class="tiny mono">{ \"assetId\": \"hit\", \"volume\": 0.35 }</text>
+
+  <!-- Column B: onEnter = scene.goto -->
+  <rect x="420" y="110" width="360" height="560" rx="14" class="panel"/>
+  <text x="444" y="144" class="title">Preset B</text>
+  <text x="444" y="168" class="label">onEnter → scene.goto</text>
+
+  <rect x="444" y="196" width="312" height="32" rx="10" class="foldHeader"/>
+  <text x="458" y="217" class="foldTitle">onEnter</text>
+
+  <text x="444" y="258" class="small">Op</text>
+  <rect x="444" y="272" width="312" height="30" rx="10" class="field"/>
+  <text x="458" y="292" class="fieldText">scene.goto</text>
+
+  <text x="444" y="332" class="small">Scene</text>
+  <rect x="444" y="346" width="312" height="30" rx="10" class="field"/>
+  <text x="458" y="366" class="fieldText">scene-2</text>
+
+  <text x="444" y="402" class="small">Transition</text>
+  <rect x="444" y="416" width="152" height="30" rx="10" class="field"/>
+  <text x="458" y="436" class="fieldText">fade</text>
+  <rect x="604" y="416" width="152" height="30" rx="10" class="field"/>
+  <text x="618" y="436" class="fieldText">durationMs: 350</text>
+
+  <rect x="444" y="482" width="312" height="96" rx="10" class="callout"/>
+  <text x="464" y="510" class="calloutText">Play mode expectation</text>
+  <text x="464" y="534" class="tiny">When an entity enters the zone, GameScene calls</text>
+  <text x="464" y="554" class="tiny mono">services.scene.goto(\"scene-2\", { transition: \"fade\", durationMs: 350 })</text>
+
+  <!-- Column C: onClick = entity.destroy -->
+  <rect x="796" y="110" width="360" height="560" rx="14" class="panel"/>
+  <text x="820" y="144" class="title">Preset C</text>
+  <text x="820" y="168" class="label">onClick → entity.destroy</text>
+
+  <rect x="820" y="196" width="312" height="32" rx="10" class="foldHeader"/>
+  <text x="834" y="217" class="foldTitle">onClick</text>
+
+  <text x="820" y="258" class="small">Op</text>
+  <rect x="820" y="272" width="312" height="30" rx="10" class="field"/>
+  <text x="834" y="292" class="fieldText">entity.destroy</text>
+
+  <text x="820" y="332" class="small">Target</text>
+  <rect x="820" y="346" width="312" height="30" rx="10" class="field"/>
+  <text x="834" y="366" class="fieldText">instigator (clicked entity)</text>
+
+  <text x="820" y="402" class="small">Override (optional)</text>
+  <rect x="820" y="416" width="312" height="30" rx="10" class="field"/>
+  <text x="834" y="436" class="fieldText">(none)</text>
+
+  <text x="820" y="468" class="small">Advanced args (JSON)</text>
+  <rect x="820" y="482" width="312" height="96" rx="10" class="field"/>
+  <text x="834" y="506" class="tiny mono">{ \"target\": \"instigator\" }</text>
+</svg>
+
