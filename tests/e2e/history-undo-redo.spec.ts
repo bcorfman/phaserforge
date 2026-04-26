@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { getState, gotoStudio, seedSampleScene, triggerRedo, triggerUndo, waitForSampleScene } from './helpers';
+import { dragDropByTestId, getState, gotoStudio, seedSampleScene, triggerRedo, triggerUndo, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
@@ -66,7 +66,7 @@ test('Undo/redo works for scene graph member drag/drop', async ({ page }) => {
   await page.keyboard.up('Shift');
 
   // Drag the selection onto the formation row to add.
-  await page.dragAndDrop('[data-testid="ungrouped-entity-e1"]', '[data-testid="group-item-g-enemies"]');
+  await dragDropByTestId(page, 'ungrouped-entity-e1', 'group-item-g-enemies');
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { groups: Record<string, { members: string[] }> } }>(page);
@@ -88,4 +88,3 @@ test('Undo/redo works for scene graph member drag/drop', async ({ page }) => {
     return { hasE1: members.includes('e1'), hasE2: members.includes('e2') };
   }).toEqual({ hasE1: true, hasE2: true });
 });
-
