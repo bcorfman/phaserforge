@@ -4,6 +4,42 @@ import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput } from './ValidatedNumberInput';
 
+type ArrangeParamSpec = { name: string; type?: string };
+
+function arePairedArrangeParams(a: ArrangeParamSpec, b: ArrangeParamSpec): boolean {
+  const aName = a.name;
+  const bName = b.name;
+  const aLower = aName.toLowerCase();
+  const bLower = bName.toLowerCase();
+
+  if ((aLower === 'x' && bLower === 'y') || (aLower === 'y' && bLower === 'x')) return true;
+  if ((aLower === 'width' && bLower === 'height') || (aLower === 'height' && bLower === 'width')) return true;
+  if ((aLower === 'rows' && bLower === 'cols') || (aLower === 'cols' && bLower === 'rows')) return true;
+
+  if (aName.endsWith('X') && bName.endsWith('Y') && aName.slice(0, -1) === bName.slice(0, -1)) return true;
+  if (aName.endsWith('Y') && bName.endsWith('X') && aName.slice(0, -1) === bName.slice(0, -1)) return true;
+
+  if (aName.endsWith('.x') && bName.endsWith('.y') && aName.slice(0, -2) === bName.slice(0, -2)) return true;
+  if (aName.endsWith('.y') && bName.endsWith('.x') && aName.slice(0, -2) === bName.slice(0, -2)) return true;
+
+  return false;
+}
+
+function groupArrangeParams<T extends ArrangeParamSpec>(params: T[]): Array<{ kind: 'single'; a: T } | { kind: 'pair'; a: T; b: T }> {
+  const rows: Array<{ kind: 'single'; a: T } | { kind: 'pair'; a: T; b: T }> = [];
+  for (let index = 0; index < params.length; index += 1) {
+    const current = params[index];
+    const next = params[index + 1];
+    if (next && arePairedArrangeParams(current, next)) {
+      rows.push({ kind: 'pair', a: current, b: next });
+      index += 1;
+      continue;
+    }
+    rows.push({ kind: 'single', a: current });
+  }
+  return rows;
+}
+
 function formatParamLabel(name: string) {
   const withSpaces = name
     .replace(/_/g, ' ')
@@ -199,49 +235,64 @@ export function CreateFormationPanel({
         </label>
       )}
 
-      {(selectedArrangeEntry?.parameters ?? []).map((param) => {
-        const rawValue = arrangeParamsDraft[param.name];
-        const label = formatParamLabel(param.name);
-        if (param.type === 'boolean') {
+      {(() => {
+        const renderParam = (param: any) => {
+          const rawValue = arrangeParamsDraft[param.name];
+          const label = formatParamLabel(param.name);
+          if (param.type === 'boolean') {
+            return (
+              <label key={param.name} className="field">
+                <span>{label}</span>
+                <input
+                  aria-label={label}
+                  data-testid={`formation-arrange-param-${param.name}`}
+                  type="checkbox"
+                  checked={Boolean(rawValue)}
+                  onChange={(event) => setArrangeParamsDraft({ ...arrangeParamsDraft, [param.name]: event.target.checked })}
+                />
+              </label>
+            );
+          }
+          if (param.type === 'number') {
+            return (
+              <label key={param.name} className="field">
+                <span>{label}</span>
+                <ValidatedNumberInput
+                  aria-label={label}
+                  data-testid={`formation-arrange-param-${param.name}`}
+                  value={Number(rawValue ?? 0)}
+                  onCommit={(next) => setArrangeParamsDraft({ ...arrangeParamsDraft, [param.name]: next })}
+                />
+              </label>
+            );
+          }
           return (
             <label key={param.name} className="field">
               <span>{label}</span>
               <input
                 aria-label={label}
                 data-testid={`formation-arrange-param-${param.name}`}
-                type="checkbox"
-                checked={Boolean(rawValue)}
-                onChange={(event) => setArrangeParamsDraft({ ...arrangeParamsDraft, [param.name]: event.target.checked })}
+                type="text"
+                value={String(rawValue ?? '')}
+                onChange={(event) => setArrangeParamsDraft({ ...arrangeParamsDraft, [param.name]: event.target.value })}
               />
             </label>
           );
-        }
-        if (param.type === 'number') {
-          return (
-            <label key={param.name} className="field">
-              <span>{label}</span>
-              <ValidatedNumberInput
-                aria-label={label}
-                data-testid={`formation-arrange-param-${param.name}`}
-                value={Number(rawValue ?? 0)}
-                onCommit={(next) => setArrangeParamsDraft({ ...arrangeParamsDraft, [param.name]: next })}
-              />
-            </label>
-          );
-        }
-        return (
-          <label key={param.name} className="field">
-            <span>{label}</span>
-            <input
-              aria-label={label}
-              data-testid={`formation-arrange-param-${param.name}`}
-              type="text"
-              value={String(rawValue ?? '')}
-              onChange={(event) => setArrangeParamsDraft({ ...arrangeParamsDraft, [param.name]: event.target.value })}
-            />
-          </label>
-        );
-      })}
+        };
+
+        const params = (selectedArrangeEntry?.parameters ?? []) as ArrangeParamSpec[];
+        return groupArrangeParams(params).map((row) => {
+          if (row.kind === 'pair') {
+            return (
+              <div key={`${row.a.name}:${row.b.name}`} className="inspector-grid-2">
+                {renderParam(row.a)}
+                {renderParam(row.b)}
+              </div>
+            );
+          }
+          return renderParam(row.a);
+        });
+      })()}
 
       <div className="member-row">
         <div className="tag-button" data-testid="formation-template-selected">
@@ -301,4 +352,3 @@ export function CreateFormationPanel({
     </div>
   );
 }
-

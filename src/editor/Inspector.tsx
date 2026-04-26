@@ -11,12 +11,45 @@ import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
 import { CreateFormationPanel } from './CreateFormationPanel';
-import { BackgroundLayersPanel } from './BackgroundLayersPanel';
-import { SceneAudioPanel } from './SceneAudioPanel';
 import { parseCallArgsJson } from './callArgsJson';
-import { SceneInputPanel } from './SceneInputPanel';
-import { SceneCollisionsPanel } from './SceneCollisionsPanel';
 import { TriggerZoneInspector } from './TriggerZoneInspector';
+import { SceneInspectorPanel } from './SceneInspectorPanel';
+
+type ArrangeParameterSpec = { name: string; type?: string };
+
+function arePairedInspectorParams(a: ArrangeParameterSpec, b: ArrangeParameterSpec): boolean {
+  const aName = a.name;
+  const bName = b.name;
+  const aLower = aName.toLowerCase();
+  const bLower = bName.toLowerCase();
+
+  if ((aLower === 'x' && bLower === 'y') || (aLower === 'y' && bLower === 'x')) return true;
+  if ((aLower === 'width' && bLower === 'height') || (aLower === 'height' && bLower === 'width')) return true;
+  if ((aLower === 'rows' && bLower === 'cols') || (aLower === 'cols' && bLower === 'rows')) return true;
+
+  if (aName.endsWith('X') && bName.endsWith('Y') && aName.slice(0, -1) === bName.slice(0, -1)) return true;
+  if (aName.endsWith('Y') && bName.endsWith('X') && aName.slice(0, -1) === bName.slice(0, -1)) return true;
+
+  if (aName.endsWith('.x') && bName.endsWith('.y') && aName.slice(0, -2) === bName.slice(0, -2)) return true;
+  if (aName.endsWith('.y') && bName.endsWith('.x') && aName.slice(0, -2) === bName.slice(0, -2)) return true;
+
+  return false;
+}
+
+function groupInspectorParams<T extends ArrangeParameterSpec>(params: T[]): Array<{ kind: 'single'; a: T } | { kind: 'pair'; a: T; b: T }> {
+  const rows: Array<{ kind: 'single'; a: T } | { kind: 'pair'; a: T; b: T }> = [];
+  for (let index = 0; index < params.length; index += 1) {
+    const current = params[index];
+    const next = params[index + 1];
+    if (next && arePairedInspectorParams(current, next)) {
+      rows.push({ kind: 'pair', a: current, b: next });
+      index += 1;
+      continue;
+    }
+    rows.push({ kind: 'single', a: current });
+  }
+  return rows;
+}
 
 export function Inspector() {
   const { state, dispatch } = useEditorStore();
@@ -178,28 +211,9 @@ export function Inspector() {
     } else {
       content = (
         <>
-          <BackgroundLayersPanel
+          <SceneInspectorPanel
             project={state.project}
             sceneId={state.currentSceneId}
-            layers={scene.backgroundLayers ?? []}
-            dispatch={dispatch}
-            disabled={state.mode !== 'edit'}
-          />
-          <SceneAudioPanel
-            project={state.project}
-            sceneId={state.currentSceneId}
-            scene={scene}
-            dispatch={dispatch}
-            disabled={state.mode !== 'edit'}
-          />
-          <SceneInputPanel
-            project={state.project}
-            sceneId={state.currentSceneId}
-            scene={scene}
-            dispatch={dispatch}
-            disabled={state.mode !== 'edit'}
-          />
-          <SceneCollisionsPanel
             scene={scene}
             dispatch={dispatch}
             disabled={state.mode !== 'edit'}
@@ -1184,20 +1198,37 @@ export function renderGroupInspector(
               ))}
           </select>
         </label>
-        {handlers.registry.arrange
-          .find((entry) => entry.implemented && entry.type === handlers.layoutPreset && (entry.targetKinds ?? []).includes('group'))
-          ?.parameters?.map((param) => (
+        {(() => {
+          const entry = handlers.registry.arrange.find(
+            (candidate) => candidate.implemented && candidate.type === handlers.layoutPreset && (candidate.targetKinds ?? []).includes('group')
+          );
+          const params = (entry?.parameters ?? []) as ArrangeParameterSpec[];
+
+          const renderParam = (param: ArrangeParameterSpec) => (
             <label key={param.name} className="field">
               <span>{param.name}</span>
               <input
                 aria-label={param.name}
                 data-testid={`arrange-param-${param.name}`}
                 value={handlers.layoutParams[param.name] ?? ''}
-                inputMode={param.type === 'number' ? 'numeric' : undefined}
+                inputMode={(param as any).type === 'number' ? 'numeric' : undefined}
                 onChange={(e) => handlers.setLayoutParams({ ...handlers.layoutParams, [param.name]: e.target.value })}
               />
             </label>
-          ))}
+          );
+
+          return groupInspectorParams(params).map((row) => {
+            if (row.kind === 'pair') {
+              return (
+                <div key={`${row.a.name}:${row.b.name}`} className="inspector-grid-2">
+                  {renderParam(row.a)}
+                  {renderParam(row.b)}
+                </div>
+              );
+            }
+            return renderParam(row.a);
+          });
+        })()}
         <button
           className="button"
           data-testid="apply-group-layout-button"

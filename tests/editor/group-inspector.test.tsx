@@ -79,4 +79,55 @@ describe('Group inspector', () => {
 
     expect(markup).toContain('Selected');
   });
+
+  it('renders paired layout parameters on the same row in the layout inspector', () => {
+    const group = sampleScene.groups['g-enemies'];
+    const markup = renderToStaticMarkup(
+      renderGroupInspector(group, sampleScene, {
+        onSelectMember: () => {},
+        onRemoveMember: () => {},
+        onUpdateGroup: () => {},
+        onUngroup: () => {},
+        onDeleteGroup: () => {},
+        onDissolve: () => {},
+        onAddAttachment: () => {},
+        onSelectAttachment: () => {},
+        onMoveAttachment: () => {},
+        onRemoveAttachment: () => {},
+        foldouts: { isOpen: () => true, toggle: () => {} },
+        registry,
+        layoutPreset: 'grid',
+        setLayoutPreset: () => {},
+        layoutParams: {
+          rows: '2',
+          cols: '3',
+          startX: '10',
+          startY: '20',
+          spacingX: '5',
+          spacingY: '6',
+        },
+        setLayoutParams: () => {},
+        applyLayout: () => {},
+        convertType: 'grid',
+        setConvertType: () => {},
+        convertGridDraft: { rows: '2', cols: '3' },
+        setConvertGridDraft: () => {},
+        supportedArrangeKinds: ['grid'],
+        defaultArrangeKind: 'grid',
+        convertArrangeKind: 'grid',
+        setConvertArrangeKind: () => {},
+        applyConvertLayout: () => {},
+      })
+    );
+
+    expect(markup).toMatch(
+      /<div class="inspector-grid-2">[\s\S]*data-testid="arrange-param-rows"[\s\S]*data-testid="arrange-param-cols"[\s\S]*<\/div>/
+    );
+    expect(markup).toMatch(
+      /<div class="inspector-grid-2">[\s\S]*data-testid="arrange-param-startX"[\s\S]*data-testid="arrange-param-startY"[\s\S]*<\/div>/
+    );
+    expect(markup).toMatch(
+      /<div class="inspector-grid-2">[\s\S]*data-testid="arrange-param-spacingX"[\s\S]*data-testid="arrange-param-spacingY"[\s\S]*<\/div>/
+    );
+  });
 });
