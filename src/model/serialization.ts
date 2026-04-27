@@ -7,6 +7,28 @@ function coerceRecord<T>(value: unknown): Record<string, T> {
   return value as Record<string, T>;
 }
 
+function coerceSceneMeta(
+  value: unknown,
+  scenes: Record<string, GameSceneSpec>
+): ProjectSpec['sceneMeta'] | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, any>;
+  const meta: NonNullable<ProjectSpec['sceneMeta']> = {};
+  for (const [sceneId, entry] of Object.entries(raw)) {
+    if (!scenes[sceneId]) continue;
+    if (!entry || typeof entry !== 'object') continue;
+    const name = typeof (entry as any).name === 'string' && (entry as any).name.length > 0 ? (entry as any).name : undefined;
+    const roleRaw = (entry as any).role;
+    const role = roleRaw === 'base' || roleRaw === 'wave' || roleRaw === 'stage' ? roleRaw : undefined;
+    if (!name && !role) continue;
+    meta[sceneId] = {
+      ...(name ? { name } : {}),
+      ...(role ? { role } : {}),
+    };
+  }
+  return Object.keys(meta).length > 0 ? meta : {};
+}
+
 function coerceSceneMusic(value: unknown): GameSceneSpec['music'] | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const raw = value as any;
@@ -136,6 +158,12 @@ export function parseProjectYaml(text: string): ProjectSpec {
     throw new Error(`Project initialSceneId references unknown scene ${initialSceneId}`);
   }
 
+  const baseSceneId = typeof raw.baseSceneId === 'string' ? raw.baseSceneId : undefined;
+  if (baseSceneId && !scenes[baseSceneId]) {
+    throw new Error(`Project baseSceneId references unknown scene ${baseSceneId}`);
+  }
+  const sceneMeta = coerceSceneMeta(raw.sceneMeta, scenes);
+
   return {
     id: typeof raw.id === 'string' ? raw.id : 'project-1',
     assets: {
@@ -147,6 +175,8 @@ export function parseProjectYaml(text: string): ProjectSpec {
     },
     inputMaps: coerceRecord(raw.inputMaps),
     ...(typeof raw.defaultInputMapId === 'string' ? { defaultInputMapId: raw.defaultInputMapId } : {}),
+    ...(baseSceneId ? { baseSceneId } : {}),
+    ...(sceneMeta ? { sceneMeta } : {}),
     scenes,
     initialSceneId,
   };

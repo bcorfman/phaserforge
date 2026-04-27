@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, expectInputValue, getState, gotoStudio, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
+import { dismissViewHint, expectInputValue, getState, gotoStudio, openProjectScope, openSceneScope, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -68,6 +68,7 @@ test('updates startup mode and persists the last YAML-backed scene across reload
 
 test('imports embedded sprites and spritesheets into the scene', async ({ page }) => {
   await gotoStudio(page);
+  await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await expect(page.getByTestId('sprite-import-meta')).toContainText('enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
@@ -95,6 +96,7 @@ test('imports embedded sprites and spritesheets into the scene', async ({ page }
 
 test('removes an imported sprite from the scene graph', async ({ page }) => {
   await gotoStudio(page);
+  await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
 
@@ -104,6 +106,7 @@ test('removes an imported sprite from the scene graph', async ({ page }) => {
   });
   if (!entityId) throw new Error('Imported entity id unavailable');
 
+  await openSceneScope(page);
   await page.getByTestId(`remove-entity-${entityId}`).click();
 
   await expect.poll(async () => {

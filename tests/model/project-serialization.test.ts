@@ -14,6 +14,10 @@ describe('project YAML serialization', () => {
         },
       },
       inputMaps: {},
+      baseSceneId: 'scene-1',
+      sceneMeta: {
+        'scene-1': { name: 'Base', role: 'base' },
+      },
       scenes: {
         'scene-1': {
           ...sampleScene,
@@ -29,5 +33,37 @@ describe('project YAML serialization', () => {
     const parsed = parseProjectYaml(yaml);
 
     expect(parsed).toEqual(project);
+  });
+
+  it('drops sceneMeta entries that reference unknown scenes', () => {
+    const yaml = serializeProjectToYaml({
+      id: 'project-1',
+      assets: { images: {}, spriteSheets: {} },
+      audio: { sounds: {} },
+      inputMaps: {},
+      scenes: { 'scene-1': { ...sampleScene, backgroundLayers: [] } },
+      initialSceneId: 'scene-1',
+      sceneMeta: {
+        'scene-1': { name: 'Known', role: 'stage' },
+        'missing-scene': { name: 'Missing', role: 'wave' },
+      },
+    });
+
+    const parsed = parseProjectYaml(yaml);
+    expect(parsed.sceneMeta).toEqual({ 'scene-1': { name: 'Known', role: 'stage' } });
+  });
+
+  it('throws when baseSceneId references an unknown scene', () => {
+    const yaml = serializeProjectToYaml({
+      id: 'project-1',
+      assets: { images: {}, spriteSheets: {} },
+      audio: { sounds: {} },
+      inputMaps: {},
+      scenes: { 'scene-1': { ...sampleScene, backgroundLayers: [] } },
+      initialSceneId: 'scene-1',
+      baseSceneId: 'missing-scene',
+    });
+
+    expect(() => parseProjectYaml(yaml)).toThrow(/baseSceneId references unknown scene/);
   });
 });

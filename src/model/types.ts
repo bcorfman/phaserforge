@@ -140,6 +140,15 @@ export interface ProjectSpec {
   };
   inputMaps: Record<Id, InputActionMapSpec>;
   defaultInputMapId?: Id;
+  /**
+   * Optional base scene for "persistent stage + swappable waves" gameplay.
+   * When set, play mode can compose base + active layers, and edit mode can ghost-render the base.
+   */
+  baseSceneId?: Id;
+  /**
+   * Optional per-scene UI metadata (organizational only; no runtime semantics in MVP).
+   */
+  sceneMeta?: Record<Id, { name?: string; role?: 'base' | 'wave' | 'stage' }>;
   scenes: Record<Id, GameSceneSpec>;
   initialSceneId: Id;
 }

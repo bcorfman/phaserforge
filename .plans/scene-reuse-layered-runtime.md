@@ -11,6 +11,22 @@ This plan is split into **MVP (Laser Gates)**, **Add-ons (soon)**, and **Future*
 
 ## MVP (Build Laser Gates-style game flow)
 
+### 0) Laser Gates mechanics → Studio capabilities (mapping)
+This is a quick parity map from the current Laser Gates architecture (persistent tunnel + swappable waves) to the Studio’s model.
+
+- **Persistent tunnel + player + hills** → `baseSceneId` + runtime `baseLayer` (items 1 + 4).
+  - Base layer owns: tunnel walls/hills, player ship, shot spawner, any always-on scroll actions.
+- **Obstacle “waves” that swap independently** → active scene id treated as `wave` (items 4 + 5).
+  - Wave layer owns: obstacles + their actions + their cleanup.
+- **Wave completes / player dies / obstacle exits bounds** → wave emits `scene.gotoWave(...)` (item 5) + per-wave cleanup contract.
+- **Input drives player motion + fire** → input maps + a small set of runtime ops/actions that can:
+  - Read action states (held/pressed) and update entity velocity/position.
+  - Spawn/destroy entities for shots.
+- **Shot hits obstacle (destroy block / remove shot)** → collision events must be scriptable (not just trigger zones).
+  - Studio needs a minimal “collision event → Call op” path (parallel to trigger zones) so authored YAML can express “on overlap, destroy target(s)”.
+- **Player hits obstacle (damage flash + restart wave)** → collision events + a wave-level “fail → gotoWave” handler.
+  - Visual flash is optional for MVP; the essential behavior is “collision ends wave”.
+
 ### 1) Data model: base scene + minimal metadata
 - Add to `ProjectSpec`:
   - `baseSceneId?: Id` — optional, points at a scene in `project.scenes`.
@@ -62,10 +78,43 @@ This plan is split into **MVP (Laser Gates)**, **Add-ons (soon)**, and **Future*
   - `AppShell` listens and dispatches `set-current-scene` when in play mode.
   - This triggers the existing `EventBus.emit('load-scene', ...)` path so Phaser reloads consistently.
 
+### 5.5) MVP collision scripting: collision event → Call ops (required for Laser Gates)
+Laser Gates waves are mostly “if shot overlaps obstacle, destroy obstacle + remove shot; if player overlaps obstacle, end wave”.
+
+- Extend runtime so **collision events** (from `collisionRules`) can invoke `Call` ops similarly to trigger zones.
+  - Keep it minimal: `enter` events only is enough for MVP.
+  - Event payload should be able to reference:
+    - `instigator` (e.g. the shot or the player), and
+    - `other` (the obstacle).
+- Add a tiny set of built-in ops to cover Laser Gates loops:
+  - `entity.destroy` (already exists for general cleanup)
+  - `scene.gotoWave` (wave swap without resetting base)
+  - Optional convenience: `entity.destroy_other` (destroy overlap counterpart) if targeting ergonomics get awkward.
+
 ### 6) EventBus load contract: pass project context (required for base composition) ✅
 - Implemented via `runtime:load-project (project, currentSceneId, mode)` + `runtime:set-active-scene` with `BootScene` routing. ✅
 - In edit mode: `BootScene` calls `editor.loadSceneSpec(project, sceneSpec)`. ✅
 - In play mode: `BootScene` calls `game.loadSceneSpec(project, sceneSpec)`. ✅
+
+---
+
+## Laser Gates parity checklist (what must be true for a Phaser clone)
+- **Authoring**:
+  - Base scene can be designated and ghost-rendered under waves in edit mode.
+  - Waves can be duplicated/renamed quickly and organized.
+- **Runtime**:
+  - Base layer persists across wave swaps (player + scroll never reset).
+  - Wave layer can be replaced while base continues running.
+  - Input maps can drive the player entity (move + fire).
+  - Shots can be spawned/destroyed deterministically.
+  - Collision rules can trigger authored actions/ops (shot-hit + player-hit).
+
+## Suggested implementation order (Laser Gates MVP)
+1) `baseSceneId` + editor “Set Base” + ghost rendering (fast feedback for authoring).
+2) Two-layer runtime (compile + update base + wave together).
+3) `scene.gotoWave(sceneId)` + React/Phaser sync event.
+4) Collision event scripting (collision enter → Call) + built-in ops (`entity.destroy`, `scene.gotoWave`).
+5) Input-driven player + firing (small, explicit ops/actions; keep authored YAML simple).
 
 ---
 

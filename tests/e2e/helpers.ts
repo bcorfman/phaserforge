@@ -119,6 +119,20 @@ export async function dismissViewHint(page: Page): Promise<void> {
   }
 }
 
+export async function openProjectScope(page: Page): Promise<void> {
+  const tab = page.getByTestId('sidebar-scope-tab-project');
+  if (await tab.isVisible().catch(() => false)) {
+    await tab.click();
+  }
+}
+
+export async function openSceneScope(page: Page): Promise<void> {
+  const tab = page.getByTestId('sidebar-scope-tab-scene');
+  if (await tab.isVisible().catch(() => false)) {
+    await tab.click();
+  }
+}
+
 export async function getState<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getState()) as Promise<T>;
 }

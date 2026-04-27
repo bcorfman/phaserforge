@@ -18,6 +18,17 @@ function sceneOf(state: any) {
 }
 
 describe('EditorStore reducer', () => {
+  it('defaults sidebar scope to scene and allows switching tabs', () => {
+    const state = seededState();
+    expect(state.sidebarScope).toBe('scene');
+
+    const next = reducer(state, { type: 'set-sidebar-scope', scope: 'project' } as any);
+    expect(next.sidebarScope).toBe('project');
+
+    const back = reducer(next, { type: 'set-sidebar-scope', scope: 'scene' } as any);
+    expect(back.sidebarScope).toBe('scene');
+  });
+
   it('loads YAML text into the scene and sets a transient status message', () => {
     const now = 1_700_000_000_000;
     vi.spyOn(Date, 'now').mockReturnValue(now);

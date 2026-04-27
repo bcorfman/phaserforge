@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .kbd{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .kbdText{fill:var(--text); font-size:11px; font-weight:800;}
+
+      .baseHull{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.55); stroke-width:2;}
+      .waveHull{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.80); stroke-width:2;}
+      .entity{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .entityWave{fill:rgba(124,240,199,0.16); stroke:rgba(124,240,199,0.90); stroke-width:1;}
+      .logRow{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Scene Reuse + Layered Runtime — Phase 8c: Base + Wave in Play Mode (Mockup)</text>
+
+  <rect x="760" y="30" width="92" height="30" rx="10" class="btn"/>
+  <text x="788" y="50" class="btnTextMuted">Edit</text>
+  <rect x="856" y="30" width="92" height="30" rx="10" class="btnPrimary"/>
+  <text x="885" y="50" class="btnText">Play</text>
+
+  <rect x="1040" y="30" width="54" height="30" rx="10" class="kbd"/>
+  <text x="1056" y="50" class="kbdText">Esc</text>
+  <text x="1100" y="50" class="tiny">Return to Edit</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Runtime</text>
+
+  <!-- Sidebar: scope tabs -->
+  <rect x="44" y="140" width="144" height="32" rx="10" class="btnPrimary"/>
+  <text x="92" y="161" class="btnText">Scene</text>
+  <rect x="196" y="140" width="144" height="32" rx="10" class="btn"/>
+  <text x="238" y="161" class="btnTextMuted">Project</text>
+
+  <!-- Left: scene context -->
+  <rect x="44" y="182" width="296" height="34" rx="10" class="panel2"/>
+  <text x="58" y="204" class="btnText">Base: tunnel_base</text>
+
+  <rect x="44" y="230" width="296" height="34" rx="10" class="panel2"/>
+  <text x="58" y="252" class="btnText">Wave: wave_densepack</text>
+
+  <line x1="44" y1="280" x2="340" y2="280" class="divider"/>
+
+  <text x="44" y="306" class="label">Wave Controls</text>
+  <rect x="44" y="324" width="296" height="32" rx="10" class="btnPrimary"/>
+  <text x="118" y="346" class="btnText">Call: scene.gotoWave</text>
+
+  <rect x="44" y="362" width="296" height="82" rx="12" class="panel2"/>
+  <text x="58" y="390" class="small">scene.gotoWave(args)</text>
+  <text x="58" y="412" class="tiny">{ sceneId: "wave_forcefield" }</text>
+  <text x="58" y="434" class="tiny">Expected: base continues running; wave layer reloads.</text>
+
+  <!-- Canvas -->
+  <rect x="408" y="140" width="444" height="440" rx="12" class="panel2"/>
+  <text x="420" y="166" class="small">Play mode composition (two layers)</text>
+
+  <!-- Base layer hull -->
+  <rect x="446" y="196" width="368" height="170" rx="14" class="baseHull"/>
+  <text x="456" y="218" class="tiny">baseLayer: tunnel_base (persistent)</text>
+  <rect x="466" y="236" width="328" height="18" rx="8" class="entity"/>
+  <rect x="466" y="340" width="328" height="18" rx="8" class="entity"/>
+  <rect x="516" y="276" width="34" height="24" rx="8" class="entity"/>
+  <text x="556" y="292" class="tiny">player</text>
+
+  <!-- Wave layer hull -->
+  <rect x="446" y="388" width="368" height="170" rx="14" class="waveHull"/>
+  <text x="456" y="410" class="tiny">activeLayer: wave_densepack (swappable)</text>
+  <rect x="486" y="436" width="20" height="14" rx="4" class="entityWave"/>
+  <rect x="512" y="436" width="20" height="14" rx="4" class="entityWave"/>
+  <rect x="538" y="436" width="20" height="14" rx="4" class="entityWave"/>
+  <rect x="564" y="436" width="20" height="14" rx="4" class="entityWave"/>
+  <rect x="590" y="436" width="20" height="14" rx="4" class="entityWave"/>
+  <text x="486" y="474" class="tiny">obstacles...</text>
+
+  <text x="420" y="604" class="tiny">Both action managers tick every frame; entities synchronize to their own layer sprites.</text>
+
+  <!-- Runtime panel -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="panel2"/>
+  <text x="936" y="162" class="btnText">Event Log</text>
+
+  <rect x="920" y="188" width="236" height="28" rx="10" class="logRow"/>
+  <text x="936" y="207" class="tiny">Call: scene.gotoWave("wave_forcefield")</text>
+
+  <rect x="920" y="220" width="236" height="28" rx="10" class="logRow"/>
+  <text x="936" y="239" class="tiny">Runtime: swap activeLayer → wave_forcefield</text>
+
+  <rect x="920" y="252" width="236" height="28" rx="10" class="logRow"/>
+  <text x="936" y="271" class="tiny">Base continues: scroll actions unchanged</text>
+
+  <rect x="920" y="300" width="236" height="132" rx="12" class="panel2"/>
+  <text x="936" y="326" class="small">Snapshots (tests)</text>
+  <text x="936" y="348" class="tiny">baseCompiled: tunnel_base</text>
+  <text x="936" y="368" class="tiny">activeCompiled: wave_forcefield</text>
+  <text x="936" y="388" class="tiny">actions: base=3 • wave=6</text>
+  <text x="936" y="408" class="tiny">collisions/triggers: per-layer (MVP)</text>
+
+  <!-- Callout -->
+  <rect x="372" y="628" width="804" height="58" rx="12" class="callout"/>
+  <text x="392" y="658" class="calloutText">`scene.gotoWave(sceneId)` swaps only the active layer; base layer persists (player + tunnel motion).</text>
+  <text x="392" y="678" class="tiny">MVP uses separate namespaces: wave cannot directly target base entities until cross-layer collision/events are added.</text>
+</svg>

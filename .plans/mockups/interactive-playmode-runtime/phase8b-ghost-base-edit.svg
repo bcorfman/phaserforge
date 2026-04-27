@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+
+      .ghost{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.45); stroke-width:1;}
+      .ghostStrong{fill:rgba(106,167,255,0.08); stroke:rgba(106,167,255,0.35); stroke-width:2; stroke-dasharray:6 4;}
+      .active{fill:rgba(124,240,199,0.12); stroke:rgba(124,240,199,0.80); stroke-width:2;}
+      .activeSolid{fill:#1a254a; stroke:#2a3764; stroke-width:1;}
+      .hint{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.85); stroke-width:1;}
+      .hintText{fill:var(--text); font-size:12px; font-weight:800;}
+      .kbd{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .kbdText{fill:var(--text); font-size:11px; font-weight:800;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Scene Reuse + Layered Runtime — Phase 8b: Ghost Base in Edit Mode (Mockup)</text>
+
+  <rect x="760" y="30" width="92" height="30" rx="10" class="btnPrimary"/>
+  <text x="788" y="50" class="btnText">Edit</text>
+  <rect x="856" y="30" width="92" height="30" rx="10" class="btn"/>
+  <text x="885" y="50" class="btnTextMuted">Play</text>
+
+  <rect x="1040" y="30" width="54" height="30" rx="10" class="kbd"/>
+  <text x="1056" y="50" class="kbdText">Esc</text>
+  <text x="1100" y="50" class="tiny">Cancel interaction</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="804" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+
+  <!-- Sidebar: scope tabs -->
+  <rect x="44" y="140" width="144" height="32" rx="10" class="btnPrimary"/>
+  <text x="92" y="161" class="btnText">Scene</text>
+  <rect x="196" y="140" width="144" height="32" rx="10" class="btn"/>
+  <text x="238" y="161" class="btnTextMuted">Project</text>
+
+  <!-- Left: context -->
+  <rect x="44" y="182" width="296" height="34" rx="10" class="panel2"/>
+  <text x="58" y="204" class="btnText">Active: wave_forcefield</text>
+
+  <rect x="44" y="230" width="296" height="34" rx="10" class="panel2"/>
+  <text x="58" y="252" class="btnText">Base: tunnel_base</text>
+  <text x="256" y="252" class="tiny">ghost</text>
+
+  <line x1="44" y1="280" x2="340" y2="280" class="divider"/>
+
+  <!-- Left: legend -->
+  <text x="44" y="306" class="label">Legend</text>
+  <rect x="44" y="324" width="296" height="110" rx="12" class="panel2"/>
+  <rect x="58" y="344" width="20" height="14" rx="4" class="ghost"/>
+  <text x="88" y="356" class="small">Base ghost sprites (non-interactive)</text>
+  <rect x="58" y="370" width="20" height="14" rx="4" class="active"/>
+  <text x="88" y="382" class="small">Active wave sprites (interactive)</text>
+  <rect x="58" y="396" width="20" height="14" rx="4" class="hint"/>
+  <text x="88" y="408" class="small">Selection/hover only considers active layer</text>
+
+  <!-- Canvas frame -->
+  <rect x="408" y="140" width="732" height="520" rx="12" class="panel2"/>
+  <text x="424" y="166" class="small">Edit mode composition</text>
+  <text x="424" y="188" class="tiny">Base renders behind as a ghost for alignment; cannot be selected or edited.</text>
+
+  <!-- Base ghost world frame -->
+  <rect x="460" y="214" width="628" height="380" rx="14" class="ghostStrong"/>
+  <text x="470" y="238" class="tiny">Ghost: tunnel_base</text>
+
+  <!-- Ghost tunnel walls / hills -->
+  <rect x="480" y="248" width="588" height="24" rx="10" class="ghost"/>
+  <rect x="480" y="536" width="588" height="24" rx="10" class="ghost"/>
+  <rect x="520" y="288" width="120" height="42" rx="10" class="ghost"/>
+  <rect x="940" y="288" width="120" height="42" rx="10" class="ghost"/>
+  <rect x="520" y="474" width="120" height="42" rx="10" class="ghost"/>
+  <rect x="940" y="474" width="120" height="42" rx="10" class="ghost"/>
+
+  <!-- Ghost player -->
+  <rect x="560" y="388" width="42" height="28" rx="8" class="ghost"/>
+  <text x="612" y="406" class="tiny">ghost player</text>
+
+  <!-- Active wave overlay -->
+  <rect x="690" y="286" width="180" height="300" rx="18" class="active"/>
+  <text x="700" y="308" class="tiny">Active: wave_forcefield</text>
+  <rect x="720" y="336" width="120" height="18" rx="8" class="activeSolid"/>
+  <rect x="720" y="364" width="120" height="18" rx="8" class="activeSolid"/>
+  <rect x="720" y="392" width="120" height="18" rx="8" class="activeSolid"/>
+  <rect x="720" y="420" width="120" height="18" rx="8" class="activeSolid"/>
+  <rect x="720" y="448" width="120" height="18" rx="8" class="activeSolid"/>
+  <rect x="720" y="476" width="120" height="18" rx="8" class="activeSolid"/>
+
+  <!-- Interaction hint -->
+  <rect x="474" y="606" width="652" height="42" rx="12" class="hint"/>
+  <text x="494" y="632" class="hintText">Clicks and drags ignore ghost sprites: selection/hover hit-tests only target the active layer.</text>
+
+  <!-- Callout -->
+  <rect x="24" y="668" width="1152" height="28" rx="10" class="callout"/>
+  <text x="44" y="688" class="calloutText">Implementation: EditorScene loads { active, reference } and maintains separate sprite maps; reference sprites get depth offset + alpha multiplier.</text>
+</svg>

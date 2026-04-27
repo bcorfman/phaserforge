@@ -37,6 +37,7 @@ export const UI_SCALE_STORAGE_KEY = 'phaseractions.uiScale.v1';
 export const DEFAULT_UI_SCALE = 0.95;
 
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type SidebarScope = 'scene' | 'project';
 
 export function coerceThemeMode(raw: string | null | undefined): ThemeMode {
   return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system';
@@ -110,6 +111,7 @@ export interface EditorState {
   project: ProjectSpec;
   currentSceneId: Id;
   selection: Selection;
+  sidebarScope: SidebarScope;
   expandedGroups: Record<Id, boolean>;
   history: HistoryState;
   dirty: boolean;
@@ -138,6 +140,7 @@ export type EditorAction =
   | { type: 'set-startup-mode'; startupMode: StartupMode }
   | { type: 'set-theme-mode'; themeMode: ThemeMode }
   | { type: 'set-ui-scale'; uiScale: number }
+  | { type: 'set-sidebar-scope'; scope: SidebarScope }
   | { type: 'select'; selection: Selection }
   | { type: 'select-multiple'; entityIds: Id[]; additive: boolean }
   | { type: 'history-undo' }
@@ -154,6 +157,7 @@ export type EditorAction =
   | { type: 'duplicate-scene'; sceneId: Id; nextSceneId?: Id }
   | { type: 'delete-scene'; sceneId: Id }
   | { type: 'rename-scene'; sceneId: Id; name: string }
+  | { type: 'toggle-base-scene'; sceneId: Id }
   | { type: 'update-scene-world'; width: number; height: number }
   | { type: 'update-entity'; id: Id; next: EntitySpec }
   | { type: 'import-entities'; drafts: ImportedEntityDraft[] }
@@ -292,6 +296,7 @@ function defaultState(): EditorState {
     project,
     currentSceneId,
     selection: { kind: 'none' },
+    sidebarScope: 'scene',
     expandedGroups: defaultExpandedGroups(scene),
     history: { past: [], future: [], pending: undefined },
     dirty: false,
@@ -339,6 +344,24 @@ function withScene(
     expandedGroups,
     dirty,
     error: undefined,
+  };
+}
+
+function withBaseSceneId(project: ProjectSpec, baseSceneId: Id | undefined): ProjectSpec {
+  const { baseSceneId: _removed, ...rest } = project as any as ProjectSpec & { baseSceneId?: Id };
+  void _removed;
+  return {
+    ...rest,
+    ...(baseSceneId ? { baseSceneId } : {}),
+  };
+}
+
+function withSceneMeta(project: ProjectSpec, sceneMeta: ProjectSpec['sceneMeta'] | undefined): ProjectSpec {
+  const { sceneMeta: _removed, ...rest } = project as any as ProjectSpec & { sceneMeta?: ProjectSpec['sceneMeta'] };
+  void _removed;
+  return {
+    ...rest,
+    ...(sceneMeta ? { sceneMeta } : {}),
   };
 }
 
@@ -405,6 +428,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'duplicate-scene':
     case 'delete-scene':
     case 'rename-scene':
+    case 'toggle-base-scene':
     case 'reset-scene':
     case 'load-yaml':
     case 'load-yaml-text':
@@ -437,6 +461,7 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'duplicate-scene':
     case 'delete-scene':
     case 'rename-scene':
+    case 'toggle-base-scene':
     case 'load-yaml':
     case 'load-yaml-text':
     case 'reset-scene':
@@ -705,6 +730,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           project: action.project,
           currentSceneId,
           selection: { kind: 'none' },
+          sidebarScope: state.sidebarScope ?? 'scene',
           expandedGroups: defaultExpandedGroups(activeScene),
           history: { past: [], future: [], pending: undefined },
           dirty: false,
@@ -732,6 +758,11 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         uiScale: coerceUiScale(String(action.uiScale), state.uiScale),
+      };
+    case 'set-sidebar-scope':
+      return {
+        ...state,
+        sidebarScope: action.scope,
       };
     case 'select':
       return { ...state, selection: action.selection, error: undefined };
@@ -844,13 +875,19 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const nextId = allocUniqueId(state.project.scenes, action.nextSceneId ?? `${action.sceneId}-copy`);
       const cloned = JSON.parse(JSON.stringify(source)) as GameSceneSpec;
       cloned.id = nextId;
-      const project: ProjectSpec = {
+      const sourceMeta = state.project.sceneMeta?.[action.sceneId];
+      const nextSceneMeta = sourceMeta
+        ? { ...(state.project.sceneMeta ?? {}), [nextId]: JSON.parse(JSON.stringify(sourceMeta)) }
+        : state.project.sceneMeta;
+
+      let project: ProjectSpec = {
         ...state.project,
         scenes: {
           ...state.project.scenes,
           [nextId]: cloned,
         },
       };
+      project = withSceneMeta(project, nextSceneMeta);
       return {
         ...state,
         project,
@@ -871,11 +908,18 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const fallbackId = remainingIds[0];
       const nextCurrent = state.currentSceneId === action.sceneId ? fallbackId : state.currentSceneId;
       const nextInitial = state.project.initialSceneId === action.sceneId ? fallbackId : state.project.initialSceneId;
-      const project: ProjectSpec = {
+      const nextBaseSceneId = state.project.baseSceneId === action.sceneId ? undefined : state.project.baseSceneId;
+      const nextSceneMeta = state.project.sceneMeta
+        ? Object.fromEntries(Object.entries(state.project.sceneMeta).filter(([sceneId]) => sceneId !== action.sceneId))
+        : undefined;
+
+      let project: ProjectSpec = {
         ...state.project,
         scenes: remaining,
         initialSceneId: nextInitial,
       };
+      project = withBaseSceneId(project, nextBaseSceneId);
+      project = withSceneMeta(project, nextSceneMeta);
       const activeScene = project.scenes[nextCurrent];
       return {
         ...state,
@@ -899,17 +943,38 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       void _removed;
       const renamed: GameSceneSpec = { ...(source as any), id: nextId };
       const scenes = { ...rest, [nextId]: renamed };
-      const project: ProjectSpec = {
+      const nextBaseSceneId = state.project.baseSceneId === action.sceneId ? nextId : state.project.baseSceneId;
+      const nextSceneMeta = state.project.sceneMeta
+        ? (() => {
+          const { [action.sceneId]: removed, ...kept } = state.project.sceneMeta!;
+          return removed ? { ...kept, [nextId]: removed } : kept;
+        })()
+        : undefined;
+
+      let project: ProjectSpec = {
         ...state.project,
         scenes,
         initialSceneId: state.project.initialSceneId === action.sceneId ? nextId : state.project.initialSceneId,
       };
+      project = withBaseSceneId(project, nextBaseSceneId);
+      project = withSceneMeta(project, nextSceneMeta);
       return {
         ...state,
         project,
         currentSceneId: state.currentSceneId === action.sceneId ? nextId : state.currentSceneId,
         selection: { kind: 'none' },
         expandedGroups: state.currentSceneId === action.sceneId ? defaultExpandedGroups(renamed) : state.expandedGroups,
+        dirty: true,
+        error: undefined,
+      };
+    }
+    case 'toggle-base-scene': {
+      if (!state.project.scenes[action.sceneId]) return state;
+      const nextBaseSceneId = state.project.baseSceneId === action.sceneId ? undefined : action.sceneId;
+      const project = withBaseSceneId(state.project, nextBaseSceneId);
+      return {
+        ...state,
+        project,
         dirty: true,
         error: undefined,
       };

@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:600;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .dot{fill:rgba(170,180,230,0.75);}
+      .groupTitle{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Editor IA Proposal — Idea C: Grouped Sidebar Cards (Mockup)</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Left: scene selector -->
+  <rect x="44" y="140" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="162" class="fieldText">Scene: scene-1</text>
+
+  <!-- Group 1: Project Assets -->
+  <rect x="44" y="188" width="296" height="202" rx="12" class="panel2"/>
+  <text x="58" y="214" class="groupTitle">Project Assets (Global)</text>
+  <rect x="58" y="230" width="268" height="30" rx="10" class="field"/>
+  <text x="72" y="250" class="fieldText">Sprites</text>
+  <rect x="58" y="264" width="130" height="28" rx="10" class="btnPrimary"/>
+  <text x="80" y="283" class="btnText">Import…</text>
+  <rect x="196" y="264" width="130" height="28" rx="10" class="btn"/>
+  <text x="214" y="283" class="btnTextMuted">Manage</text>
+
+  <rect x="58" y="304" width="268" height="30" rx="10" class="field"/>
+  <text x="72" y="324" class="fieldText">Audio</text>
+  <rect x="58" y="338" width="130" height="28" rx="10" class="btn"/>
+  <text x="88" y="357" class="btnTextMuted">Add/Import…</text>
+
+  <rect x="196" y="338" width="130" height="28" rx="10" class="btn"/>
+  <text x="216" y="357" class="btnTextMuted">Library</text>
+
+  <!-- Group 2: Current Scene -->
+  <rect x="44" y="404" width="296" height="238" rx="12" class="panel2"/>
+  <text x="58" y="430" class="groupTitle">Current Scene: scene-1</text>
+
+  <rect x="58" y="446" width="268" height="30" rx="10" class="field"/>
+  <text x="72" y="466" class="fieldText">Formations</text>
+  <text x="300" y="466" class="tiny">3</text>
+  <rect x="58" y="482" width="268" height="28" rx="10" class="btnPrimary"/>
+  <text x="132" y="501" class="btnText">+ New Formation</text>
+
+  <rect x="58" y="520" width="268" height="30" rx="10" class="field"/>
+  <text x="72" y="540" class="fieldText">Input (Assignments)</text>
+
+  <rect x="58" y="556" width="268" height="30" rx="10" class="field"/>
+  <text x="72" y="576" class="fieldText">Audio (Assignments)</text>
+
+  <rect x="58" y="592" width="268" height="30" rx="10" class="field"/>
+  <text x="72" y="612" class="fieldText">Trigger Zones</text>
+
+  <!-- Center: canvas placeholder -->
+  <rect x="408" y="140" width="444" height="456" rx="12" class="panel2"/>
+  <circle cx="548" cy="320" r="6" class="dot"/>
+  <circle cx="610" cy="270" r="6" class="dot"/>
+  <circle cx="680" cy="330" r="6" class="dot"/>
+  <circle cx="720" cy="420" r="6" class="dot"/>
+  <text x="420" y="610" class="tiny">Global actions live in “Project Assets”; scene actions live in “Current Scene”.</text>
+
+  <!-- Right: Inspector remains selection-based -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="field"/>
+  <text x="936" y="162" class="fieldText">Inspector</text>
+  <rect x="920" y="188" width="236" height="120" rx="12" class="panel2"/>
+  <text x="936" y="214" class="small">Selection</text>
+  <text x="936" y="236" class="tiny">Selected: sprite enemy_ship</text>
+  <text x="936" y="258" class="tiny">Edits appear here; creation stays in sidebar cards.</text>
+
+  <!-- Callout -->
+  <rect x="372" y="610" width="516" height="86" rx="12" class="callout"/>
+  <text x="392" y="636" class="calloutText">Resolves:</text>
+  <text x="392" y="658" class="tiny">1) Two explicit sections visually imply containment (Global vs Current Scene).</text>
+  <text x="392" y="676" class="tiny">2) Formation creation is always visible in the Scene card (not tied to empty selection).</text>
+  <text x="392" y="694" class="tiny">3) Sprite import is always available in the Project Assets card (any scene).</text>
+</svg>
+

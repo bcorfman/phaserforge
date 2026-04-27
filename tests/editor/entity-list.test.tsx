@@ -11,6 +11,7 @@ describe('EntityList', () => {
         currentSceneId={sampleProject.initialSceneId}
         scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
+        sidebarScope="scene"
         expandedGroups={{ 'g-enemies': false }}
         mode="edit"
         dispatch={() => {}}
@@ -32,6 +33,7 @@ describe('EntityList', () => {
         currentSceneId={sampleProject.initialSceneId}
         scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
+        sidebarScope="scene"
         expandedGroups={{ 'g-enemies': false }}
         mode="edit"
         dispatch={() => {}}
@@ -48,6 +50,7 @@ describe('EntityList', () => {
         currentSceneId={sampleProject.initialSceneId}
         scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
+        sidebarScope="scene"
         expandedGroups={{ 'g-enemies': true }}
         mode="edit"
         dispatch={() => {}}
@@ -68,6 +71,7 @@ describe('EntityList', () => {
         currentSceneId={sampleProject.initialSceneId}
         scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
+        sidebarScope="scene"
         expandedGroups={{ 'g-enemies': false }}
         mode="edit"
         dispatch={() => {}}
@@ -88,6 +92,7 @@ describe('EntityList', () => {
         currentSceneId={sampleProject.initialSceneId}
         scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
+        sidebarScope="scene"
         expandedGroups={{ 'g-enemies': false }}
         mode="play"
         dispatch={() => {}}
@@ -96,5 +101,26 @@ describe('EntityList', () => {
 
     expect(markup).toContain(`data-testid=\"scene-item-${sampleProject.initialSceneId}\"`);
     expect(markup).toContain('disabled');
+  });
+
+  it('renders project-scoped panels when the project scope tab is active', () => {
+    const markup = renderToStaticMarkup(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
+        selection={{ kind: 'none' }}
+        sidebarScope="project"
+        expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
+        dispatch={() => {}}
+      />
+    );
+
+    expect(markup).toContain('Input Maps');
+    expect(markup).toContain('Audio');
+    expect(markup).toContain('Import Sprites');
+    expect(markup).not.toContain('Formations');
+    expect(markup).not.toContain('Trigger Zones');
   });
 });
