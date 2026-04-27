@@ -35,6 +35,7 @@ This is a quick parity map from the current Laser Gates architecture (persistent
   - Ensure `parseProjectYaml` preserves/validates:
     - if `baseSceneId` is present, it must exist in `scenes`.
     - if `sceneMeta` has unknown ids, ignore/drop them on parse (default: **ignore unknown** to avoid hard failures).
+✅ Implemented.
 
 ### 2) Editor UX: “stage reuse” + base selection
 - Scenes panel:
@@ -44,6 +45,7 @@ This is a quick parity map from the current Laser Gates architecture (persistent
     - One scene can be base at a time; clicking sets `project.baseSceneId = sceneId`.
     - Clicking again on the base scene clears `baseSceneId` (optional base).
   - Show role badge (Base / Wave / Stage) using `sceneMeta` (optional, purely organizational in MVP).
+✅ Implemented.
 
 ### 3) Edit-mode composition: ghost-render the base behind the active scene
 - When `project.baseSceneId` is set and `currentSceneId !== baseSceneId`:
@@ -55,6 +57,7 @@ This is a quick parity map from the current Laser Gates architecture (persistent
   - Internally maintain two sprite maps (reference + active) so selection/hover logic only considers active.
   - Render ordering: reference sprites depth-offset (e.g. `depth - 10_000`) or a separate container.
   - Visual cue: lower alpha for reference sprites (e.g. multiply alpha by 0.35) without mutating authored data.
+✅ Implemented.
 
 ### 4) Play-mode composition: compile/run base + wave as separate layers
 - MVP layers are exactly:
@@ -66,6 +69,7 @@ This is a quick parity map from the current Laser Gates architecture (persistent
   - Update loop calls both action managers each frame.
   - Sprite synchronization loops over both compiled entity sets.
   - Asset ensuring loads textures used by either layer before building sprites.
+✅ Implemented.
 
 ### 5) Runtime scene switching for waves: `scene.gotoWave(sceneId)`
 - Call payloads must support string args:
@@ -77,6 +81,7 @@ This is a quick parity map from the current Laser Gates architecture (persistent
   - `GameScene` call handler emits it.
   - `AppShell` listens and dispatches `set-current-scene` when in play mode.
   - This triggers the existing `EventBus.emit('load-scene', ...)` path so Phaser reloads consistently.
+✅ Implemented (via `scene.gotoWave` op emitting `runtime-request-scene`, then app dispatches `set-current-scene`).
 
 ### 5.5) MVP collision scripting: collision event → Call ops (required for Laser Gates)
 Laser Gates waves are mostly “if shot overlaps obstacle, destroy obstacle + remove shot; if player overlaps obstacle, end wave”.
@@ -100,11 +105,11 @@ Laser Gates waves are mostly “if shot overlaps obstacle, destroy obstacle + re
 
 ## Laser Gates parity checklist (what must be true for a Phaser clone)
 - **Authoring**:
-  - Base scene can be designated and ghost-rendered under waves in edit mode.
-  - Waves can be duplicated/renamed quickly and organized.
+  - Base scene can be designated and ghost-rendered under waves in edit mode. ✅
+  - Waves can be duplicated/renamed quickly and organized. ✅
 - **Runtime**:
-  - Base layer persists across wave swaps (player + scroll never reset).
-  - Wave layer can be replaced while base continues running.
+  - Base layer persists across wave swaps (player + scroll never reset). ✅
+  - Wave layer can be replaced while base continues running. ✅
   - Input maps can drive the player entity (move + fire).
   - Shots can be spawned/destroyed deterministically.
   - Collision rules can trigger authored actions/ops (shot-hit + player-hit).
@@ -159,9 +164,9 @@ Laser Gates waves are mostly “if shot overlaps obstacle, destroy obstacle + re
   - Store reducer tests for: set/clear base scene, rename scene UI wiring, runtime-request-scene dispatch behavior.
   - Compiler test for Call args supporting string (`sceneId`) and not dropping them.
 - Integration/e2e (Playwright):
-  - Edit mode: base ghost sprites render but are not selectable/draggable (clicking them doesn’t change selection).
-  - Play mode: base persists across `scene.gotoWave` (base entity positions continue updating while wave layer resets/changes).
-  - Runtime-request-scene keeps React scene list/currentSceneId in sync.
+  - Edit mode: base ghost sprites render but are not selectable/draggable (clicking them doesn’t change selection). ✅
+  - Play mode: base persists across `scene.gotoWave` (base entity positions continue updating while wave layer resets/changes). ✅
+  - Runtime-request-scene keeps React scene list/currentSceneId in sync. ✅
 
 ---
 

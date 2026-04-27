@@ -58,6 +58,25 @@ export class BootScene extends Phaser.Scene {
       this.services.scene.goto(sceneId, { transition, durationMs });
     });
 
+    registry.register('scene.gotoWave', (action) => {
+      const project = this.project;
+      if (!project) return;
+      if (this.mode !== 'play') return;
+
+      const args = (action as any).args ?? {};
+      const sceneId = typeof args.sceneId === 'string' ? args.sceneId : '';
+      if (!sceneId) {
+        console.warn('[phaseractions] scene.gotoWave missing sceneId');
+        return;
+      }
+      if (!project.scenes[sceneId]) {
+        console.warn(`[phaseractions] scene.gotoWave target scene not found: ${sceneId}`);
+        return;
+      }
+
+      EventBus.emit('runtime-request-scene', { sceneId });
+    });
+
     registry.register('audio.play_sfx', (action) => {
       const args = (action as any).args ?? {};
       const assetId = typeof args.assetId === 'string' ? args.assetId : '';
@@ -117,9 +136,12 @@ export class BootScene extends Phaser.Scene {
     const project = this.project;
     if (!project) return;
     editor.setRuntimeOps(this.opRegistry);
+    const baseId = project.baseSceneId;
+    const baseScene = baseId && project.scenes[baseId] ? project.scenes[baseId] : undefined;
+    const bundle = baseScene && baseScene.id !== scene.id ? { active: scene, reference: baseScene } : scene;
     if (isRunning) {
       editor.setPendingViewState(this.lastViewState);
-      editor.loadSceneSpec(project, scene);
+      editor.loadSceneSpec(project, bundle as any);
       this.scene.wake('EditorScene');
       return;
     }
@@ -127,7 +149,7 @@ export class BootScene extends Phaser.Scene {
     editor.events.once(Phaser.Scenes.Events.CREATE, () => {
       editor.setRuntimeOps(this.opRegistry);
       editor.setPendingViewState(this.lastViewState);
-      editor.loadSceneSpec(project, scene);
+      editor.loadSceneSpec(project, bundle as any);
     });
     this.scene.launch('EditorScene');
   }
