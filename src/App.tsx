@@ -172,6 +172,19 @@ function AppShell() {
   }, [sceneReady, state.mode]);
 
   useEffect(() => {
+    const handleRuntimeRequestScene = (payload: { sceneId?: string } | string) => {
+      const sceneId = typeof payload === 'string' ? payload : payload?.sceneId;
+      if (typeof sceneId !== 'string' || sceneId.length === 0) return;
+      dispatch({ type: 'set-current-scene', sceneId });
+    };
+
+    EventBus.on('runtime-request-scene', handleRuntimeRequestScene);
+    return () => {
+      EventBus.off('runtime-request-scene', handleRuntimeRequestScene);
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
     EventBus.emit('selection-changed', state.selection);
   }, [state.selection]);
 

@@ -7,6 +7,10 @@ A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, 
 ## What’s In The Editor Today
 
 - **Multi-scene projects** with a per-scene world size.
+- **Base scene + waves (Phase 8)**:
+  - Mark a scene as the **Base** (★) in the Scenes list (`project.baseSceneId`).
+  - **Edit mode**: the base scene renders as a **non-interactive ghost** behind the active scene for alignment.
+  - **Play mode**: the runtime composes **persistent base + swappable wave** layers; waves can swap via `scene.gotoWave(sceneId)` without resetting the base.
 - **Sidebar scope tabs**:
   - **Scene**: scene-scoped panels (sprites, trigger zones, formations).
   - **Project**: project-level panels (sprite import, audio library, input maps).
@@ -17,7 +21,7 @@ A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, 
 - **Play mode mouse controls**: optional hide OS cursor, and mouse-driven entity motion with independent X/Y axis locks.
 - **Collisions + trigger zones (Arcade-style, Phase 7)**: author per-entity collision metadata (body + collision layer), scene collision rules (`block`/`overlap`), and rectangular trigger zones. Play mode exposes enter/stay/exit/click events in the runtime test snapshot.
 - **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, plus `Repeat` as a script-level wrapper.
-- **`Call` actions require a registered handler**. The Studio preview scene registers a small call registry (for example `drop`); unknown `callId` values will fail during preview compile/run.
+- **`Call` actions require a registered handler**. The runtime includes built-in handlers like `scene.goto`, `scene.gotoWave`, `entity.destroy`, and `audio.play_sfx` (plus sample/demo ops like `drop`). Unknown `callId` values will fail during preview compile/run.
 - **Inline conditions (current)**: `BoundsHit` and `ElapsedTime` (used by `MoveUntil`).
 - **Play mode** compiles the authored scene and runs actions; **Edit mode** is for authoring.
 

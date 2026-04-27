@@ -30,6 +30,8 @@ import { canPanCamera, clampCameraScroll, clampZoom, getFitZoom, getNextZoom, ge
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
+const REFERENCE_GHOST_ALPHA_MULTIPLIER = 0.35;
+const REFERENCE_GHOST_DEPTH_OFFSET = -10_000;
 
 type PhysicsObject =
   | Phaser.Types.Physics.Arcade.ImageWithDynamicBody
@@ -215,6 +217,7 @@ export class EditorScene extends Phaser.Scene {
     ready: boolean;
     sceneKey: string;
     compiledSceneId?: string;
+    referenceSpriteCount: number;
     zoom: number;
     scrollX: number;
     scrollY: number;
@@ -226,6 +229,7 @@ export class EditorScene extends Phaser.Scene {
       ready: Boolean(this.compiled),
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
+      referenceSpriteCount: this.referenceSprites.size,
       zoom: this.currentZoom,
       scrollX: this.cameras.main.scrollX,
       scrollY: this.cameras.main.scrollY,
@@ -535,14 +539,27 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
-  private loadScene(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec, mode: 'edit' | 'play' = 'edit'): void {
+  private loadScene(
+    project: ProjectSpec | undefined,
+    sceneSpec: GameSceneSpec,
+    mode: 'edit' | 'play' = 'edit',
+    referenceSceneSpec?: GameSceneSpec
+  ): void {
     const currentLoadVersion = ++this.loadVersion;
     this.clearScene();
     this.mode = mode;
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry });
+    this.referenceCompiled = referenceSceneSpec ? compileScene(referenceSceneSpec, { opRegistry: this.opRegistry }) : undefined;
 
-    void this.ensureAssetTextures(project, sceneSpec).finally(() => {
+    void this.ensureAssetTextures(project, referenceSceneSpec ? [sceneSpec, referenceSceneSpec] : [sceneSpec]).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
+      if (referenceSceneSpec && this.referenceCompiled) {
+        this.buildBackgroundLayers(project, referenceSceneSpec, {
+          alphaMultiplier: REFERENCE_GHOST_ALPHA_MULTIPLIER,
+          depthOffset: REFERENCE_GHOST_DEPTH_OFFSET,
+        });
+        this.buildReferenceSprites();
+      }
       this.buildBackgroundLayers(project, sceneSpec);
       this.buildSprites();
       if (mode === 'play') this.buildFormationPhysicsGroups(sceneSpec);
@@ -590,6 +607,9 @@ export class EditorScene extends Phaser.Scene {
     this.physicsSizeCache.clear();
     this.sprites.forEach(sprite => sprite.destroy());
     this.sprites.clear();
+    this.referenceSprites.forEach(sprite => sprite.destroy());
+    this.referenceSprites.clear();
+    this.referenceCompiled = undefined;
     this.entityToGroup.clear();
     this.boundsGraphics?.destroy();
     this.boundsGraphics = undefined;
@@ -609,7 +629,11 @@ export class EditorScene extends Phaser.Scene {
     this.activeBoundsConditionId = undefined;
   }
 
-  private buildBackgroundLayers(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec): void {
+  private buildBackgroundLayers(
+    project: ProjectSpec | undefined,
+    sceneSpec: GameSceneSpec,
+    opts: { alphaMultiplier?: number; depthOffset?: number } = {}
+  ): void {
     const layers = sceneSpec.backgroundLayers ?? [];
     if (!project || layers.length === 0) return;
 
@@ -622,12 +646,13 @@ export class EditorScene extends Phaser.Scene {
 
       const scrollX = layer.scrollFactor?.x ?? 1;
       const scrollY = layer.scrollFactor?.y ?? 1;
-      const alpha = layer.alpha ?? 1;
+      const alpha = (layer.alpha ?? 1) * (opts.alphaMultiplier ?? 1);
+      const depth = (layer.depth ?? 0) + (opts.depthOffset ?? 0);
 
       if (layer.layout === 'tile') {
         const sprite = this.add.tileSprite(layer.x, layer.y, world.width, world.height, key);
         sprite.setOrigin(0, 0);
-        sprite.setDepth(layer.depth);
+        sprite.setDepth(depth);
         sprite.setScrollFactor(scrollX, scrollY);
         sprite.setAlpha(alpha);
         if (layer.tint != null) sprite.setTint(layer.tint);
@@ -637,7 +662,7 @@ export class EditorScene extends Phaser.Scene {
 
       const image = this.add.image(layer.x, layer.y, key);
       image.setOrigin(0.5, 0.5);
-      image.setDepth(layer.depth);
+      image.setDepth(depth);
       image.setScrollFactor(scrollX, scrollY);
       image.setAlpha(alpha);
       if (layer.tint != null) image.setTint(layer.tint);
@@ -658,6 +683,32 @@ export class EditorScene extends Phaser.Scene {
       }
 
       this.backgroundObjects.push(image);
+    }
+  }
+
+  private buildReferenceSprites(): void {
+    if (!this.referenceCompiled) return;
+    for (const entity of Object.values(this.referenceCompiled.entities)) {
+      const asset = this.referenceCompiled.scene.entities[entity.id]?.asset;
+      const textureKey = asset ? this.getTextureKey(asset) : undefined;
+      let sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+      if (asset && textureKey && this.textures.exists(textureKey)) {
+        const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+        if (asset.imageType === 'spritesheet') {
+          sprite = this.add.sprite(entity.x, entity.y, textureKey, frame);
+        } else {
+          sprite = this.add.image(entity.x, entity.y, textureKey);
+        }
+      } else {
+        const rect = this.add.rectangle(entity.x, entity.y, entity.width, entity.height, 0x69d2ff, 0.4);
+        rect.setStrokeStyle(2, 0x1a2b4a, 0.85);
+        sprite = rect;
+      }
+      sprite.disableInteractive();
+      this.applyEntityDisplayProps(sprite, entity, asset);
+      sprite.setAlpha((sprite.alpha ?? 1) * REFERENCE_GHOST_ALPHA_MULTIPLIER);
+      sprite.setDepth((sprite.depth ?? 0) + REFERENCE_GHOST_DEPTH_OFFSET);
+      this.referenceSprites.set(entity.id, sprite);
     }
   }
 
@@ -968,24 +1019,33 @@ export class EditorScene extends Phaser.Scene {
     return `bg:${assetId}`;
   }
 
-  private async ensureAssetTextures(project: ProjectSpec | undefined, sceneSpec: GameSceneSpec): Promise<void> {
-    const pendingAssets = Object.values(sceneSpec.entities)
-      .map((entity) => entity.asset)
-      .filter((asset): asset is SpriteAssetSpec => Boolean(asset))
-      .filter((asset) => !this.textures.exists(this.getTextureKey(asset)));
-
+  private async ensureAssetTextures(project: ProjectSpec | undefined, sceneSpecs: GameSceneSpec[]): Promise<void> {
+    const pendingAssets: SpriteAssetSpec[] = [];
     const pendingBackgrounds: Array<{ key: string; url: string }> = [];
-    const backgroundLayers = sceneSpec.backgroundLayers ?? [];
-    if (project && backgroundLayers.length > 0) {
-      for (const layer of backgroundLayers) {
-        const asset = project.assets.images?.[layer.assetId];
-        if (!asset) continue;
-        const key = this.getBackgroundTextureKey(asset.id);
+
+    for (const sceneSpec of sceneSpecs) {
+      for (const asset of Object.values(sceneSpec.entities)
+        .map((entity) => entity.asset)
+        .filter((asset): asset is SpriteAssetSpec => Boolean(asset))) {
+        const key = this.getTextureKey(asset);
         if (this.textures.exists(key)) continue;
-        pendingBackgrounds.push({
-          key,
-          url: asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path,
-        });
+        if (!pendingAssets.some((existing) => this.getTextureKey(existing) === key)) pendingAssets.push(asset);
+      }
+
+      const backgroundLayers = sceneSpec.backgroundLayers ?? [];
+      if (project && backgroundLayers.length > 0) {
+        for (const layer of backgroundLayers) {
+          const asset = project.assets.images?.[layer.assetId];
+          if (!asset) continue;
+          const key = this.getBackgroundTextureKey(asset.id);
+          if (this.textures.exists(key)) continue;
+          if (!pendingBackgrounds.some((b) => b.key === key)) {
+            pendingBackgrounds.push({
+              key,
+              url: asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path,
+            });
+          }
+        }
       }
     }
 
