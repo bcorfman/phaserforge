@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
 import { inferGroupGridLayout } from './formationLayout';
-import { SpriteImportPanel } from './SpriteImportPanel';
 import { AttachedActionsPanel } from './AttachedActionsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { AttachmentSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
@@ -246,7 +245,6 @@ export function Inspector() {
         <span>Pin selection while dragging</span>
       </label>
       {content}
-      <SpriteImportPanel />
     </div>
   );
 }

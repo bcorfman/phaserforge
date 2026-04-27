@@ -13,3 +13,6 @@ Lightweight SVG wireframes for `.plans/interactive-playmode-runtime.md`.
 - `phase7-collisions-triggers.svg`: collision rules authoring + trigger zone authoring + runtime enter/exit snapshots (mockup)
 - `phase7b-trigger-scripts.svg`: trigger scripts executing service calls (audio.play_sfx / scene.goto / entity.destroy) + runtime event log (mockup)
 - `phase7c-trigger-call-presets.svg`: structured trigger call editor presets (mockup)
+- `phase8-base-scene-selection.svg`: Scenes panel “Set Base” toggle + Base/Wave/Stage role badges (mockup)
+- `phase8b-ghost-base-edit.svg`: edit-mode base ghost rendering behind active wave scene (mockup)
+- `phase8c-layered-playmode-waves.svg`: play-mode base+wave layered runtime + `scene.gotoWave(sceneId)` behavior (mockup)

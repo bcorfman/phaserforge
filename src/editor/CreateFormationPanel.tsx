@@ -162,10 +162,18 @@ export function CreateFormationPanel({
   };
 
   const scrollToImportPanel = () => {
+    dispatch({ type: 'set-sidebar-scope', scope: 'project' });
     const panel = document.querySelector('[data-testid="sprite-import-panel"]');
     if (panel instanceof HTMLElement) {
       panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
     }
+    requestAnimationFrame(() => {
+      const retry = document.querySelector('[data-testid="sprite-import-panel"]');
+      if (retry instanceof HTMLElement) {
+        retry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
   };
 
   return (

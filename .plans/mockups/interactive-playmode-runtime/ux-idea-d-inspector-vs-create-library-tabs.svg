@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:600;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .dot{fill:rgba(170,180,230,0.75);}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Editor IA Proposal — Idea D: Inspector Only + Create/Library Tab (Mockup)</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Right Panel</text>
+
+  <!-- Left: existing-ish sidebar (no major IA change required) -->
+  <rect x="44" y="140" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="162" class="fieldText">Scenes ▾</text>
+  <rect x="44" y="182" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="204" class="fieldText">scene-1</text>
+  <line x1="44" y1="236" x2="340" y2="236" class="divider"/>
+  <text x="44" y="262" class="label">Scene Items</text>
+  <rect x="44" y="280" width="296" height="30" rx="10" class="field"/>
+  <text x="58" y="300" class="fieldText">Formations</text>
+  <rect x="44" y="316" width="296" height="30" rx="10" class="field"/>
+  <text x="58" y="336" class="fieldText">Trigger Zones</text>
+  <rect x="44" y="352" width="296" height="30" rx="10" class="field"/>
+  <text x="58" y="372" class="fieldText">Sprites (placed)</text>
+  <text x="44" y="410" class="tiny">All creation/import tools live on the right under “Create/Library”.</text>
+
+  <!-- Center: canvas placeholder -->
+  <rect x="408" y="140" width="444" height="456" rx="12" class="panel2"/>
+  <circle cx="548" cy="320" r="6" class="dot"/>
+  <circle cx="610" cy="270" r="6" class="dot"/>
+  <circle cx="680" cy="330" r="6" class="dot"/>
+  <circle cx="720" cy="420" r="6" class="dot"/>
+
+  <!-- Right: tabs -->
+  <rect x="920" y="140" width="114" height="32" rx="10" class="chip"/>
+  <text x="948" y="161" class="btnTextMuted">Inspector</text>
+  <rect x="1042" y="140" width="114" height="32" rx="10" class="chipActive"/>
+  <text x="1060" y="161" class="btnText">Create</text>
+
+  <!-- Create/Library content -->
+  <rect x="920" y="188" width="236" height="508" rx="12" class="panel2"/>
+  <text x="936" y="214" class="small">Create / Library</text>
+
+  <rect x="936" y="232" width="204" height="30" rx="10" class="btnPrimary"/>
+  <text x="980" y="252" class="btnText">Import Sprites…</text>
+
+  <rect x="936" y="268" width="204" height="30" rx="10" class="btn"/>
+  <text x="990" y="288" class="btnTextMuted">Add Audio…</text>
+
+  <rect x="936" y="304" width="204" height="30" rx="10" class="btn"/>
+  <text x="980" y="324" class="btnTextMuted">New Input Map…</text>
+
+  <line x1="936" y1="346" x2="1140" y2="346" class="divider"/>
+  <text x="936" y="372" class="small">Scene Tools</text>
+
+  <rect x="936" y="388" width="204" height="30" rx="10" class="btnPrimary"/>
+  <text x="974" y="408" class="btnText">+ New Formation…</text>
+  <text x="936" y="438" class="tiny">If no scene is selected, prompt “Choose scene”.</text>
+
+  <!-- Callout -->
+  <rect x="372" y="610" width="516" height="86" rx="12" class="callout"/>
+  <text x="392" y="636" class="calloutText">Resolves:</text>
+  <text x="392" y="658" class="tiny">1) Scope is clarified by separating “Create/Library” (global tools) from “Inspector” (selection).</text>
+  <text x="392" y="676" class="tiny">2) “Create Formation” never hides; it’s a stable Create-panel action.</text>
+  <text x="392" y="694" class="tiny">3) “Import Sprites” is always accessible, independent of the active scene/canvas selection.</text>
+</svg>
+

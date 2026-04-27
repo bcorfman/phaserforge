@@ -837,6 +837,15 @@ html[data-theme='dark'] .phaser-frame {
   border-top: 1px solid rgba(186, 168, 143, 0.28);
 }
 
+.sidebar-scope-tabs {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.sidebar-scope-tabs > .button {
+  flex: 1;
+}
+
 .panel-heading-row {
   display: flex;
   align-items: center;

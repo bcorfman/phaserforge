@@ -7,10 +7,13 @@ A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, 
 ## What’s In The Editor Today
 
 - **Multi-scene projects** with a per-scene world size.
-- **Sprite import** (embedded file → data URL, or “asset path” reference), including a spritesheet frame picker and optional auto-hitbox.
+- **Sidebar scope tabs**:
+  - **Scene**: scene-scoped panels (sprites, trigger zones, formations).
+  - **Project**: project-level panels (sprite import, audio library, input maps).
+- **Sprite import (Project tab)**: embedded file → data URL, or “asset path” reference, including a spritesheet frame picker and optional auto-hitbox.
 - **Canvas editing**: drag sprites and formations, marquee multi-select, group / dissolve, grid snap, undo/redo, pan/zoom, fit/reset view.
 - **Formations (groups)** can use declarative arrange layouts (grid, line, circle, arc, etc.) driven by `public/editor-registry.yaml`.
-- **Input maps (semantic controls)**: author project-level action bindings (keyboard / mouse / gamepad buttons), choose active/fallback maps per scene, and preview runtime action states in Play mode.
+- **Input maps (semantic controls) (Project tab)**: author project-level action bindings (keyboard / mouse / gamepad buttons), choose active/fallback maps per scene, and preview runtime action states in Play mode.
 - **Play mode mouse controls**: optional hide OS cursor, and mouse-driven entity motion with independent X/Y axis locks.
 - **Collisions + trigger zones (Arcade-style, Phase 7)**: author per-entity collision metadata (body + collision layer), scene collision rules (`block`/`overlap`), and rectangular trigger zones. Play mode exposes enter/stay/exit/click events in the runtime test snapshot.
 - **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, plus `Repeat` as a script-level wrapper.

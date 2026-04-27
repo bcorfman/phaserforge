@@ -37,8 +37,10 @@ type PhysicsObject =
 
 export class EditorScene extends Phaser.Scene {
   private compiled?: CompiledScene;
+  private referenceCompiled?: CompiledScene;
   private opRegistry: OpRegistry = new OpRegistry();
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
+  private referenceSprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
   private entityToGroup = new Map<string, string>();
   private formationPhysicsGroups = new Map<string, Phaser.Physics.Arcade.Group>();
   private physicsObjects = new Map<string, PhysicsObject>();
@@ -107,7 +109,16 @@ export class EditorScene extends Phaser.Scene {
 
   public loadSceneSpec(sceneSpec: SceneSpec): void;
   public loadSceneSpec(project: ProjectSpec, sceneSpec: SceneSpec): void;
-  public loadSceneSpec(projectOrScene: ProjectSpec | SceneSpec, maybeScene?: SceneSpec): void {
+  public loadSceneSpec(project: ProjectSpec, sceneSpec: { active: SceneSpec; reference?: SceneSpec }): void;
+  public loadSceneSpec(
+    projectOrScene: ProjectSpec | SceneSpec,
+    maybeScene?: SceneSpec | { active: SceneSpec; reference?: SceneSpec }
+  ): void {
+    if (maybeScene && typeof (maybeScene as any).active === 'object') {
+      const bundle = maybeScene as { active: SceneSpec; reference?: SceneSpec };
+      this.loadScene(projectOrScene as ProjectSpec, bundle.active as GameSceneSpec, 'edit', bundle.reference as GameSceneSpec);
+      return;
+    }
     if (maybeScene) {
       this.loadScene(projectOrScene as ProjectSpec, maybeScene as GameSceneSpec, 'edit');
       return;

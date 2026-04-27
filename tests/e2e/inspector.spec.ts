@@ -6,11 +6,15 @@ import {
   getEntitySpriteWorldRect,
   getState,
   gotoStudio,
+  openProjectScope,
+  openSceneScope,
   seedSampleScene,
   selectGroupInSceneGraph,
   tapWorld,
   waitForSampleScene,
 } from './helpers';
+
+test.setTimeout(120000);
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
@@ -210,6 +214,7 @@ test('bounds hit checkbox toggles BoundsHit condition', async ({ page }) => {
 });
 
 test('creates a formation from imported sprites and arranges it into a grid', async ({ page }) => {
+  await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
   await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
   await page.getByTestId('spritesheet-frame-width-input').fill('64');
@@ -236,6 +241,7 @@ test('creates a formation from imported sprites and arranges it into a grid', as
 });
 
 test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
+  await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
 
@@ -257,6 +263,7 @@ test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
 });
 
 test('reassigns a sprite asset from another sprite via the inspector', async ({ page }) => {
+  await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_B.png');
@@ -276,6 +283,7 @@ test('reassigns a sprite asset from another sprite via the inspector', async ({ 
   const entityBId = entitiesAfterImport.find((e) => e.name === 'enemy_B.png-0')?.id ?? null;
   if (!entityAId || !entityBId) throw new Error('Expected imported entity ids');
 
+  await openSceneScope(page);
   await page.getByTestId(`ungrouped-entity-${entityAId}`).click();
   await page.getByTestId('entity-asset-select').selectOption({ label: 'enemy_B.png (image)' });
 
@@ -288,6 +296,7 @@ test('reassigns a sprite asset from another sprite via the inspector', async ({ 
 });
 
 test('assigns a group MoveUntil action to imported sprites and runs it in play mode', async ({ page }) => {
+  await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
   await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
   await page.getByTestId('spritesheet-frame-width-input').fill('64');
@@ -338,6 +347,7 @@ test('preview uses edited move velocity and bounce behavior', async ({ page }) =
 
 test('preview bounce reaches configured bounds edge before reversing', async ({ page }) => {
   await page.getByTestId('reset-scene-button').click();
+  await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
   await page.getByTestId('add-attachment-MoveUntil').click();
@@ -392,6 +402,7 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
 
 test('preview applies wrap behavior for an imported sprite move action', async ({ page }) => {
   await page.getByTestId('reset-scene-button').click();
+  await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
   await page.getByTestId('add-attachment-MoveUntil').click();

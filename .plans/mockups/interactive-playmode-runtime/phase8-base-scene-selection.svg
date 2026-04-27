@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnDanger{fill:rgba(255,184,106,0.10); stroke:var(--warn); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:600;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .badge{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .badgeBase{fill:rgba(124,240,199,0.12); stroke:rgba(124,240,199,0.75); stroke-width:1;}
+      .badgeText{fill:var(--text); font-size:11px; font-weight:800;}
+      .kbd{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .kbdText{fill:var(--text); font-size:11px; font-weight:800;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Scene Reuse + Layered Runtime — Phase 8: Base Scene Selection (Mockup)</text>
+
+  <rect x="760" y="30" width="92" height="30" rx="10" class="chipActive"/>
+  <text x="788" y="50" class="btnText">Edit</text>
+  <rect x="856" y="30" width="92" height="30" rx="10" class="chip"/>
+  <text x="885" y="50" class="btnTextMuted">Play</text>
+
+  <rect x="1040" y="30" width="54" height="30" rx="10" class="kbd"/>
+  <text x="1056" y="50" class="kbdText">Tab</text>
+  <text x="1100" y="50" class="tiny">Toggle mode</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Sidebar: scope tabs -->
+  <rect x="44" y="140" width="144" height="32" rx="10" class="chipActive"/>
+  <text x="92" y="161" class="btnText">Scene</text>
+  <rect x="196" y="140" width="144" height="32" rx="10" class="chip"/>
+  <text x="238" y="161" class="btnTextMuted">Project</text>
+
+  <!-- Left: scene context -->
+  <rect x="44" y="182" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="204" class="fieldText">Scene: wave_densepack</text>
+
+  <rect x="44" y="230" width="296" height="34" rx="10" class="field"/>
+  <text x="58" y="252" class="fieldText">Scenes ▾</text>
+
+  <line x1="44" y1="280" x2="340" y2="280" class="divider"/>
+
+  <!-- Left: scenes list -->
+  <text x="44" y="306" class="label">Scenes</text>
+
+  <!-- Row 1: base scene -->
+  <rect x="44" y="324" width="214" height="34" rx="10" class="field"/>
+  <text x="58" y="346" class="fieldText">tunnel_base</text>
+  <rect x="206" y="331" width="44" height="20" rx="10" class="badgeBase"/>
+  <text x="215" y="346" class="badgeText">Base</text>
+
+  <rect x="264" y="324" width="24" height="34" rx="10" class="btnPrimary"/>
+  <text x="270" y="346" class="btnText">★</text>
+  <rect x="292" y="324" width="24" height="34" rx="10" class="btn"/>
+  <text x="298" y="346" class="btnTextMuted">⧉</text>
+  <rect x="320" y="324" width="20" height="34" rx="10" class="btnDanger"/>
+  <text x="325" y="346" class="btnText">🗑</text>
+
+  <!-- Row 2: active wave -->
+  <rect x="44" y="364" width="214" height="34" rx="10" class="field"/>
+  <text x="58" y="386" class="fieldText">wave_densepack</text>
+  <rect x="176" y="371" width="74" height="20" rx="10" class="badge"/>
+  <text x="186" y="386" class="badgeText">Wave</text>
+
+  <rect x="264" y="364" width="24" height="34" rx="10" class="btn"/>
+  <text x="270" y="386" class="btnTextMuted">☆</text>
+  <rect x="292" y="364" width="24" height="34" rx="10" class="btn"/>
+  <text x="298" y="386" class="btnTextMuted">⧉</text>
+  <rect x="320" y="364" width="20" height="34" rx="10" class="btnDanger"/>
+  <text x="325" y="386" class="btnText">🗑</text>
+
+  <!-- Row 3: wave -->
+  <rect x="44" y="404" width="214" height="34" rx="10" class="field"/>
+  <text x="58" y="426" class="fieldText">wave_forcefield</text>
+  <rect x="176" y="411" width="74" height="20" rx="10" class="badge"/>
+  <text x="186" y="426" class="badgeText">Wave</text>
+
+  <rect x="264" y="404" width="24" height="34" rx="10" class="btn"/>
+  <text x="270" y="426" class="btnTextMuted">☆</text>
+  <rect x="292" y="404" width="24" height="34" rx="10" class="btn"/>
+  <text x="298" y="426" class="btnTextMuted">⧉</text>
+  <rect x="320" y="404" width="20" height="34" rx="10" class="btnDanger"/>
+  <text x="325" y="426" class="btnText">🗑</text>
+
+  <!-- Row 4: stage -->
+  <rect x="44" y="444" width="214" height="34" rx="10" class="field"/>
+  <text x="58" y="466" class="fieldText">boss_gate</text>
+  <rect x="184" y="451" width="66" height="20" rx="10" class="badge"/>
+  <text x="192" y="466" class="badgeText">Stage</text>
+
+  <rect x="264" y="444" width="24" height="34" rx="10" class="btn"/>
+  <text x="270" y="466" class="btnTextMuted">☆</text>
+  <rect x="292" y="444" width="24" height="34" rx="10" class="btn"/>
+  <text x="298" y="466" class="btnTextMuted">⧉</text>
+  <rect x="320" y="444" width="20" height="34" rx="10" class="btnDanger"/>
+  <text x="325" y="466" class="btnText">🗑</text>
+
+  <rect x="44" y="496" width="296" height="32" rx="10" class="btnPrimary"/>
+  <text x="154" y="518" class="btnText">+ New Scene</text>
+
+  <!-- Canvas -->
+  <rect x="408" y="170" width="444" height="410" rx="12" class="panel2"/>
+  <text x="420" y="196" class="small">Author wave scenes while aligning against a base stage.</text>
+  <text x="420" y="218" class="tiny">Selecting a base scene enables edit-mode ghost rendering + play-mode layering.</text>
+
+  <!-- Inspector -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="panel2"/>
+  <text x="936" y="162" class="btnText">Project</text>
+  <rect x="920" y="188" width="236" height="110" rx="12" class="panel2"/>
+  <text x="936" y="214" class="small">Layering</text>
+  <text x="936" y="236" class="tiny">baseSceneId: tunnel_base</text>
+  <text x="936" y="256" class="tiny">activeSceneId: wave_densepack</text>
+  <text x="936" y="276" class="tiny">Edit ghost: enabled</text>
+
+  <!-- Callout -->
+  <rect x="372" y="628" width="804" height="58" rx="12" class="callout"/>
+  <text x="392" y="658" class="calloutText">UI adds a star toggle per scene to set/clear baseSceneId; badges show Base/Wave/Stage roles.</text>
+  <text x="392" y="678" class="tiny">In Play mode, this unlocks base+wave composition; in Edit mode, base sprites render as a non-interactive ghost.</text>
+</svg>

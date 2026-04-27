@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { ImportedEntityDraft, useEditorStore } from './EditorStore';
+import { ImportedEntityDraft, useEditorStore, type Selection } from './EditorStore';
 import { EntitySpec, SpriteAssetSource } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getSceneWorld } from './sceneWorld';
 import { clampHitboxToEntity, computeHitboxFromImageData } from './hitboxAuto';
+import type { GameSceneSpec } from '../model/types';
 
 type LoadedImage = {
   src: string;
@@ -41,6 +42,18 @@ function makeEntityId(index: number): string {
 export function SpriteImportPanel() {
   const { state, dispatch } = useEditorStore();
   const scene = state.project.scenes[state.currentSceneId];
+  return <SpriteImportPanelView scene={scene} selection={state.selection} dispatch={dispatch} />;
+}
+
+export function SpriteImportPanelView({
+  scene,
+  selection,
+  dispatch,
+}: {
+  scene: GameSceneSpec;
+  selection: Selection;
+  dispatch: (action: any) => void;
+}) {
   const [sourceMode, setSourceMode] = useState<'embedded' | 'path'>('embedded');
   const [loadedImage, setLoadedImage] = useState<LoadedImage | null>(null);
   const [assetPath, setAssetPath] = useState('');
@@ -166,7 +179,7 @@ export function SpriteImportPanel() {
       };
       return {
         entity: resolveEntityDefaults(entity),
-        addToSelectedGroup: state.selection.kind === 'group',
+        addToSelectedGroup: selection.kind === 'group',
       };
     });
 
