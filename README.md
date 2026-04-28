@@ -1,5 +1,7 @@
 # PhaserActions Studio
 
+Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bcorfman/phaseractions-studio)
+
 A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, arrange formations, attach simple action scripts, preview them instantly, and round-trip the whole project as YAML.
 
 <img src="res/images/mainwindow.png?raw=true" style="width: 800px"/>
@@ -19,11 +21,14 @@ A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, 
 - **Formations (groups)** can use declarative arrange layouts (grid, line, circle, arc, etc.) driven by `public/editor-registry.yaml`.
 - **Input maps (semantic controls) (Project tab)**: author project-level action bindings (keyboard / mouse / gamepad buttons), choose active/fallback maps per scene, and preview runtime action states in Play mode.
 - **Play mode mouse controls**: optional hide OS cursor, and mouse-driven entity motion with independent X/Y axis locks.
-- **Collisions + trigger zones**: author per-entity collision metadata (body + collision layer), scene collision rules (`block`/`overlap`), and rectangular trigger zones. Play mode exposes enter/stay/exit/click events in the runtime test snapshot.
-- **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, plus `Repeat` as a script-level wrapper.
+- **Collisions + trigger zones**:
+  - Author per-entity collision metadata (body + collision layer), scene collision rules (`block`/`overlap`), and rectangular trigger zones.
+  - Collision rules can run scripts on overlap/block **enter** via `collisionRules[].onEnter` (a single call or list of calls), enabling “shot hits obstacle → destroy both” authored in YAML.
+  - Play mode exposes trigger + collision enter/stay/exit/click events in the runtime test snapshot.
+- **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, `InputDrive` (input → velocity), `InputFire` (spawn projectiles), plus `Repeat` as a script-level wrapper.
 - **`Call` actions require a registered handler**. The runtime includes built-in handlers like `scene.goto`, `scene.gotoWave`, `entity.destroy`, and `audio.play_sfx` (plus sample/demo ops like `drop`). Unknown `callId` values will fail during preview compile/run.
 - **Inline conditions (current)**: `BoundsHit` and `ElapsedTime` (used by `MoveUntil`).
-- **Play mode** compiles the authored scene and runs actions; **Edit mode** is for authoring.
+- **Play mode** compiles the active scene (and base layer when configured) and runs actions; **Edit mode** is for authoring.
 
 ## YAML Round-Trip
 

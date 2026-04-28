@@ -95,6 +95,7 @@ Laser Gates waves are mostly “if shot overlaps obstacle, destroy obstacle + re
   - `entity.destroy` (already exists for general cleanup)
   - `scene.gotoWave` (wave swap without resetting base)
   - Optional convenience: `entity.destroy_other` (destroy overlap counterpart) if targeting ergonomics get awkward.
+✅ Implemented.
 
 ### 6) EventBus load contract: pass project context (required for base composition) ✅
 - Implemented via `runtime:load-project (project, currentSceneId, mode)` + `runtime:set-active-scene` with `BootScene` routing. ✅
@@ -110,9 +111,9 @@ Laser Gates waves are mostly “if shot overlaps obstacle, destroy obstacle + re
 - **Runtime**:
   - Base layer persists across wave swaps (player + scroll never reset). ✅
   - Wave layer can be replaced while base continues running. ✅
-  - Input maps can drive the player entity (move + fire).
-  - Shots can be spawned/destroyed deterministically.
-  - Collision rules can trigger authored actions/ops (shot-hit + player-hit).
+  - Input maps can drive the player entity (move + fire). ✅
+  - Shots can be spawned/destroyed deterministically. ✅
+  - Collision rules can trigger authored actions/ops (shot-hit + player-hit). ✅
 
 ## Suggested implementation order (Laser Gates MVP)
 1) `baseSceneId` + editor “Set Base” + ghost rendering (fast feedback for authoring).
