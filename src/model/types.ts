@@ -77,6 +77,11 @@ export interface CollisionRuleSpec {
   a: { type: 'layer'; layer: string };
   b: { type: 'layer'; layer: string };
   interaction: CollisionInteraction;
+  /**
+   * Optional scripts invoked when the collision rule enters.
+   * In MVP, `a` is treated as the instigator and `b` as the other.
+   */
+  onEnter?: TriggerCallSpec | TriggerCallSpec[];
 }
 
 export interface TriggerCallSpec {

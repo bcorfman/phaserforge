@@ -50,11 +50,13 @@ export class BasicCollisionService {
   public setTriggers(triggers: TriggerZoneSpec[]): void {
     this.triggers = Array.isArray(triggers) ? triggers.map((t) => JSON.parse(JSON.stringify(t))) : [];
     this.activeOverlaps.clear();
+    this.triggerEvents = [];
   }
 
   public setCollisionRules(rules: CollisionRuleSpec[]): void {
     this.collisionRules = Array.isArray(rules) ? rules.map((r) => JSON.parse(JSON.stringify(r))) : [];
     this.activeCollisions.clear();
+    this.collisionEvents = [];
   }
 
   public setEntities(entities: Record<string, SimpleEntity>): void {

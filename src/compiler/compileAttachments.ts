@@ -6,10 +6,12 @@ import { Repeat } from '../runtime/actions/Repeat';
 import { Sequence } from '../runtime/actions/Sequence';
 import { Wait } from '../runtime/actions/Wait';
 import { Parallel } from '../runtime/actions/Parallel';
+import { InputDrive } from '../runtime/actions/InputDrive';
+import { InputFire } from '../runtime/actions/InputFire';
 import { BoundsHit } from '../runtime/conditions/BoundsHit';
 import { ElapsedTime } from '../runtime/conditions/ElapsedTime';
 import { Never } from '../runtime/conditions/Never';
-import { resolveTarget, type TargetContext } from '../runtime/targets/resolveTarget';
+import { flattenTarget, resolveTarget, type TargetContext } from '../runtime/targets/resolveTarget';
 import type { CompileOptions, CompileContext } from './compileBehaviors';
 import type { CallActionSpec } from '../model/types';
 
@@ -84,6 +86,62 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
   if (presetId === 'Repeat') {
     // Repeat is handled at the script level (wrapper). If it appears here, treat as no-op.
     return new Sequence([]);
+  }
+  if (presetId === 'InputDrive') {
+    const input = ctx.options?.input;
+    if (!input) {
+      console.warn('[phaseractions] InputDrive requires CompileOptions.input');
+      return new Sequence([]);
+    }
+    const speedX = Number(attachment.params?.speedX ?? attachment.params?.speed ?? 0);
+    const speedY = Number(attachment.params?.speedY ?? attachment.params?.speed ?? 0);
+    const targetRef = targetOverride ?? attachment.target;
+    const resolved = resolveTarget(targetRef, ctx.targets);
+    const targets = flattenTarget(resolved);
+    if (targets.length === 0) return new Sequence([]);
+    const entity = targets[0] as any;
+    return new InputDrive(entity, input, {
+      speedX,
+      speedY,
+      leftActionId: typeof attachment.params?.leftActionId === 'string' ? String(attachment.params.leftActionId) : undefined,
+      rightActionId: typeof attachment.params?.rightActionId === 'string' ? String(attachment.params.rightActionId) : undefined,
+      upActionId: typeof attachment.params?.upActionId === 'string' ? String(attachment.params.upActionId) : undefined,
+      downActionId: typeof attachment.params?.downActionId === 'string' ? String(attachment.params.downActionId) : undefined,
+    });
+  }
+  if (presetId === 'InputFire') {
+    const input = ctx.options?.input;
+    const spawnEntity = ctx.options?.runtime?.spawnEntity;
+    if (!input || !spawnEntity) {
+      console.warn('[phaseractions] InputFire requires CompileOptions.input and CompileOptions.runtime.spawnEntity');
+      return new Sequence([]);
+    }
+    const fireActionId = typeof attachment.params?.fireActionId === 'string' ? String(attachment.params.fireActionId) : '';
+    const templateEntityId = typeof attachment.params?.templateEntityId === 'string' ? String(attachment.params.templateEntityId) : '';
+    if (!fireActionId || !templateEntityId) return new Sequence([]);
+    const cooldownMs = Number(attachment.params?.cooldownMs ?? 180);
+    const offsetX = Number(attachment.params?.offsetX ?? 0);
+    const offsetY = Number(attachment.params?.offsetY ?? 0);
+    const velocityX = Number(attachment.params?.velocityX ?? 0);
+    const velocityY = Number(attachment.params?.velocityY ?? -500);
+    const layerRaw = typeof attachment.params?.layer === 'string' ? String(attachment.params.layer) : '';
+    const layer = layerRaw === 'base' || layerRaw === 'active' ? layerRaw : undefined;
+
+    const targetRef = targetOverride ?? attachment.target;
+    const resolved = resolveTarget(targetRef, ctx.targets);
+    const targets = flattenTarget(resolved);
+    if (targets.length === 0) return new Sequence([]);
+    const shooter = targets[0] as any;
+    return new InputFire(shooter, input, spawnEntity, {
+      fireActionId,
+      templateEntityId,
+      ...(layer ? { layer } : {}),
+      cooldownMs,
+      offsetX,
+      offsetY,
+      velocityX,
+      velocityY,
+    });
   }
 
   throw new Error(`Unknown attachment presetId: ${presetId}`);

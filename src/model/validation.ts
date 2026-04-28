@@ -115,6 +115,12 @@ function validateGroups(scene: SceneSpec): void {
 function validateCollisionsAndTriggers(scene: SceneSpec): void {
   const anyScene = scene as any as { collisionRules?: CollisionRuleSpec[]; triggers?: TriggerZoneSpec[] };
 
+  const validateCall = (call: any, context: string) => {
+    if (!call || typeof call !== 'object') throw new Error(`${context} must be an object`);
+    if (typeof call.callId !== 'string' || call.callId.length === 0) throw new Error(`${context} must have callId`);
+    if (call.args != null && (typeof call.args !== 'object' || Array.isArray(call.args))) throw new Error(`${context} args must be an object`);
+  };
+
   const collisionRules = anyScene.collisionRules ?? [];
   if (!Array.isArray(collisionRules)) {
     throw new Error('Scene collisionRules must be an array');
@@ -130,6 +136,17 @@ function validateCollisionsAndTriggers(scene: SceneSpec): void {
     }
     if ((rule as any).interaction !== 'block' && (rule as any).interaction !== 'overlap') {
       throw new Error(`Collision rule ${(rule as any).id} must have interaction=block|overlap`);
+    }
+
+    const onEnter = (rule as any).onEnter;
+    if (onEnter != null) {
+      if (Array.isArray(onEnter)) {
+        for (let i = 0; i < onEnter.length; i += 1) {
+          validateCall(onEnter[i], `Collision rule ${(rule as any).id} onEnter[${i}]`);
+        }
+      } else {
+        validateCall(onEnter, `Collision rule ${(rule as any).id} onEnter`);
+      }
     }
   }
 

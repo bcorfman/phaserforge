@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, type CompiledScene } from '../compiler/compileScene';
-import type { GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
+import type { CollisionRuleSpec, GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
 import { getRotatedEntityBounds } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
@@ -13,6 +13,7 @@ import { BasicInputService } from '../runtime/services/BasicInputService';
 import { BasicCollisionService } from '../runtime/services/BasicCollisionService';
 import type { InputActionMapSpec } from '../model/types';
 import { createTriggerCompileContext, executeTriggerScripts } from '../runtime/triggers/triggerScripts';
+import { executeCollisionScripts } from '../runtime/collisions/collisionScripts';
 import type { TriggerZoneSpec } from '../model/types';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
@@ -37,6 +38,9 @@ export class GameScene extends Phaser.Scene {
   private physicsSizeCache = new Map<string, { w: number; h: number }>();
   private worldFrameGraphics?: Phaser.GameObjects.Graphics;
   private loadVersion = 0;
+  private spawnCounter = 0;
+  private lastSpawnedEntityId?: string;
+  private lastSpawnError?: string;
   private readonly sceneBridgeGetter = () => this;
   private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
   private baseBackgroundObjects: Phaser.GameObjects.GameObject[] = [];
@@ -47,8 +51,12 @@ export class GameScene extends Phaser.Scene {
   private collisionService?: BasicCollisionService;
   private baseTriggerZones: TriggerZoneSpec[] = [];
   private triggerZones: TriggerZoneSpec[] = [];
+  private baseCollisionRules: CollisionRuleSpec[] = [];
+  private collisionRules: CollisionRuleSpec[] = [];
   private baseLastProcessedTriggerEventCount = 0;
   private lastProcessedTriggerEventCount = 0;
+  private baseLastProcessedCollisionEventCount = 0;
+  private lastProcessedCollisionEventCount = 0;
   private lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
   private mouseOptions: { hideOsCursorInPlay: boolean; driveEntityId?: string; affectX: boolean; affectY: boolean } = {
     hideOsCursorInPlay: false,
@@ -158,10 +166,40 @@ export class GameScene extends Phaser.Scene {
       this.baseCollisionService?.setEntities({});
     } else if (rebuildBase) {
       this.clearScene();
-      this.baseCompiled = compileScene(baseSceneSpec!, { opRegistry: this.opRegistry });
+      let baseCompiledRef: CompiledScene | undefined;
+      const spawnBase = (opts: any) => {
+        const layer = opts?.layer === 'active' || opts?.layer === 'base' ? opts.layer : 'base';
+        if (layer === 'active') {
+          return this.spawnEntityIntoLayer({
+            compiled: this.compiled,
+            sceneSpec,
+            stores: {
+              sprites: this.sprites,
+              physicsObjects: this.physicsObjects,
+              velocityCache: this.physicsVelocityCache,
+              sizeCache: this.physicsSizeCache,
+            },
+            opts,
+          });
+        }
+        return this.spawnEntityIntoLayer({
+          compiled: baseCompiledRef,
+          sceneSpec: baseSceneSpec!,
+          stores: {
+            sprites: this.baseSprites,
+            physicsObjects: this.basePhysicsObjects,
+            velocityCache: this.basePhysicsVelocityCache,
+            sizeCache: this.basePhysicsSizeCache,
+          },
+          opts,
+        });
+      };
+      this.baseCompiled = compileScene(baseSceneSpec!, { opRegistry: this.opRegistry, input: this.inputService, runtime: { spawnEntity: spawnBase } });
+      baseCompiledRef = this.baseCompiled;
       this.configureCompiledLayer(this.baseCompiled, baseSceneSpec!, {
         collision: this.baseCollisionService,
         setTriggerZones: (zones) => { this.baseTriggerZones = zones; },
+        setCollisionRules: (rules) => { this.baseCollisionRules = rules; },
         resetTriggerCount: () => { this.baseLastProcessedTriggerEventCount = 0; },
       });
       this.baseCompiled.startAll();
@@ -169,10 +207,40 @@ export class GameScene extends Phaser.Scene {
       this.clearActiveLayer();
     }
 
-    this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry });
+    let compiledRef: CompiledScene | undefined;
+    const spawnActive = (opts: any) => {
+      const layer = opts?.layer === 'active' || opts?.layer === 'base' ? opts.layer : 'active';
+      if (layer === 'base') {
+        return this.spawnEntityIntoLayer({
+          compiled: this.baseCompiled,
+          sceneSpec: baseSceneSpec ?? (sceneSpec as any),
+          stores: {
+            sprites: this.baseSprites,
+            physicsObjects: this.basePhysicsObjects,
+            velocityCache: this.basePhysicsVelocityCache,
+            sizeCache: this.basePhysicsSizeCache,
+          },
+          opts,
+        });
+      }
+      return this.spawnEntityIntoLayer({
+        compiled: compiledRef,
+        sceneSpec,
+        stores: {
+          sprites: this.sprites,
+          physicsObjects: this.physicsObjects,
+          velocityCache: this.physicsVelocityCache,
+          sizeCache: this.physicsSizeCache,
+        },
+        opts,
+      });
+    };
+    this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry, input: this.inputService, runtime: { spawnEntity: spawnActive } });
+    compiledRef = this.compiled;
     this.configureCompiledLayer(this.compiled, sceneSpec, {
       collision: this.collisionService,
       setTriggerZones: (zones) => { this.triggerZones = zones; },
+      setCollisionRules: (rules) => { this.collisionRules = rules; },
       resetTriggerCount: () => { this.lastProcessedTriggerEventCount = 0; },
     });
     this.compiled.startAll();
@@ -220,14 +288,17 @@ export class GameScene extends Phaser.Scene {
     hooks: {
       collision?: BasicCollisionService;
       setTriggerZones: (zones: TriggerZoneSpec[]) => void;
+      setCollisionRules: (rules: CollisionRuleSpec[]) => void;
       resetTriggerCount: () => void;
     }
   ): void {
     const triggers = sceneSpec.triggers ?? [];
+    const collisionRules = sceneSpec.collisionRules ?? [];
     hooks.setTriggerZones(triggers);
+    hooks.setCollisionRules(collisionRules);
     hooks.resetTriggerCount();
     hooks.collision?.setTriggers(triggers);
-    hooks.collision?.setCollisionRules(sceneSpec.collisionRules ?? []);
+    hooks.collision?.setCollisionRules(collisionRules);
     hooks.collision?.setEntities(compiled.entities as any);
     for (const [id, spec] of Object.entries(sceneSpec.entities ?? {})) {
       const runtimeEntity = (compiled.entities as any)[id];
@@ -282,10 +353,25 @@ export class GameScene extends Phaser.Scene {
     input?: any;
     collisions?: any;
     lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
+    activeEntityIds?: string[];
+    baseEntityIds?: string[];
+    destroyedEntityIds?: string[];
+    activeCollisionRuleCount?: number;
+    lastSpawnedEntityId?: string;
+    lastSpawnError?: string;
+    activeCollisionEventCount?: number;
+    activeLastProcessedCollisionEventCount?: number;
   } {
     const audio = this.audioService?.getSnapshot();
     const input = this.inputService?.getSnapshot();
     const collisions = this.collisionService?.getSnapshot();
+    const activeCollisionEventCount = Array.isArray((collisions as any)?.collisionEvents) ? (collisions as any).collisionEvents.length : 0;
+    const activeEntityIds = this.compiled ? Object.keys(this.compiled.entities ?? {}).sort() : [];
+    const baseEntityIds = this.baseCompiled ? Object.keys(this.baseCompiled.entities ?? {}).sort() : [];
+    const destroyedEntityIds = [
+      ...Object.values((this.baseCompiled?.entities ?? {}) as any).filter((e: any) => e?.destroyed).map((e: any) => e.id),
+      ...Object.values((this.compiled?.entities ?? {}) as any).filter((e: any) => e?.destroyed).map((e: any) => e.id),
+    ].sort();
     return {
       ready: Boolean(this.compiled),
       sceneKey: this.scene.key,
@@ -301,6 +387,14 @@ export class GameScene extends Phaser.Scene {
       ...(input ? { input } : {}),
       ...(collisions ? { collisions } : {}),
       ...(this.lastEntityPointerDown ? { lastEntityPointerDown: { ...this.lastEntityPointerDown } } : {}),
+      ...(activeEntityIds.length > 0 ? { activeEntityIds } : {}),
+      ...(baseEntityIds.length > 0 ? { baseEntityIds } : {}),
+      ...(destroyedEntityIds.length > 0 ? { destroyedEntityIds } : {}),
+      activeCollisionRuleCount: this.collisionRules.length,
+      ...(this.lastSpawnedEntityId ? { lastSpawnedEntityId: this.lastSpawnedEntityId } : {}),
+      ...(this.lastSpawnError ? { lastSpawnError: this.lastSpawnError } : {}),
+      activeCollisionEventCount,
+      activeLastProcessedCollisionEventCount: this.lastProcessedCollisionEventCount,
     };
   }
 
@@ -481,6 +575,7 @@ export class GameScene extends Phaser.Scene {
     this.baseCollisionService?.update();
     this.collisionService?.update();
     this.executeTriggerScriptsFromCollisionSnapshot();
+    this.executeCollisionScriptsFromCollisionSnapshot();
     if (this.baseCompiled) {
       this.syncSpritesForLayer(this.baseCompiled, {
         sprites: this.baseSprites,
@@ -574,6 +669,49 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private executeCollisionScriptsFromCollisionSnapshotForLayer(opts: {
+    compiled: CompiledScene;
+    collision: BasicCollisionService;
+    collisionRules: CollisionRuleSpec[];
+    getLastProcessedCount: () => number;
+    setLastProcessedCount: (count: number) => void;
+  }): void {
+    const snapshot = opts.collision.getSnapshot();
+    const events = snapshot.collisionEvents;
+    if (!Array.isArray(events) || events.length === 0) return;
+
+    const previous = opts.getLastProcessedCount();
+    const startIndex = events.length < previous ? 0 : previous;
+    const pending = events.slice(startIndex);
+    opts.setLastProcessedCount(events.length);
+    if (pending.length === 0) return;
+
+    const ctx = createTriggerCompileContext(opts.compiled.scene, { entities: opts.compiled.entities as any, groups: opts.compiled.groups as any }, this.opRegistry);
+    executeCollisionScripts(opts.collisionRules, pending as any, this.opRegistry, ctx);
+  }
+
+  private executeCollisionScriptsFromCollisionSnapshot(): void {
+    if (this.baseCompiled && this.baseCollisionService) {
+      this.executeCollisionScriptsFromCollisionSnapshotForLayer({
+        compiled: this.baseCompiled,
+        collision: this.baseCollisionService,
+        collisionRules: this.baseCollisionRules,
+        getLastProcessedCount: () => this.baseLastProcessedCollisionEventCount,
+        setLastProcessedCount: (count) => { this.baseLastProcessedCollisionEventCount = count; },
+      });
+    }
+
+    if (this.compiled && this.collisionService) {
+      this.executeCollisionScriptsFromCollisionSnapshotForLayer({
+        compiled: this.compiled,
+        collision: this.collisionService,
+        collisionRules: this.collisionRules,
+        getLastProcessedCount: () => this.lastProcessedCollisionEventCount,
+        setLastProcessedCount: (count) => { this.lastProcessedCollisionEventCount = count; },
+      });
+    }
+  }
+
   private clearActiveLayer(): void {
     this.backgroundObjects.forEach((obj) => obj.destroy());
     this.backgroundObjects = [];
@@ -610,8 +748,12 @@ export class GameScene extends Phaser.Scene {
     this.compiled = undefined;
     this.baseTriggerZones = [];
     this.triggerZones = [];
+    this.baseCollisionRules = [];
+    this.collisionRules = [];
     this.baseLastProcessedTriggerEventCount = 0;
     this.lastProcessedTriggerEventCount = 0;
+    this.baseLastProcessedCollisionEventCount = 0;
+    this.lastProcessedCollisionEventCount = 0;
   }
 
   private drawWorldFrame(scene: SceneSpec): void {
@@ -733,6 +875,7 @@ export class GameScene extends Phaser.Scene {
     void sceneSpec;
     this.ensurePlaceholderTexture();
     for (const entity of Object.values(compiled.entities)) {
+      if (stores.sprites.has(entity.id)) continue;
       const asset = compiled.scene.entities[entity.id]?.asset as any as SpriteAssetSpec | undefined;
       const textureKey = asset ? this.getTextureKey(asset) : undefined;
       let sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
@@ -763,6 +906,128 @@ export class GameScene extends Phaser.Scene {
       stores.velocityCache.delete(entity.id);
       stores.sizeCache.delete(entity.id);
     }
+  }
+
+  private spawnEntityIntoLayer(params: {
+    compiled: CompiledScene | undefined;
+    sceneSpec: GameSceneSpec;
+    stores: {
+      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>;
+      physicsObjects: Map<string, PhysicsObject>;
+      velocityCache: Map<string, { vx: number; vy: number }>;
+      sizeCache: Map<string, { w: number; h: number }>;
+    };
+    opts: {
+      templateEntityId: string;
+      x?: number;
+      y?: number;
+      vx?: number;
+      vy?: number;
+      visible?: boolean;
+    };
+  }): string | undefined {
+    const compiled = params.compiled;
+    if (!compiled) {
+      this.lastSpawnError = 'missing compiled layer';
+      return undefined;
+    }
+
+    const templateId = typeof params.opts.templateEntityId === 'string' ? params.opts.templateEntityId : '';
+    if (!templateId) {
+      this.lastSpawnError = 'missing templateEntityId';
+      return undefined;
+    }
+
+    const templateSpec = params.sceneSpec.entities?.[templateId] as any;
+    const templateRuntime = (compiled.entities as any)[templateId];
+    if (!templateSpec || !templateRuntime) {
+      console.warn(`[phaseractions] spawnEntity missing template entity: ${templateId}`);
+      this.lastSpawnError = `missing template entity: ${templateId}`;
+      return undefined;
+    }
+
+    const id = `${templateId}__spawn_${++this.spawnCounter}`;
+    const x = Number.isFinite(params.opts.x as any) ? Number(params.opts.x) : Number(templateSpec.x ?? templateRuntime.x ?? 0);
+    const y = Number.isFinite(params.opts.y as any) ? Number(params.opts.y) : Number(templateSpec.y ?? templateRuntime.y ?? 0);
+    const vx = Number.isFinite(params.opts.vx as any) ? Number(params.opts.vx) : 0;
+    const vy = Number.isFinite(params.opts.vy as any) ? Number(params.opts.vy) : 0;
+    const visible = params.opts.visible != null ? Boolean(params.opts.visible) : true;
+
+    const spec = {
+      ...JSON.parse(JSON.stringify(templateSpec)),
+      id,
+      x,
+      y,
+      visible,
+    };
+    (compiled.scene as any).entities[id] = spec;
+
+    (compiled.entities as any)[id] = {
+      ...JSON.parse(JSON.stringify(templateRuntime)),
+      id,
+      x,
+      y,
+      homeX: x,
+      homeY: y,
+      vx,
+      vy,
+      visible,
+      destroyed: false,
+      body: spec.body,
+      collision: spec.collision,
+    };
+
+    this.buildSpriteForEntity(compiled, id, params.stores);
+    this.lastSpawnedEntityId = id;
+    this.lastSpawnError = undefined;
+    return id;
+  }
+
+  private buildSpriteForEntity(
+    compiled: CompiledScene,
+    entityId: string,
+    stores: {
+      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>;
+      physicsObjects: Map<string, PhysicsObject>;
+      velocityCache: Map<string, { vx: number; vy: number }>;
+      sizeCache: Map<string, { w: number; h: number }>;
+    }
+  ): void {
+    if (stores.sprites.has(entityId)) return;
+    const entity = (compiled.entities as any)[entityId];
+    if (!entity || (entity as any).destroyed) return;
+
+    this.ensurePlaceholderTexture();
+    const asset = compiled.scene.entities[entityId]?.asset as any as SpriteAssetSpec | undefined;
+    const textureKey = asset ? this.getTextureKey(asset) : undefined;
+    let sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+    if (asset && textureKey && this.textures.exists(textureKey)) {
+      const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+      if (asset.imageType === 'spritesheet') {
+        sprite = this.physics.add.sprite(entity.x, entity.y, textureKey, frame);
+      } else {
+        sprite = this.physics.add.image(entity.x, entity.y, textureKey);
+      }
+    } else {
+      sprite = this.physics.add.image(entity.x, entity.y, PLACEHOLDER_TEXTURE_KEY);
+    }
+
+    this.configurePhysicsObject(entity.id, sprite as any, stores.physicsObjects);
+    sprite.setInteractive();
+    sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.lastEntityPointerDown = {
+        entityId: entity.id,
+        button: pointer.button,
+        worldX: pointer.worldX,
+        worldY: pointer.worldY,
+        x: pointer.x,
+        y: pointer.y,
+      };
+    });
+    this.applyEntityDisplayProps(sprite, entity, asset);
+    stores.sprites.set(entity.id, sprite);
+    stores.velocityCache.delete(entity.id);
+    stores.sizeCache.delete(entity.id);
   }
 
   private buildFormationPhysicsGroupsForLayer(
