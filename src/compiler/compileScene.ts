@@ -20,7 +20,7 @@ export interface CompiledScene {
 }
 
 export function compileScene(scene: SceneSpec, options?: CompileOptions): CompiledScene {
-  const migrated = migrateSceneSpec(scene);
+  const migrated = migrateSceneSpec(JSON.parse(JSON.stringify(scene)));
   validateSceneSpec(migrated);
 
   const entities: Record<string, RuntimeEntity> = {};

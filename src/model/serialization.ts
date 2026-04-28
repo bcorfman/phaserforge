@@ -69,7 +69,30 @@ function coerceCollisionRules(value: unknown): CollisionRuleSpec[] | undefined {
       const bLayer = typeof raw.b?.layer === 'string' ? raw.b.layer : null;
       const interaction = raw.interaction === 'block' || raw.interaction === 'overlap' ? raw.interaction : null;
       if (!id || !aLayer || !bLayer || !interaction) return null;
-      return { id, a: { type: 'layer', layer: aLayer }, b: { type: 'layer', layer: bLayer }, interaction } satisfies CollisionRuleSpec;
+      const coerceCall = (value: unknown) => {
+        if (!value || typeof value !== 'object') return undefined;
+        const c = value as any;
+        if (typeof c.callId !== 'string' || c.callId.length === 0) return undefined;
+        const args = c.args && typeof c.args === 'object' ? (c.args as any) : undefined;
+        return { callId: c.callId, ...(args ? { args } : {}) };
+      };
+      const coerceCalls = (value: unknown) => {
+        if (!value) return undefined;
+        if (Array.isArray(value)) {
+          const items = value.map(coerceCall).filter(Boolean);
+          return items.length > 0 ? items : undefined;
+        }
+        return coerceCall(value);
+      };
+
+      const onEnter = coerceCalls(raw.onEnter);
+      return {
+        id,
+        a: { type: 'layer', layer: aLayer },
+        b: { type: 'layer', layer: bLayer },
+        interaction,
+        ...(onEnter ? { onEnter } : {}),
+      } satisfies CollisionRuleSpec;
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
   return rules.length > 0 ? rules : [];

@@ -1,5 +1,6 @@
 import type { GameSceneSpec, ProjectSpec } from '../../model/types';
 import type { InputActionMapSpec } from '../../model/types';
+import type { InputActionState } from './BasicInputService';
 
 export type SceneTransition = 'none' | 'fade';
 
@@ -22,6 +23,7 @@ export interface InputService {
   handleMouseDown(button: number): void;
   handleMouseUp(button: number): void;
   update(): void;
+  getActionState(actionId: string): InputActionState;
   getSnapshot(): unknown;
 }
 export interface CollisionService {}
@@ -57,6 +59,7 @@ export function createStubRuntimeServices(overrides: Partial<RuntimeServices> = 
       handleMouseDown: () => console.warn('[phaseractions] InputService.handleMouseDown stub invoked'),
       handleMouseUp: () => console.warn('[phaseractions] InputService.handleMouseUp stub invoked'),
       update: () => console.warn('[phaseractions] InputService.update stub invoked'),
+      getActionState: () => ({ pressed: false, held: false, released: false }),
       getSnapshot: () => ({}),
     },
     collisions: {},

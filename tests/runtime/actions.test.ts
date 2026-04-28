@@ -6,6 +6,8 @@ import { MoveUntil } from '../../src/runtime/actions/MoveUntil';
 import { BoundsHit } from '../../src/runtime/conditions/BoundsHit';
 import { ElapsedTime } from '../../src/runtime/conditions/ElapsedTime';
 import { ActionManager } from '../../src/runtime/ActionManager';
+import { InputDrive } from '../../src/runtime/actions/InputDrive';
+import { InputFire } from '../../src/runtime/actions/InputFire';
 
 function makeEntity(id: string, x = 0, y = 0) {
   return { id, x, y, width: 10, height: 10 };
@@ -127,5 +129,74 @@ describe('runtime actions', () => {
     move.cancel?.();
     move.update(100);
     expect(entity.x).toBe(before);
+  });
+
+  it('B11 InputDrive sets velocity from held input actions', () => {
+    const entity: any = makeEntity('ship');
+    entity.vx = 0;
+    entity.vy = 0;
+    const input: any = {
+      getActionState: (id: string) => {
+        if (id === 'left') return { pressed: false, held: true, released: false };
+        if (id === 'up') return { pressed: false, held: true, released: false };
+        return { pressed: false, held: false, released: false };
+      },
+    };
+
+    const drive = new InputDrive(entity, input, {
+      speedX: 100,
+      speedY: 50,
+      leftActionId: 'left',
+      rightActionId: 'right',
+      upActionId: 'up',
+      downActionId: 'down',
+    });
+    drive.start();
+    drive.update(16);
+    expect(entity.vx).toBe(-100);
+    expect(entity.vy).toBe(-50);
+  });
+
+  it('B12 InputFire spawns once per press and respects cooldown', () => {
+    const shooter: any = makeEntity('ship', 10, 20);
+    let pressed = true;
+    const input: any = {
+      getActionState: () => {
+        const state = { pressed, held: pressed, released: false };
+        pressed = false;
+        return state;
+      },
+    };
+    const spawned: any[] = [];
+    const spawn = (opts: any) => {
+      spawned.push(opts);
+      return 'shot1';
+    };
+
+    const fire = new InputFire(shooter, input, spawn, {
+      fireActionId: 'fire',
+      templateEntityId: 'shot_template',
+      cooldownMs: 100,
+      offsetX: 3,
+      offsetY: -4,
+      velocityX: 0,
+      velocityY: -500,
+    });
+
+    fire.start();
+    fire.update(16);
+    expect(spawned).toHaveLength(1);
+    expect(spawned[0]).toMatchObject({ templateEntityId: 'shot_template', x: 13, y: 16, vx: 0, vy: -500, visible: true });
+
+    // Second press during cooldown should not spawn.
+    pressed = true;
+    fire.update(16);
+    expect(spawned).toHaveLength(1);
+
+    // After cooldown, next press spawns.
+    fire.update(100);
+    pressed = true;
+    fire.update(1);
+    expect(spawned).toHaveLength(2);
   });
 });

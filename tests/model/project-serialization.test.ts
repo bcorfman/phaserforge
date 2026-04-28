@@ -22,6 +22,18 @@ describe('project YAML serialization', () => {
         'scene-1': {
           ...sampleScene,
           backgroundLayers: [],
+          collisionRules: [
+            {
+              id: 'shot-hit',
+              a: { type: 'layer', layer: 'shots' },
+              b: { type: 'layer', layer: 'obstacles' },
+              interaction: 'overlap',
+              onEnter: [
+                { callId: 'entity.destroy', args: { target: 'a' } },
+                { callId: 'entity.destroy', args: { target: 'b' } },
+              ],
+            },
+          ],
           music: { assetId: 'music_theme', loop: true, volume: 0.65, fadeMs: 250 },
           ambience: [{ assetId: 'forest_ambience', loop: true, volume: 0.35 }],
         },
