@@ -4,6 +4,7 @@
 - Add a **game-only player page** (`player.html`) that loads a fixed `game.yaml`, boots Phaser, and immediately starts in **play mode** (no editor UI / no `EditorScene`).
 - Make runtime **self-contained for scene transitions + wave swapping** (no React “glue” needed).
 - Ensure YAML-referenced **assets resolve as web URLs** in a distributable build.
+- Add a **user deploy/export flow** so each user can publish demos of the YAML they create (free via their own GitHub Pages, or paid hosting if they choose).
 
 ---
 
@@ -27,6 +28,55 @@ A container/hosted backend is only necessary if you add requirements beyond stat
 - authenticated content, dynamic YAML generation, save games / leaderboards, telemetry, asset uploads, etc.
 
 This plan does not require any of that.
+
+---
+
+## User Demos: “Export Deployable ZIP” + GitHub Pages (Free)
+
+### Goals / Constraints
+- Users can **deploy their own games for free** without you hosting their demos.
+- Demos are **static** (no runtime server required).
+- Users can optionally **pay for hosting** elsewhere (Netlify / S3 / Railway static hosting / etc.), but the default path is GitHub Pages.
+- The exported bundle must work from a GitHub Pages subpath (`https://<user>.github.io/<repo>/`) so all URLs must be **relative** (`./...`), not absolute (`/...`).
+
+### Export Bundle Contract (what the studio exports)
+Add a studio action: **Export Demo ZIP** that produces a zip with:
+- `index.html` (player entry; no editor UI)
+- `game.yaml` (the user’s YAML, either self-contained or rewritten to file assets)
+- `assets/**` (only when exporting “file assets” mode)
+- `player/**` (player runtime JS/CSS; stable filenames, no content hashes)
+
+Two export modes (toggle; default = File assets):
+1) **File assets (default)**: convert any `source.kind: embedded` assets into real files under `assets/`, rewrite YAML sources to `source.kind: path` with paths like `assets/<id>.<ext>`.
+2) **Self-contained YAML**: keep embedded `dataUrl` assets; ZIP contains only `index.html`, `game.yaml`, and `player/**`.
+
+### Free Hosting: GitHub Pages (doc-driven)
+Publish steps the studio links to (no GitHub API automation in v1):
+1) Create a new GitHub repo (public recommended for free Pages), e.g. `my-phaseractions-demo`.
+2) Unzip the exported demo ZIP and commit the contents to the repo root (or `docs/`).
+3) In GitHub repo settings → Pages:
+   - Source: “Deploy from a branch”
+   - Branch: `main`
+   - Folder: `/ (root)` (or `/docs` if using `docs/`)
+4) Visit the URL GitHub provides: `https://<user>.github.io/<repo>/`.
+
+### Player entry behavior in exported bundle
+The exported `index.html` must:
+- Load runtime from `./player/player-runtime.js` (stable name).
+- Fetch YAML from `./game.yaml`.
+- Resolve any asset `path`s relative to the page: `./assets/...`.
+
+### Why stable filenames matter (no build step for user)
+For the export ZIP to be publishable “as-is” (upload/commit only), the player runtime included in the ZIP must use stable filenames.
+Implementation approach:
+- Add a dedicated “player runtime build” that emits non-hashed filenames into a repo folder (e.g. `public/deploy-template/player/*`).
+- The studio’s export uses that template and injects `game.yaml` + optional `assets/**`.
+
+---
+
+## Relationship to Accounts / Cloud Saves
+- **Cloud saves (server features)**: authenticated users save YAML online under their account (Postgres backend on Railway).
+- **Demos (this plan)**: any YAML (cloud or local) can be exported to a static ZIP and hosted by the user (free via GitHub Pages).
 
 ---
 
@@ -74,6 +124,9 @@ This plan does not require any of that.
   - Unknown `initialSceneId` / missing scenes → throws.
 - If extracting shared “built-in ops registration”, unit-test:
   - `scene.gotoWave` validates target scene existence and invokes scene switching (mock the target function).
+- Export unit tests (new):
+  - `exportDemoZip(project, { mode })` creates a bundle with the required paths and uses relative URLs.
+  - `rewriteYamlAssetSources()` converts `embedded` → `path` when in “file assets” mode.
 
 ### E2E (Playwright)
 - `player-load.spec.ts`:
@@ -84,6 +137,8 @@ This plan does not require any of that.
   - Seed YAML with `baseSceneId` + at least one wave scene.
   - Trigger `scene.gotoWave` via an attachment `Call`.
   - Assert the active compiled scene id changes to the wave scene (and the runtime stays in `GameScene` without restarting an app shell).
+- Export E2E (new):
+  - Export a demo ZIP, unzip to a temp dir, serve statically, visit exported `index.html`, assert the game boots and assets load.
 
 ---
 
@@ -91,4 +146,5 @@ This plan does not require any of that.
 - Player loads a fixed URL: `/game.yaml` (same origin as `player.html`).
 - Player build excludes editor (`EditorScene` + React UI not bundled into player).
 - Wave swapping is handled inside the runtime (`scene.gotoWave` directly switches scenes).
-
+- Free demo hosting default: user-managed **GitHub Pages**.
+- Export is doc-driven (no GitHub API automation in v1).
