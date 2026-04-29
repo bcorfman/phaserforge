@@ -1,0 +1,101 @@
+name: Deploy Backend (Railway)
+
+on:
+  workflow_run:
+    workflows:
+      - PhaserActions CI
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      )
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Always deploy from trusted `main`, never from an arbitrary SHA.
+          ref: main
+
+      - name: Verify main SHA (workflow_run)
+        if: github.event_name == 'workflow_run'
+        run: |
+          set -euo pipefail
+          current="$(git rev-parse HEAD)"
+          expected="${{ github.event.workflow_run.head_sha }}"
+          if [ "$current" != "$expected" ]; then
+            echo "Checked out main at $current, but workflow_run head_sha is $expected; refusing to deploy." >&2
+            exit 1
+          fi
+
+      - name: Detect backend changes
+        id: changes
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const headSha = context.payload.workflow_run?.head_sha ?? context.sha;
+            const { data } = await github.rest.repos.getCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: headSha,
+            });
+            const files = (data.files ?? []).map((f) => f.filename);
+
+            const patterns = [
+              /^server\\//,
+              /^prisma\\//,
+              /^railway\\.toml$/,
+              /^package\\.json$/,
+              /^package-lock\\.json$/,
+            ];
+            const changed = files.some((name) => patterns.some((re) => re.test(name)));
+            core.setOutput('changed', changed ? 'true' : 'false');
+            core.info(`Backend-related files changed: ${changed}`);
+
+      - name: Skip deploy (no changes)
+        if: steps.changes.outputs.changed != 'true'
+        run: echo "No backend changes detected; skipping deploy."
+
+      - name: Setup Node
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        if: steps.changes.outputs.changed == 'true'
+        run: npm ci
+
+      - name: Install Railway CLI
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            npm install -g @railway/cli && break
+            echo "Railway CLI install failed; retrying ($i/3)..." >&2
+            sleep 5
+          done
+
+      - name: Deploy
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+        run: railway up --service "$RAILWAY_SERVICE"
+
+      - name: Health check
+        if: steps.changes.outputs.changed == 'true' && vars.BACKEND_HEALTHCHECK_URL != ''
+        run: curl -fsS "${{ vars.BACKEND_HEALTHCHECK_URL }}"

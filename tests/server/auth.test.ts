@@ -23,6 +23,9 @@ async function getCsrf(agent: request.SuperTest<request.Test>) {
   const res = await agent.get('/api/v1/auth/csrf').expect(200);
   const csrf = res.body.csrfToken as string;
   expect(typeof csrf).toBe('string');
+  const setCookie = (res.headers['set-cookie'] ?? []).join(';');
+  expect(setCookie).toContain('pa_csrf=');
+  expect(setCookie.toLowerCase()).not.toContain('httponly');
   return { csrf };
 }
 
