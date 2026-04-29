@@ -13,6 +13,9 @@
         "url": "https://github.com/phaserjs/template-react-ts/issues"
     },
     "homepage": "https://github.com/phaserjs/template-react-ts#readme",
+    "engines": {
+        "node": ">=20"
+    },
     "keywords": [
         "phaser",
         "phaser3",
