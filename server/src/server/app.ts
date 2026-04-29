@@ -41,7 +41,6 @@ export function createApp(options: CreateAppOptions) {
   app.use(
     helmet({
       crossOriginEmbedderPolicy: false,
-      contentSecurityPolicy: false,
     }),
   );
 
