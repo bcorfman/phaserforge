@@ -58,6 +58,7 @@ A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, 
 |---------|-------------|
 | `npm install` | Install project dependencies |
 | `npm run dev` | Start the dev server (defaults to `http://localhost:8080`) |
+| `npm run dev:cloud` | Start the dev server + local API (Vite proxies `/api/*` to the API) |
 | `npm run build` | Create a production build in `dist/` |
 | `npm test` | Run unit tests (Vitest) |
 | `npm run test:e2e` | Run Playwright end-to-end tests |
@@ -66,6 +67,9 @@ A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, 
 | `npm run build-nolog` | Build without anonymous logging (see below) |
 
 > Note: For Playwright tests, you may need to run `npx playwright install` once to install browser binaries.
+
+### Testing cloud login locally
+Run `npm run dev:cloud`, then open `http://localhost:8080/`. The studio calls `/api/*` on the same origin; Vite proxies those requests to the local API (default `http://localhost:8787`). Set `API_PORT` if you change the API port.
 
 ## Config Files
 

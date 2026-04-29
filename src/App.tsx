@@ -3,7 +3,7 @@ import { PhaserGame } from './phaser/PhaserHost';
 import { EventBus, getActiveScene } from './phaser/EventBus';
 import { EditorProvider, useEditorStore } from './editor/EditorStore';
 import { EntityList } from './editor/EntityList';
-import { Inspector } from './editor/Inspector';
+import { InspectorPane } from './editor/InspectorPane';
 import { Toolbar } from './editor/Toolbar';
 import { CanvasOverlay } from './editor/CanvasOverlay';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
@@ -438,7 +438,7 @@ function AppShell() {
           </div>
         </main>
         <aside className="pane pane-right" data-testid="inspector-pane">
-          <Inspector />
+          <InspectorPane />
         </aside>
       </div>
     </div>

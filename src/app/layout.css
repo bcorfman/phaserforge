@@ -814,6 +814,72 @@ html[data-theme='dark'] .phaser-frame {
   overflow: auto;
 }
 
+.cloud-panel {
+  gap: 1rem;
+}
+
+.cloud-auth,
+.cloud-signed-in {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.cloud-auth-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.cloud-auth-actions > .button {
+  flex: 1;
+}
+
+.cloud-password-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.cloud-password-row > input {
+  flex: 1;
+}
+
+.cloud-password-toggle {
+  width: 2.6rem;
+  min-width: 2.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+  border: 1px solid var(--stroke);
+  background: var(--surface-strong);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.cloud-password-toggle:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.cloud-github-button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.cloud-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.cloud-row > .field {
+  flex: 1;
+}
+
 .panel-header {
   display: flex;
   flex-direction: column;
@@ -843,6 +909,15 @@ html[data-theme='dark'] .phaser-frame {
 }
 
 .sidebar-scope-tabs > .button {
+  flex: 1;
+}
+
+.inspector-pane-tabs {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.inspector-pane-tabs > .button {
   flex: 1;
 }
 
