@@ -69,7 +69,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     setSessionCookie(res, settings, sessionToken);
   }
 
-  router.get('/github/start', (req, res) => {
+  router.get('/github/start', authLimiter, (req, res) => {
     if (!settings.githubOAuth || !settings.publicBaseUrl) {
       res.status(400).json({ error: 'oauth_not_configured' });
       return;
@@ -95,7 +95,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     res.redirect(302, authUrl.toString());
   });
 
-  router.get('/github/callback', async (req, res) => {
+  router.get('/github/callback', authLimiter, async (req, res) => {
     if (!settings.githubOAuth || !settings.publicBaseUrl) {
       res.status(400).json({ error: 'oauth_not_configured' });
       return;
