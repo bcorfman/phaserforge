@@ -5,7 +5,7 @@ import type { Repositories } from '../types';
 import type { Settings } from '../../settings';
 import { randomToken, safeEqual, sha256Base64Url } from '../../security/crypto';
 import { requireAuth } from '../auth/sessionAuth';
-import { AuthSchemas, loginWithPassword, logout, setCsrfCookie, setSessionCookie, signupWithPassword } from '../services/authService';
+import { AuthSchemas, loginWithPassword, logout, setSessionCookie, signupWithPassword } from '../services/authService';
 import { newId } from '../../security/ids';
 
 export function authRouter(settings: Settings, repositories: Repositories) {
@@ -18,9 +18,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     legacyHeaders: false,
   });
 
-  router.get('/csrf', (_req, res) => {
-    const csrf = randomToken(24);
-    setCsrfCookie(res, settings, csrf);
+  router.get('/csrf', (req, res) => {
+    const csrf = req.csrfToken();
     res.json({ csrfToken: csrf });
   });
 

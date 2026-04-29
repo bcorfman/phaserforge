@@ -19,16 +19,6 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function setCsrfCookie(res: Response, settings: Settings, token: string) {
-  res.cookie(settings.csrfCookieName, token, {
-    httpOnly: false,
-    secure: settings.cookieSecure,
-    sameSite: 'lax',
-    path: '/',
-    ...(settings.cookieDomain ? { domain: settings.cookieDomain } : {}),
-  });
-}
-
 export function setSessionCookie(res: Response, settings: Settings, token: string) {
   res.cookie(settings.cookieName, token, {
     httpOnly: true,

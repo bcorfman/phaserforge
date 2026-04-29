@@ -1,9 +1,9 @@
 import cookieParser from 'cookie-parser';
+import csurf from 'csurf';
 import express from 'express';
 import helmet from 'helmet';
 
 import type { CreateAppOptions, Repositories } from './types';
-import { requireCsrf } from '../security/csrf';
 import { authRouter } from './routes/auth';
 import { gamesRouter } from './routes/games';
 import { createMemoryRepositories } from './repositories/memory';
@@ -46,20 +46,33 @@ export function createApp(options: CreateAppOptions) {
 
   app.use(corsAllowlistMiddleware(settings.corsAllowOrigins));
   app.use(express.json({ limit: '1mb' }));
-  // codeql[js/missing-token-validation]
-  // CSRF is enforced by `requireCsrf` middleware directly below.
   app.use(cookieParser());
 
   app.use(
-    requireCsrf({
-      cookieName: settings.csrfCookieName,
-      headerName: 'x-csrf-token',
+    csurf({
+      cookie: {
+        key: settings.csrfCookieName,
+        httpOnly: true,
+        secure: settings.cookieSecure,
+        sameSite: 'lax',
+        path: '/',
+        ...(settings.cookieDomain ? { domain: settings.cookieDomain } : {}),
+      },
     }),
   );
 
   app.get('/api/v1/health', (_req, res) => res.json({ status: 'ok' }));
   app.use('/api/v1/auth', authRouter(settings, repositories));
   app.use('/api/v1/games', gamesRouter(settings, repositories));
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err && typeof err === 'object' && 'code' in err && (err as any).code === 'EBADCSRFTOKEN') {
+      res.status(403).json({ error: 'csrf_required' });
+      return;
+    }
+    next(err);
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
