@@ -19,8 +19,16 @@ export function authRouter(settings: Settings, repositories: Repositories) {
   });
 
   router.get('/csrf', (req, res) => {
-    const csrf = req.csrfToken();
-    res.json({ csrfToken: csrf });
+    const csrfToken = randomToken(24);
+    res.cookie(settings.csrfCookieName, csrfToken, {
+      httpOnly: false,
+      secure: settings.cookieSecure,
+      sameSite: 'lax',
+      path: '/',
+      ...(settings.cookieDomain ? { domain: settings.cookieDomain } : {}),
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    res.json({ csrfToken });
   });
 
   function setOAuthStateCookie(res: express.Response, token: string) {

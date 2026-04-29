@@ -32,6 +32,7 @@
         "prisma:migrate:dev": "prisma migrate dev",
         "prisma:migrate:deploy": "prisma migrate deploy",
         "railway:start": "npm run prisma:migrate:deploy && npm run server:start",
+        "postinstall": "prisma generate",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:unit": "vitest run",
