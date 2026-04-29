@@ -46,6 +46,7 @@ export function createApp(options: CreateAppOptions) {
 
   app.use(corsAllowlistMiddleware(settings.corsAllowOrigins));
   app.use(express.json({ limit: '1mb' }));
+  // codeql[js/missing-token-validation] CSRF is enforced by `requireCsrf` middleware directly below.
   app.use(cookieParser());
 
   app.use(
@@ -67,4 +68,3 @@ export function createApp(options: CreateAppOptions) {
 
   return app;
 }
-
