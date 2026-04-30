@@ -57,8 +57,8 @@ jobs:
             const files = (data.files ?? []).map((f) => f.filename);
 
             const patterns = [
-              /^server\\//,
-              /^prisma\\//,
+              /^server\//,
+              /^prisma\//,
               /^railway\\.toml$/,
               /^package\\.json$/,
               /^package-lock\\.json$/,
