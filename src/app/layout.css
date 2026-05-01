@@ -399,6 +399,7 @@ textarea:focus-visible {
 .viewbar-field input,
 .field input,
 .field select,
+.text-input,
 .json-textarea {
   width: 100%;
   border: 1px solid var(--stroke);
@@ -410,7 +411,8 @@ textarea:focus-visible {
 .toolbar-field select,
 .viewbar-field input,
 .field input,
-.field select {
+.field select,
+.text-input {
   min-height: 2.5rem;
   padding: 0.55rem 0.8rem;
 }
@@ -910,6 +912,109 @@ html[data-theme='dark'] .phaser-frame {
 
 .sidebar-scope-tabs > .button {
   flex: 1;
+}
+
+.assets-dock-splitter {
+  margin-top: 0.85rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid rgba(186, 168, 143, 0.28);
+  border-bottom: 1px solid rgba(186, 168, 143, 0.28);
+  cursor: row-resize;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.assets-dock-splitter-grip {
+  font-size: 0.8rem;
+  letter-spacing: 0.25em;
+  opacity: 0.8;
+}
+
+.assets-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.85rem;
+}
+
+.assets-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.assets-dock-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.assets-dock-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.assets-dock-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.assets-dock-tabs > .button {
+  flex: 1;
+}
+
+.assets-dock-import {
+  border: 1px solid rgba(186, 168, 143, 0.28);
+  background: rgba(12, 15, 26, 0.12);
+  border-radius: 0.9rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.assets-dock-import-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+
+.assets-dock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.assets-dock-row {
+  display: flex;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.assets-dock-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assets-dock-badges {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.badge-inline {
+  min-height: 1.4rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.68rem;
 }
 
 .inspector-pane-tabs {

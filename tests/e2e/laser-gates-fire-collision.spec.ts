@@ -4,7 +4,7 @@ import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
 test('Laser Gates MVP: base player can fire into active wave and collisions detect overlap enter', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {
       m1: {

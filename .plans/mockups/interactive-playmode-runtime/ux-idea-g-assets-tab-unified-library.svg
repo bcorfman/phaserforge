@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff8874;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px; letter-spacing:0.02em;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnDanger{fill:rgba(255,136,116,0.14); stroke:rgba(255,136,116,0.55); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:650;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .row{fill:#0b1226; stroke:#2c3a65; stroke-width:1;}
+      .rowActive{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .badge{fill:rgba(124,240,199,0.12); stroke:rgba(124,240,199,0.70); stroke-width:1;}
+      .badgeText{fill:var(--text); font-size:10px; font-weight:900;}
+      .pill{fill:rgba(170,180,230,0.08); stroke:rgba(170,180,230,0.32); stroke-width:1;}
+      .pillOn{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .pillText{fill:var(--text); font-size:10px; font-weight:850;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .dot{fill:rgba(170,180,230,0.75);}
+      .icon{fill:var(--muted); font-size:12px; font-weight:900;}
+      .menu{fill:#0b1226; stroke:rgba(106,167,255,0.35); stroke-width:1;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Editor IA Proposal — Idea G: Assets Tab (Unified Library + Inline Picker) (Mockup)</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Left: Scope tabs -->
+  <rect x="44" y="140" width="96" height="32" rx="10" class="chip"/>
+  <text x="74" y="161" class="btnTextMuted">Scene</text>
+  <rect x="146" y="140" width="96" height="32" rx="10" class="chip"/>
+  <text x="172" y="161" class="btnTextMuted">Project</text>
+  <rect x="248" y="140" width="92" height="32" rx="10" class="chipActive"/>
+  <text x="270" y="161" class="btnText">Assets</text>
+
+  <!-- Search + global add -->
+  <rect x="44" y="182" width="236" height="30" rx="10" class="field"/>
+  <text x="58" y="202" class="fieldText">Search assets…</text>
+  <rect x="286" y="182" width="54" height="30" rx="10" class="btnPrimary"/>
+  <text x="296" y="202" class="btnText">+ Add</text>
+
+  <!-- Split inside sidebar: Library (left) + Inline Picker (right) -->
+  <rect x="44" y="222" width="146" height="474" rx="12" class="panel2"/>
+  <rect x="194" y="222" width="146" height="474" rx="12" class="panel2"/>
+
+  <text x="56" y="246" class="label">Library</text>
+  <text x="206" y="246" class="label">Inline Picker</text>
+
+  <!-- Library category pills -->
+  <rect x="54" y="258" width="56" height="18" rx="9" class="pillOn"/>
+  <text x="66" y="271" class="pillText">Images</text>
+  <rect x="114" y="258" width="56" height="18" rx="9" class="pill"/>
+  <text x="130" y="271" class="pillText">Audio</text>
+
+  <rect x="54" y="282" width="56" height="18" rx="9" class="pill"/>
+  <text x="70" y="295" class="pillText">Fonts</text>
+  <rect x="114" y="282" width="56" height="18" rx="9" class="pill"/>
+  <text x="128" y="295" class="pillText">Data</text>
+
+  <rect x="54" y="306" width="56" height="18" rx="9" class="pill"/>
+  <text x="66" y="319" class="pillText">Tile</text>
+  <rect x="114" y="306" width="56" height="18" rx="9" class="pill"/>
+  <text x="122" y="319" class="pillText">VFX</text>
+
+  <rect x="54" y="330" width="116" height="18" rx="9" class="pill"/>
+  <text x="62" y="343" class="pillText">Shaders / PostFX</text>
+
+  <line x1="54" y1="360" x2="180" y2="360" class="divider"/>
+  <text x="56" y="382" class="small">Images</text>
+
+  <!-- Image assets -->
+  <rect x="54" y="392" width="126" height="28" rx="10" class="rowActive"/>
+  <text x="62" y="410" class="fieldText">🖼 bg_forest</text>
+  <rect x="134" y="398" width="40" height="16" rx="8" class="badge"/>
+  <text x="140" y="410" class="badgeText">BG</text>
+
+  <rect x="54" y="424" width="126" height="28" rx="10" class="row"/>
+  <text x="62" y="442" class="fieldText">👾 spr_player</text>
+  <rect x="134" y="430" width="40" height="16" rx="8" class="badge"/>
+  <text x="140" y="442" class="badgeText">SPR</text>
+
+  <rect x="54" y="456" width="126" height="28" rx="10" class="row"/>
+  <text x="62" y="474" class="fieldText">🧩 ss_enemies</text>
+  <rect x="130" y="462" width="44" height="16" rx="8" class="badge"/>
+  <text x="136" y="474" class="badgeText">SHEET</text>
+
+  <rect x="54" y="488" width="126" height="28" rx="10" class="row"/>
+  <text x="62" y="506" class="fieldText">🧱 tiles_over</text>
+  <rect x="130" y="494" width="44" height="16" rx="8" class="badge"/>
+  <text x="136" y="506" class="badgeText">TILE</text>
+
+  <rect x="54" y="520" width="126" height="28" rx="10" class="row"/>
+  <text x="62" y="538" class="fieldText">🧷 ui_atlas</text>
+  <rect x="130" y="526" width="44" height="16" rx="8" class="badge"/>
+  <text x="136" y="538" class="badgeText">ATLAS</text>
+
+  <line x1="54" y1="566" x2="180" y2="566" class="divider"/>
+  <text x="56" y="588" class="small">Audio</text>
+
+  <rect x="54" y="598" width="126" height="28" rx="10" class="row"/>
+  <text x="62" y="616" class="fieldText">🎵 mus_theme</text>
+  <rect x="134" y="604" width="40" height="16" rx="8" class="badge"/>
+  <text x="140" y="616" class="badgeText">MUS</text>
+
+  <rect x="54" y="630" width="126" height="28" rx="10" class="row"/>
+  <text x="62" y="648" class="fieldText">🌫 amb_forest</text>
+  <rect x="134" y="636" width="40" height="16" rx="8" class="badge"/>
+  <text x="140" y="648" class="badgeText">AMB</text>
+
+  <rect x="54" y="662" width="126" height="28" rx="10" class="row"/>
+  <text x="62" y="680" class="fieldText">🔊 sfx_hit</text>
+  <rect x="134" y="668" width="40" height="16" rx="8" class="badge"/>
+  <text x="140" y="680" class="badgeText">SFX</text>
+
+  <!-- Inline Picker panel (right half of sidebar) -->
+  <rect x="204" y="258" width="126" height="34" rx="10" class="field"/>
+  <text x="214" y="279" class="fieldText">Target: Music</text>
+  <rect x="204" y="296" width="126" height="30" rx="10" class="field"/>
+  <text x="214" y="316" class="fieldText">Filter: Audio</text>
+
+  <text x="206" y="346" class="tiny">Pick existing named assets</text>
+  <rect x="204" y="356" width="126" height="28" rx="10" class="rowActive"/>
+  <text x="212" y="374" class="fieldText">🎵 mus_theme</text>
+  <rect x="204" y="388" width="126" height="28" rx="10" class="row"/>
+  <text x="212" y="406" class="fieldText">🎵 mus_boss</text>
+  <rect x="204" y="420" width="126" height="28" rx="10" class="row"/>
+  <text x="212" y="438" class="fieldText">🌫 amb_forest</text>
+
+  <rect x="204" y="456" width="126" height="32" rx="10" class="btnPrimary"/>
+  <text x="214" y="477" class="btnText">Assign to Scene</text>
+
+  <line x1="204" y1="504" x2="330" y2="504" class="divider"/>
+  <text x="206" y="526" class="tiny">Missing it?</text>
+  <rect x="204" y="534" width="126" height="32" rx="10" class="btn"/>
+  <text x="214" y="555" class="btnTextMuted">Open Assets (pinned)</text>
+  <text x="206" y="584" class="tiny">Loads/imports stay in Assets tab</text>
+  <text x="206" y="602" class="tiny">Other panels only reference assetId</text>
+
+  <!-- Center: canvas placeholder -->
+  <rect x="408" y="140" width="444" height="456" rx="12" class="panel2"/>
+  <circle cx="548" cy="320" r="6" class="dot"/>
+  <circle cx="610" cy="270" r="6" class="dot"/>
+  <circle cx="680" cy="330" r="6" class="dot"/>
+  <circle cx="720" cy="420" r="6" class="dot"/>
+  <text x="420" y="610" class="tiny">Assets are globally named and reusable across scenes; Scene config picks assetIds.</text>
+
+  <!-- Right: Inspector emphasizes asset references -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="field"/>
+  <text x="936" y="162" class="fieldText">Inspector</text>
+  <rect x="920" y="188" width="236" height="200" rx="12" class="panel2"/>
+  <text x="936" y="214" class="small">Selected</text>
+  <text x="936" y="236" class="tiny">Scene: scene-1</text>
+  <text x="936" y="258" class="tiny">Music assetId: mus_theme</text>
+  <text x="936" y="280" class="tiny">Ambience assetIds: [amb_forest]</text>
+  <text x="936" y="302" class="tiny">Background: bg_forest</text>
+  <text x="936" y="324" class="tiny">Sprites reference: spr_player / ss_enemies</text>
+
+  <!-- Callout -->
+  <rect x="372" y="610" width="516" height="86" rx="12" class="callout"/>
+  <text x="392" y="636" class="calloutText">Workflow changes:</text>
+  <text x="392" y="658" class="tiny">1) Remove per-feature import panes (Sprites, Audio, Background upload). Import only in Assets.</text>
+  <text x="392" y="676" class="tiny">2) “+ Add” that needs an asset opens this Inline Picker so you never bounce panes.</text>
+  <text x="392" y="694" class="tiny">3) Asset types cover common games: images (sprites/sheets/atlases/tiles), audio (music/amb/sfx), fonts, data, VFX, shaders.</text>
+</svg>

@@ -6,7 +6,7 @@ describe('project YAML serialization', () => {
   it('round-trips a minimal project spec', () => {
     const project = {
       id: 'project-1',
-      assets: { images: {}, spriteSheets: {} },
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
       audio: {
         sounds: {
           music_theme: { id: 'music_theme', source: { kind: 'path', path: '/assets/audio/theme.mp3' } },
@@ -50,7 +50,7 @@ describe('project YAML serialization', () => {
   it('drops sceneMeta entries that reference unknown scenes', () => {
     const yaml = serializeProjectToYaml({
       id: 'project-1',
-      assets: { images: {}, spriteSheets: {} },
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
       audio: { sounds: {} },
       inputMaps: {},
       scenes: { 'scene-1': { ...sampleScene, backgroundLayers: [] } },
@@ -68,7 +68,7 @@ describe('project YAML serialization', () => {
   it('throws when baseSceneId references an unknown scene', () => {
     const yaml = serializeProjectToYaml({
       id: 'project-1',
-      assets: { images: {}, spriteSheets: {} },
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
       audio: { sounds: {} },
       inputMaps: {},
       scenes: { 'scene-1': { ...sampleScene, backgroundLayers: [] } },

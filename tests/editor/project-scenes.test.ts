@@ -5,7 +5,7 @@ import type { ProjectSpec } from '../../src/model/types';
 function makeProject(): ProjectSpec {
   return {
     id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
     baseSceneId: undefined,

@@ -192,6 +192,7 @@ export function parseProjectYaml(text: string): ProjectSpec {
     assets: {
       images: coerceRecord(raw.assets?.images),
       spriteSheets: coerceRecord(raw.assets?.spriteSheets),
+      fonts: coerceRecord(raw.assets?.fonts),
     },
     audio: {
       sounds: coerceRecord(raw.audio?.sounds),

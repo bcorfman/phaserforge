@@ -3,12 +3,12 @@ import { useEditorStore, type Selection } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
 import type { GameSceneSpec, ProjectSpec } from '../model/types';
 import { countAttachmentsForTarget } from './sceneGraphCommands';
-import { AudioLibraryPanel } from './AudioLibraryPanel';
 import { InputMapsPanel } from './InputMapsPanel';
-import { SpriteImportPanelView } from './SpriteImportPanel';
 import type { Id, TriggerZoneSpec } from '../model/types';
+import { AssetsDock } from './AssetsDock';
 
 const ENTITY_DRAG_MIME = 'application/x-phaseractions-studio-entity-ids';
+const ASSETS_DOCK_HEIGHT_STORAGE_KEY = 'phaseractions.assetsDockHeight.v1';
 
 function isSelected(selection: Selection, kind: Selection['kind'], id: string): boolean {
   if (selection.kind === 'entities') {
@@ -87,6 +87,15 @@ export function EntityListView({
   mode: 'edit' | 'play';
   dispatch: (action: any) => void;
 }) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [assetsDockHeight, setAssetsDockHeight] = useState(() => {
+    const storage: any = (globalThis as any).localStorage;
+    const raw = typeof storage?.getItem === 'function' ? storage.getItem(ASSETS_DOCK_HEIGHT_STORAGE_KEY) : null;
+    const parsed = raw == null ? NaN : Number(raw);
+    return Number.isFinite(parsed) ? Math.max(120, Math.min(420, parsed)) : 200;
+  });
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'scene' | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -138,6 +147,15 @@ export function EntityListView({
       window.removeEventListener('drop', handleDragEnd);
     };
   }, []);
+
+  useEffect(() => {
+    try {
+      const storage: any = (globalThis as any).localStorage;
+      if (typeof storage?.setItem === 'function') storage.setItem(ASSETS_DOCK_HEIGHT_STORAGE_KEY, String(assetsDockHeight));
+    } catch {
+      // ignore storage errors
+    }
+  }, [assetsDockHeight]);
 
   const startEditing = (kind: 'entity' | 'group' | 'scene', id: string, currentName: string) => {
     setEditingKind(kind);
@@ -276,7 +294,7 @@ export function EntityListView({
   };
 
   return (
-    <div className="panel panel-scroll" data-testid="entity-list">
+    <div ref={rootRef} className="panel panel-scroll" data-testid="entity-list" style={{ overflow: 'hidden' }}>
       <div className="sidebar-scope-tabs" role="tablist" aria-label="Sidebar Scope">
         <button
           className={`button ${sidebarScope === 'scene' ? 'active' : ''}`}
@@ -300,21 +318,23 @@ export function EntityListView({
         </button>
       </div>
       {sidebarScope === 'scene' ? (
-        <section className="panel-section" aria-labelledby="scene-list">
-          <div className="panel-heading-row">
-            <h3 className="panel-heading" id="scene-list">Scenes</h3>
-            <button
-              className="button button-compact"
-              data-testid="create-scene-button"
-              type="button"
-              disabled={mode === 'play'}
-              onClick={() => dispatch({ type: 'create-scene' })}
-            >
-              + Add
-            </button>
-          </div>
-          <div className="member-list">
-            {Object.keys(project.scenes).map((sceneId) => {
+        <div className="sidebar-split" style={{ display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0, flex: 1 }}>
+          <div className="panel-scroll" style={{ overflow: 'auto', minHeight: 0, paddingRight: 2 }}>
+            <section className="panel-section" aria-labelledby="scene-list">
+              <div className="panel-heading-row">
+                <h3 className="panel-heading" id="scene-list">Scenes</h3>
+                <button
+                  className="button button-compact"
+                  data-testid="create-scene-button"
+                  type="button"
+                  disabled={mode === 'play'}
+                  onClick={() => dispatch({ type: 'create-scene' })}
+                >
+                  + Add
+                </button>
+              </div>
+              <div className="member-list">
+                {Object.keys(project.scenes).map((sceneId) => {
               const isBase = project.baseSceneId === sceneId;
               const meta = project.sceneMeta?.[sceneId];
               const roleRaw = meta?.role;
@@ -341,7 +361,7 @@ export function EntityListView({
                 setMenuOpen(next);
               };
 
-              return (
+                  return (
                 <div key={sceneId} className="behavior-block">
                   <div className="member-row">
                     <button
@@ -746,23 +766,55 @@ export function EntityListView({
                     </div>
                   ) : null}
                 </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </section>
           </div>
-        </section>
+
+          <div
+            className="assets-dock-splitter"
+            data-testid="assets-dock-splitter"
+            role="separator"
+            aria-orientation="horizontal"
+            onPointerDown={(event) => {
+              if (mode === 'play') return;
+              dragRef.current = { startY: event.clientY, startHeight: assetsDockHeight };
+              (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              const drag = dragRef.current;
+              if (!drag) return;
+              const delta = drag.startY - event.clientY;
+              const desired = drag.startHeight + delta;
+              const root = rootRef.current;
+              const rootHeight = root ? root.getBoundingClientRect().height : 0;
+              const maxDock = rootHeight > 0 ? Math.max(140, Math.min(520, rootHeight - 220)) : 420;
+              setAssetsDockHeight(Math.max(120, Math.min(maxDock, desired)));
+            }}
+            onPointerUp={() => {
+              dragRef.current = null;
+            }}
+          >
+            <div className="assets-dock-splitter-grip" aria-hidden="true">⋮⋮⋮</div>
+          </div>
+
+          <div style={{ height: assetsDockHeight, overflow: 'auto', minHeight: 0 }}>
+            <AssetsDock project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
+          </div>
+        </div>
       ) : null}
 
       {sidebarScope === 'project' ? (
         <>
           <InputMapsPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
-
-          <AudioLibraryPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
-
-          <section className="panel-section" aria-labelledby="project-import-sprites">
+          <section className="panel-section" aria-labelledby="project-assets-moved">
             <div className="panel-heading-row">
-              <h3 className="panel-heading" id="project-import-sprites">Import Sprites</h3>
+              <h3 className="panel-heading" id="project-assets-moved">Assets</h3>
             </div>
-            <SpriteImportPanelView scene={scene} selection={selection} dispatch={dispatch} />
+            <div className="muted">
+              Asset importing now lives in the Scene sidebar’s docked Assets panel.
+            </div>
           </section>
         </>
       ) : (

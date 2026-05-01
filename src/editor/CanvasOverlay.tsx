@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EventBus, getActiveScene } from '../phaser/EventBus';
 import { useEditorStore, type Selection } from './EditorStore';
+import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
 
 function getSelectedEntityIds(selection: Selection): string[] {
   if (selection.kind === 'entity') return [selection.id];
@@ -118,6 +119,62 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     container.addEventListener('contextmenu', handleContextMenu);
     return () => {
       container.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [dispatch, state.mode]);
+
+  useEffect(() => {
+    if (state.mode !== 'edit') return;
+    const container = document.querySelector<HTMLDivElement>('#game-container');
+    if (!container) return;
+
+    const handleDragOver = (event: DragEvent) => {
+      if (latestModeRef.current !== 'edit') return;
+      if (!hasDraggedAsset(event.dataTransfer)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    };
+
+    const handleDrop = (event: DragEvent) => {
+      if (latestModeRef.current !== 'edit') return;
+      const asset = readDraggedAsset(event.dataTransfer);
+      if (!asset) return;
+      if (asset.assetKind !== 'image' && asset.assetKind !== 'spritesheet') return;
+      event.preventDefault();
+
+      const activeScene = getActiveScene() as any;
+      const canvas = activeScene?.game?.canvas as HTMLCanvasElement | undefined;
+      const rect = canvas?.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) {
+        dispatch({ type: 'create-entity-from-asset', assetKind: asset.assetKind, assetId: asset.assetId } as any);
+        return;
+      }
+
+      const scale = activeScene?.scale;
+      const camera = activeScene?.cameras?.main;
+      if (!scale || !camera || typeof camera.getWorldPoint !== 'function') {
+        dispatch({ type: 'create-entity-from-asset', assetKind: asset.assetKind, assetId: asset.assetId } as any);
+        return;
+      }
+
+      const scaleX = scale.width / rect.width;
+      const scaleY = scale.height / rect.height;
+      const pointerX = (event.clientX - rect.left) * scaleX;
+      const pointerY = (event.clientY - rect.top) * scaleY;
+      const worldPoint = camera.getWorldPoint(pointerX, pointerY);
+
+      dispatch({
+        type: 'create-entity-from-asset',
+        assetKind: asset.assetKind,
+        assetId: asset.assetId,
+        at: { x: worldPoint.x, y: worldPoint.y },
+      } as any);
+    };
+
+    container.addEventListener('dragover', handleDragOver);
+    container.addEventListener('drop', handleDrop);
+    return () => {
+      container.removeEventListener('dragover', handleDragOver);
+      container.removeEventListener('drop', handleDrop);
     };
   }, [dispatch, state.mode]);
 

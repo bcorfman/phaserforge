@@ -68,7 +68,11 @@ function validateHitbox(
 }
 
 function validateAsset(asset: SpriteAssetSpec, entityId: string): void {
-  if (asset.source.kind === 'embedded') {
+  if (asset.source.kind === 'asset') {
+    if (!asset.source.assetId) {
+      throw new Error(`Entity ${entityId} asset reference requires an assetId`);
+    }
+  } else if (asset.source.kind === 'embedded') {
     if (!asset.source.dataUrl.startsWith('data:')) {
       throw new Error(`Entity ${entityId} embedded asset must use a data URL`);
     }

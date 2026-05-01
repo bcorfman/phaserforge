@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
 import { OpRegistry } from '../compiler/opRegistry';
-import { GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
+import { AssetFileSource, GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, SpriteSheetGridSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
 import { getGroupFrameDisplay } from '../editor/groupFrameDisplay';
 import { getRotatedEntityBounds } from '../runtime/geometry';
@@ -40,6 +40,7 @@ type PhysicsObject =
 export class EditorScene extends Phaser.Scene {
   private compiled?: CompiledScene;
   private referenceCompiled?: CompiledScene;
+  private project?: ProjectSpec;
   private opRegistry: OpRegistry = new OpRegistry();
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
   private referenceSprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
@@ -547,6 +548,7 @@ export class EditorScene extends Phaser.Scene {
   ): void {
     const currentLoadVersion = ++this.loadVersion;
     this.clearScene();
+    this.project = project;
     this.mode = mode;
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry });
     this.referenceCompiled = referenceSceneSpec ? compileScene(referenceSceneSpec, { opRegistry: this.opRegistry }) : undefined;
@@ -978,11 +980,36 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private getTextureKey(asset: SpriteAssetSpec): string {
-    const sourceKey = asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path;
-    const suffix = asset.imageType === 'spritesheet' && asset.grid
-      ? `:${asset.grid.frameWidth}x${asset.grid.frameHeight}`
+    const resolved = this.resolveSpriteAssetSource(asset);
+    const sourceKey = resolved
+      ? (resolved.source.kind === 'embedded' ? resolved.source.dataUrl : resolved.source.path)
+      : 'missing';
+    const suffix = resolved?.grid
+      ? `:${resolved.grid.frameWidth}x${resolved.grid.frameHeight}`
       : '';
     return `asset:${sourceKey}${suffix}`;
+  }
+
+  private resolveSpriteAssetSource(asset: SpriteAssetSpec): { source: AssetFileSource; grid?: SpriteSheetGridSpec } | null {
+    if (asset.source.kind !== 'asset') {
+      return {
+        source: asset.source,
+        ...(asset.imageType === 'spritesheet' && asset.grid ? { grid: asset.grid } : {}),
+      };
+    }
+
+    const project = this.project;
+    if (!project) return null;
+
+    if (asset.imageType === 'spritesheet') {
+      const sheet = project.assets.spriteSheets?.[asset.source.assetId];
+      if (!sheet) return null;
+      return { source: sheet.source, grid: sheet.grid };
+    }
+
+    const image = project.assets.images?.[asset.source.assetId];
+    if (!image) return null;
+    return { source: image.source };
   }
 
   private applyEntityDisplayProps(
@@ -1053,13 +1080,15 @@ export class EditorScene extends Phaser.Scene {
 
     for (const asset of pendingAssets) {
       const key = this.getTextureKey(asset);
-      if (asset.imageType === 'spritesheet' && asset.grid) {
-        this.load.spritesheet(key, asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path, {
-          frameWidth: asset.grid.frameWidth,
-          frameHeight: asset.grid.frameHeight,
+      const resolved = this.resolveSpriteAssetSource(asset);
+      if (!resolved) continue;
+      if (asset.imageType === 'spritesheet' && resolved.grid) {
+        this.load.spritesheet(key, resolved.source.kind === 'embedded' ? resolved.source.dataUrl : resolved.source.path, {
+          frameWidth: resolved.grid.frameWidth,
+          frameHeight: resolved.grid.frameHeight,
         });
       } else {
-        this.load.image(key, asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path);
+        this.load.image(key, resolved.source.kind === 'embedded' ? resolved.source.dataUrl : resolved.source.path);
       }
     }
 

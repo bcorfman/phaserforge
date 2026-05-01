@@ -4,7 +4,7 @@ import { dismissViewHint, getSceneSnapshot, seedProject, worldToClient } from '.
 test('Play mode: clicking an entity records a runtime click snapshot', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
     scenes: {

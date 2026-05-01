@@ -6,7 +6,7 @@ test.setTimeout(120000);
 test('Play mode: hide OS cursor option applies to game canvas', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
     scenes: {

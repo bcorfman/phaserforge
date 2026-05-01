@@ -4,7 +4,7 @@ import { dismissViewHint, getSceneSnapshot, getState, seedProject } from './help
 test('Play mode: scene.goto switches runtime scene without changing editor currentSceneId', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
     scenes: {

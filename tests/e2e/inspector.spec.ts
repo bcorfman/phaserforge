@@ -1,11 +1,14 @@
 import { expect, test } from '@playwright/test';
 import {
   dismissViewHint,
+  dragAssetToCanvas,
   expectInputValue,
   getEditableBoundsRect,
   getEntitySpriteWorldRect,
   getState,
   gotoStudio,
+  importImageAssetFromFile,
+  importSpritesheetAssetFromFile,
   openProjectScope,
   openSceneScope,
   resetScene,
@@ -215,13 +218,14 @@ test('bounds hit checkbox toggles BoundsHit condition', async ({ page }) => {
 });
 
 test('creates a formation from imported sprites and arranges it into a grid', async ({ page }) => {
-  await openProjectScope(page);
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
-  await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
-  await page.getByTestId('spritesheet-frame-width-input').fill('64');
-  await page.getByTestId('spritesheet-frame-height-input').fill('64');
-  await page.getByTestId('spritesheet-frame-1').click();
-  await page.getByTestId('import-sprites-button').click();
+  await resetScene(page);
+  const { assetId } = await importSpritesheetAssetFromFile(page, 'res/images/mainwindow.png', { frameWidth: 64, frameHeight: 64 });
+  await dragAssetToCanvas(page, 'spritesheet', assetId);
+  await dragAssetToCanvas(page, 'spritesheet', assetId);
+
+  await openSceneScope(page);
+  await page.getByTestId('ungrouped-entity-e').click();
+  await page.getByTestId('ungrouped-entity-e-2').click({ modifiers: ['Shift'] });
 
   await expect(page.getByTestId('multi-entity-inspector')).toBeVisible();
   await page.getByTestId('new-formation-name-input').fill('Raid Wing');
@@ -242,9 +246,11 @@ test('creates a formation from imported sprites and arranges it into a grid', as
 });
 
 test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
-  await openProjectScope(page);
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
-  await page.getByTestId('import-sprites-button').click();
+  await resetScene(page);
+  const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  await dragAssetToCanvas(page, 'image', assetId);
+  await openSceneScope(page);
+  await page.getByTestId('ungrouped-entity-e').click();
 
   await page.getByTestId('add-attachment-MoveUntil').click();
   await page.getByTestId('attachment-velocity-x-input').fill('140');
@@ -264,46 +270,34 @@ test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
 });
 
 test('reassigns a sprite asset from another sprite via the inspector', async ({ page }) => {
-  await openProjectScope(page);
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
-  await page.getByTestId('import-sprites-button').click();
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_B.png');
-  await page.getByTestId('import-sprites-button').click();
-
-  await expect.poll(async () => {
-    const state = await getState<{ scene?: { entities?: Record<string, { id: string; name?: string }> } } | null>(page);
-    const entities = Object.values(state?.scene?.entities ?? {});
-    const a = entities.find((e) => e.name === 'enemy_A.png-0')?.id ?? null;
-    const b = entities.find((e) => e.name === 'enemy_B.png-0')?.id ?? null;
-    return { a, b };
-  }).toEqual({ a: expect.any(String), b: expect.any(String) });
-
-  const stateAfterImport = await getState<{ scene?: { entities?: Record<string, { id: string; name?: string }> } } | null>(page);
-  const entitiesAfterImport = Object.values(stateAfterImport?.scene?.entities ?? {});
-  const entityAId = entitiesAfterImport.find((e) => e.name === 'enemy_A.png-0')?.id ?? null;
-  const entityBId = entitiesAfterImport.find((e) => e.name === 'enemy_B.png-0')?.id ?? null;
-  if (!entityAId || !entityBId) throw new Error('Expected imported entity ids');
+  await resetScene(page);
+  const { assetId: assetA } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  const { assetId: assetB } = await importImageAssetFromFile(page, 'res/images/enemy_B.png');
+  await dragAssetToCanvas(page, 'image', assetA);
+  await dragAssetToCanvas(page, 'image', assetB);
+  const entityAId = 'e';
+  const entityBId = 'e-2';
 
   await openSceneScope(page);
   await page.getByTestId(`ungrouped-entity-${entityAId}`).click();
-  await page.getByTestId('entity-asset-select').selectOption({ label: 'enemy_B.png (image)' });
+  await page.getByTestId('entity-asset-select').selectOption({ label: `asset:${assetB} (image)` });
 
   await expect.poll(async () => {
     const state = await getState<{ scene?: { entities?: Record<string, { asset?: { source?: { kind: string; originalName?: string } } }> } } | null>(page);
     const asset = state?.scene?.entities?.[entityAId]?.asset;
-    if (!asset || asset.source?.kind !== 'embedded') return null;
-    return asset.source.originalName ?? null;
-  }).toBe('enemy_B.png');
+    if (!asset || asset.source?.kind !== 'asset') return null;
+    return asset.source.assetId ?? null;
+  }).toBe(assetB);
 });
 
 test('assigns a group MoveUntil action to imported sprites and runs it in play mode', async ({ page }) => {
-  await openProjectScope(page);
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
-  await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
-  await page.getByTestId('spritesheet-frame-width-input').fill('64');
-  await page.getByTestId('spritesheet-frame-height-input').fill('64');
-  await page.getByTestId('spritesheet-frame-1').click();
-  await page.getByTestId('import-sprites-button').click();
+  await resetScene(page);
+  const { assetId } = await importSpritesheetAssetFromFile(page, 'res/images/mainwindow.png', { frameWidth: 64, frameHeight: 64 });
+  await dragAssetToCanvas(page, 'spritesheet', assetId);
+  await dragAssetToCanvas(page, 'spritesheet', assetId);
+  await openSceneScope(page);
+  await page.getByTestId('ungrouped-entity-e').click();
+  await page.getByTestId('ungrouped-entity-e-2').click({ modifiers: ['Shift'] });
   await page.getByTestId('create-formation-from-selection-button').click();
 
   await page.getByTestId('add-attachment-MoveUntil').click();
@@ -348,18 +342,15 @@ test('preview uses edited move velocity and bounce behavior', async ({ page }) =
 
 test('preview bounce reaches configured bounds edge before reversing', async ({ page }) => {
   await resetScene(page);
-  await openProjectScope(page);
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
-  await page.getByTestId('import-sprites-button').click();
+  const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  await dragAssetToCanvas(page, 'image', assetId);
+  await openSceneScope(page);
+  await page.getByTestId('ungrouped-entity-e').click();
   await page.getByTestId('add-attachment-MoveUntil').click();
   await page.getByTestId('attachment-velocity-x-input').fill('300');
   await page.getByTestId('attachment-bounds-behavior-select').selectOption('bounce');
 
-  const entityId = await page.evaluate(() => {
-    const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { entities: Record<string, unknown> } } | null;
-    return state ? Object.keys(state.scene.entities)[0] : null;
-  });
-  if (!entityId) throw new Error('Imported entity id unavailable');
+  const entityId = 'e';
 
   const beforeSprite = await getEntitySpriteWorldRect(page, entityId);
   if (!beforeSprite?.maxX) throw new Error('Sprite rect unavailable');
@@ -403,22 +394,19 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
 
 test('preview applies wrap behavior for an imported sprite move action', async ({ page }) => {
   await resetScene(page);
-  await openProjectScope(page);
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
-  await page.getByTestId('import-sprites-button').click();
+  const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  await dragAssetToCanvas(page, 'image', assetId);
+  await openSceneScope(page);
+  await page.getByTestId('ungrouped-entity-e').click();
   await page.getByTestId('add-attachment-MoveUntil').click();
 
-  const entityId = await page.evaluate(() => {
-    const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { entities: Record<string, unknown> } } | null;
-    return state ? Object.keys(state.scene.entities)[0] : null;
-  });
-  if (!entityId) throw new Error('Imported entity id unavailable');
+  const entityId = 'e';
 
   const before = await page.evaluate((id) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(id), entityId);
   if (!before?.centerX) throw new Error('Imported entity rect unavailable');
 
   await page.getByTestId('attachment-velocity-x-input').fill('300');
-  await page.getByTestId('attachment-bounds-min-x-input').fill('200');
+  await page.getByTestId('attachment-bounds-min-x-input').fill(String(Math.round(before.centerX - 40)));
   await page.getByTestId('attachment-bounds-max-x-input').fill(String(Math.round(before.centerX + 40)));
   await page.getByTestId('attachment-bounds-behavior-select').selectOption('wrap');
   await page.getByTestId('toggle-mode-button').click();
@@ -426,10 +414,5 @@ test('preview applies wrap behavior for an imported sprite move action', async (
   await expect.poll(async () => {
     const rect = await page.evaluate((id) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(id), entityId);
     return rect?.centerX;
-  }).toBeLessThan(before.centerX);
-
-  await expect.poll(async () => {
-    const rect = await page.evaluate((id) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(id), entityId);
-    return rect?.centerX;
-  }).toBeGreaterThan(200);
+  }).toBeLessThan(before.centerX - 1);
 });

@@ -4,7 +4,7 @@ import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, seedProject, wor
 test('Play mode: mouse-driven entity motion respects axis locks', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
     scenes: {

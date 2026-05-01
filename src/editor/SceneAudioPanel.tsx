@@ -3,6 +3,7 @@ import type { GameSceneSpec, ProjectSpec } from '../model/types';
 import type { EditorAction } from './EditorStore';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { ValidatedNumberInput } from './ValidatedNumberInput';
+import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
 
 export function SceneAudioPanel({
   project,
@@ -28,7 +29,7 @@ export function SceneAudioPanel({
         onToggle={() => foldouts.toggle('scene.audio', true)}
         testId="scene-audio-foldout"
       >
-        <SceneAudioBody project={project} scene={scene} dispatch={dispatch} disabled={disabled} />
+        <SceneAudioBody project={project} sceneId={sceneId} scene={scene} dispatch={dispatch} disabled={disabled} />
       </InspectorFoldout>
     </div>
   );
@@ -36,11 +37,13 @@ export function SceneAudioPanel({
 
 export function SceneAudioBody({
   project,
+  sceneId,
   scene,
   dispatch,
   disabled,
 }: {
   project: ProjectSpec;
+  sceneId: string;
   scene: GameSceneSpec;
   dispatch: React.Dispatch<EditorAction>;
   disabled: boolean;
@@ -84,11 +87,28 @@ export function SceneAudioBody({
     <>
       {!hasSounds && (
         <div className="inspector-row muted">
-          Add audio assets in the left panel to enable scene music and ambience.
+          Import audio in the docked Assets panel to enable scene music and ambience.
         </div>
       )}
 
-      <label className="field">
+      <label
+        className="field"
+        onDragOver={(e) => {
+          if (!hasDraggedAsset(e.dataTransfer)) return;
+          e.preventDefault();
+        }}
+        onDrop={(e) => {
+          const asset = readDraggedAsset(e.dataTransfer);
+          if (!asset || asset.assetKind !== 'audio') return;
+          e.preventDefault();
+          dispatch({
+            type: 'assign-asset-to-target',
+            assetKind: 'audio',
+            assetId: asset.assetId,
+            target: { kind: 'scene-music', sceneId },
+          } as any);
+        }}
+      >
         <span>Music</span>
         <select
           aria-label="Scene music asset"

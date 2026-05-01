@@ -4,7 +4,7 @@ import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, seedProject } fr
 test('Play mode: entering a trigger zone emits an enter event in the snapshot', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
     scenes: {

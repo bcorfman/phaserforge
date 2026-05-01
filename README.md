@@ -2,33 +2,47 @@
 
 Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bcorfman/phaseractions-studio)
 
-A browser-based editor for authoring Phaser-friendly 2D scenes: import sprites, arrange formations, attach simple action scripts, preview them instantly, and round-trip the whole project as YAML.
+PhaserActions Studio is a browser-based **scene + behavior authoring tool for Phaser** built around one goal: **ship faster by staying in the loop**.
+
+Instead of “design in an editor, then rebuild your runtime”, PhaserActions keeps everything **runtime-shaped**:
+- You **import assets once**, then **drag/assign** them where you need them.
+- You attach **small, composable action presets** to entities/formations.
+- You hit **Play Mode** and validate behaviors immediately.
+- You round-trip the whole project as **human-readable YAML** you can diff, branch, and review.
+
+If you’ve used other editors: this is the **10× iteration** approach—less UI bouncing, more “try it now”.
 
 <img src="res/images/mainwindow.png?raw=true" style="width: 800px"/>
 
 ## What’s In The Editor Today
 
-- **Multi-scene projects** with a per-scene world size.
+- **Multi-scene projects** with per-scene world size (fast scene switching, consistent runtime semantics).
 - **Base scene + waves**:
-  - Mark a scene as the **Base** (★) in the Scenes list (`project.baseSceneId`).
-  - **Edit mode**: the base scene renders as a **non-interactive ghost** behind the active scene for alignment.
-  - **Play mode**: the runtime composes **persistent base + swappable wave** layers; waves can swap via `scene.gotoWave(sceneId)` without resetting the base.
+  - Mark a scene as the **Base** (★) in the Scenes list (`project.baseSceneId`) to build “persistent stage + swappable encounters”.
+  - **Edit mode**: base scene renders as a **non-interactive ghost** behind the active scene for alignment.
+  - **Play mode**: runtime composes **persistent base + active wave**; waves swap via `scene.gotoWave(sceneId)` without resetting the base.
 - **Sidebar scope tabs**:
-  - **Scene**: scene-scoped panels (sprites, trigger zones, formations).
-  - **Project**: project-level panels (sprite import, audio library, input maps).
-- **Sprite import (Project tab)**: embedded file → data URL, or “asset path” reference, including a spritesheet frame picker and optional auto-hitbox.
-- **Canvas editing**: drag sprites and formations, marquee multi-select, group / dissolve, grid snap, undo/redo, pan/zoom, fit/reset view.
-- **Formations (groups)** can use declarative arrange layouts (grid, line, circle, arc, etc.) driven by `public/editor-registry.yaml`.
-- **Input maps (semantic controls) (Project tab)**: author project-level action bindings (keyboard / mouse / gamepad buttons), choose active/fallback maps per scene, and preview runtime action states in Play mode.
+  - **Scene**: everything you need to iterate a scene (tree + assets dock always visible).
+  - **Project**: project-level systems (input maps, YAML workflow).
+- **Docked Assets panel (Scene tab)**:
+  - Import **Images**, **Spritesheets**, **Audio**, and **Fonts** as embedded files or “asset path” references.
+  - Assets have **immutable IDs** (stable references) and an **editable display name** (friendly labels).
+  - Drag **image/spritesheet assets → canvas** to create sprite entities at the drop point.
+  - Drag **image assets → background layers** to add/assign backgrounds.
+  - Drag **audio assets → scene music** to assign music.
+  - Asset deletion is **blocked when referenced**, preventing broken scenes at runtime.
+- **Canvas editing**: drag sprites/formations, marquee multi-select, group/dissolve, grid snap, undo/redo, pan/zoom, fit/reset view.
+- **Formations (groups)**: declarative arrange layouts (grid, line, circle, arc, etc.) driven by `public/editor-registry.yaml`—repeatable patterns without hand-placing every entity.
+- **Input maps (semantic controls) (Project tab)**: author action bindings (keyboard/mouse/gamepad), choose active/fallback maps per scene, preview runtime action states in Play mode.
 - **Play mode mouse controls**: optional hide OS cursor, and mouse-driven entity motion with independent X/Y axis locks.
 - **Collisions + trigger zones**:
-  - Author per-entity collision metadata (body + collision layer), scene collision rules (`block`/`overlap`), and rectangular trigger zones.
-  - Collision rules can run scripts on overlap/block **enter** via `collisionRules[].onEnter` (a single call or list of calls), enabling “shot hits obstacle → destroy both” authored in YAML.
+  - Per-entity collision metadata (body + collision layer), per-scene collision rules (`block`/`overlap`), rectangular trigger zones.
+  - Collision rules can run scripts on overlap/block **enter** via `collisionRules[].onEnter` (single call or list of calls) for “gameplay glue” authored in YAML.
   - Play mode exposes trigger + collision enter/stay/exit/click events in the runtime test snapshot.
-- **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, `InputDrive` (input → velocity), `InputFire` (spawn projectiles), plus `Repeat` as a script-level wrapper.
+- **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, `InputDrive` (input → velocity), `InputFire` (spawn projectiles), plus `Repeat` as a wrapper.
 - **`Call` actions require a registered handler**. The runtime includes built-in handlers like `scene.goto`, `scene.gotoWave`, `entity.destroy`, and `audio.play_sfx` (plus sample/demo ops like `drop`). Unknown `callId` values will fail during preview compile/run.
 - **Inline conditions (current)**: `BoundsHit` and `ElapsedTime` (used by `MoveUntil`).
-- **Play mode** compiles the active scene (and base layer when configured) and runs actions; **Edit mode** is for authoring.
+- **Play mode** compiles the active scene (and base layer when configured) and runs actions; **Edit mode** stays focused on authoring and iteration speed.
 
 ## YAML Round-Trip
 
