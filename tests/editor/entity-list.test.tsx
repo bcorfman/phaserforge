@@ -120,6 +120,8 @@ describe('EntityList', () => {
     expect(markup).toContain('Input Maps');
     expect(markup).toContain('Audio');
     expect(markup).toContain('Import Sprites');
+    expect(markup).not.toContain('Scenes');
+    expect(markup).not.toContain('create-scene-button');
     expect(markup).not.toContain('Formations');
     expect(markup).not.toContain('Trigger Zones');
   });

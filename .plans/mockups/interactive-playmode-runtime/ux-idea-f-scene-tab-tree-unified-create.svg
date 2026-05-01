@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px; letter-spacing:0.02em;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:650;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .treeRow{fill:#0b1226; stroke:#2c3a65; stroke-width:1;}
+      .treeRowActive{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .badge{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.70); stroke-width:1;}
+      .badgeText{fill:var(--text); font-size:11px; font-weight:800;}
+      .removeBtn{fill:rgba(255,120,120,0.14); stroke:rgba(255,120,120,0.55); stroke-width:1;}
+      .removeText{fill:rgba(255,184,184,0.95); font-size:14px; font-weight:900;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .dot{fill:rgba(170,180,230,0.75);}
+      .icon{fill:var(--muted); font-size:12px; font-weight:800;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Editor IA Proposal — Idea F: Scene Tab Tree + Unified Create (Mockup)</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Left: Scope tabs -->
+  <rect x="44" y="140" width="144" height="32" rx="10" class="chipActive"/>
+  <text x="92" y="161" class="btnText">Scene</text>
+  <rect x="196" y="140" width="144" height="32" rx="10" class="chip"/>
+  <text x="238" y="161" class="btnTextMuted">Project</text>
+
+  <!-- Left: Scenes header + compact create -->
+  <text x="44" y="206" class="label">Scenes</text>
+  <rect x="284" y="186" width="56" height="26" rx="9" class="btnPrimary"/>
+  <text x="296" y="203" class="btnText">+ New</text>
+
+  <!-- Left: Scene tree panel -->
+  <rect x="44" y="222" width="296" height="474" rx="12" class="panel2"/>
+
+  <!-- Scene 1 (expanded) -->
+  <rect x="56" y="236" width="272" height="34" rx="10" class="treeRowActive"/>
+  <text x="70" y="258" class="fieldText">▾ scene-1</text>
+  <text x="254" y="258" class="icon">★</text>
+  <text x="276" y="258" class="icon">⧉</text>
+  <text x="300" y="258" class="icon">🗑</text>
+
+  <!-- Sprites header -->
+  <text x="84" y="290" class="small">Sprites</text>
+  <rect x="298" y="276" width="28" height="20" rx="8" class="btn"/>
+  <text x="307" y="290" class="btnTextMuted">+</text>
+
+  <!-- Sprite rows -->
+  <rect x="72" y="300" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="86" y="320" class="fieldText">• player</text>
+  <rect x="170" y="306" width="120" height="18" rx="9" class="badge"/>
+  <text x="180" y="319" class="badgeText">⚡ Behaviors 2</text>
+  <text x="304" y="320" class="icon">🗑</text>
+
+  <rect x="72" y="334" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="86" y="354" class="fieldText">• enemy_A</text>
+  <rect x="170" y="340" width="120" height="18" rx="9" class="badge"/>
+  <text x="180" y="353" class="badgeText">⚡ Behaviors 0</text>
+  <text x="304" y="354" class="icon">🗑</text>
+
+  <!-- Formations header -->
+  <text x="84" y="396" class="small">Formations</text>
+  <rect x="298" y="382" width="28" height="20" rx="8" class="btn"/>
+  <text x="307" y="396" class="btnTextMuted">+</text>
+
+  <!-- Formation row (expanded) -->
+  <rect x="72" y="406" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="86" y="426" class="fieldText">▾ Formation 1</text>
+  <rect x="170" y="412" width="120" height="18" rx="9" class="badge"/>
+  <text x="180" y="425" class="badgeText">⚡ Behaviors 3</text>
+  <text x="304" y="426" class="icon">🗑</text>
+
+  <!-- Formation members (match current tree: full rows + remove “-”) -->
+  <rect x="72" y="440" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="100" y="460" class="fieldText">enemy 45</text>
+  <rect x="294" y="440" width="34" height="30" rx="10" class="removeBtn"/>
+  <text x="308" y="460" class="removeText">−</text>
+  <text x="100" y="490" class="tiny">… +10 more</text>
+
+  <!-- Trigger Zones header -->
+  <text x="84" y="516" class="small">Trigger Zones</text>
+  <rect x="298" y="502" width="28" height="20" rx="8" class="btn"/>
+  <text x="307" y="516" class="btnTextMuted">+</text>
+
+  <!-- Trigger zone row -->
+  <rect x="72" y="526" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="86" y="546" class="fieldText">• trigger-1</text>
+  <rect x="170" y="532" width="120" height="18" rx="9" class="badge"/>
+  <text x="180" y="545" class="badgeText">⚡ Behaviors 1</text>
+  <text x="304" y="546" class="icon">🗑</text>
+
+  <line x1="56" y1="578" x2="328" y2="578" class="divider"/>
+
+  <!-- Scene 2 (collapsed) -->
+  <rect x="56" y="592" width="272" height="34" rx="10" class="treeRow"/>
+  <text x="70" y="614" class="fieldText">▸ scene-2</text>
+  <text x="254" y="614" class="icon">★</text>
+  <text x="276" y="614" class="icon">⧉</text>
+  <text x="300" y="614" class="icon">🗑</text>
+
+  <text x="56" y="664" class="tiny">Tip: use the (+) beside Sprites / Formations / Zones for</text>
+  <text x="56" y="682" class="tiny">contextual creation without full-width “New …” buttons.</text>
+
+  <!-- Center: canvas placeholder -->
+  <rect x="408" y="140" width="444" height="456" rx="12" class="panel2"/>
+  <circle cx="548" cy="320" r="6" class="dot"/>
+  <circle cx="610" cy="270" r="6" class="dot"/>
+  <circle cx="680" cy="330" r="6" class="dot"/>
+  <circle cx="720" cy="420" r="6" class="dot"/>
+  <text x="420" y="610" class="tiny">Selecting a row focuses the canvas; ⚡ Behaviors opens attached actions.</text>
+
+  <!-- Right: inspector placeholder -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="field"/>
+  <text x="936" y="162" class="fieldText">Inspector</text>
+  <rect x="920" y="188" width="236" height="160" rx="12" class="panel2"/>
+  <text x="936" y="214" class="small">Selection</text>
+  <text x="936" y="236" class="tiny">Selected: player</text>
+  <text x="936" y="258" class="tiny">Behaviors: 2</text>
+  <text x="936" y="280" class="tiny">Position / rotation / properties…</text>
+
+  <!-- Callout -->
+  <rect x="372" y="610" width="516" height="86" rx="12" class="callout"/>
+  <text x="392" y="636" class="calloutText">Resolves:</text>
+  <text x="392" y="658" class="tiny">1) Scene-first tree: Sprites + Formations + Trigger Zones grouped under each Scene.</text>
+  <text x="392" y="676" class="tiny">2) Plain action counts become labeled badges: “⚡ Behaviors N” reads as behavior attached.</text>
+  <text x="392" y="694" class="tiny">3) Unified compact creation: “+ New” (menu) + contextual (+) on each group header.</text>
+</svg>

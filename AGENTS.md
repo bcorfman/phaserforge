@@ -7,3 +7,6 @@ All phases and implementation changes should be TDD-driven. Each gesture or edit
 
 ### ArcadeActions Reference Only
 The `arcadeactions` directory is for reference only. Do not modify or add files to it. Use it to understand formations, actions, and arrange functions, but all changes must stay within `phaseractions-studio`. For expandability, rely on external config files and editor-side logic.
+
+### Playwright Workers Default (Do Not Change)
+Do not change the default Playwright worker count in `playwright.config.ts`. The default must remain `3` (overridable only via `PW_WORKERS`).

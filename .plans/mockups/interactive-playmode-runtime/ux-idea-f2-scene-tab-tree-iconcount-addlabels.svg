@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px; letter-spacing:0.02em;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:650;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .treeRow{fill:#0b1226; stroke:#2c3a65; stroke-width:1;}
+      .treeRowActive{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .badge{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.70); stroke-width:1;}
+      .badgeText{fill:var(--text); font-size:11px; font-weight:900;}
+      .markerOff{fill:rgba(170,180,230,0.08); stroke:rgba(170,180,230,0.35); stroke-width:1;}
+      .markerOn{fill:rgba(124,240,199,0.20); stroke:rgba(124,240,199,0.75); stroke-width:1;}
+      .markerText{fill:var(--text); font-size:10px; font-weight:900;}
+      .removeBtn{fill:rgba(255,120,120,0.14); stroke:rgba(255,120,120,0.55); stroke-width:1;}
+      .removeText{fill:rgba(255,184,184,0.95); font-size:14px; font-weight:900;}
+      .moreBtn{fill:rgba(231,236,255,0.06); stroke:rgba(170,180,230,0.35); stroke-width:1;}
+      .moreText{fill:var(--muted); font-size:14px; font-weight:900;}
+      .menu{fill:#0b1226; stroke:rgba(106,167,255,0.35); stroke-width:1;}
+      .menuItem{fill:var(--text); font-size:12px; font-weight:750;}
+      .menuIcon{fill:var(--muted); font-size:12px; font-weight:900;}
+      .menuHint{fill:var(--muted); font-size:11px; font-weight:700;}
+      .menuDivider{stroke:rgba(170,180,230,0.20); stroke-width:1;}
+      .menuDelete{fill:rgba(255,184,184,0.95); font-size:12px; font-weight:900;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .dot{fill:rgba(170,180,230,0.75);}
+      .icon{fill:var(--muted); font-size:12px; font-weight:800;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Editor IA Proposal — Idea F2: Scene Tab Tree (Icon Count) + “+ Add” (Mockup)</text>
+
+  <!-- App body columns -->
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Left: Scope tabs -->
+  <rect x="44" y="140" width="144" height="32" rx="10" class="chipActive"/>
+  <text x="92" y="161" class="btnText">Scene</text>
+  <rect x="196" y="140" width="144" height="32" rx="10" class="chip"/>
+  <text x="238" y="161" class="btnTextMuted">Project</text>
+
+  <!-- Left: Scenes header + compact create -->
+  <text x="44" y="206" class="label">Scenes</text>
+  <rect x="270" y="186" width="70" height="26" rx="9" class="btnPrimary"/>
+  <text x="282" y="203" class="btnText">+ Add</text>
+
+  <!-- Left: Scene tree panel -->
+  <rect x="44" y="222" width="296" height="474" rx="12" class="panel2"/>
+
+  <!-- Scene 1 (expanded) -->
+  <rect x="56" y="236" width="272" height="34" rx="10" class="treeRowActive"/>
+  <text x="70" y="258" class="fieldText">▾ scene-1</text>
+  <text x="254" y="258" class="icon">★</text>
+  <rect x="296" y="242" width="28" height="22" rx="9" class="moreBtn"/>
+  <text x="306" y="259" class="moreText">⋯</text>
+
+  <!-- Sprites header -->
+  <text x="84" y="290" class="small">Sprites</text>
+  <rect x="280" y="276" width="46" height="20" rx="8" class="btn"/>
+  <text x="288" y="290" class="btnTextMuted">+ Add</text>
+
+  <!-- Sprite rows -->
+  <rect x="72" y="300" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="86" y="320" class="fieldText">• player</text>
+  <rect x="232" y="306" width="60" height="18" rx="9" class="badge"/>
+  <text x="246" y="319" class="badgeText">⚡ 2</text>
+  <rect x="296" y="304" width="28" height="22" rx="9" class="moreBtn"/>
+  <text x="306" y="321" class="moreText">⋯</text>
+
+  <rect x="72" y="334" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="86" y="354" class="fieldText">• enemy_A</text>
+  <rect x="232" y="340" width="60" height="18" rx="9" class="badge"/>
+  <text x="246" y="353" class="badgeText">⚡ 0</text>
+  <rect x="296" y="338" width="28" height="22" rx="9" class="moreBtn"/>
+  <text x="306" y="355" class="moreText">⋯</text>
+
+  <!-- Formations header -->
+  <text x="84" y="396" class="small">Formations</text>
+  <rect x="280" y="382" width="46" height="20" rx="8" class="btn"/>
+  <text x="288" y="396" class="btnTextMuted">+ Add</text>
+
+  <!-- Formation row (expanded) -->
+  <rect x="72" y="406" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="86" y="426" class="fieldText">▾ Formation 1</text>
+  <rect x="232" y="412" width="60" height="18" rx="9" class="badge"/>
+  <text x="246" y="425" class="badgeText">⚡ 3</text>
+  <rect x="296" y="410" width="28" height="22" rx="9" class="moreBtn"/>
+  <text x="306" y="427" class="moreText">⋯</text>
+
+  <!-- Formation members (match current tree: full rows + remove “-”) -->
+  <rect x="72" y="440" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="100" y="460" class="fieldText">enemy 45</text>
+  <rect x="258" y="440" width="34" height="30" rx="10" class="removeBtn"/>
+  <text x="272" y="460" class="removeText">−</text>
+  <rect x="296" y="444" width="28" height="22" rx="9" class="moreBtn"/>
+  <text x="306" y="461" class="moreText">⋯</text>
+  <text x="100" y="490" class="tiny">… +10 more</text>
+
+  <!-- Trigger Zones header -->
+  <text x="84" y="516" class="small">Trigger Zones</text>
+  <rect x="280" y="502" width="46" height="20" rx="8" class="btn"/>
+  <text x="288" y="516" class="btnTextMuted">+ Add</text>
+
+  <!-- Trigger zone row -->
+  <rect x="72" y="526" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="86" y="546" class="fieldText">• trigger-1</text>
+  <!-- mini-markers: E / X / C -->
+  <rect x="238" y="533" width="16" height="16" rx="6" class="markerOn"/>
+  <text x="243" y="545" class="markerText">E</text>
+  <rect x="258" y="533" width="16" height="16" rx="6" class="markerOff"/>
+  <text x="263" y="545" class="markerText">X</text>
+  <rect x="278" y="533" width="16" height="16" rx="6" class="markerOn"/>
+  <text x="283" y="545" class="markerText">C</text>
+  <rect x="296" y="530" width="28" height="22" rx="9" class="moreBtn"/>
+  <text x="306" y="547" class="moreText">⋯</text>
+
+  <rect x="72" y="560" width="256" height="30" rx="10" class="treeRow"/>
+  <text x="86" y="580" class="fieldText">• trigger-2</text>
+  <rect x="238" y="567" width="16" height="16" rx="6" class="markerOff"/>
+  <text x="243" y="579" class="markerText">E</text>
+  <rect x="258" y="567" width="16" height="16" rx="6" class="markerOn"/>
+  <text x="263" y="579" class="markerText">X</text>
+  <rect x="278" y="567" width="16" height="16" rx="6" class="markerOff"/>
+  <text x="283" y="579" class="markerText">C</text>
+  <rect x="296" y="564" width="28" height="22" rx="9" class="moreBtn"/>
+  <text x="306" y="581" class="moreText">⋯</text>
+
+  <line x1="56" y1="612" x2="328" y2="612" class="divider"/>
+
+  <!-- Scene 2 (collapsed) -->
+  <rect x="56" y="626" width="272" height="34" rx="10" class="treeRow"/>
+  <text x="70" y="648" class="fieldText">▸ scene-2</text>
+  <text x="254" y="648" class="icon">★</text>
+  <rect x="296" y="632" width="28" height="22" rx="9" class="moreBtn"/>
+  <text x="306" y="649" class="moreText">⋯</text>
+
+  <text x="56" y="668" class="tiny">Tip: delete is two-step via ⋯ → Delete… (safer). Power users: Del deletes selection (Undo).</text>
+  <text x="56" y="686" class="tiny">Zones show E/X/C markers (Enter/Exit/Click hooks), not ⚡. Use “+ Add” for contextual creation.</text>
+
+  <!-- Center: canvas placeholder -->
+  <rect x="408" y="140" width="444" height="456" rx="12" class="panel2"/>
+  <circle cx="548" cy="320" r="6" class="dot"/>
+  <circle cx="610" cy="270" r="6" class="dot"/>
+  <circle cx="680" cy="330" r="6" class="dot"/>
+  <circle cx="720" cy="420" r="6" class="dot"/>
+  <text x="420" y="610" class="tiny">⚡ N indicates attached actions; zones show E/X/C hooks; ⋯ contains Delete…</text>
+
+  <!-- Right: inspector placeholder -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="field"/>
+  <text x="936" y="162" class="fieldText">Inspector</text>
+  <rect x="920" y="188" width="236" height="160" rx="12" class="panel2"/>
+  <text x="936" y="214" class="small">Selection</text>
+  <text x="936" y="236" class="tiny">Selected: player</text>
+  <text x="936" y="258" class="tiny">Actions: 2</text>
+  <text x="936" y="280" class="tiny">Position / rotation / properties…</text>
+
+  <!-- Callout -->
+  <rect x="372" y="610" width="516" height="86" rx="12" class="callout"/>
+  <text x="392" y="636" class="calloutText">Resolves:</text>
+  <text x="392" y="658" class="tiny">1) Scene-first tree: Sprites + Formations + Trigger Zones grouped under each Scene.</text>
+  <text x="392" y="676" class="tiny">2) Action counts are scannable: “⚡ N” indicates attached actions without extra text.</text>
+  <text x="392" y="694" class="tiny">3) Two-step delete via ⋯ → Delete… with a fast-path: Del (Undo) for the selection.</text>
+
+  <!-- Example open overflow menu (player) -->
+  <rect x="820" y="244" width="170" height="116" rx="12" class="menu"/>
+  <text x="836" y="268" class="menuHint">player</text>
+  <text x="836" y="292" class="menuItem">Rename…</text>
+  <text x="836" y="314" class="menuItem">Duplicate</text>
+  <text x="836" y="336" class="menuItem">Focus on Canvas</text>
+  <line x1="832" y1="346" x2="978" y2="346" class="menuDivider"/>
+  <text x="836" y="366" class="menuDelete">Delete…</text>
+
+  <!-- Example open overflow menu (scene-1) -->
+  <rect x="160" y="270" width="190" height="136" rx="12" class="menu"/>
+  <text x="176" y="294" class="menuHint">scene-1</text>
+  <text x="176" y="318" class="menuItem">Rename…</text>
+  <text x="176" y="340" class="menuIcon">⧉</text>
+  <text x="194" y="340" class="menuItem">Duplicate Scene</text>
+  <text x="176" y="362" class="menuIcon">★</text>
+  <text x="194" y="362" class="menuItem">Set as Base</text>
+  <line x1="172" y1="372" x2="338" y2="372" class="menuDivider"/>
+  <text x="176" y="392" class="menuDelete">Delete…</text>
+</svg>

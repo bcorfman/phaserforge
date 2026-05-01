@@ -143,6 +143,7 @@ export type EditorAction =
   | { type: 'set-sidebar-scope'; scope: SidebarScope }
   | { type: 'select'; selection: Selection }
   | { type: 'select-multiple'; entityIds: Id[]; additive: boolean }
+  | { type: 'delete-selection' }
   | { type: 'history-undo' }
   | { type: 'history-redo' }
   | { type: 'set-yaml-text'; value: string }
@@ -423,6 +424,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'convert-group-layout-grid':
     case 'convert-group-layout-arrange':
     case 'remove-scene-graph-item':
+    case 'delete-selection':
     case 'update-scene-world':
     case 'create-scene':
     case 'duplicate-scene':
@@ -1537,6 +1539,37 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         return { ...state, selection: { kind: 'entity', id: nextIds[0] } };
       }
       return { ...state, selection: { kind: 'entities', ids: nextIds } };
+    case 'delete-selection': {
+      const selection = state.selection;
+      if (selection.kind === 'none') return state;
+
+      const scene = getActiveScene(state);
+      let nextScene: GameSceneSpec = scene;
+
+      if (selection.kind === 'trigger') {
+        const zones = [...(scene.triggers ?? [])];
+        const index = zones.findIndex((z) => z.id === selection.id);
+        if (index < 0) return state;
+        zones.splice(index, 1);
+        nextScene = { ...scene, triggers: zones } as GameSceneSpec;
+      } else {
+        const items: Array<{ kind: 'entity' | 'group' | 'attachment'; id: Id }> = [];
+        if (selection.kind === 'entity') items.push({ kind: 'entity', id: selection.id });
+        if (selection.kind === 'group') items.push({ kind: 'group', id: selection.id });
+        if (selection.kind === 'attachment') items.push({ kind: 'attachment', id: selection.id });
+        if (selection.kind === 'entities') {
+          for (const id of selection.ids) items.push({ kind: 'entity', id });
+        }
+
+        for (const item of items) {
+          nextScene = removeSceneGraphItem(nextScene, item) as GameSceneSpec;
+        }
+      }
+
+      if (nextScene === scene) return state;
+      const nextExpandedGroups = syncExpandedGroupsToScene(state.expandedGroups, nextScene);
+      return withScene({ ...state, selection: { kind: 'none' } }, nextScene, true, { kind: 'none' }, nextExpandedGroups);
+    }
     case 'move-entities': {
       const scene = getActiveScene(state);
       const dx = Math.round(action.dx);

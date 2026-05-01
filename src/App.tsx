@@ -11,9 +11,11 @@ import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import {
   registerAppStateGetter,
+  registerResetSceneHandler,
   registerSelectionSetter,
   registerUndoRedoHandlers,
   unregisterAppStateGetter,
+  unregisterResetSceneHandler,
   unregisterSelectionSetter,
   unregisterUndoRedoHandlers,
 } from './testing/testBridge';
@@ -109,6 +111,14 @@ function AppShell() {
     registerUndoRedoHandlers(handlers);
     return () => {
       unregisterUndoRedoHandlers(handlers);
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    const handler = () => dispatch({ type: 'reset-scene' });
+    registerResetSceneHandler(handler);
+    return () => {
+      unregisterResetSceneHandler(handler);
     };
   }, [dispatch]);
 
@@ -267,6 +277,12 @@ function AppShell() {
       dispatch({ type: 'toggle-mode' });
     };
 
+    const handleDeleteSelection = () => {
+      if (state.mode !== 'edit') return;
+      if (state.selection.kind === 'none') return;
+      dispatch({ type: 'delete-selection' });
+    };
+
     EventBus.on('canvas-select', handleCanvasSelect);
     EventBus.on('canvas-move-entity', handleCanvasMoveEntity);
     EventBus.on('canvas-move-group', handleCanvasMoveGroup);
@@ -276,6 +292,7 @@ function AppShell() {
     EventBus.on('create-group-from-selection', handleCreateGroupFromSelection);
     EventBus.on('dissolve-group', handleDissolveGroup);
     EventBus.on('toggle-mode', handleToggleMode);
+    EventBus.on('delete-selection', handleDeleteSelection);
     EventBus.on('canvas-interaction-start', handleCanvasInteractionStart);
     EventBus.on('canvas-interaction-end', handleCanvasInteractionEnd);
     EventBus.on('canvas-update-bounds', handleCanvasUpdateBounds);
@@ -290,11 +307,12 @@ function AppShell() {
       EventBus.off('create-group-from-selection', handleCreateGroupFromSelection);
       EventBus.off('dissolve-group', handleDissolveGroup);
       EventBus.off('toggle-mode', handleToggleMode);
+      EventBus.off('delete-selection', handleDeleteSelection);
       EventBus.off('canvas-interaction-start', handleCanvasInteractionStart);
       EventBus.off('canvas-interaction-end', handleCanvasInteractionEnd);
       EventBus.off('canvas-update-bounds', handleCanvasUpdateBounds);
     };
-  }, [dispatch, activeScene, state.selection]);
+  }, [dispatch, activeScene, state.selection, state.mode]);
 
   const commitWorldDraft = (dimension: 'width' | 'height') => {
     const raw = dimension === 'width' ? worldWidthDraft : worldHeightDraft;

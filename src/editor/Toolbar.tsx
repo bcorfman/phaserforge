@@ -7,15 +7,6 @@ import { getYamlPickerStartIn, setYamlPickerStartIn } from './yamlPickerState';
 export function Toolbar() {
   const { state, dispatch } = useEditorStore();
   const yamlFileInputRef = useRef<HTMLInputElement | null>(null);
-  const backgroundFileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const readAsDataUrl = async (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.onload = () => resolve(String(reader.result ?? ''));
-      reader.readAsDataURL(file);
-    });
 
   return (
     <header className="toolbar" data-testid="toolbar">
@@ -121,39 +112,6 @@ export function Toolbar() {
       </div>
       <div className="toolbar-actions toolbar-actions-bottom" role="toolbar" aria-label="Studio actions">
         <button
-          aria-label="Add background layer"
-          className="button"
-          data-testid="add-background-button"
-          type="button"
-          disabled={state.mode !== 'edit'}
-          onClick={() => backgroundFileInputRef.current?.click()}
-        >
-          Add Background
-        </button>
-        <input
-          aria-hidden="true"
-          ref={backgroundFileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={async (e) => {
-            dispatch({ type: 'set-error', error: undefined });
-            const file = e.currentTarget.files?.[0];
-            if (!file) return;
-            e.currentTarget.value = '';
-            try {
-              const dataUrl = await readAsDataUrl(file);
-              dispatch({
-                type: 'add-background-layer-from-file',
-                file: { dataUrl, originalName: file.name, mimeType: file.type || undefined },
-                defaults: { layout: 'cover' },
-              });
-            } catch (err) {
-              dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to import background' });
-            }
-          }}
-        />
-        <button
           aria-label="Export scene YAML"
           className="button"
           data-testid="export-yaml-button"
@@ -243,15 +201,6 @@ export function Toolbar() {
             }
           }}
         />
-        <button
-          aria-label="Reset scene"
-          className="button"
-          data-testid="reset-scene-button"
-          type="button"
-          onClick={() => dispatch({ type: 'reset-scene' })}
-        >
-          New Scene
-        </button>
       </div>
       {state.error && <div className="toolbar-error" data-testid="toolbar-error" role="alert">{state.error}</div>}
       {state.statusMessage && <div className="toolbar-status" data-testid="toolbar-status" role="status">{state.statusMessage}</div>}

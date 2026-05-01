@@ -1454,6 +1454,13 @@ export class EditorScene extends Phaser.Scene {
       case 'ArrowDown':
         dy = nudgeAmount;
         break;
+      case 'Delete':
+      case 'Backspace':
+        if (this.selection.kind !== 'none') {
+          event.preventDefault();
+          EventBus.emit('delete-selection');
+        }
+        return;
       case 'z':
       case 'Z':
         return;

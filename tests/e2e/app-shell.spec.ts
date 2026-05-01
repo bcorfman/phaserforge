@@ -16,6 +16,8 @@ test.beforeEach(async ({ page }) => {
 test('boots empty by default and loads scenes', async ({ page }) => {
   await gotoStudio(page);
   await expect(page.getByTestId('toolbar')).toBeVisible();
+  await expect(page.getByTestId('add-background-button')).toHaveCount(0);
+  await expect(page.getByTestId('reset-scene-button')).toHaveCount(0);
   await expect(page.getByTestId('entity-list')).toBeVisible();
   await expect(page.getByTestId('inspector')).toBeVisible();
   await expect(page.getByRole('main', { name: 'Viewport' })).toBeVisible();
@@ -32,12 +34,6 @@ test('boots empty by default and loads scenes', async ({ page }) => {
   await waitForSampleScene(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');
-
-  await page.getByTestId('reset-scene-button').click();
-  await expect.poll(async () => {
-    const state = await getState<{ scene: { entities: Record<string, unknown> } }>(page);
-    return Object.keys(state.scene.entities).length;
-  }).toBe(0);
 });
 
 test('updates startup mode and persists the last YAML-backed scene across reloads', async ({ page }) => {
@@ -107,7 +103,8 @@ test('removes an imported sprite from the scene graph', async ({ page }) => {
   if (!entityId) throw new Error('Imported entity id unavailable');
 
   await openSceneScope(page);
-  await page.getByTestId(`remove-entity-${entityId}`).click();
+  await page.getByTestId(`entity-menu-${entityId}`).click();
+  await page.getByTestId(`entity-menu-delete-${entityId}`).click();
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, unknown> } }>(page);

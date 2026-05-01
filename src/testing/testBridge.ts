@@ -58,6 +58,7 @@ let sceneGetter: (() => SceneBridge | null) | null = null;
 let selectionSetter: ((selection: Selection) => void) | null = null;
 let undoHandler: (() => void) | null = null;
 let redoHandler: (() => void) | null = null;
+let resetSceneHandler: (() => void) | null = null;
 
 function ensureBridge(): void {
   if (!isBridgeEnabled() || typeof window === 'undefined') return;
@@ -134,6 +135,9 @@ function ensureBridge(): void {
     redo() {
       redoHandler?.();
     },
+    resetScene() {
+      resetSceneHandler?.();
+    },
     select(selection: Selection) {
       selectionSetter?.(selection);
     },
@@ -186,4 +190,13 @@ export function registerUndoRedoHandlers(handlers: { undo: () => void; redo: () 
 export function unregisterUndoRedoHandlers(handlers: { undo: () => void; redo: () => void }): void {
   if (undoHandler === handlers.undo) undoHandler = null;
   if (redoHandler === handlers.redo) redoHandler = null;
+}
+
+export function registerResetSceneHandler(handler: () => void): void {
+  resetSceneHandler = handler;
+  ensureBridge();
+}
+
+export function unregisterResetSceneHandler(handler: () => void): void {
+  if (resetSceneHandler === handler) resetSceneHandler = null;
 }
