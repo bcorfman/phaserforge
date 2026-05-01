@@ -4,7 +4,7 @@ import { dismissViewHint, getEntityWorldRect, getEntitySpriteWorldRect, getScene
 test('Play mode: scene.gotoWave swaps wave without resetting base, and keeps UI in sync', async ({ page }) => {
   await seedProject(page, {
     id: 'project-layered',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
     scenes: {

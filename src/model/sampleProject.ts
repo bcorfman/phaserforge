@@ -3,7 +3,7 @@ import { sampleScene } from './sampleScene';
 
 export const sampleProject: ProjectSpec = {
   id: 'project-1',
-  assets: { images: {}, spriteSheets: {} },
+  assets: { images: {}, spriteSheets: {}, fonts: {} },
   audio: { sounds: {} },
   inputMaps: {},
   scenes: {
@@ -11,4 +11,3 @@ export const sampleProject: ProjectSpec = {
   },
   initialSceneId: sampleScene.id,
 };
-

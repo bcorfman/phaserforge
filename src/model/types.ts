@@ -110,18 +110,27 @@ export interface GameSceneSpec extends SceneSpec {
 
 export interface ImageAssetSpec {
   id: Id;
-  source: SpriteAssetSource;
+  source: AssetFileSource;
+  name?: string;
 }
 
 export interface SpriteSheetAssetSpec {
   id: Id;
-  source: SpriteAssetSource;
+  source: AssetFileSource;
   grid: SpriteSheetGridSpec;
+  name?: string;
 }
 
 export interface AudioAssetSpec {
   id: Id;
-  source: SpriteAssetSource;
+  source: AssetFileSource;
+  name?: string;
+}
+
+export interface FontAssetSpec {
+  id: Id;
+  source: AssetFileSource;
+  name?: string;
 }
 
 export interface InputActionMapSpec {
@@ -139,6 +148,7 @@ export interface ProjectSpec {
   assets: {
     images: Record<Id, ImageAssetSpec>;
     spriteSheets: Record<Id, SpriteSheetAssetSpec>;
+    fonts: Record<Id, FontAssetSpec>;
   };
   audio: {
     sounds: Record<Id, AudioAssetSpec>;
@@ -198,6 +208,10 @@ export interface HitboxSpec {
 }
 
 export type SpriteAssetSource =
+  | { kind: 'asset'; assetId: Id }
+  | AssetFileSource;
+
+export type AssetFileSource =
   | {
       kind: 'embedded';
       dataUrl: string;

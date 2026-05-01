@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff8874;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px; letter-spacing:0.02em;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:650;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .row{fill:#0b1226; stroke:#2c3a65; stroke-width:1;}
+      .rowActive{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .badge{fill:rgba(124,240,199,0.12); stroke:rgba(124,240,199,0.70); stroke-width:1;}
+      .badgeText{fill:var(--text); font-size:10px; font-weight:900;}
+      .pill{fill:rgba(170,180,230,0.08); stroke:rgba(170,180,230,0.32); stroke-width:1;}
+      .pillOn{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .pillText{fill:var(--text); font-size:10px; font-weight:850;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .dot{fill:rgba(170,180,230,0.75);}
+      .icon{fill:var(--muted); font-size:12px; font-weight:900;}
+      .grip{fill:rgba(170,180,230,0.20);}
+      .drag{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.70); stroke-width:1; stroke-dasharray:5 5;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Editor IA Proposal — Idea G2: Scene Tab + Docked Assets Splitter (Mockup)</text>
+
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Scope tabs (Scene active, Assets is docked not a scope) -->
+  <rect x="44" y="140" width="112" height="32" rx="10" class="chipActive"/>
+  <text x="80" y="161" class="btnText">Scene</text>
+  <rect x="162" y="140" width="112" height="32" rx="10" class="chip"/>
+  <text x="192" y="161" class="btnTextMuted">Project</text>
+  <rect x="280" y="140" width="60" height="32" rx="10" class="btn"/>
+  <text x="294" y="161" class="btnTextMuted">⋯</text>
+
+  <!-- Scene header + create -->
+  <rect x="44" y="182" width="206" height="30" rx="10" class="field"/>
+  <text x="58" y="202" class="fieldText">Scene: scene-1</text>
+  <rect x="256" y="182" width="84" height="30" rx="10" class="btnPrimary"/>
+  <text x="268" y="202" class="btnText">+ Add</text>
+
+  <!-- Upper half: Scene tree -->
+  <rect x="44" y="222" width="296" height="274" rx="12" class="panel2"/>
+  <text x="56" y="246" class="label">Scene Tree</text>
+
+  <rect x="56" y="258" width="272" height="34" rx="10" class="rowActive"/>
+  <text x="70" y="280" class="fieldText">▾ scene-1</text>
+  <rect x="296" y="264" width="28" height="22" rx="9" class="btn"/>
+  <text x="306" y="281" class="btnTextMuted">⋯</text>
+
+  <text x="74" y="312" class="small">Sprites</text>
+  <rect x="286" y="298" width="42" height="20" rx="8" class="btn"/>
+  <text x="292" y="312" class="btnTextMuted">+Add</text>
+
+  <rect x="56" y="322" width="272" height="30" rx="10" class="row"/>
+  <text x="70" y="342" class="fieldText">• player</text>
+  <rect x="242" y="328" width="40" height="16" rx="8" class="badge"/>
+  <text x="250" y="340" class="badgeText">⚡2</text>
+  <rect x="296" y="326" width="28" height="22" rx="9" class="btn"/>
+  <text x="306" y="343" class="btnTextMuted">⋯</text>
+
+  <text x="74" y="380" class="small">Background</text>
+  <rect x="56" y="392" width="272" height="30" rx="10" class="row"/>
+  <text x="70" y="412" class="fieldText">• bg_forest</text>
+  <rect x="296" y="396" width="28" height="22" rx="9" class="btn"/>
+  <text x="306" y="413" class="btnTextMuted">⋯</text>
+
+  <text x="74" y="448" class="small">Music / Ambience</text>
+  <rect x="56" y="460" width="272" height="30" rx="10" class="row"/>
+  <text x="70" y="480" class="fieldText">• Music: mus_theme</text>
+
+  <!-- Splitter grip -->
+  <rect x="44" y="502" width="296" height="18" rx="9" class="panel"/>
+  <circle cx="178" cy="511" r="2.2" class="grip"/>
+  <circle cx="190" cy="511" r="2.2" class="grip"/>
+  <circle cx="202" cy="511" r="2.2" class="grip"/>
+  <text x="56" y="515" class="tiny">Assets (docked) — drag to resize</text>
+
+  <!-- Lower half: Assets dock (always visible in Scene tab) -->
+  <rect x="44" y="524" width="296" height="172" rx="12" class="panel2"/>
+  <text x="56" y="548" class="label">Assets</text>
+  <rect x="238" y="532" width="102" height="26" rx="9" class="btnPrimary"/>
+  <text x="250" y="549" class="btnText">+ Import</text>
+
+  <rect x="56" y="560" width="164" height="28" rx="10" class="field"/>
+  <text x="68" y="579" class="fieldText">Search…</text>
+  <rect x="226" y="560" width="102" height="28" rx="10" class="btn"/>
+  <text x="238" y="579" class="btnTextMuted">Filter: All</text>
+
+  <rect x="56" y="596" width="54" height="18" rx="9" class="pillOn"/>
+  <text x="66" y="609" class="pillText">Images</text>
+  <rect x="114" y="596" width="54" height="18" rx="9" class="pill"/>
+  <text x="130" y="609" class="pillText">Audio</text>
+  <rect x="172" y="596" width="54" height="18" rx="9" class="pill"/>
+  <text x="188" y="609" class="pillText">Data</text>
+
+  <rect x="56" y="622" width="272" height="30" rx="10" class="rowActive"/>
+  <text x="70" y="642" class="fieldText">🖼 bg_forest</text>
+  <rect x="256" y="628" width="52" height="16" rx="8" class="badge"/>
+  <text x="262" y="640" class="badgeText">Drag</text>
+
+  <rect x="56" y="656" width="272" height="30" rx="10" class="row"/>
+  <text x="70" y="676" class="fieldText">👾 spr_player</text>
+
+  <!-- Drag affordance -->
+  <rect x="74" y="614" width="240" height="66" rx="12" class="drag"/>
+  <text x="86" y="640" class="tiny">Drag assets onto Scene Tree rows (e.g. Background, Music)</text>
+  <text x="86" y="660" class="tiny">or onto canvas to spawn sprites with the chosen asset.</text>
+
+  <!-- Center: canvas placeholder -->
+  <rect x="408" y="140" width="444" height="456" rx="12" class="panel2"/>
+  <circle cx="548" cy="320" r="6" class="dot"/>
+  <circle cx="610" cy="270" r="6" class="dot"/>
+  <circle cx="680" cy="330" r="6" class="dot"/>
+  <circle cx="720" cy="420" r="6" class="dot"/>
+  <text x="420" y="610" class="tiny">Fast loop: import once → drag to assign → iterate scenes without tab switching.</text>
+
+  <!-- Right: inspector -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="field"/>
+  <text x="936" y="162" class="fieldText">Inspector</text>
+  <rect x="920" y="188" width="236" height="180" rx="12" class="panel2"/>
+  <text x="936" y="214" class="small">Selected</text>
+  <text x="936" y="236" class="tiny">Background layer</text>
+  <text x="936" y="258" class="tiny">assetId: bg_forest</text>
+  <text x="936" y="280" class="tiny">layout: cover</text>
+  <text x="936" y="302" class="tiny">tint / alpha / depth…</text>
+
+  <!-- Callout -->
+  <rect x="372" y="610" width="516" height="86" rx="12" class="callout"/>
+  <text x="392" y="636" class="calloutText">Workflow (Option A): Docked Assets</text>
+  <text x="392" y="658" class="tiny">Import+name assets once in the dock; drag to Scene Tree rows or canvas to assign/spawn.</text>
+  <text x="392" y="676" class="tiny">“+ Add” on a Scene feature opens a picker anchored to the dock (no pane bouncing).</text>
+  <text x="392" y="694" class="tiny">Splitter keeps assets visible while editing scenes; adjustable height per preference.</text>
+</svg>
+

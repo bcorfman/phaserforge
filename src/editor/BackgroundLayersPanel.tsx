@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { BackgroundLayerSpec, ProjectSpec } from '../model/types';
 import type { EditorAction } from './EditorStore';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
+import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
 
 function clampIndex(value: number, maxExclusive: number): number {
   if (maxExclusive <= 0) return 0;
@@ -22,15 +23,6 @@ function formatTintHex(value: number | undefined): string {
   if (value == null) return '';
   const hex = Math.max(0, Math.min(0xffffff, Math.floor(value))).toString(16).padStart(6, '0');
   return `#${hex}`;
-}
-
-async function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.readAsDataURL(file);
-  });
 }
 
 export function BackgroundLayersPanel({
@@ -82,7 +74,6 @@ export function BackgroundLayersBody({
   disabled: boolean;
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const world = useMemo(() => getSceneWorld(project.scenes[sceneId]), [project.scenes, sceneId]);
   const selectedLayer = layers[selectedIndex];
 
@@ -92,21 +83,28 @@ export function BackgroundLayersBody({
 
   const assetOptions = useMemo(() => Object.keys(project.assets.images ?? {}).sort(), [project.assets.images]);
 
-  const addLayerFromPickedFile = async (file: File) => {
-    const dataUrl = await readAsDataUrl(file);
-    dispatch({
-      type: 'add-background-layer-from-file',
-      file: { dataUrl, originalName: file.name, mimeType: file.type || undefined },
-      defaults: { layout: 'cover' },
-    });
-    setSelectedIndex(layers.length);
-  };
-
   return (
-    <>
+    <div
+      onDragOver={(e) => {
+        if (!hasDraggedAsset(e.dataTransfer)) return;
+        e.preventDefault();
+      }}
+      onDrop={(e) => {
+        const asset = readDraggedAsset(e.dataTransfer);
+        if (!asset || asset.assetKind !== 'image') return;
+        e.preventDefault();
+        dispatch({
+          type: 'assign-asset-to-target',
+          assetKind: 'image',
+          assetId: asset.assetId,
+          target: { kind: 'background-layer', sceneId, layerIndex: layers.length },
+        } as any);
+        setSelectedIndex(layers.length);
+      }}
+    >
         {layers.length === 0 && (
           <div className="inspector-row muted">
-            No background layers yet. Add an image to render behind sprites in Edit and Play mode.
+            No background layers yet. Drag an image from the docked Assets panel to add one.
           </div>
         )}
 
@@ -121,6 +119,21 @@ export function BackgroundLayersBody({
                 disabled={disabled}
                 onClick={() => setSelectedIndex(index)}
                 style={{ flex: 1, textAlign: 'left' }}
+                onDragOver={(e) => {
+                  if (!hasDraggedAsset(e.dataTransfer)) return;
+                  e.preventDefault();
+                }}
+                onDrop={(e) => {
+                  const asset = readDraggedAsset(e.dataTransfer);
+                  if (!asset || asset.assetKind !== 'image') return;
+                  e.preventDefault();
+                  dispatch({
+                    type: 'assign-asset-to-target',
+                    assetKind: 'image',
+                    assetId: asset.assetId,
+                    target: { kind: 'background-layer', sceneId, layerIndex: index },
+                  } as any);
+                }}
               >
                 {index + 1}) {layer.assetId || '(missing asset)'} · {layer.layout}
               </button>
@@ -161,23 +174,23 @@ export function BackgroundLayersBody({
             data-testid="background-add-layer-button"
             type="button"
             disabled={disabled}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              const first = assetOptions[0];
+              if (!first) {
+                dispatch({ type: 'set-error', error: 'Import an image in the docked Assets panel first.' } as any);
+                return;
+              }
+              dispatch({
+                type: 'assign-asset-to-target',
+                assetKind: 'image',
+                assetId: first,
+                target: { kind: 'background-layer', sceneId, layerIndex: layers.length },
+              } as any);
+              setSelectedIndex(layers.length);
+            }}
           >
             + Add Layer
           </button>
-          <input
-            aria-hidden="true"
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={async (e) => {
-              const file = e.currentTarget.files?.[0];
-              if (!file) return;
-              e.currentTarget.value = '';
-              await addLayerFromPickedFile(file);
-            }}
-          />
         </div>
 
         {selectedLayer && (
@@ -305,6 +318,6 @@ export function BackgroundLayersBody({
             </label>
           </>
         )}
-    </>
+    </div>
   );
 }

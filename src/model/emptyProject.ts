@@ -16,7 +16,7 @@ export function createEmptyProject(): ProjectSpec {
   const scene = createEmptyGameScene('scene-1');
   return {
     id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
     scenes: { [scene.id]: scene },

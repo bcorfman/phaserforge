@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px; letter-spacing:0.02em;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipActive{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+      .btn{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .btnPrimary{fill:rgba(106,167,255,0.18); stroke:var(--accent); stroke-width:1;}
+      .btnText{fill:var(--text); font-size:12px; font-weight:700;}
+      .btnTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .field{fill:#0b1226; stroke:#3b4a7a; stroke-width:1;}
+      .fieldText{fill:var(--text); font-size:12px; font-weight:650;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .row{fill:#0b1226; stroke:#2c3a65; stroke-width:1;}
+      .rowActive{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .badge{fill:rgba(124,240,199,0.12); stroke:rgba(124,240,199,0.70); stroke-width:1;}
+      .badgeText{fill:var(--text); font-size:10px; font-weight:900;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:800;}
+      .dot{fill:rgba(170,180,230,0.75);}
+      .icon{fill:var(--muted); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="44" y="50" class="title">Editor IA Proposal — Idea G3: Assets Tab + Pinned Picker Strip in Scene (Mockup)</text>
+
+  <rect x="24" y="86" width="336" height="610" rx="12" class="panel"/>
+  <rect x="372" y="86" width="516" height="610" rx="12" class="panel"/>
+  <rect x="900" y="86" width="276" height="610" rx="12" class="panel"/>
+
+  <text x="44" y="118" class="label">Sidebar</text>
+  <text x="392" y="118" class="label">Canvas</text>
+  <text x="920" y="118" class="label">Inspector</text>
+
+  <!-- Scope tabs (Scene active) -->
+  <rect x="44" y="140" width="96" height="32" rx="10" class="chipActive"/>
+  <text x="74" y="161" class="btnText">Scene</text>
+  <rect x="146" y="140" width="96" height="32" rx="10" class="chip"/>
+  <text x="172" y="161" class="btnTextMuted">Project</text>
+  <rect x="248" y="140" width="92" height="32" rx="10" class="chip"/>
+  <text x="270" y="161" class="btnTextMuted">Assets</text>
+
+  <!-- Scene tree (top) -->
+  <rect x="44" y="182" width="296" height="328" rx="12" class="panel2"/>
+  <text x="56" y="206" class="label">Scene Tree</text>
+  <rect x="56" y="218" width="272" height="34" rx="10" class="rowActive"/>
+  <text x="70" y="240" class="fieldText">▾ scene-1</text>
+
+  <text x="74" y="272" class="small">Background</text>
+  <rect x="56" y="284" width="272" height="30" rx="10" class="row"/>
+  <text x="70" y="304" class="fieldText">• bg: (none)</text>
+  <rect x="288" y="288" width="40" height="22" rx="9" class="btnPrimary"/>
+  <text x="296" y="304" class="btnText">+Add</text>
+
+  <text x="74" y="338" class="small">Audio</text>
+  <rect x="56" y="350" width="272" height="30" rx="10" class="row"/>
+  <text x="70" y="370" class="fieldText">• music: mus_theme</text>
+  <rect x="288" y="354" width="40" height="22" rx="9" class="btnPrimary"/>
+  <text x="296" y="370" class="btnText">+Add</text>
+
+  <text x="74" y="404" class="small">Sprites</text>
+  <rect x="56" y="416" width="272" height="30" rx="10" class="row"/>
+  <text x="70" y="436" class="fieldText">• player: spr_player</text>
+
+  <!-- Pinned picker strip (bottom) -->
+  <rect x="44" y="522" width="296" height="174" rx="12" class="panel2"/>
+  <text x="56" y="546" class="label">Pinned Picker</text>
+  <rect x="250" y="530" width="78" height="26" rx="9" class="btn"/>
+  <text x="262" y="547" class="btnTextMuted">📌 Pinned</text>
+
+  <rect x="56" y="558" width="176" height="28" rx="10" class="field"/>
+  <text x="68" y="577" class="fieldText">Search assets…</text>
+  <rect x="238" y="558" width="90" height="28" rx="10" class="btn"/>
+  <text x="250" y="577" class="btnTextMuted">Type: Audio</text>
+
+  <rect x="56" y="592" width="272" height="30" rx="10" class="rowActive"/>
+  <text x="70" y="612" class="fieldText">🎵 mus_theme</text>
+  <rect x="270" y="598" width="52" height="16" rx="8" class="badge"/>
+  <text x="276" y="610" class="badgeText">Assign</text>
+
+  <rect x="56" y="626" width="272" height="30" rx="10" class="row"/>
+  <text x="70" y="646" class="fieldText">🎵 mus_boss</text>
+
+  <rect x="56" y="660" width="272" height="30" rx="10" class="row"/>
+  <text x="70" y="680" class="fieldText">🌫 amb_forest</text>
+
+  <text x="56" y="710" class="tiny">Tip: From Assets tab, click “Pin Picker” to keep this strip visible in Scene.</text>
+
+  <!-- Center canvas -->
+  <rect x="408" y="140" width="444" height="456" rx="12" class="panel2"/>
+  <circle cx="548" cy="320" r="6" class="dot"/>
+  <circle cx="610" cy="270" r="6" class="dot"/>
+  <circle cx="680" cy="330" r="6" class="dot"/>
+  <circle cx="720" cy="420" r="6" class="dot"/>
+  <text x="420" y="610" class="tiny">Option B keeps Assets as a tab, but pins a small picker strip into Scene for speed.</text>
+
+  <!-- Right inspector -->
+  <rect x="920" y="140" width="236" height="34" rx="10" class="field"/>
+  <text x="936" y="162" class="fieldText">Inspector</text>
+  <rect x="920" y="188" width="236" height="170" rx="12" class="panel2"/>
+  <text x="936" y="214" class="small">Selection</text>
+  <text x="936" y="236" class="tiny">Music</text>
+  <text x="936" y="258" class="tiny">assetId: mus_theme</text>
+  <text x="936" y="280" class="tiny">volume / fade / loop…</text>
+
+  <rect x="372" y="610" width="516" height="86" rx="12" class="callout"/>
+  <text x="392" y="636" class="calloutText">Workflow (Option B): Assets tab + Pinned Picker</text>
+  <text x="392" y="658" class="tiny">Use Assets tab for bulk import/rename/tag; pin a type-filtered picker into Scene for assignment.</text>
+  <text x="392" y="676" class="tiny">“+ Add” on Scene items focuses the pinned picker and pre-filters to the needed asset type.</text>
+  <text x="392" y="694" class="tiny">Best when you want full-screen Asset management occasionally, without losing fast assignment.</text>
+</svg>
+

@@ -4,7 +4,7 @@ import { clickCanvasAt, dismissViewHint, entityClientCenter, getSceneSnapshot, g
 test('Edit mode: base scene ghost renders but is non-interactive', async ({ page }) => {
   await seedProject(page, {
     id: 'project-ghost',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
     scenes: {
@@ -50,4 +50,3 @@ test('Edit mode: base scene ghost renders but is non-interactive', async ({ page
   await clickCanvasAt(page, ghostPoint);
   await expect.poll(async () => (await getState<any>(page))?.selection).toEqual({ kind: 'none' });
 });
-

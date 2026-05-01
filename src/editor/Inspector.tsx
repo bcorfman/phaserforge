@@ -290,9 +290,11 @@ function EntityInspector({
   const scene = actionProps?.scene;
 
   const keyForAsset = (asset: SpriteAssetSpec): string => {
-    const base = asset.source.kind === 'path'
-      ? `path:${asset.source.path}`
-      : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
+    const base = asset.source.kind === 'asset'
+      ? `asset:${asset.source.assetId}`
+      : asset.source.kind === 'path'
+        ? `path:${asset.source.path}`
+        : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
     const grid = asset.imageType === 'spritesheet' && asset.grid
       ? `:${asset.grid.frameWidth}x${asset.grid.frameHeight}:${asset.grid.columns}x${asset.grid.rows}`
       : '';
@@ -300,9 +302,11 @@ function EntityInspector({
   };
 
   const labelForAsset = (asset: SpriteAssetSpec): string => {
-    const name = asset.source.kind === 'path'
-      ? (asset.source.path.split('/').pop() ?? asset.source.path)
-      : (asset.source.originalName ?? 'embedded');
+    const name = asset.source.kind === 'asset'
+      ? `asset:${asset.source.assetId}`
+      : asset.source.kind === 'path'
+        ? (asset.source.path.split('/').pop() ?? asset.source.path)
+        : (asset.source.originalName ?? 'embedded');
     return `${name} (${asset.imageType})`;
   };
 
@@ -712,7 +716,11 @@ function EntityInspector({
           onToggle={() => foldouts.toggle('entity.asset', false)}
         >
           <div className="inspector-row">
-            Source: {resolved.asset.source.kind === 'embedded' ? (resolved.asset.source.originalName ?? 'embedded') : resolved.asset.source.path}
+            Source: {resolved.asset.source.kind === 'asset'
+              ? `asset:${resolved.asset.source.assetId}`
+              : resolved.asset.source.kind === 'embedded'
+                ? (resolved.asset.source.originalName ?? 'embedded')
+                : resolved.asset.source.path}
           </div>
 	          {resolved.asset.imageType === 'spritesheet' ? (
 	            <>

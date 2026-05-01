@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, type CompiledScene } from '../compiler/compileScene';
-import type { CollisionRuleSpec, GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, type HitboxSpec } from '../model/types';
+import type { AssetFileSource, CollisionRuleSpec, GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, SpriteSheetGridSpec, type HitboxSpec } from '../model/types';
 import { getRotatedEntityBounds } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
@@ -25,6 +25,7 @@ type PhysicsObject =
 export class GameScene extends Phaser.Scene {
   private baseCompiled?: CompiledScene;
   private compiled?: CompiledScene;
+  private project?: ProjectSpec;
   private opRegistry: OpRegistry = new OpRegistry();
   private baseSprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
@@ -149,6 +150,7 @@ export class GameScene extends Phaser.Scene {
   public loadSceneSpec(project: ProjectSpec, sceneSpec: SceneSpec): void;
   public loadSceneSpec(projectOrScene: ProjectSpec | SceneSpec, maybeScene?: SceneSpec): void {
     const project = maybeScene ? (projectOrScene as ProjectSpec) : undefined;
+    this.project = project;
     const sceneSpec = (maybeScene ?? projectOrScene) as GameSceneSpec;
     const currentLoadVersion = ++this.loadVersion;
     const baseId = project?.baseSceneId;
@@ -807,11 +809,36 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getTextureKey(asset: SpriteAssetSpec): string {
-    const sourceKey = asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path;
-    const suffix = asset.imageType === 'spritesheet' && asset.grid
-      ? `:${asset.grid.frameWidth}x${asset.grid.frameHeight}`
+    const resolved = this.resolveSpriteAssetSource(asset);
+    const sourceKey = resolved
+      ? (resolved.source.kind === 'embedded' ? resolved.source.dataUrl : resolved.source.path)
+      : 'missing';
+    const suffix = resolved?.grid
+      ? `:${resolved.grid.frameWidth}x${resolved.grid.frameHeight}`
       : '';
     return `asset:${sourceKey}${suffix}`;
+  }
+
+  private resolveSpriteAssetSource(asset: SpriteAssetSpec): { source: AssetFileSource; grid?: SpriteSheetGridSpec } | null {
+    if (asset.source.kind !== 'asset') {
+      return {
+        source: asset.source,
+        ...(asset.imageType === 'spritesheet' && asset.grid ? { grid: asset.grid } : {}),
+      };
+    }
+
+    const project = this.project;
+    if (!project) return null;
+
+    if (asset.imageType === 'spritesheet') {
+      const sheet = project.assets.spriteSheets?.[asset.source.assetId];
+      if (!sheet) return null;
+      return { source: sheet.source, grid: sheet.grid };
+    }
+
+    const image = project.assets.images?.[asset.source.assetId];
+    if (!image) return null;
+    return { source: image.source };
   }
 
   private applyEntityDisplayProps(
@@ -1163,13 +1190,15 @@ export class GameScene extends Phaser.Scene {
 
     for (const asset of pendingAssets) {
       const key = this.getTextureKey(asset);
-      if (asset.imageType === 'spritesheet' && asset.grid) {
-        this.load.spritesheet(key, asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path, {
-          frameWidth: asset.grid.frameWidth,
-          frameHeight: asset.grid.frameHeight,
+      const resolved = this.resolveSpriteAssetSource(asset);
+      if (!resolved) continue;
+      if (asset.imageType === 'spritesheet' && resolved.grid) {
+        this.load.spritesheet(key, resolved.source.kind === 'embedded' ? resolved.source.dataUrl : resolved.source.path, {
+          frameWidth: resolved.grid.frameWidth,
+          frameHeight: resolved.grid.frameHeight,
         });
       } else {
-        this.load.image(key, asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path);
+        this.load.image(key, resolved.source.kind === 'embedded' ? resolved.source.dataUrl : resolved.source.path);
       }
     }
 

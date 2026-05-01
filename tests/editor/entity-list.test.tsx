@@ -118,8 +118,8 @@ describe('EntityList', () => {
     );
 
     expect(markup).toContain('Input Maps');
-    expect(markup).toContain('Audio');
-    expect(markup).toContain('Import Sprites');
+    expect(markup).toContain('Assets');
+    expect(markup).toContain('Asset importing now lives');
     expect(markup).not.toContain('Scenes');
     expect(markup).not.toContain('create-scene-button');
     expect(markup).not.toContain('Formations');

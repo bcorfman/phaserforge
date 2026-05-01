@@ -4,7 +4,7 @@ import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
 test('Play mode: semantic input actions update from keyboard events (bridge snapshot)', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
-    assets: { images: {}, spriteSheets: {} },
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {
       default_controls: {

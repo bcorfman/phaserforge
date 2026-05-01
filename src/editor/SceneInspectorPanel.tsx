@@ -92,7 +92,7 @@ export function SceneInspectorPanel({
         open={foldouts.isOpen('scene.audio', false)}
         onToggle={() => foldouts.toggle('scene.audio', false)}
       >
-        <SceneAudioBody project={project} scene={scene} dispatch={dispatch} disabled={disabled} />
+        <SceneAudioBody project={project} sceneId={sceneId} scene={scene} dispatch={dispatch} disabled={disabled} />
       </InspectorFoldout>
 
       <InspectorFoldout
@@ -115,4 +115,3 @@ export function SceneInspectorPanel({
     </div>
   );
 }
-

@@ -27,6 +27,7 @@ import { removeSceneGraphItem } from './sceneGraphCommands';
 import { createAttachment, moveAttachmentWithinTarget, removeAttachment, updateAttachment } from './attachmentCommands';
 import type { AttachmentSpec, TargetRef } from '../model/types';
 import { getSceneWorld } from './sceneWorld';
+import { getAssetReferences } from './assetReferences';
 
 export const PROJECT_STORAGE_KEY = 'phaseractions.projectYaml.v1';
 export const SCENE_STORAGE_KEY_V1 = 'phaseractions.sceneYaml.v1';
@@ -193,6 +194,25 @@ export type EditorAction =
   | { type: 'convert-group-layout-arrange'; id: Id; arrangeKind: string }
   | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'attachment'; id: Id } }
   | { type: 'add-background-layer-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; defaults?: { layout?: BackgroundLayerSpec['layout'] } }
+  | { type: 'add-image-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
+  | { type: 'add-image-asset-from-path'; path: string; suggestedId?: string }
+  | { type: 'add-spritesheet-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
+  | { type: 'add-spritesheet-asset-from-path'; path: string; suggestedId?: string; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
+  | { type: 'add-font-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
+  | { type: 'add-font-asset-from-path'; path: string; suggestedId?: string }
+  | { type: 'set-asset-display-name'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id; name?: string }
+  | { type: 'remove-asset'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id }
+  | { type: 'create-entity-from-asset'; assetKind: 'image' | 'spritesheet'; assetId: Id; at?: { x: number; y: number } }
+  | {
+      type: 'assign-asset-to-target';
+      assetKind: 'image' | 'spritesheet' | 'audio';
+      assetId: Id;
+      target:
+        | { kind: 'background-layer'; sceneId: Id; layerIndex?: number }
+        | { kind: 'scene-music'; sceneId: Id }
+        | { kind: 'scene-ambience'; sceneId: Id; index?: number }
+        | { kind: 'entity-sprite'; sceneId: Id; entityId: Id };
+    }
   | { type: 'add-audio-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
   | { type: 'add-audio-asset-from-path'; path: string; suggestedId?: string }
   | { type: 'remove-audio-asset'; assetId: Id }
@@ -435,6 +455,16 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'load-yaml':
     case 'load-yaml-text':
     case 'add-background-layer-from-file':
+    case 'add-image-asset-from-file':
+    case 'add-image-asset-from-path':
+    case 'add-spritesheet-asset-from-file':
+    case 'add-spritesheet-asset-from-path':
+    case 'add-font-asset-from-file':
+    case 'add-font-asset-from-path':
+    case 'set-asset-display-name':
+    case 'remove-asset':
+    case 'create-entity-from-asset':
+    case 'assign-asset-to-target':
     case 'add-audio-asset-from-file':
     case 'add-audio-asset-from-path':
     case 'remove-audio-asset':
@@ -468,6 +498,14 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'load-yaml-text':
     case 'reset-scene':
     case 'add-background-layer-from-file':
+    case 'add-image-asset-from-file':
+    case 'add-image-asset-from-path':
+    case 'add-spritesheet-asset-from-file':
+    case 'add-spritesheet-asset-from-path':
+    case 'add-font-asset-from-file':
+    case 'add-font-asset-from-path':
+    case 'set-asset-display-name':
+    case 'remove-asset':
     case 'add-audio-asset-from-file':
     case 'add-audio-asset-from-path':
     case 'remove-audio-asset':
@@ -1295,6 +1333,369 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         dirty: true,
         error: undefined,
       };
+    }
+    case 'add-image-asset-from-file': {
+      const images = state.project.assets.images ?? {};
+      const base = assetIdBaseFromOriginalName(action.file.originalName, 'image');
+      const assetId = allocUniqueId(images, base);
+      const rawName = (action.file.originalName ?? '').replace(/\.[a-z0-9]+$/i, '').trim();
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          images: {
+            ...images,
+            [assetId]: {
+              id: assetId,
+              ...(rawName ? { name: rawName } : {}),
+              source: {
+                kind: 'embedded',
+                dataUrl: action.file.dataUrl,
+                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+              },
+            },
+          },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'add-image-asset-from-path': {
+      const images = state.project.assets.images ?? {};
+      const rawSuggested = (action.suggestedId ?? '').trim();
+      const derived = action.path.split('/').pop() ?? action.path;
+      const base = rawSuggested.length > 0 ? rawSuggested : assetIdBaseFromOriginalName(derived, 'image');
+      const assetId = allocUniqueId(images, base);
+      const rawName = derived.replace(/\.[a-z0-9]+$/i, '').trim();
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          images: {
+            ...images,
+            [assetId]: {
+              id: assetId,
+              ...(rawName ? { name: rawName } : {}),
+              source: { kind: 'path', path: action.path },
+            },
+          },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'add-spritesheet-asset-from-file': {
+      const spriteSheets = state.project.assets.spriteSheets ?? {};
+      const base = assetIdBaseFromOriginalName(action.file.originalName, 'spritesheet');
+      const assetId = allocUniqueId(spriteSheets, base);
+      const rawName = (action.file.originalName ?? '').replace(/\.[a-z0-9]+$/i, '').trim();
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          spriteSheets: {
+            ...spriteSheets,
+            [assetId]: {
+              id: assetId,
+              ...(rawName ? { name: rawName } : {}),
+              source: {
+                kind: 'embedded',
+                dataUrl: action.file.dataUrl,
+                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+              },
+              grid: {
+                frameWidth: Math.max(1, Math.floor(action.grid.frameWidth)),
+                frameHeight: Math.max(1, Math.floor(action.grid.frameHeight)),
+                columns: Math.max(1, Math.floor(action.grid.columns)),
+                rows: Math.max(1, Math.floor(action.grid.rows)),
+              },
+            },
+          },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'add-spritesheet-asset-from-path': {
+      const spriteSheets = state.project.assets.spriteSheets ?? {};
+      const rawSuggested = (action.suggestedId ?? '').trim();
+      const derived = action.path.split('/').pop() ?? action.path;
+      const base = rawSuggested.length > 0 ? rawSuggested : assetIdBaseFromOriginalName(derived, 'spritesheet');
+      const assetId = allocUniqueId(spriteSheets, base);
+      const rawName = derived.replace(/\.[a-z0-9]+$/i, '').trim();
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          spriteSheets: {
+            ...spriteSheets,
+            [assetId]: {
+              id: assetId,
+              ...(rawName ? { name: rawName } : {}),
+              source: { kind: 'path', path: action.path },
+              grid: {
+                frameWidth: Math.max(1, Math.floor(action.grid.frameWidth)),
+                frameHeight: Math.max(1, Math.floor(action.grid.frameHeight)),
+                columns: Math.max(1, Math.floor(action.grid.columns)),
+                rows: Math.max(1, Math.floor(action.grid.rows)),
+              },
+            },
+          },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'add-font-asset-from-file': {
+      const fonts = state.project.assets.fonts ?? {};
+      const base = assetIdBaseFromOriginalName(action.file.originalName, 'font');
+      const assetId = allocUniqueId(fonts, base);
+      const rawName = (action.file.originalName ?? '').replace(/\.[a-z0-9]+$/i, '').trim();
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          fonts: {
+            ...fonts,
+            [assetId]: {
+              id: assetId,
+              ...(rawName ? { name: rawName } : {}),
+              source: {
+                kind: 'embedded',
+                dataUrl: action.file.dataUrl,
+                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+              },
+            },
+          },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'add-font-asset-from-path': {
+      const fonts = state.project.assets.fonts ?? {};
+      const rawSuggested = (action.suggestedId ?? '').trim();
+      const derived = action.path.split('/').pop() ?? action.path;
+      const base = rawSuggested.length > 0 ? rawSuggested : assetIdBaseFromOriginalName(derived, 'font');
+      const assetId = allocUniqueId(fonts, base);
+      const rawName = derived.replace(/\.[a-z0-9]+$/i, '').trim();
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          fonts: {
+            ...fonts,
+            [assetId]: {
+              id: assetId,
+              ...(rawName ? { name: rawName } : {}),
+              source: { kind: 'path', path: action.path },
+            },
+          },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'set-asset-display-name': {
+      const nextName = (action.name ?? '').trim();
+      const name = nextName.length > 0 ? nextName : undefined;
+
+      if (action.assetKind === 'audio') {
+        const sounds = state.project.audio?.sounds ?? {};
+        const existing = sounds[action.assetId];
+        if (!existing) return state;
+        const nextProject: ProjectSpec = {
+          ...state.project,
+          audio: {
+            ...state.project.audio,
+            sounds: {
+              ...sounds,
+              [action.assetId]: {
+                ...existing,
+                ...(name ? { name } : (() => {
+                  const { name: _name, ...rest } = existing as any;
+                  void _name;
+                  return rest;
+                })()),
+              },
+            },
+          },
+        };
+        return { ...state, project: nextProject, dirty: true, error: undefined };
+      }
+
+      const assets = state.project.assets;
+      const collection = action.assetKind === 'image'
+        ? assets.images
+        : action.assetKind === 'spritesheet'
+          ? assets.spriteSheets
+          : assets.fonts;
+      const existing = collection?.[action.assetId];
+      if (!existing) return state;
+
+      const nextCollection: any = {
+        ...(collection ?? {}),
+        [action.assetId]: {
+          ...existing,
+          ...(name ? { name } : (() => {
+            const { name: _name, ...rest } = existing as any;
+            void _name;
+            return rest;
+          })()),
+        },
+      };
+
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...assets,
+          ...(action.assetKind === 'image' ? { images: nextCollection } : {}),
+          ...(action.assetKind === 'spritesheet' ? { spriteSheets: nextCollection } : {}),
+          ...(action.assetKind === 'font' ? { fonts: nextCollection } : {}),
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'remove-asset': {
+      const refs = getAssetReferences(state.project, action.assetKind, action.assetId);
+      if (refs.count > 0) {
+        return {
+          ...state,
+          error: `Cannot delete ${action.assetKind} asset "${action.assetId}" — it is still referenced (${refs.count}).`,
+        };
+      }
+
+      if (action.assetKind === 'audio') {
+        const sounds = state.project.audio?.sounds ?? {};
+        if (!sounds[action.assetId]) return state;
+        const { [action.assetId]: _removed, ...remaining } = sounds;
+        void _removed;
+        const nextProject: ProjectSpec = {
+          ...state.project,
+          audio: { ...state.project.audio, sounds: remaining },
+        };
+        return { ...state, project: nextProject, dirty: true, error: undefined };
+      }
+
+      const nextAssets: any = { ...state.project.assets };
+      const removeFrom = (record: Record<Id, any>) => {
+        if (!record[action.assetId]) return null;
+        const { [action.assetId]: _removed, ...rest } = record;
+        void _removed;
+        return rest;
+      };
+
+      if (action.assetKind === 'image') {
+        const updated = removeFrom(state.project.assets.images ?? {});
+        if (!updated) return state;
+        nextAssets.images = updated;
+      } else if (action.assetKind === 'spritesheet') {
+        const updated = removeFrom(state.project.assets.spriteSheets ?? {});
+        if (!updated) return state;
+        nextAssets.spriteSheets = updated;
+      } else if (action.assetKind === 'font') {
+        const updated = removeFrom(state.project.assets.fonts ?? {});
+        if (!updated) return state;
+        nextAssets.fonts = updated;
+      }
+
+      const nextProject: ProjectSpec = { ...state.project, assets: nextAssets };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'create-entity-from-asset': {
+      const scene = getActiveScene(state);
+      const entityId = allocUniqueId(scene.entities ?? {}, 'e');
+      const world = getSceneWorld(scene);
+      const at = action.at ?? { x: world.width / 2, y: world.height / 2 };
+      const defaultSize = 64;
+      const spritesheet = action.assetKind === 'spritesheet'
+        ? state.project.assets.spriteSheets?.[action.assetId]
+        : undefined;
+      const width = spritesheet?.grid?.frameWidth ?? defaultSize;
+      const height = spritesheet?.grid?.frameHeight ?? defaultSize;
+
+      const entity: EntitySpec = resolveEntityDefaults({
+        id: entityId,
+        x: at.x,
+        y: at.y,
+        width,
+        height,
+        rotationDeg: 0,
+        asset: {
+          source: { kind: 'asset', assetId: action.assetId },
+          imageType: action.assetKind === 'spritesheet' ? 'spritesheet' : 'image',
+          ...(spritesheet ? { grid: spritesheet.grid } : {}),
+          frame: action.assetKind === 'spritesheet' ? { kind: 'spritesheet-frame', frameIndex: 0 } : { kind: 'single' },
+        },
+      });
+
+      return withScene(state, { ...scene, entities: { ...scene.entities, [entityId]: entity } }, true);
+    }
+    case 'assign-asset-to-target': {
+      const scene = state.project.scenes[action.target.sceneId];
+      if (!scene) return state;
+      const typedScene = scene as GameSceneSpec;
+
+      if (action.target.kind === 'background-layer') {
+        if (action.assetKind !== 'image') return state;
+        const world = getSceneWorld(typedScene);
+        const layers = [...(typedScene.backgroundLayers ?? [])];
+        const desiredIndex = typeof action.target.layerIndex === 'number' ? action.target.layerIndex : layers.length;
+        if (layers.length === 0 || desiredIndex >= layers.length) {
+          layers.push({
+            assetId: action.assetId,
+            x: world.width / 2,
+            y: world.height / 2,
+            depth: -100,
+            layout: 'cover',
+          });
+        } else {
+          const index = Math.max(0, Math.min(layers.length - 1, desiredIndex));
+          layers[index] = { ...layers[index], assetId: action.assetId };
+        }
+        const nextScenes = { ...state.project.scenes, [action.target.sceneId]: { ...typedScene, backgroundLayers: layers } };
+        return { ...state, project: { ...state.project, scenes: nextScenes }, dirty: true, error: undefined };
+      }
+
+      if (action.target.kind === 'scene-music') {
+        if (action.assetKind !== 'audio') return state;
+        const existing = typedScene.music;
+        const music = {
+          assetId: action.assetId,
+          loop: existing?.loop ?? true,
+          volume: existing?.volume ?? 1,
+          fadeMs: existing?.fadeMs ?? 0,
+        };
+        const nextScenes = { ...state.project.scenes, [action.target.sceneId]: { ...typedScene, music } };
+        return { ...state, project: { ...state.project, scenes: nextScenes }, dirty: true, error: undefined };
+      }
+
+      if (action.target.kind === 'scene-ambience') {
+        if (action.assetKind !== 'audio') return state;
+        const ambience = [...(typedScene.ambience ?? [])].map((entry) => ({ ...entry }));
+        if (typeof action.target.index === 'number' && ambience[action.target.index]) {
+          ambience[action.target.index] = { ...ambience[action.target.index], assetId: action.assetId };
+        } else {
+          ambience.push({ assetId: action.assetId, loop: true, volume: 1 });
+        }
+        const nextScenes = { ...state.project.scenes, [action.target.sceneId]: { ...typedScene, ambience } };
+        return { ...state, project: { ...state.project, scenes: nextScenes }, dirty: true, error: undefined };
+      }
+
+      if (action.target.kind === 'entity-sprite') {
+        if (action.assetKind !== 'image' && action.assetKind !== 'spritesheet') return state;
+        const entity = typedScene.entities?.[action.target.entityId];
+        if (!entity) return state;
+        const nextAsset: SpriteAssetSpec = {
+          ...(entity.asset ?? { imageType: action.assetKind === 'spritesheet' ? 'spritesheet' : 'image', source: { kind: 'asset', assetId: action.assetId } }),
+          source: { kind: 'asset', assetId: action.assetId },
+          imageType: action.assetKind === 'spritesheet' ? 'spritesheet' : 'image',
+          ...(action.assetKind === 'spritesheet'
+            ? { grid: state.project.assets.spriteSheets?.[action.assetId]?.grid, frame: entity.asset?.frame?.kind === 'spritesheet-frame' ? entity.asset.frame : { kind: 'spritesheet-frame', frameIndex: 0 } }
+            : { grid: undefined, frame: { kind: 'single' } }),
+        };
+        const nextEntity: EntitySpec = { ...entity, asset: nextAsset };
+        return withScene(state, { ...typedScene, entities: { ...typedScene.entities, [action.target.entityId]: nextEntity } }, true);
+      }
+
+      return state;
     }
     case 'update-background-layer': {
       const scene = getActiveScene(state);
