@@ -294,11 +294,25 @@ export function AssetsDock({
                   <div className="assets-dock-import-row">
                     <label className="field" style={{ flex: 1 }}>
                       <span>Frame W</span>
-                      <input type="number" value={frameWidth} min={1} disabled={disabled} onChange={(e) => setFrameWidth(Math.max(1, Number(e.target.value) || 1))} />
+                      <input
+                        data-testid="assets-dock-spritesheet-frame-width"
+                        type="number"
+                        value={frameWidth}
+                        min={1}
+                        disabled={disabled}
+                        onChange={(e) => setFrameWidth(Math.max(1, Number(e.target.value) || 1))}
+                      />
                     </label>
                     <label className="field" style={{ flex: 1 }}>
                       <span>Frame H</span>
-                      <input type="number" value={frameHeight} min={1} disabled={disabled} onChange={(e) => setFrameHeight(Math.max(1, Number(e.target.value) || 1))} />
+                      <input
+                        data-testid="assets-dock-spritesheet-frame-height"
+                        type="number"
+                        value={frameHeight}
+                        min={1}
+                        disabled={disabled}
+                        onChange={(e) => setFrameHeight(Math.max(1, Number(e.target.value) || 1))}
+                      />
                     </label>
                     <button className="button" type="button" disabled={disabled} onClick={commitSpritesheetImport} data-testid="assets-dock-import-spritesheet">
                       Import

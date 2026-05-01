@@ -116,6 +116,58 @@ export async function openSceneScope(page: Page): Promise<void> {
   }
 }
 
+function assetIdBaseFromFileName(name: string, fallbackBase: string): string {
+  const raw = (name ?? '').trim();
+  const withoutExt = raw.replace(/\.[a-z0-9]+$/i, '');
+  const base = withoutExt.length > 0 ? withoutExt : fallbackBase;
+  const dashed = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+  return dashed.length > 0 ? dashed : fallbackBase;
+}
+
+export function assetIdFromPath(path: string, fallbackBase: string): string {
+  const name = path.split('/').pop() ?? path;
+  return assetIdBaseFromFileName(name, fallbackBase);
+}
+
+export async function importImageAssetFromFile(page: Page, filePath: string): Promise<{ assetId: string }> {
+  await openSceneScope(page);
+  await page.getByTestId('assets-dock-import-button').click();
+  await page.getByTestId('assets-dock-import-kind-select').selectOption('image');
+  await page.getByTestId('assets-dock-import-source-select').selectOption('embedded');
+  await page.getByTestId('assets-dock-file-input').setInputFiles(filePath);
+  const assetId = assetIdFromPath(filePath, 'image');
+  await expect(page.getByTestId(`assets-dock-item-image-${assetId}`)).toBeVisible();
+  return { assetId };
+}
+
+export async function importSpritesheetAssetFromFile(
+  page: Page,
+  filePath: string,
+  grid: { frameWidth: number; frameHeight: number }
+): Promise<{ assetId: string }> {
+  await openSceneScope(page);
+  await page.getByTestId('assets-dock-import-button').click();
+  await page.getByTestId('assets-dock-import-kind-select').selectOption('spritesheet');
+  await page.getByTestId('assets-dock-import-source-select').selectOption('embedded');
+  await page.getByTestId('assets-dock-file-input').setInputFiles(filePath);
+  await page.getByTestId('assets-dock-spritesheet-frame-width').fill(String(grid.frameWidth));
+  await page.getByTestId('assets-dock-spritesheet-frame-height').fill(String(grid.frameHeight));
+  await page.getByTestId('assets-dock-import-spritesheet').click();
+  const assetId = assetIdFromPath(filePath, 'spritesheet');
+  await expect(page.getByTestId(`assets-dock-item-spritesheet-${assetId}`)).toBeVisible();
+  return { assetId };
+}
+
+export async function dragAssetToCanvas(page: Page, assetKind: 'image' | 'spritesheet', assetId: string): Promise<void> {
+  const source = page.getByTestId(`assets-dock-item-${assetKind}-${assetId}`);
+  const canvas = page.locator('#game-container canvas');
+  await source.dragTo(canvas, { targetPosition: { x: 240, y: 160 } });
+}
+
 export async function getState<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getState()) as Promise<T>;
 }

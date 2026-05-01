@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, expectInputValue, getState, gotoStudio, openProjectScope, openSceneScope, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
+import { dismissViewHint, dragAssetToCanvas, expectInputValue, getState, gotoStudio, importImageAssetFromFile, importSpritesheetAssetFromFile, openSceneScope, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -64,37 +64,37 @@ test('updates startup mode and persists the last YAML-backed scene across reload
 
 test('imports embedded sprites and spritesheets into the scene', async ({ page }) => {
   await gotoStudio(page);
-  await openProjectScope(page);
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
-  await expect(page.getByTestId('sprite-import-meta')).toContainText('enemy_A.png');
-  await page.getByTestId('import-sprites-button').click();
+  await openSceneScope(page);
+
+  const { assetId: imageAssetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  await dragAssetToCanvas(page, 'image', imageAssetId);
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, { asset?: { imageType: string; source?: { kind?: string; assetId?: string } } }> } }>(page);
+    const imported = Object.values(state.scene.entities);
+    return {
+      count: imported.length,
+      imageType: imported[0]?.asset?.imageType,
+      sourceKind: imported[0]?.asset?.source?.kind,
+    };
+  }).toEqual({ count: 1, imageType: 'image', sourceKind: 'asset' });
+
+  const { assetId: sheetAssetId } = await importSpritesheetAssetFromFile(page, 'res/images/mainwindow.png', { frameWidth: 64, frameHeight: 64 });
+  await dragAssetToCanvas(page, 'spritesheet', sheetAssetId);
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, { asset?: { imageType: string } }> } }>(page);
-    const imported = Object.values(state.scene.entities);
-    return { count: imported.length, imageType: imported[0]?.asset?.imageType };
-  }).toEqual({ count: 1, imageType: 'image' });
-
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/mainwindow.png');
-  await page.getByTestId('sprite-import-mode-select').selectOption('spritesheet');
-  await page.getByTestId('spritesheet-frame-width-input').fill('64');
-  await page.getByTestId('spritesheet-frame-height-input').fill('64');
-  await page.getByTestId('spritesheet-frame-1').click();
-  await page.getByTestId('import-sprites-button').click();
-
-  await expect.poll(async () => {
-    const state = await getState<{ scene: { entities: Record<string, { asset?: { imageType: string; frame?: { frameIndex?: number } } }> } }>(page);
     return Object.values(state.scene.entities)
       .filter((entity) => entity.asset?.imageType === 'spritesheet')
       .length;
-  }).toBeGreaterThan(1);
+  }).toBe(1);
 });
 
 test('removes an imported sprite from the scene graph', async ({ page }) => {
   await gotoStudio(page);
-  await openProjectScope(page);
-  await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
-  await page.getByTestId('import-sprites-button').click();
+  await openSceneScope(page);
+  const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  await dragAssetToCanvas(page, 'image', assetId);
 
   const entityId = await page.evaluate(() => {
     const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { entities: Record<string, unknown> } } | null;
