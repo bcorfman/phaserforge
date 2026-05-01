@@ -30,6 +30,7 @@ interface PhaserActionsStudioTestBridge {
   panByScreenDelta(delta: PhaserActionsStudioPoint): void;
   undo(): void;
   redo(): void;
+  resetScene(): void;
   select(selection: unknown): void;
 }
 

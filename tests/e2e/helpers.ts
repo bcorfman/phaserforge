@@ -8,29 +8,24 @@ type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number; centerX?: number; centerY?: number };
 
 const IS_CI = Boolean(process.env.CI);
-const APP_BOOT_TIMEOUT_MS = IS_CI ? 60000 : 10000;
+const APP_BOOT_TIMEOUT_MS = 60000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 30000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 const TEST_SEED_SENTINEL_KEY = 'phaseractions.testSeeded.v1';
 
-export async function gotoStudio(page: Page): Promise<void> {
-  const existingAppRoot = page.getByTestId('app-root');
-  if (await existingAppRoot.isVisible().catch(() => false)) {
-    await waitForSceneReady(page);
-    return;
+export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean }): Promise<void> {
+  if (!options?.forceNavigate) {
+    const existingAppRoot = page.getByTestId('app-root');
+    if (await existingAppRoot.isVisible().catch(() => false)) {
+      await waitForSceneReady(page);
+      return;
+    }
   }
 
   await page.goto('/');
-  try {
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForFunction(() => Boolean(window.__PHASER_ACTIONS_STUDIO_TEST__?.isEnabled), { timeout: APP_BOOT_TIMEOUT_MS });
-    await expect(page.getByTestId('app-root')).toBeVisible({ timeout: APP_BOOT_TIMEOUT_MS });
-  } catch {
-    await page.reload();
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForFunction(() => Boolean(window.__PHASER_ACTIONS_STUDIO_TEST__?.isEnabled), { timeout: APP_BOOT_TIMEOUT_MS });
-    await expect(page.getByTestId('app-root')).toBeVisible({ timeout: APP_BOOT_TIMEOUT_MS });
-  }
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForFunction(() => Boolean(window.__PHASER_ACTIONS_STUDIO_TEST__?.isEnabled), { timeout: APP_BOOT_TIMEOUT_MS });
+  await expect(page.getByTestId('app-root')).toBeVisible({ timeout: APP_BOOT_TIMEOUT_MS });
   await waitForSceneReady(page);
 }
 
@@ -46,13 +41,7 @@ export async function seedSampleScene(page: Page): Promise<void> {
     },
     [yaml, TEST_SEED_SENTINEL_KEY]
   );
-  await page.goto('/');
-  try {
-    await waitForSceneReady(page);
-  } catch {
-    await page.reload();
-    await waitForSceneReady(page);
-  }
+  await gotoStudio(page, { forceNavigate: true });
   await waitForSampleScene(page);
 }
 
@@ -63,13 +52,7 @@ export async function seedProject(page: Page, project: any): Promise<void> {
     window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
     window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
   }, yaml);
-  await page.goto('/');
-  try {
-    await waitForSceneReady(page);
-  } catch {
-    await page.reload();
-    await waitForSceneReady(page);
-  }
+  await gotoStudio(page, { forceNavigate: true });
 }
 
 export async function waitForSceneReady(page: Page): Promise<void> {
@@ -135,6 +118,22 @@ export async function openSceneScope(page: Page): Promise<void> {
 
 export async function getState<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getState()) as Promise<T>;
+}
+
+export async function resetScene(page: Page): Promise<void> {
+  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.resetScene?.());
+  await expect.poll(async () => {
+    const state = await getState<{ scene?: { entities?: Record<string, unknown>; groups?: Record<string, unknown> } } | null>(page);
+    return {
+      hasState: Boolean(state),
+      entityCount: Object.keys(state?.scene?.entities ?? {}).length,
+      groupCount: Object.keys(state?.scene?.groups ?? {}).length,
+    };
+  }, { timeout: SCENE_CONTENT_TIMEOUT_MS }).toEqual({
+    hasState: true,
+    entityCount: 0,
+    groupCount: 0,
+  });
 }
 
 export async function getSceneSnapshot<T = any>(page: Page): Promise<T> {

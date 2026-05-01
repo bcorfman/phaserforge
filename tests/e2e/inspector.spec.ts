@@ -8,6 +8,7 @@ import {
   gotoStudio,
   openProjectScope,
   openSceneScope,
+  resetScene,
   seedSampleScene,
   selectGroupInSceneGraph,
   tapWorld,
@@ -346,7 +347,7 @@ test('preview uses edited move velocity and bounce behavior', async ({ page }) =
 });
 
 test('preview bounce reaches configured bounds edge before reversing', async ({ page }) => {
-  await page.getByTestId('reset-scene-button').click();
+  await resetScene(page);
   await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();
@@ -401,7 +402,7 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
 });
 
 test('preview applies wrap behavior for an imported sprite move action', async ({ page }) => {
-  await page.getByTestId('reset-scene-button').click();
+  await resetScene(page);
   await openProjectScope(page);
   await page.setInputFiles('[data-testid="sprite-file-input"]', 'res/images/enemy_A.png');
   await page.getByTestId('import-sprites-button').click();

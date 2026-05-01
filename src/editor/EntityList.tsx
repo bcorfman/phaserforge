@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEditorStore, type Selection } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
 import type { GameSceneSpec, ProjectSpec } from '../model/types';
 import { countAttachmentsForTarget } from './sceneGraphCommands';
 import { AudioLibraryPanel } from './AudioLibraryPanel';
 import { InputMapsPanel } from './InputMapsPanel';
-import { TriggerZonesPanel } from './TriggerZonesPanel';
 import { SpriteImportPanelView } from './SpriteImportPanel';
+import type { Id, TriggerZoneSpec } from '../model/types';
 
 const ENTITY_DRAG_MIME = 'application/x-phaseractions-studio-entity-ids';
 
@@ -33,6 +33,21 @@ function readDragEntityIds(dataTransfer: DataTransfer | null): string[] | null {
   } catch {
     return null;
   }
+}
+
+type OverflowMenuState =
+  | { kind: 'scene'; sceneId: Id }
+  | { kind: 'entity'; sceneId: Id; entityId: Id }
+  | { kind: 'group'; sceneId: Id; groupId: Id }
+  | { kind: 'trigger'; sceneId: Id; triggerId: Id }
+  | { kind: 'group-member'; sceneId: Id; groupId: Id; entityId: Id };
+
+function countTriggerHooks(zone: TriggerZoneSpec): { enter: boolean; exit: boolean; click: boolean } {
+  return {
+    enter: Boolean(zone.onEnter?.callId),
+    exit: Boolean(zone.onExit?.callId),
+    click: Boolean(zone.onClick?.callId),
+  };
 }
 
 export function EntityList() {
@@ -72,15 +87,44 @@ export function EntityListView({
   mode: 'edit' | 'play';
   dispatch: (action: any) => void;
 }) {
-  const { groups, ungroupedEntities } = summarizeSceneGroups(scene);
-
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'scene' | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const [dragInsert, setDragInsert] = useState<{ groupId: string; index: number } | null>(null);
   const [dragOverSprites, setDragOverSprites] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>(() => ({ [currentSceneId]: true }));
+  const [menuOpen, setMenuOpen] = useState<OverflowMenuState | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const menuRootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setExpandedScenes((prev) => ({ ...prev, [currentSceneId]: true }));
+  }, [currentSceneId]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = menuRootRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setMenuOpen(null);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(null);
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     const handleDragStart = () => setIsDragActive(true);
@@ -99,12 +143,21 @@ export function EntityListView({
     setEditingKind(kind);
     setEditingId(id);
     setEditingName(currentName);
+    setEditingSceneId(kind === 'scene' ? id : currentSceneId);
+  };
+
+  const startEditingInScene = (sceneId: string, kind: 'entity' | 'group' | 'scene', id: string, currentName: string) => {
+    setEditingKind(kind);
+    setEditingId(id);
+    setEditingName(currentName);
+    setEditingSceneId(sceneId);
   };
 
   const cancelEditing = () => {
     setEditingKind(null);
     setEditingId(null);
     setEditingName('');
+    setEditingSceneId(null);
   };
 
   const saveRename = () => {
@@ -113,15 +166,22 @@ export function EntityListView({
       return;
     }
 
+    const targetSceneId = editingSceneId ?? currentSceneId;
+    if (editingKind !== 'scene' && targetSceneId !== currentSceneId) {
+      dispatch({ type: 'set-current-scene', sceneId: targetSceneId });
+    }
+
     if (editingKind === 'group') {
-      const group = scene.groups[editingId];
+      const active = project.scenes[targetSceneId] as GameSceneSpec;
+      const group = active.groups[editingId];
       if (group) {
         dispatch({ type: 'update-group', id: editingId, next: { ...group, name: editingName } });
       }
     } else if (editingKind === 'scene') {
       dispatch({ type: 'rename-scene', sceneId: editingId, name: editingName });
     } else if (editingKind === 'entity') {
-      const entity = scene.entities[editingId];
+      const active = project.scenes[targetSceneId] as GameSceneSpec;
+      const entity = active.entities[editingId];
       if (entity) {
         dispatch({ type: 'update-entity', id: editingId, next: { ...entity, name: editingName } });
       }
@@ -160,10 +220,19 @@ export function EntityListView({
   const handleSceneClick = (sceneId: string) => {
     if (mode === 'play') return;
     if (editingKind == null && sceneId === currentSceneId) {
-      startEditing('scene', sceneId, sceneId);
+      startEditingInScene(sceneId, 'scene', sceneId, sceneId);
       return;
     }
     dispatch({ type: 'set-current-scene', sceneId });
+  };
+
+  const ensureCurrentScene = (sceneId: string) => {
+    if (sceneId !== currentSceneId) dispatch({ type: 'set-current-scene', sceneId });
+  };
+
+  const selectInScene = (sceneId: string, next: Selection) => {
+    if (sceneId !== currentSceneId) dispatch({ type: 'set-current-scene', sceneId });
+    dispatch({ type: 'select', selection: next });
   };
 
   const handleEntityDragStart = (id: string, event: React.DragEvent) => {
@@ -230,87 +299,458 @@ export function EntityListView({
           Project
         </button>
       </div>
-      <section className="panel-section" aria-labelledby="scene-list">
-        <div className="panel-heading-row">
-          <h3 className="panel-heading" id="scene-list">Scenes</h3>
-        </div>
-        <div className="member-list">
-          {Object.keys(project.scenes).map((sceneId) => {
-            const isBase = project.baseSceneId === sceneId;
-            const meta = project.sceneMeta?.[sceneId];
-            const roleRaw = meta?.role;
-            const role = isBase
-              ? 'Base'
-              : roleRaw === 'base' || roleRaw === 'wave' || roleRaw === 'stage'
-                ? `${roleRaw.slice(0, 1).toUpperCase()}${roleRaw.slice(1)}`
-                : undefined;
+      {sidebarScope === 'scene' ? (
+        <section className="panel-section" aria-labelledby="scene-list">
+          <div className="panel-heading-row">
+            <h3 className="panel-heading" id="scene-list">Scenes</h3>
+            <button
+              className="button button-compact"
+              data-testid="create-scene-button"
+              type="button"
+              disabled={mode === 'play'}
+              onClick={() => dispatch({ type: 'create-scene' })}
+            >
+              + Add
+            </button>
+          </div>
+          <div className="member-list">
+            {Object.keys(project.scenes).map((sceneId) => {
+              const isBase = project.baseSceneId === sceneId;
+              const meta = project.sceneMeta?.[sceneId];
+              const roleRaw = meta?.role;
+              const role = isBase
+                ? 'Base'
+                : roleRaw === 'base' || roleRaw === 'wave' || roleRaw === 'stage'
+                  ? `${roleRaw.slice(0, 1).toUpperCase()}${roleRaw.slice(1)}`
+                  : undefined;
 
-            return (
-              <div key={sceneId} className="member-row">
-                {editingId === sceneId && editingKind === 'scene' ? (
-                  <input
-                    autoFocus
-                    className="scene-graph-rename-input"
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    onBlur={saveRename}
-                    onKeyDown={handleKeyDown}
-                    data-testid={`rename-scene-input-${sceneId}`}
-                  />
-                ) : (
-                  <button
-                    className={`list-item ${sceneId === currentSceneId ? 'active' : ''}`}
-                    data-testid={`scene-item-${sceneId}`}
-                    type="button"
-                    disabled={mode === 'play'}
-                    onClick={() => handleSceneClick(sceneId)}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sceneId}</span>
-                    {role ? <span className="list-item-meta">{role}</span> : null}
-                  </button>
-                )}
-                <button
-                  aria-label={`${isBase ? 'Clear base scene' : 'Set base scene'} ${sceneId}`}
-                  className="scene-graph-button"
-                  data-testid={`toggle-base-scene-${sceneId}`}
-                  type="button"
-                  disabled={mode === 'play'}
-                  onClick={() => dispatch({ type: 'toggle-base-scene', sceneId })}
-                >
-                  {isBase ? '★' : '☆'}
-                </button>
-                <button
-                  aria-label={`Duplicate scene ${sceneId}`}
-                  className="scene-graph-button"
-                  data-testid={`duplicate-scene-${sceneId}`}
-                  type="button"
-                  onClick={() => dispatch({ type: 'duplicate-scene', sceneId })}
-                >
-                  ⧉
-                </button>
-                <button
-                  aria-label={`Delete scene ${sceneId}`}
-                  className="scene-graph-button scene-graph-remove"
-                  data-testid={`delete-scene-${sceneId}`}
-                  type="button"
-                  disabled={Object.keys(project.scenes).length <= 1}
-                  onClick={() => dispatch({ type: 'delete-scene', sceneId })}
-                >
-                  🗑
-                </button>
-              </div>
-            );
-          })}
-        </div>
-        <button
-          className="button"
-          data-testid="create-scene-button"
-          type="button"
-          onClick={() => dispatch({ type: 'create-scene' })}
-        >
-          New Scene
-        </button>
-      </section>
+              const isExpanded = expandedScenes[sceneId] ?? (sceneId === currentSceneId);
+              const sceneForRow = project.scenes[sceneId];
+              const summary = summarizeSceneGroups(sceneForRow);
+              const groupsForRow = summary.groups;
+              const ungroupedForRow = summary.ungroupedEntities;
+              const zonesForRow = (sceneForRow.triggers ?? []) as TriggerZoneSpec[];
+
+              const showActiveSelection = sceneId === currentSceneId;
+
+              const openOverflowMenu = (event: React.MouseEvent, next: OverflowMenuState) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                setMenuPosition({ x: Math.min(rect.left, window.innerWidth - 220), y: rect.bottom + 6 });
+                setMenuOpen(next);
+              };
+
+              return (
+                <div key={sceneId} className="behavior-block">
+                  <div className="member-row">
+                    <button
+                      aria-label={`Toggle scene ${sceneId}`}
+                      className="scene-graph-button scene-graph-chevron"
+                      data-testid={`toggle-scene-${sceneId}`}
+                      type="button"
+                      onClick={() => setExpandedScenes((prev) => ({ ...prev, [sceneId]: !(prev[sceneId] ?? (sceneId === currentSceneId)) }))}
+                    >
+                      {isExpanded ? '▾' : '▸'}
+                    </button>
+
+                    {editingId === sceneId && editingKind === 'scene' ? (
+                      <input
+                        autoFocus
+                        className="scene-graph-rename-input"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={saveRename}
+                        onKeyDown={handleKeyDown}
+                        data-testid={`rename-scene-input-${sceneId}`}
+                      />
+                    ) : (
+                      <button
+                        className={`list-item ${sceneId === currentSceneId ? 'active' : ''}`}
+                        data-testid={`scene-item-${sceneId}`}
+                        type="button"
+                        disabled={mode === 'play'}
+                        onClick={() => handleSceneClick(sceneId)}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sceneId}</span>
+                        {role ? <span className="list-item-meta">{role}</span> : null}
+                      </button>
+                    )}
+
+                    <button
+                      aria-label={`More options for scene ${sceneId}`}
+                      className="scene-graph-button"
+                      data-testid={`scene-menu-${sceneId}`}
+                      type="button"
+                      onClick={(e) => openOverflowMenu(e, { kind: 'scene', sceneId })}
+                    >
+                      ⋯
+                    </button>
+                  </div>
+
+                  {isExpanded ? (
+                    <div className="member-list" style={{ paddingLeft: 18 }}>
+                      {/* Sprites */}
+                      <div className="panel-heading-row" style={{ marginTop: 8 }}>
+                        <h4 className="panel-heading" id={`scene-${sceneId}-sprites`}>Sprites</h4>
+                        <button
+                          className="button button-compact"
+                          data-testid={`sprites-add-${sceneId}`}
+                          type="button"
+                          onClick={() => {
+                            dispatch({ type: 'set-sidebar-scope', scope: 'project' });
+                            queueMicrotask(() => {
+                              const panel = document.querySelector('#project-import-sprites');
+                              if (panel instanceof HTMLElement) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            });
+                          }}
+                        >
+                          + Add
+                        </button>
+                      </div>
+
+                      <div
+                        className={sceneId === currentSceneId && dragOverSprites ? 'scene-graph-drop-target scene-graph-drop-target-sprites' : undefined}
+                        data-testid={sceneId === currentSceneId ? 'sprites-dropzone' : `sprites-dropzone-${sceneId}`}
+                        onDragOver={(e) => {
+                          if (sceneId !== currentSceneId) return;
+                          e.preventDefault();
+                          if (!dragOverSprites) setDragOverSprites(true);
+                        }}
+                        onDragLeave={() => {
+                          if (sceneId !== currentSceneId) return;
+                          setDragOverSprites(false);
+                        }}
+                        onDrop={(e) => {
+                          if (sceneId !== currentSceneId) return;
+                          handleDropOnSprites(e);
+                        }}
+                      >
+                        {ungroupedForRow.length === 0 ? (
+                          <div className="muted">No ungrouped sprites.</div>
+                        ) : (
+                          ungroupedForRow.map((entity) => (
+                            <div key={entity.id} className="member-row">
+                              {editingId === entity.id && editingKind === 'entity' ? (
+                                <input
+                                  autoFocus
+                                  className="scene-graph-rename-input"
+                                  value={editingName}
+                                  onChange={(e) => setEditingName(e.target.value)}
+                                  onBlur={saveRename}
+                                  onKeyDown={handleKeyDown}
+                                  data-testid={`rename-entity-input-${entity.id}`}
+                                />
+                              ) : (
+                                <button
+                                  className={`list-item ${showActiveSelection && isSelected(selection, 'entity', entity.id) ? 'active' : ''}`}
+                                  data-testid={sceneId === currentSceneId ? `ungrouped-entity-${entity.id}` : `ungrouped-entity-${sceneId}-${entity.id}`}
+                                  draggable={sceneId === currentSceneId && editingKind == null}
+                                  onDragStart={(e) => {
+                                    if (sceneId !== currentSceneId) return;
+                                    handleEntityDragStart(entity.id, e);
+                                  }}
+                                  onDragEnd={handleDragEnd}
+                                  onClick={(e) => {
+                                    if (sceneId !== currentSceneId) {
+                                      selectInScene(sceneId, { kind: 'entity', id: entity.id });
+                                      return;
+                                    }
+                                    handleEntityClick(entity.id, e);
+                                  }}
+                                  type="button"
+                                >
+                                  {entity.name ?? entity.id}
+                                  <span className="list-item-meta">{countAttachmentsForTarget(sceneForRow, { type: 'entity', entityId: entity.id })}</span>
+                                </button>
+                              )}
+                              <button
+                                aria-label={`More options for sprite ${entity.name ?? entity.id}`}
+                                className="scene-graph-button"
+                                data-testid={sceneId === currentSceneId ? `entity-menu-${entity.id}` : `entity-menu-${sceneId}-${entity.id}`}
+                                type="button"
+                                onClick={(e) => openOverflowMenu(e, { kind: 'entity', sceneId, entityId: entity.id })}
+                              >
+                                ⋯
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Formations */}
+                      <div className="panel-heading-row" style={{ marginTop: 10 }}>
+                        <h4 className="panel-heading" id={`scene-${sceneId}-formations`}>Formations</h4>
+                        <button
+                          className="button button-compact"
+                          data-testid={`formations-add-${sceneId}`}
+                          type="button"
+                          disabled={mode !== 'edit'}
+                          onClick={() => {
+                            ensureCurrentScene(sceneId);
+                            dispatch({ type: 'select', selection: { kind: 'none' } });
+                            queueMicrotask(() => {
+                              const panel = document.querySelector('[data-testid=\"create-formation-panel\"]');
+                              if (panel instanceof HTMLElement) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            });
+                          }}
+                        >
+                          + Add
+                        </button>
+                      </div>
+
+                      {groupsForRow.length === 0 ? (
+                        <div className="muted">No formations.</div>
+                      ) : (
+                        groupsForRow.map(({ group, members }) => (
+                          <div key={group.id} className="behavior-block">
+                            <div className="member-row">
+                              <button
+                                aria-label={`Toggle formation ${group.name ?? group.id}`}
+                                className="scene-graph-button scene-graph-chevron"
+                                data-testid={`toggle-group-${group.id}`}
+                                type="button"
+                                onClick={() => {
+                                  ensureCurrentScene(sceneId);
+                                  dispatch({ type: 'toggle-group-expanded', id: group.id });
+                                }}
+                                onDragEnd={handleDragEnd}
+                                disabled={sceneId !== currentSceneId}
+                              >
+                                {expandedGroups[group.id] ? '▾' : '▸'}
+                              </button>
+                              {editingId === group.id && editingKind === 'group' ? (
+                                <input
+                                  autoFocus
+                                  className="scene-graph-rename-input"
+                                  value={editingName}
+                                  onChange={(e) => setEditingName(e.target.value)}
+                                  onBlur={saveRename}
+                                  onKeyDown={handleKeyDown}
+                                  data-testid={`rename-group-input-${group.id}`}
+                                />
+                              ) : (
+                                <button
+                                  className={`list-item ${showActiveSelection && isSelected(selection, 'group', group.id) ? 'active' : ''} ${sceneId === currentSceneId && dragOverGroupId === group.id ? 'scene-graph-drop-target scene-graph-drop-target-group' : ''}`}
+                                  data-testid={sceneId === currentSceneId ? `group-item-${group.id}` : `group-item-${sceneId}-${group.id}`}
+                                  onClick={() => {
+                                    if (sceneId !== currentSceneId) {
+                                      selectInScene(sceneId, { kind: 'group', id: group.id });
+                                      return;
+                                    }
+                                    handleGroupClick(group.id);
+                                  }}
+                                  type="button"
+                                  onDragOver={(e) => {
+                                    if (sceneId !== currentSceneId) return;
+                                    e.preventDefault();
+                                    if (dragOverGroupId !== group.id) setDragOverGroupId(group.id);
+                                    setDragInsert({ groupId: group.id, index: group.members.length });
+                                  }}
+                                  onDragLeave={() => {
+                                    if (sceneId !== currentSceneId) return;
+                                    if (dragOverGroupId === group.id) setDragOverGroupId(null);
+                                    if (dragInsert?.groupId === group.id) setDragInsert(null);
+                                  }}
+                                  onDrop={(e) => {
+                                    if (sceneId !== currentSceneId) return;
+                                    handleDropOnGroup(group.id, e, group.members.length);
+                                  }}
+                                >
+                                  {group.name ?? group.id}
+                                  <span className="list-item-meta">{countAttachmentsForTarget(sceneForRow, { type: 'group', groupId: group.id })}</span>
+                                </button>
+                              )}
+                              <button
+                                aria-label={`More options for formation ${group.name ?? group.id}`}
+                                className="scene-graph-button"
+                                data-testid={sceneId === currentSceneId ? `group-menu-${group.id}` : `group-menu-${sceneId}-${group.id}`}
+                                type="button"
+                                onClick={(e) => openOverflowMenu(e, { kind: 'group', sceneId, groupId: group.id })}
+                              >
+                                ⋯
+                              </button>
+                            </div>
+                            {expandedGroups[group.id] && (
+                              <div
+                                className="member-list"
+                                onDragLeave={() => {
+                                  if (sceneId !== currentSceneId) return;
+                                  if (dragOverGroupId === group.id) setDragOverGroupId(null);
+                                  if (dragInsert?.groupId === group.id) setDragInsert(null);
+                                }}
+                              >
+                                {members.map((member) => (
+                                  <div
+                                    key={member.id}
+                                    className="member-row"
+                                    data-testid={`group-member-row-${group.id}-${member.id}`}
+                                    data-member-id={member.id}
+                                    style={isDragActive ? { position: 'relative' } : undefined}
+                                    onDragOver={(e) => {
+                                      if (sceneId !== currentSceneId) return;
+                                      e.preventDefault();
+                                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                                      const memberIndex = group.members.indexOf(member.id);
+                                      const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                                      setDragInsert({ groupId: group.id, index: Math.max(0, index) });
+                                    }}
+                                    onDrop={(e) => {
+                                      if (sceneId !== currentSceneId) return;
+                                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                                      const memberIndex = group.members.indexOf(member.id);
+                                      const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                                      handleDropOnGroup(group.id, e, Math.max(0, index));
+                                    }}
+                                  >
+                                    {isDragActive && sceneId === currentSceneId && (
+                                      <button
+                                        type="button"
+                                        className="scene-graph-drop-overlay"
+                                        data-testid={`group-member-drop-overlay-${group.id}-${member.id}`}
+                                        onDragOver={(e) => {
+                                          e.preventDefault();
+                                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                          const memberIndex = group.members.indexOf(member.id);
+                                          const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                                          setDragInsert({ groupId: group.id, index: Math.max(0, index) });
+                                        }}
+                                        onDrop={(e) => {
+                                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                          const memberIndex = group.members.indexOf(member.id);
+                                          const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
+                                          handleDropOnGroup(group.id, e, Math.max(0, index));
+                                        }}
+                                      />
+                                    )}
+                                    {editingId === member.id && editingKind === 'entity' ? (
+                                      <input
+                                        autoFocus
+                                        className="scene-graph-rename-input"
+                                        value={editingName}
+                                        onChange={(e) => setEditingName(e.target.value)}
+                                        onBlur={saveRename}
+                                        onKeyDown={handleKeyDown}
+                                        data-testid={`rename-entity-input-${member.id}`}
+                                      />
+                                    ) : (
+                                      <button
+                                        className={`list-item ${showActiveSelection && isSelected(selection, 'entity', member.id) ? 'active' : ''}`}
+                                        data-testid={`group-member-${group.id}-${member.id}`}
+                                        draggable={sceneId === currentSceneId && editingKind == null}
+                                        onDragStart={(e) => {
+                                          if (sceneId !== currentSceneId) return;
+                                          handleEntityDragStart(member.id, e);
+                                        }}
+                                        onDragEnd={handleDragEnd}
+                                        onClick={(e) => {
+                                          if (sceneId !== currentSceneId) {
+                                            selectInScene(sceneId, { kind: 'entity', id: member.id });
+                                            return;
+                                          }
+                                          handleEntityClick(member.id, e);
+                                        }}
+                                        type="button"
+                                      >
+                                        {member.name ?? member.id}
+                                      </button>
+                                    )}
+                                    <button
+                                      aria-label={`Remove sprite ${member.name ?? member.id} from formation ${group.name ?? group.id}`}
+                                      className="scene-graph-button scene-graph-remove"
+                                      data-testid={`group-member-remove-${group.id}-${member.id}`}
+                                      type="button"
+                                      disabled={sceneId !== currentSceneId}
+                                      onClick={() => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId: member.id })}
+                                    >
+                                      -
+                                    </button>
+                                    <button
+                                      aria-label={`More options for sprite ${member.name ?? member.id}`}
+                                      className="scene-graph-button"
+                                      data-testid={sceneId === currentSceneId ? `group-member-menu-${group.id}-${member.id}` : `group-member-menu-${sceneId}-${group.id}-${member.id}`}
+                                      type="button"
+                                      onClick={(e) => openOverflowMenu(e, { kind: 'group-member', sceneId, groupId: group.id, entityId: member.id })}
+                                    >
+                                      ⋯
+                                    </button>
+                                  </div>
+                                ))}
+                                {isDragActive && sceneId === currentSceneId && (
+                                  <button
+                                    type="button"
+                                    className="scene-graph-drop-end"
+                                    data-testid={`group-member-drop-end-${group.id}`}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      setDragInsert({ groupId: group.id, index: members.length });
+                                    }}
+                                    onDrop={(e) => handleDropOnGroup(group.id, e, members.length)}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+
+                      {/* Trigger Zones */}
+                      <div className="panel-heading-row" style={{ marginTop: 10 }}>
+                        <h4 className="panel-heading" id={`scene-${sceneId}-triggers`}>Trigger Zones</h4>
+                        <button
+                          className="button button-compact"
+                          data-testid={`trigger-zones-add-${sceneId}`}
+                          type="button"
+                          disabled={mode !== 'edit'}
+                          onClick={() => {
+                            ensureCurrentScene(sceneId);
+                            dispatch({ type: 'add-trigger-zone' });
+                          }}
+                        >
+                          + Add
+                        </button>
+                      </div>
+
+                      {zonesForRow.length === 0 ? (
+                        <div className="muted">No trigger zones.</div>
+                      ) : (
+                        zonesForRow.map((zone) => {
+                          const hooks = countTriggerHooks(zone);
+                          const onClass = (on: boolean) => `trigger-marker ${on ? 'on' : ''}`;
+                          return (
+                            <div key={zone.id} className="member-row">
+                              <button
+                                className={`list-item ${showActiveSelection && selection.kind === 'trigger' && selection.id === zone.id ? 'active' : ''}`}
+                                data-testid={sceneId === currentSceneId ? `trigger-zone-${zone.id}` : `trigger-zone-${sceneId}-${zone.id}`}
+                                type="button"
+                                onClick={() => selectInScene(sceneId, { kind: 'trigger', id: zone.id as Id })}
+                              >
+                                {zone.name ?? zone.id}
+                              </button>
+                              <span className={onClass(hooks.enter)} aria-label="Enter hook" title="Enter">E</span>
+                              <span className={onClass(hooks.exit)} aria-label="Exit hook" title="Exit">X</span>
+                              <span className={onClass(hooks.click)} aria-label="Click hook" title="Click">C</span>
+                              <button
+                                aria-label={`More options for trigger zone ${zone.name ?? zone.id}`}
+                                className="scene-graph-button"
+                                data-testid={sceneId === currentSceneId ? `trigger-menu-${zone.id}` : `trigger-menu-${sceneId}-${zone.id}`}
+                                type="button"
+                                onClick={(e) => openOverflowMenu(e, { kind: 'trigger', sceneId, triggerId: zone.id })}
+                              >
+                                ⋯
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {sidebarScope === 'project' ? (
         <>
@@ -326,237 +766,188 @@ export function EntityListView({
           </section>
         </>
       ) : (
-        <>
-          <section
-            className={`panel-section ${dragOverSprites ? 'scene-graph-drop-target scene-graph-drop-target-sprites' : ''}`}
-            aria-labelledby="scene-graph-sprites"
-            data-testid="sprites-dropzone"
-            onDragOver={(e) => {
-              e.preventDefault();
-              if (!dragOverSprites) setDragOverSprites(true);
-            }}
-            onDragLeave={() => setDragOverSprites(false)}
-            onDrop={handleDropOnSprites}
-          >
-            <div className="panel-heading-row">
-              <h3 className="panel-heading" id="scene-graph-sprites">Sprites</h3>
-            </div>
-            {ungroupedEntities.map((entity) => (
-              <div key={entity.id} className="member-row">
-                {editingId === entity.id && editingKind === 'entity' ? (
-                  <input
-                    autoFocus
-                    className="scene-graph-rename-input"
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    onBlur={saveRename}
-                    onKeyDown={handleKeyDown}
-                    data-testid={`rename-entity-input-${entity.id}`}
-                  />
-                ) : (
-                  <button
-                    className={`list-item ${isSelected(selection, 'entity', entity.id) ? 'active' : ''}`}
-                    data-testid={`ungrouped-entity-${entity.id}`}
-                    draggable={editingKind == null}
-                    onDragStart={(e) => handleEntityDragStart(entity.id, e)}
-                    onDragEnd={handleDragEnd}
-                    onClick={(e) => handleEntityClick(entity.id, e)}
-                    type="button"
-                  >
-                    {entity.name ?? entity.id}
-                    <span className="list-item-meta">{countAttachmentsForTarget(scene, { type: 'entity', entityId: entity.id })}</span>
-                  </button>
-                )}
+        null
+      )}
+
+      {menuOpen && menuPosition ? (
+        <div
+          ref={menuRootRef}
+          className="scene-graph-menu"
+          style={{ position: 'fixed', left: menuPosition.x, top: menuPosition.y, zIndex: 50, minWidth: 200 }}
+          data-testid="scene-graph-overflow-menu"
+          role="menu"
+        >
+          {menuOpen.kind === 'scene' ? (() => {
+            const isBase = project.baseSceneId === menuOpen.sceneId;
+            const canDelete = Object.keys(project.scenes).length > 1;
+            return (
+              <>
+                <div className="scene-graph-menu-hint">{menuOpen.sceneId}</div>
                 <button
-                  aria-label={`Remove sprite ${entity.name ?? entity.id}`}
-                  className="scene-graph-button scene-graph-remove"
-                  data-testid={`remove-entity-${entity.id}`}
                   type="button"
-                  onClick={() => dispatch({ type: 'remove-scene-graph-item', item: { kind: 'entity', id: entity.id } })}
+                  className="scene-graph-menu-item"
+                  data-testid={`scene-menu-rename-${menuOpen.sceneId}`}
+                  onClick={() => {
+                    setMenuOpen(null);
+                    startEditingInScene(menuOpen.sceneId, 'scene', menuOpen.sceneId, menuOpen.sceneId);
+                  }}
                 >
-                  🗑
+                  Rename…
                 </button>
-              </div>
-            ))}
-          </section>
+                <button
+                  type="button"
+                  className="scene-graph-menu-item"
+                  data-testid={`scene-menu-duplicate-${menuOpen.sceneId}`}
+                  onClick={() => {
+                    setMenuOpen(null);
+                    dispatch({ type: 'duplicate-scene', sceneId: menuOpen.sceneId });
+                  }}
+                >
+                  ⧉ Duplicate Scene
+                </button>
+                <button
+                  type="button"
+                  className="scene-graph-menu-item"
+                  data-testid={`scene-menu-base-${menuOpen.sceneId}`}
+                  onClick={() => {
+                    setMenuOpen(null);
+                    dispatch({ type: 'toggle-base-scene', sceneId: menuOpen.sceneId });
+                  }}
+                >
+                  ★ {isBase ? 'Clear Base' : 'Set as Base'}
+                </button>
+                <div className="scene-graph-menu-divider" />
+                <button
+                  type="button"
+                  className={`scene-graph-menu-item scene-graph-menu-danger ${canDelete ? '' : 'disabled'}`}
+                  data-testid={`scene-menu-delete-${menuOpen.sceneId}`}
+                  disabled={!canDelete}
+                  onClick={() => {
+                    setMenuOpen(null);
+                    dispatch({ type: 'delete-scene', sceneId: menuOpen.sceneId });
+                  }}
+                >
+                  Delete…
+                </button>
+              </>
+            );
+          })() : null}
 
-          <TriggerZonesPanel scene={scene} selection={selection} dispatch={dispatch} disabled={mode !== 'edit'} />
-
-          <section className="panel-section" aria-labelledby="scene-graph-formations">
-            <div className="panel-heading-row">
-              <h3 className="panel-heading" id="scene-graph-formations">Formations</h3>
+          {menuOpen.kind === 'entity' ? (
+            <>
+              <div className="scene-graph-menu-hint">{menuOpen.entityId}</div>
               <button
-                className="button button-compact"
-                data-testid="sidebar-create-formation-button"
                 type="button"
-                disabled={mode !== 'edit'}
+                className="scene-graph-menu-item"
+                data-testid={`entity-menu-rename-${menuOpen.entityId}`}
                 onClick={() => {
-                  dispatch({ type: 'select', selection: { kind: 'none' } });
-                  const panel = document.querySelector('[data-testid=\"create-formation-panel\"]');
-                  if (panel instanceof HTMLElement) {
-                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
+                  setMenuOpen(null);
+                  ensureCurrentScene(menuOpen.sceneId);
+                  const entity = project.scenes[menuOpen.sceneId]?.entities?.[menuOpen.entityId];
+                  startEditingInScene(menuOpen.sceneId, 'entity', menuOpen.entityId, entity?.name ?? menuOpen.entityId);
                 }}
               >
-                + Create
+                Rename…
               </button>
-            </div>
-            {groups.map(({ group, members }) => (
-              <div key={group.id} className="behavior-block">
-                <div className="member-row">
-                  <button
-                    aria-label={`Toggle formation ${group.name ?? group.id}`}
-                    className="scene-graph-button scene-graph-chevron"
-                    data-testid={`toggle-group-${group.id}`}
-                    type="button"
-                    onClick={() => dispatch({ type: 'toggle-group-expanded', id: group.id })}
-                    onDragEnd={handleDragEnd}
-                  >
-                    {expandedGroups[group.id] ? '▾' : '▸'}
-                  </button>
-                  {editingId === group.id && editingKind === 'group' ? (
-                    <input
-                      autoFocus
-                      className="scene-graph-rename-input"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onBlur={saveRename}
-                      onKeyDown={handleKeyDown}
-                      data-testid={`rename-group-input-${group.id}`}
-                    />
-                  ) : (
-                    <button
-                      className={`list-item ${isSelected(selection, 'group', group.id) ? 'active' : ''} ${dragOverGroupId === group.id ? 'scene-graph-drop-target scene-graph-drop-target-group' : ''}`}
-                      data-testid={`group-item-${group.id}`}
-                      onClick={() => handleGroupClick(group.id)}
-                      type="button"
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        if (dragOverGroupId !== group.id) setDragOverGroupId(group.id);
-                        setDragInsert({ groupId: group.id, index: group.members.length });
-                      }}
-                      onDragLeave={() => {
-                        if (dragOverGroupId === group.id) setDragOverGroupId(null);
-                        if (dragInsert?.groupId === group.id) setDragInsert(null);
-                      }}
-                      onDrop={(e) => handleDropOnGroup(group.id, e, group.members.length)}
-                    >
-                      {group.name ?? group.id}
-                      <span className="list-item-meta">{countAttachmentsForTarget(scene, { type: 'group', groupId: group.id })}</span>
-                    </button>
-                  )}
-                  <button
-                    aria-label={`Remove formation ${group.name ?? group.id}`}
-                    className="scene-graph-button scene-graph-remove"
-                    data-testid={`remove-group-${group.id}`}
-                    type="button"
-                    onClick={() => dispatch({ type: 'remove-scene-graph-item', item: { kind: 'group', id: group.id } })}
-                  >
-                    🗑
-                  </button>
-                </div>
-                {expandedGroups[group.id] && (
-                  <div
-                    className="member-list"
-                    onDragLeave={() => {
-                      if (dragOverGroupId === group.id) setDragOverGroupId(null);
-                      if (dragInsert?.groupId === group.id) setDragInsert(null);
-                    }}
-                  >
-                    {members.map((member) => (
-                      <div
-                        key={member.id}
-                        className="member-row"
-                        data-testid={`group-member-row-${group.id}-${member.id}`}
-                        data-member-id={member.id}
-                        style={isDragActive ? { position: 'relative' } : undefined}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                          const memberIndex = group.members.indexOf(member.id);
-                          const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
-                          setDragInsert({ groupId: group.id, index: Math.max(0, index) });
-                        }}
-                        onDrop={(e) => {
-                          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                          const memberIndex = group.members.indexOf(member.id);
-                          const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
-                          handleDropOnGroup(group.id, e, Math.max(0, index));
-                        }}
-                      >
-                        {isDragActive && (
-                          <button
-                            type="button"
-                            className="scene-graph-drop-overlay"
-                            data-testid={`group-member-drop-overlay-${group.id}-${member.id}`}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                              const memberIndex = group.members.indexOf(member.id);
-                              const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
-                              setDragInsert({ groupId: group.id, index: Math.max(0, index) });
-                            }}
-                            onDrop={(e) => {
-                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                              const memberIndex = group.members.indexOf(member.id);
-                              const index = memberIndex >= 0 && e.clientY < rect.top + rect.height / 2 ? memberIndex : memberIndex + 1;
-                              handleDropOnGroup(group.id, e, Math.max(0, index));
-                            }}
-                          />
-                        )}
-                        {editingId === member.id && editingKind === 'entity' ? (
-                          <input
-                            autoFocus
-                            className="scene-graph-rename-input"
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onBlur={saveRename}
-                            onKeyDown={handleKeyDown}
-                            data-testid={`rename-entity-input-${member.id}`}
-                          />
-                        ) : (
-                          <button
-                            className={`list-item ${isSelected(selection, 'entity', member.id) ? 'active' : ''}`}
-                            data-testid={`group-member-${group.id}-${member.id}`}
-                            draggable={editingKind == null}
-                            onDragStart={(e) => handleEntityDragStart(member.id, e)}
-                            onDragEnd={handleDragEnd}
-                            onClick={(e) => handleEntityClick(member.id, e)}
-                            type="button"
-                          >
-                            {member.name ?? member.id}
-                          </button>
-                        )}
-                        <button
-                          aria-label={`Remove sprite ${member.name ?? member.id} from formation ${group.name ?? group.id}`}
-                          className="scene-graph-button scene-graph-remove"
-                          data-testid={`group-member-remove-${group.id}-${member.id}`}
-                          type="button"
-                          onClick={() => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId: member.id })}
-                        >
-                          -
-                        </button>
-                      </div>
-                    ))}
-                    {isDragActive && (
-                      <button
-                        type="button"
-                        className="scene-graph-drop-end"
-                        data-testid={`group-member-drop-end-${group.id}`}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setDragInsert({ groupId: group.id, index: members.length });
-                        }}
-                        onDrop={(e) => handleDropOnGroup(group.id, e, members.length)}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </section>
-        </>
-      )}
+              <div className="scene-graph-menu-divider" />
+              <button
+                type="button"
+                className="scene-graph-menu-item scene-graph-menu-danger"
+                data-testid={`entity-menu-delete-${menuOpen.entityId}`}
+                onClick={() => {
+                  setMenuOpen(null);
+                  ensureCurrentScene(menuOpen.sceneId);
+                  dispatch({ type: 'remove-scene-graph-item', item: { kind: 'entity', id: menuOpen.entityId } });
+                }}
+              >
+                Delete…
+              </button>
+            </>
+          ) : null}
+
+          {menuOpen.kind === 'group' ? (
+            <>
+              <div className="scene-graph-menu-hint">{menuOpen.groupId}</div>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid={`group-menu-rename-${menuOpen.groupId}`}
+                onClick={() => {
+                  setMenuOpen(null);
+                  ensureCurrentScene(menuOpen.sceneId);
+                  const group = project.scenes[menuOpen.sceneId]?.groups?.[menuOpen.groupId];
+                  startEditingInScene(menuOpen.sceneId, 'group', menuOpen.groupId, group?.name ?? menuOpen.groupId);
+                }}
+              >
+                Rename…
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid={`group-menu-dissolve-${menuOpen.groupId}`}
+                onClick={() => {
+                  setMenuOpen(null);
+                  ensureCurrentScene(menuOpen.sceneId);
+                  dispatch({ type: 'dissolve-group', id: menuOpen.groupId });
+                }}
+              >
+                Dissolve Group
+              </button>
+              <div className="scene-graph-menu-divider" />
+              <button
+                type="button"
+                className="scene-graph-menu-item scene-graph-menu-danger"
+                data-testid={`group-menu-delete-${menuOpen.groupId}`}
+                onClick={() => {
+                  setMenuOpen(null);
+                  ensureCurrentScene(menuOpen.sceneId);
+                  dispatch({ type: 'remove-scene-graph-item', item: { kind: 'group', id: menuOpen.groupId } });
+                }}
+              >
+                Delete…
+              </button>
+            </>
+          ) : null}
+
+          {menuOpen.kind === 'group-member' ? (
+            <>
+              <div className="scene-graph-menu-hint">{menuOpen.entityId}</div>
+              <div className="scene-graph-menu-divider" />
+              <button
+                type="button"
+                className="scene-graph-menu-item scene-graph-menu-danger"
+                data-testid={`group-member-menu-delete-${menuOpen.entityId}`}
+                onClick={() => {
+                  setMenuOpen(null);
+                  ensureCurrentScene(menuOpen.sceneId);
+                  dispatch({ type: 'remove-scene-graph-item', item: { kind: 'entity', id: menuOpen.entityId } });
+                }}
+              >
+                Delete…
+              </button>
+            </>
+          ) : null}
+
+          {menuOpen.kind === 'trigger' ? (
+            <>
+              <div className="scene-graph-menu-hint">{menuOpen.triggerId}</div>
+              <div className="scene-graph-menu-divider" />
+              <button
+                type="button"
+                className="scene-graph-menu-item scene-graph-menu-danger"
+                data-testid={`trigger-menu-delete-${menuOpen.triggerId}`}
+                onClick={() => {
+                  setMenuOpen(null);
+                  ensureCurrentScene(menuOpen.sceneId);
+                  dispatch({ type: 'remove-trigger-zone', id: menuOpen.triggerId });
+                }}
+              >
+                Delete…
+              </button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -10,9 +10,10 @@ test.beforeEach(async ({ page }) => {
 test('Undo restores a deleted sprite', async ({ page }) => {
   await page.getByTestId('toggle-group-g-enemies').click();
   await page.getByTestId('group-member-remove-g-enemies-e1').click();
-  await expect(page.getByTestId('remove-entity-e1')).toBeVisible();
+  await expect(page.getByTestId('entity-menu-e1')).toBeVisible();
 
-  await page.getByTestId('remove-entity-e1').click();
+  await page.getByTestId('entity-menu-e1').click();
+  await page.getByTestId('entity-menu-delete-e1').click();
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, unknown> } }>(page);
     return Boolean(state.scene.entities.e1);
@@ -87,4 +88,23 @@ test('Undo/redo works for scene graph member drag/drop', async ({ page }) => {
     const members = state.scene.groups['g-enemies'].members;
     return { hasE1: members.includes('e1'), hasE2: members.includes('e2') };
   }).toEqual({ hasE1: true, hasE2: true });
+});
+
+test('Delete key removes selection (power user) and undo restores', async ({ page }) => {
+  await page.getByTestId('toggle-group-g-enemies').click();
+  await page.getByTestId('group-member-remove-g-enemies-e1').click();
+
+  await page.getByTestId('ungrouped-entity-e1').click();
+  await page.keyboard.press('Delete');
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, unknown> } }>(page);
+    return Boolean(state.scene.entities.e1);
+  }).toBe(false);
+
+  await triggerUndo(page);
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, unknown> } }>(page);
+    return Boolean(state.scene.entities.e1);
+  }).toBe(true);
 });

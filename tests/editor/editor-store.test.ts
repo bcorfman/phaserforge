@@ -970,4 +970,46 @@ describe('EditorStore reducer', () => {
       expect(scene1.entities[id]).toBeDefined();
     }
   });
+
+  it('deletes selection for entity/group/attachment in a single action', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+    expect(scene.entities.e1).toBeDefined();
+    expect(scene.groups['g-enemies']).toBeDefined();
+
+    const removedEntity = reducer({ ...state, selection: { kind: 'entity', id: 'e1' } }, { type: 'delete-selection' } as any);
+    expect(sceneOf(removedEntity).entities.e1).toBeUndefined();
+    expect(removedEntity.selection).toEqual({ kind: 'none' });
+
+    const removedGroup = reducer({ ...state, selection: { kind: 'group', id: 'g-enemies' } }, { type: 'delete-selection' } as any);
+    expect(sceneOf(removedGroup).groups['g-enemies']).toBeUndefined();
+    expect(removedGroup.selection).toEqual({ kind: 'none' });
+
+    const attachmentId = Object.keys(scene.attachments)[0];
+    expect(attachmentId).toBeTruthy();
+    const removedAttachment = reducer({ ...state, selection: { kind: 'attachment', id: attachmentId } }, { type: 'delete-selection' } as any);
+    expect(sceneOf(removedAttachment).attachments[attachmentId]).toBeUndefined();
+    expect(removedAttachment.selection).toEqual({ kind: 'none' });
+  });
+
+  it('deletes selection for triggers and multi-entity selections', () => {
+    const base = seededState();
+    const withZone = reducer(base, { type: 'add-trigger-zone' } as any);
+    expect(withZone.selection.kind).toBe('trigger');
+    if (withZone.selection.kind !== 'trigger') throw new Error('expected trigger selection');
+    const triggerId = withZone.selection.id;
+    expect((sceneOf(withZone).triggers ?? []).some((z: any) => z.id === triggerId)).toBe(true);
+
+    const removedZone = reducer(withZone, { type: 'delete-selection' } as any);
+    expect((sceneOf(removedZone).triggers ?? []).some((z: any) => z.id === triggerId)).toBe(false);
+    expect(removedZone.selection).toEqual({ kind: 'none' });
+
+    const multi = reducer(base, { type: 'select-multiple', entityIds: ['e1', 'e2'], additive: false } as any);
+    expect(multi.selection.kind).toBe('entities');
+    const removedMulti = reducer(multi, { type: 'delete-selection' } as any);
+    const nextScene = sceneOf(removedMulti);
+    expect(nextScene.entities.e1).toBeUndefined();
+    expect(nextScene.entities.e2).toBeUndefined();
+    expect(removedMulti.selection).toEqual({ kind: 'none' });
+  });
 });

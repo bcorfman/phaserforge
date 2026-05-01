@@ -1045,6 +1045,89 @@ html[data-theme='dark'] .phaser-frame {
   color: var(--ink);
 }
 
+.trigger-marker {
+  width: 1.65rem;
+  height: 1.65rem;
+  min-width: 1.65rem;
+  margin-left: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  border: 1px solid var(--stroke);
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  user-select: none;
+}
+
+.trigger-marker.on {
+  border-color: rgba(79, 210, 219, 0.45);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.scene-graph-menu {
+  background: var(--surface-strong);
+  border: 1px solid var(--stroke-strong);
+  border-radius: 0.9rem;
+  box-shadow: var(--shadow-soft);
+  padding: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.scene-graph-menu-hint {
+  padding: 0.35rem 0.55rem 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.scene-graph-menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.scene-graph-menu-item:hover,
+.scene-graph-menu-item:focus-visible {
+  outline: none;
+  background: var(--accent-soft);
+  border-color: rgba(79, 210, 219, 0.35);
+}
+
+.scene-graph-menu-divider {
+  height: 1px;
+  margin: 0.25rem 0.35rem;
+  background: var(--stroke);
+}
+
+.scene-graph-menu-danger {
+  color: var(--danger);
+}
+
+.scene-graph-menu-danger:hover,
+.scene-graph-menu-danger:focus-visible {
+  background: var(--danger-soft);
+  border-color: rgba(154, 77, 63, 0.28);
+}
+
+.scene-graph-menu-item.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .scene-graph-rename-input {
   flex: 1;
   padding: 0.5rem 0.65rem;
