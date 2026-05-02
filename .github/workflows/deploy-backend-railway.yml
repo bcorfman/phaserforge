@@ -95,7 +95,7 @@ jobs:
       - name: Deploy
         if: steps.changes.outputs.changed == 'true'
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_BACKEND }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
         run: railway up --service "$RAILWAY_SERVICE"
 
