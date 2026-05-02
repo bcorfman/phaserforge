@@ -2,15 +2,7 @@
 
 Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bcorfman/phaseractions-studio)
 
-PhaserActions Studio is a browser-based **scene + behavior authoring tool for Phaser** built around one goal: **ship faster by staying in the loop**.
-
-Instead of “design in an editor, then rebuild your runtime”, PhaserActions keeps everything **runtime-shaped**:
-- You **import assets once**, then **drag/assign** them where you need them.
-- You attach **small, composable action presets** to entities/formations.
-- You hit **Play Mode** and validate behaviors immediately.
-- You round-trip the whole project as **human-readable YAML** you can diff, branch, and review.
-
-If you’ve used other editors: this is the **10× iteration** approach—less UI bouncing, more “try it now”.
+**PhaserActions Studio** helps you build gameplay faster by removing the slowest part of game development: hand-orchestrating behavior in update loops. Instead of scattering timers, flags, and state transitions across your Phaser code, you attach composable actions to entities or groups — then define the conditions that control when those actions stop, repeat, or trigger the next behavior. The editor is the multiplier: live parameter editing lets you tune the behavior while the Phaser runtime is running, while the underlying Action–Condition–Event model keeps the logic reusable, inspectable, and data-driven. The result is not just a nicer editor; it is a faster way to express gameplay itself.
 
 <img src="res/images/mainwindow.png?raw=true" style="width: 800px"/>
 
