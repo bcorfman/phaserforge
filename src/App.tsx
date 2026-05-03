@@ -342,7 +342,7 @@ function AppShell() {
               <p className="eyebrow">Canvas</p>
               <h2 className="section-title" id="viewport-heading">Viewport</h2>
               <p className="section-copy">
-                Pan with middle mouse or Shift + drag. Use zoom controls to inspect sprite spacing and bounds.
+                Pan with middle mouse or Space + drag. Use zoom controls to inspect sprite spacing and bounds.
               </p>
             </div>
             <div className="viewbar-controls-row">
@@ -437,7 +437,7 @@ function AppShell() {
               <div className="view-hint" data-testid="view-hint">
                 <div className="view-hint-title">View Controls</div>
                 <div className="view-hint-text">
-                  Pan with middle mouse or Shift + drag. Use zoom controls to inspect sprite spacing and bounds.
+                  Pan with middle mouse or Space + drag. Use zoom controls to inspect sprite spacing and bounds.
                 </div>
                 <button
                   aria-label="Dismiss view hint"

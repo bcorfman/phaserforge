@@ -162,10 +162,15 @@ export async function importSpritesheetAssetFromFile(
   return { assetId };
 }
 
-export async function dragAssetToCanvas(page: Page, assetKind: 'image' | 'spritesheet', assetId: string): Promise<void> {
+export async function dragAssetToCanvas(
+  page: Page,
+  assetKind: 'image' | 'spritesheet',
+  assetId: string,
+  options?: { targetPosition?: { x: number; y: number } }
+): Promise<void> {
   const source = page.getByTestId(`assets-dock-item-${assetKind}-${assetId}`);
   const canvas = page.locator('#game-container canvas');
-  await source.dragTo(canvas, { targetPosition: { x: 240, y: 160 } });
+  await source.dragTo(canvas, { targetPosition: options?.targetPosition ?? { x: 240, y: 160 } });
 }
 
 export async function getState<T = any>(page: Page): Promise<T> {

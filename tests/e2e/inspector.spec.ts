@@ -220,8 +220,8 @@ test('bounds hit checkbox toggles BoundsHit condition', async ({ page }) => {
 test('creates a formation from imported sprites and arranges it into a grid', async ({ page }) => {
   await resetScene(page);
   const { assetId } = await importSpritesheetAssetFromFile(page, 'res/images/mainwindow.png', { frameWidth: 64, frameHeight: 64 });
-  await dragAssetToCanvas(page, 'spritesheet', assetId);
-  await dragAssetToCanvas(page, 'spritesheet', assetId);
+  await dragAssetToCanvas(page, 'spritesheet', assetId, { targetPosition: { x: 220, y: 160 } });
+  await dragAssetToCanvas(page, 'spritesheet', assetId, { targetPosition: { x: 320, y: 200 } });
 
   await openSceneScope(page);
   await page.getByTestId('ungrouped-entity-e').click();
@@ -293,8 +293,8 @@ test('reassigns a sprite asset from another sprite via the inspector', async ({ 
 test('assigns a group MoveUntil action to imported sprites and runs it in play mode', async ({ page }) => {
   await resetScene(page);
   const { assetId } = await importSpritesheetAssetFromFile(page, 'res/images/mainwindow.png', { frameWidth: 64, frameHeight: 64 });
-  await dragAssetToCanvas(page, 'spritesheet', assetId);
-  await dragAssetToCanvas(page, 'spritesheet', assetId);
+  await dragAssetToCanvas(page, 'spritesheet', assetId, { targetPosition: { x: 220, y: 160 } });
+  await dragAssetToCanvas(page, 'spritesheet', assetId, { targetPosition: { x: 320, y: 200 } });
   await openSceneScope(page);
   await page.getByTestId('ungrouped-entity-e').click();
   await page.getByTestId('ungrouped-entity-e-2').click({ modifiers: ['Shift'] });

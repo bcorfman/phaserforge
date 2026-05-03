@@ -800,7 +800,7 @@ export function EntityListView({
           </div>
 
           <div style={{ height: assetsDockHeight, overflow: 'auto', minHeight: 0 }}>
-            <AssetsDock project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
+            <AssetsDock project={project} sceneId={currentSceneId} selection={selection} dispatch={dispatch} disabled={mode !== 'edit'} />
           </div>
         </div>
       ) : null}

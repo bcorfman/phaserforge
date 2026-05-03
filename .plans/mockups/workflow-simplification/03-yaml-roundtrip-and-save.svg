@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <defs>
+    <style>
+      .bg{fill:#0b1020}
+      .chrome{fill:#0e1630;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .tab{fill:#101a36;stroke:#2a3a6a;stroke-width:1.5;rx:10}
+      .toolbar{fill:#111a33;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .pane{fill:#111a33;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .canvas{fill:#0f1630;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .panel{fill:#111a33;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .box{fill:#0f1733;stroke:#2a3a6a;stroke-width:2;rx:14}
+      .btn{fill:#16244a;stroke:#2a3a6a;stroke-width:1.5;rx:12}
+      .btn2{fill:#101a36;stroke:#2a3a6a;stroke-width:1.5;rx:12}
+      .btnOk{fill:#123c2e;stroke:#2be4a7;stroke-width:1.5;rx:12}
+      .btnWarn{fill:#3a2b12;stroke:#ffb86b;stroke-width:1.5;rx:12}
+      .badge{fill:#123c2e;stroke:#2be4a7;stroke-width:1.5;rx:999}
+      .badgeText{fill:#2be4a7;font:700 12px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .divider{stroke:#2a3a6a;stroke-width:1;opacity:0.6}
+      .callout{fill:#0b1a2b;stroke:#8ad1ff;stroke-width:1.5;rx:12}
+      .arrow{fill:none;stroke:#8ad1ff;stroke-width:2.25;stroke-dasharray:6 6}
+      .title{fill:#e8eeff;font:700 26px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .h{fill:#cfe0ff;font:700 16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .t{fill:#d6def7;font:500 14px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .muted{fill:#a9b6df;font:500 13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .mono{fill:#d6def7;font:600 12.5px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+      .statusOk{fill:#2be4a7;font:700 13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .statusWarn{fill:#ffb86b;font:700 13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .pill{fill:#1a2b4f;stroke:#2a3a6a;stroke-width:1;rx:999}
+    </style>
+    <marker id="arrowHead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#8ad1ff"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1400" height="900"/>
+
+  <text class="title" x="44" y="56">03 — YAML Round-trip: Localized Export/Load + Save Semantics (With Layout Context)</text>
+  <text class="muted" x="44" y="82">This view shows the full browser window: top toolbar + left sidebar + canvas + right sidebar (YAML panel lives in the right sidebar).</text>
+
+  <!-- browser window chrome -->
+  <g transform="translate(44,110)">
+    <rect class="chrome" x="0" y="0" width="1312" height="760" rx="16"/>
+
+    <!-- tabs row -->
+    <rect class="tab" x="18" y="14" width="230" height="34" rx="10"/>
+    <text class="t" x="34" y="37">phaseractions-studio</text>
+    <circle cx="1266" cy="31" r="6" fill="#ff6b6b" opacity="0.9"/>
+    <circle cx="1246" cy="31" r="6" fill="#ffb86b" opacity="0.9"/>
+    <circle cx="1226" cy="31" r="6" fill="#2be4a7" opacity="0.9"/>
+
+    <!-- editor toolbar (match current app: left content + right settings + centered actions row) -->
+    <rect class="toolbar" x="18" y="60" width="1276" height="168" rx="16"/>
+
+    <!-- toolbar left -->
+    <text class="muted" x="46" y="92">Browser Editor</text>
+    <text class="h" x="46" y="126">PhaserActions Studio</text>
+    <rect class="badge" x="262" y="108" width="86" height="24" rx="999"/>
+    <text class="badgeText" x="284" y="124">Unsaved</text>
+    <text class="muted" x="46" y="154">Move entities on the canvas, tune formations in the inspector, and round-trip YAML without leaving the editor.</text>
+
+    <!-- toolbar right top (global settings cluster; YAML startup moved into YAML pane) -->
+    <g transform="translate(964,82)">
+      <rect class="box" x="0" y="0" width="190" height="58" rx="14"/>
+      <text class="muted" x="14" y="22">UI Scale</text>
+      <rect class="btn2" x="14" y="28" width="130" height="22" rx="10"/>
+      <rect class="pill" x="148" y="28" width="38" height="22" rx="999"/>
+      <text class="muted" x="156" y="44">100%</text>
+
+      <rect class="box" x="204" y="0" width="86" height="58" rx="14"/>
+      <text class="muted" x="218" y="22">Theme</text>
+      <rect class="btn2" x="216" y="28" width="18" height="22" rx="8"/>
+      <rect class="btn2" x="238" y="28" width="18" height="22" rx="8"/>
+      <rect class="btn2" x="260" y="28" width="18" height="22" rx="8"/>
+    </g>
+
+    <!-- toolbar actions (non-YAML only) -->
+    <line class="divider" x1="36" y1="176" x2="1276" y2="176"/>
+    <text class="muted" x="46" y="208">Studio actions (non-YAML)</text>
+    <text class="muted" x="1180" y="208">No YAML here</text>
+
+    <!-- main 3-column layout (match app grid proportions: narrow left, wide right) -->
+    <g transform="translate(18,242)">
+      <!-- left pane -->
+      <rect class="pane" x="0" y="0" width="300" height="560" rx="16"/>
+      <text class="h" x="18" y="34">Left Sidebar</text>
+      <text class="muted" x="18" y="56">Scenes • Entities • Assets Dock</text>
+      <rect class="box" x="18" y="76" width="264" height="84" rx="14"/>
+      <text class="muted" x="32" y="104">Scenes</text>
+      <text class="muted" x="32" y="128">Sprites • Formations • Assets</text>
+
+      <!-- center canvas -->
+      <rect class="pane" x="316" y="0" width="524" height="560" rx="16"/>
+      <text class="h" x="334" y="34">Center Pane</text>
+      <text class="muted" x="334" y="56">Viewbar + Phaser viewport</text>
+      <rect class="box" x="334" y="76" width="488" height="132" rx="14"/>
+      <text class="muted" x="352" y="104">Viewbar</text>
+      <text class="muted" x="352" y="128">Viewport controls • World size</text>
+      <rect class="canvas" x="334" y="224" width="488" height="318" rx="16"/>
+      <text class="muted" x="352" y="254">Phaser viewport renders here</text>
+
+      <!-- right pane -->
+      <rect class="pane" x="856" y="0" width="420" height="560" rx="16"/>
+      <text class="h" x="874" y="34">Right Sidebar</text>
+      <text class="muted" x="874" y="56">Inspector • YAML</text>
+
+      <!-- Inspector panel (existing) -->
+      <g transform="translate(874,76)">
+        <rect class="panel" x="0" y="0" width="384" height="248" rx="16"/>
+        <text class="h" x="14" y="28">Inspector</text>
+        <text class="muted" x="14" y="48">Selection properties, background, audio, actions…</text>
+        <rect class="box" x="14" y="62" width="356" height="170" rx="14" opacity="0.35"/>
+        <text class="muted" x="28" y="96">Inspector blocks</text>
+      </g>
+
+      <!-- YAML panel (proposed, in right pane) -->
+      <g transform="translate(874,340)">
+        <rect class="panel" x="0" y="0" width="384" height="202" rx="16"/>
+        <text class="h" x="14" y="28">Scene YAML</text>
+        <text class="muted" x="14" y="48">Edit → Load loop stays local</text>
+
+        <!-- startup mode (pane-only) -->
+        <g transform="translate(14,56)">
+          <text class="muted" x="0" y="18">Startup</text>
+          <rect class="btn2" x="70" y="2" width="170" height="22" rx="10"/>
+          <text class="t" x="82" y="18">Reload Last YAML ▾</text>
+        </g>
+
+        <!-- status row -->
+        <rect class="box" x="14" y="88" width="356" height="52" rx="14"/>
+        <text class="statusOk" x="26" y="112">Status:</text>
+        <text class="t" x="84" y="112">Loaded</text>
+        <text class="mono" x="140" y="112">scene.yaml</text>
+        <text class="statusWarn" x="26" y="134">YAML differs • needs Load</text>
+
+        <!-- localized actions (no Export; YAML pane is sole YAML surface) -->
+        <g transform="translate(14,154)">
+          <rect class="btnOk" x="0" y="0" width="64" height="30" rx="12"/>
+          <text class="t" x="18" y="20">Load</text>
+
+          <rect class="btnWarn" x="72" y="0" width="76" height="30" rx="12"/>
+          <text class="t" x="90" y="20">Save…</text>
+
+          <rect class="btn" x="156" y="0" width="132" height="30" rx="12"/>
+          <text class="t" x="170" y="20">Save As…</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- callout: YAML is pane-only -->
+    <path class="arrow" d="M1186 206 C 1120 260, 1080 310, 1040 420" marker-end="url(#arrowHead)"/>
+    <g transform="translate(484,260)">
+      <rect class="callout" x="0" y="0" width="420" height="64" rx="12"/>
+      <text class="t" x="14" y="24">Change in this mockup: YAML load/save</text>
+      <text class="t" x="14" y="44">and YAML startup behavior only exist in the Scene YAML pane.</text>
+    </g>
+
+    <!-- footer note -->
+    <text class="muted" x="18" y="736">Note: This mockup shows real layout contention: toolbar has a left description block, and the YAML panel competes with Inspector space in the right sidebar (toolbar has no YAML entrypoints).</text>
+  </g>
+</svg>

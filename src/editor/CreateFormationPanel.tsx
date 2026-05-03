@@ -162,16 +162,16 @@ export function CreateFormationPanel({
   };
 
   const scrollToImportPanel = () => {
-    dispatch({ type: 'set-sidebar-scope', scope: 'project' });
-    const panel = document.querySelector('[data-testid="sprite-import-panel"]');
-    if (panel instanceof HTMLElement) {
-      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    dispatch({ type: 'set-sidebar-scope', scope: 'scene' });
+    const dock = document.querySelector('[data-testid="assets-dock"]');
+    if (dock instanceof HTMLElement) {
+      dock.scrollIntoView({ behavior: 'smooth', block: 'end' });
       return;
     }
     requestAnimationFrame(() => {
-      const retry = document.querySelector('[data-testid="sprite-import-panel"]');
+      const retry = document.querySelector('[data-testid="assets-dock"]');
       if (retry instanceof HTMLElement) {
-        retry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        retry.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
     });
   };
@@ -190,7 +190,7 @@ export function CreateFormationPanel({
             type="button"
             onClick={scrollToImportPanel}
           >
-            Go to Import Sprites
+            Go to Assets Dock
           </button>
         </>
       )}

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, expectSelection, getState, gotoStudio, seedSampleScene, selectGroupInSceneGraph, tapWorld, worldToClient, waitForSampleScene } from './helpers';
+import { dismissViewHint, gotoStudio, seedSampleScene, selectGroupInSceneGraph, worldToClient, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await waitForSampleScene(page);
 });
 
-test('right-click opens a cursor context menu and selects the entity under the cursor', async ({ page }) => {
+test('right-click does not open a canvas context menu (selection actions are on the selection bar)', async ({ page }) => {
   await dismissViewHint(page);
 
   const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
@@ -15,8 +15,7 @@ test('right-click opens a cursor context menu and selects the entity under the c
   const point = await worldToClient(page, { x: e2.centerX, y: e2.centerY });
   await page.mouse.click(point.x, point.y, { button: 'right' });
 
-  await expectSelection(page, { kind: 'entity', id: 'e2' });
-  await expect(page.getByTestId('canvas-context-menu')).toBeVisible();
+  await expect(page.getByTestId('canvas-context-menu')).toHaveCount(0);
 });
 
 test('context menu routes layout conversion through the inspector (no nested submenu)', async ({ page }) => {
@@ -32,8 +31,8 @@ test('context menu routes layout conversion through the inspector (no nested sub
   await expect(page.getByTestId('layout-type-select')).toBeVisible();
 });
 
-test('top-right selection actions appear when selection is non-empty', async ({ page }) => {
+test('top-right selection actions are not shown (selection actions are near-cursor only)', async ({ page }) => {
   await dismissViewHint(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
-  await expect(page.getByTestId('canvas-selection-actions-top-right')).toBeVisible();
+  await expect(page.getByTestId('canvas-selection-actions-top-right')).toHaveCount(0);
 });

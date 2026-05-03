@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useEditorStore } from './EditorStore';
 import { Inspector } from './Inspector';
 import { CloudAccountPanel } from './CloudAccountPanel';
+import { YamlPanel } from './YamlPanel';
 
 export function InspectorPane() {
   const { state, dispatch } = useEditorStore();
@@ -34,7 +35,10 @@ export function InspectorPane() {
       </div>
 
       {tab === 'inspector' ? (
-        <Inspector />
+        <>
+          <Inspector />
+          <YamlPanel />
+        </>
       ) : (
         <CloudAccountPanel
           state={state}
@@ -46,4 +50,3 @@ export function InspectorPane() {
     </>
   );
 }
-

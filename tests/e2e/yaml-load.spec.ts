@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('Load YAML opens a picker and loads the chosen file, then shows an expiring status label', async ({ page }) => {
+test('Open YAML (pane) opens a picker and loads the chosen file, then shows an expiring status label', async ({ page }) => {
   await page.addInitScript(() => {
     // Force the `<input type=file>` picker path for this test.
     (window as any).showOpenFilePicker = undefined;
@@ -26,7 +26,7 @@ test('Load YAML opens a picker and loads the chosen file, then shows an expiring
   await gotoStudio(page);
   await dismissViewHint(page);
 
-  await page.getByTestId('load-yaml-button').click();
+  await page.getByTestId('yaml-open-button').click();
   await expect(page.getByTestId('yaml-open-file-input')).toHaveCount(1);
 
   const fixtureName = 'fixture.yaml';

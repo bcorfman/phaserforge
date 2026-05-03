@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <defs>
+    <style>
+      .bg{fill:#0b1020}
+      .panel{fill:#111a33;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .dock{fill:#0f1733;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .canvas{fill:#0f1630;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .btn{fill:#16244a;stroke:#2a3a6a;stroke-width:1.5;rx:12}
+      .btn2{fill:#101a36;stroke:#2a3a6a;stroke-width:1.5;rx:12}
+      .menu{fill:#0f1733;stroke:#2a3a6a;stroke-width:2;rx:14}
+      .title{fill:#e8eeff;font:700 26px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .h{fill:#cfe0ff;font:700 16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .t{fill:#d6def7;font:500 14px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .muted{fill:#a9b6df;font:500 13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .mono{fill:#d6def7;font:600 12.5px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+      .hl{fill:none;stroke:#2be4a7;stroke-width:2;stroke-dasharray:6 6}
+      .tip{fill:#0b1a2b;stroke:#2be4a7;stroke-width:1.5;rx:12}
+    </style>
+  </defs>
+  <rect class="bg" width="1400" height="900"/>
+
+  <text class="title" x="44" y="60">02 — Assets Dock: Single Import + Advanced Import + Drag-to-Replace</text>
+  <text class="muted" x="44" y="86">Assets Dock is the only import surface; “Advanced import” replaces SpriteImportPanel; drag asset onto sprite to replace.</text>
+
+  <!-- Left: assets dock -->
+  <g transform="translate(44,120)">
+    <rect class="dock" x="0" y="0" width="520" height="700" rx="16"/>
+    <text class="h" x="18" y="34">Assets Dock</text>
+
+    <rect class="btn" x="392" y="16" width="110" height="32" rx="12"/>
+    <text class="t" x="416" y="38">+ Import</text>
+
+    <rect class="btn2" x="18" y="56" width="484" height="34" rx="12"/>
+    <text class="muted" x="32" y="78">Search…</text>
+
+    <rect class="btn" x="18" y="104" width="86" height="30" rx="12"/>
+    <text class="t" x="40" y="124">Images</text>
+    <rect class="btn2" x="110" y="104" width="78" height="30" rx="12"/>
+    <text class="t" x="130" y="124">Audio</text>
+    <rect class="btn2" x="194" y="104" width="70" height="30" rx="12"/>
+    <text class="t" x="214" y="124">Fonts</text>
+
+    <!-- rows -->
+    <g transform="translate(18,154)">
+      <rect class="btn2" x="0" y="0" width="484" height="46" rx="12"/>
+      <text class="t" x="14" y="28">image: hero_idle</text>
+      <rect class="btn" x="360" y="9" width="54" height="28" rx="10"/>
+      <text class="t" x="372" y="29">⋯</text>
+      <rect class="btn" x="420" y="9" width="64" height="28" rx="10"/>
+      <text class="t" x="430" y="29">Drag</text>
+
+      <rect class="btn2" x="0" y="58" width="484" height="46" rx="12"/>
+      <text class="t" x="14" y="86">sheet: enemies</text>
+      <rect class="btn" x="360" y="67" width="54" height="28" rx="10"/>
+      <text class="t" x="372" y="87">⋯</text>
+      <rect class="btn" x="420" y="67" width="64" height="28" rx="10"/>
+      <text class="t" x="430" y="87">Drag</text>
+
+      <rect class="btn2" x="0" y="116" width="484" height="46" rx="12"/>
+      <text class="t" x="14" y="144">audio: theme_01</text>
+      <text class="muted" x="170" y="144">MUS</text>
+      <rect class="btn" x="360" y="125" width="54" height="28" rx="10"/>
+      <text class="t" x="372" y="145">⋯</text>
+      <rect class="btn" x="420" y="125" width="64" height="28" rx="10"/>
+      <text class="t" x="430" y="145">Drag</text>
+    </g>
+
+    <!-- import panel callout -->
+    <g transform="translate(18,380)">
+      <rect class="menu" x="0" y="0" width="484" height="290" rx="14"/>
+      <text class="h" x="16" y="30">Import (inline)</text>
+      <text class="muted" x="16" y="52">Single entrypoint for assets</text>
+
+      <text class="t" x="16" y="88">Type</text>
+      <rect class="btn" x="70" y="72" width="160" height="30" rx="10"/>
+      <text class="t" x="86" y="92">Spritesheet ▾</text>
+
+      <text class="t" x="250" y="88">Source</text>
+      <rect class="btn" x="312" y="72" width="156" height="30" rx="10"/>
+      <text class="t" x="326" y="92">Embedded ▾</text>
+
+      <rect class="btn2" x="16" y="116" width="452" height="40" rx="12"/>
+      <text class="t" x="32" y="142">Choose file…</text>
+
+      <text class="t" x="16" y="186">Frame W</text>
+      <rect class="btn2" x="90" y="170" width="70" height="30" rx="10"/>
+      <text class="t" x="116" y="191">32</text>
+
+      <text class="t" x="180" y="186">Frame H</text>
+      <rect class="btn2" x="254" y="170" width="70" height="30" rx="10"/>
+      <text class="t" x="280" y="191">32</text>
+
+      <rect class="btn" x="340" y="170" width="128" height="30" rx="10"/>
+      <text class="t" x="364" y="191">Advanced…</text>
+
+      <text class="muted" x="16" y="236">Advanced… opens modal (replaces SpriteImportPanel)</text>
+      <text class="muted" x="16" y="260">AudioLibraryPanel is folded into the Audio tab.</text>
+    </g>
+  </g>
+
+  <!-- Right: canvas + drag-to-replace -->
+  <g transform="translate(600,120)">
+    <rect class="canvas" x="0" y="0" width="756" height="700" rx="16"/>
+    <text class="h" x="18" y="34">Canvas</text>
+    <text class="muted" x="18" y="56">Drag asset onto an existing sprite to replace its asset</text>
+
+    <rect x="240" y="180" width="110" height="110" fill="#ff6b6b" opacity="0.18" stroke="#ff6b6b" stroke-width="3"/>
+    <text class="t" x="252" y="310">Sprite “hero”</text>
+
+    <rect class="hl" x="228" y="168" width="134" height="134" rx="14"/>
+
+    <!-- drag tooltip -->
+    <g transform="translate(380,140)">
+      <rect class="tip" x="0" y="0" width="320" height="54" rx="12"/>
+      <text class="t" x="14" y="24">Replace asset on “hero”</text>
+      <text class="muted" x="14" y="42">Drop to apply • Esc to cancel</text>
+    </g>
+
+    <!-- inspector drop target (callout only) -->
+    <g transform="translate(60,420)">
+      <rect class="menu" x="0" y="0" width="640" height="220" rx="14"/>
+      <text class="h" x="16" y="30">Inspector (Visual → Asset row as drop target)</text>
+      <text class="muted" x="16" y="52">Alternative drop location; co-located assignment</text>
+
+      <text class="t" x="16" y="92">Asset</text>
+      <rect class="btn2" x="70" y="74" width="360" height="36" rx="12"/>
+      <text class="t" x="88" y="98">hero_idle ▾</text>
+      <rect class="hl" x="70" y="74" width="360" height="36" rx="12"/>
+
+      <text class="muted" x="16" y="152">Behavior: dropping an asset sets the same value as the dropdown.</text>
+      <text class="muted" x="16" y="176">If multiple sprites selected, drop applies to selection (with confirmation if needed).</text>
+    </g>
+  </g>
+
+  <!-- Advanced modal (top overlay) -->
+  <g transform="translate(260,170)">
+    <rect class="menu" x="0" y="0" width="880" height="320" rx="16" opacity="0.98"/>
+    <text class="h" x="18" y="34">Advanced Sprite Import (modal)</text>
+    <text class="muted" x="18" y="56">Asset creation is separate from entity creation; when creating entities, intent is explicit (animation vs sprite set).</text>
+
+    <text class="t" x="18" y="94">Mode</text>
+    <rect class="btn2" x="70" y="76" width="240" height="32" rx="12"/>
+    <text class="t" x="86" y="98">Spritesheet</text>
+
+    <text class="t" x="330" y="94">Auto-hitbox</text>
+    <rect class="btn2" x="412" y="76" width="70" height="32" rx="12"/>
+    <text class="t" x="438" y="98">✓</text>
+
+    <text class="t" x="18" y="144">Frames</text>
+    <rect class="btn2" x="70" y="118" width="520" height="110" rx="12"/>
+    <text class="muted" x="86" y="146">grid preview with selectable frames</text>
+
+    <text class="t" x="610" y="144">Spritesheet intent</text>
+    <rect class="btn2" x="610" y="154" width="250" height="32" rx="12"/>
+    <text class="t" x="626" y="176">• Use as animation (1 entity)</text>
+    <rect class="btn2" x="610" y="190" width="250" height="32" rx="12"/>
+    <text class="t" x="626" y="212">○ Use as sprite set (N entities)</text>
+
+    <text class="t" x="610" y="234">Create on import</text>
+    <rect class="btn2" x="610" y="244" width="250" height="32" rx="12"/>
+    <text class="t" x="626" y="266">• Asset only</text>
+    <rect class="btn2" x="610" y="280" width="250" height="32" rx="12"/>
+    <text class="t" x="626" y="302">○ Asset + create entities</text>
+  </g>
+</svg>

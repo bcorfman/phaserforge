@@ -48,6 +48,8 @@ test('selection bar groups ungrouped entities and can add to an existing group',
   }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
 
   await page.getByTestId('canvas-group-button').click();
+  await expect(page.getByTestId('canvas-group-prompt')).toBeVisible();
+  await page.getByTestId('group-prompt-confirm').click();
 
   await expect.poll(async () => {
     const state = await getState<{ selection?: { kind: string; id?: string }; scene?: { groups?: Record<string, any> } }>(page);
