@@ -43,7 +43,7 @@ describe('CreateFormationPanel', () => {
     );
 
     expect(markup).toContain('Import a sprite to use as a template');
-    expect(markup).toContain('Go to Import Sprites');
+    expect(markup).toContain('Go to Assets Dock');
     expect(markup).toContain('disabled=""');
   });
 

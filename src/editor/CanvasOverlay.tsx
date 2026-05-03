@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { EventBus, getActiveScene } from '../phaser/EventBus';
 import { useEditorStore, type Selection } from './EditorStore';
 import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
+import { getNextFormationName } from './behaviorCommands';
 
 function getSelectedEntityIds(selection: Selection): string[] {
   if (selection.kind === 'entity') return [selection.id];
@@ -15,6 +16,12 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRootRef = useRef<HTMLDivElement | null>(null);
+  const [groupPromptOpen, setGroupPromptOpen] = useState(false);
+  const [groupPromptPosition, setGroupPromptPosition] = useState<{ x: number; y: number } | null>(null);
+  const [groupNameDraft, setGroupNameDraft] = useState('');
+  const groupPromptRootRef = useRef<HTMLDivElement | null>(null);
+  const [dragAssetHint, setDragAssetHint] = useState<{ kind: 'replace'; entityId: string; x: number; y: number } | { kind: 'create'; x: number; y: number } | null>(null);
+  const [spaceHeld, setSpaceHeld] = useState(false);
   const suppressSelectionCloseRef = useRef(false);
   const latestSelectionRef = useRef(state.selection);
   const latestModeRef = useRef(state.mode);
@@ -25,6 +32,24 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     latestModeRef.current = state.mode;
     latestSceneIdRef.current = state.currentSceneId;
   }, [state.selection, state.mode, state.currentSceneId]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === ' ' || event.code === 'Space') setSpaceHeld(true);
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === ' ' || event.code === 'Space') setSpaceHeld(false);
+    };
+    const onBlur = () => setSpaceHeld(false);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
 
   const selectedEntityIds = useMemo(() => getSelectedEntityIds(state.selection), [state.selection]);
   const hasEntitySelection = state.selection.kind === 'entity' || state.selection.kind === 'entities';
@@ -79,48 +104,25 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   }, [state.selection.kind, selectedEntityIds.join(','), state.mode]);
 
   useEffect(() => {
-    if (state.mode !== 'edit') return;
-    const container = document.querySelector<HTMLDivElement>('#game-container');
-    if (!container) return;
-
-    const handleContextMenu = (event: MouseEvent) => {
-      if (latestModeRef.current !== 'edit') return;
-      const target = event.target;
-      if (!(target instanceof HTMLCanvasElement) && !(target instanceof Node && target.nodeName === 'CANVAS')) return;
-      event.preventDefault();
-
-      const activeScene = getActiveScene() as any;
-      const hit = typeof activeScene?.hitTestAtClientPoint === 'function'
-        ? activeScene.hitTestAtClientPoint(event.clientX, event.clientY)
-        : { kind: 'none' as const };
-
-      const selection = latestSelectionRef.current;
-      if (hit.kind === 'entity' && hit.id) {
-        suppressSelectionCloseRef.current = true;
-        if (selection.kind === 'entities' && selection.ids.includes(hit.id)) {
-          // keep multi-selection
-        } else {
-          dispatch({ type: 'select', selection: { kind: 'entity', id: hit.id } });
-        }
-      } else if (hit.kind === 'group' && hit.id) {
-        suppressSelectionCloseRef.current = true;
-        if (!(selection.kind === 'group' && selection.id === hit.id)) {
-          dispatch({ type: 'select', selection: { kind: 'group', id: hit.id } });
-        }
-      }
-
-      setMenuPosition({ x: event.clientX + 12, y: event.clientY + 12 });
-      setMenuOpen(true);
-      queueMicrotask(() => {
-        suppressSelectionCloseRef.current = false;
-      });
+    if (!groupPromptOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = groupPromptRootRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setGroupPromptOpen(false);
     };
-
-    container.addEventListener('contextmenu', handleContextMenu);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setGroupPromptOpen(false);
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      container.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [dispatch, state.mode]);
+  }, [groupPromptOpen]);
+
+  // Selection actions are intentionally kept on the on-canvas Selection Bar (no right-click menu).
 
   useEffect(() => {
     if (state.mode !== 'edit') return;
@@ -132,6 +134,17 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
       if (!hasDraggedAsset(event.dataTransfer)) return;
       event.preventDefault();
       if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+
+      const activeScene = getActiveScene() as any;
+      const hit = typeof activeScene?.hitTestAtClientPoint === 'function'
+        ? activeScene.hitTestAtClientPoint(event.clientX, event.clientY)
+        : { kind: 'none' as const };
+
+      if (hit.kind === 'entity' && hit.id) {
+        setDragAssetHint({ kind: 'replace', entityId: hit.id, x: event.clientX + 14, y: event.clientY + 14 });
+      } else {
+        setDragAssetHint({ kind: 'create', x: event.clientX + 14, y: event.clientY + 14 });
+      }
     };
 
     const handleDrop = (event: DragEvent) => {
@@ -140,8 +153,24 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
       if (!asset) return;
       if (asset.assetKind !== 'image' && asset.assetKind !== 'spritesheet') return;
       event.preventDefault();
+      setDragAssetHint(null);
 
       const activeScene = getActiveScene() as any;
+      const hit = typeof activeScene?.hitTestAtClientPoint === 'function'
+        ? activeScene.hitTestAtClientPoint(event.clientX, event.clientY)
+        : { kind: 'none' as const };
+
+      if (hit.kind === 'entity' && hit.id) {
+        dispatch({
+          type: 'assign-asset-to-target',
+          assetKind: asset.assetKind,
+          assetId: asset.assetId,
+          target: { kind: 'entity-sprite', sceneId: latestSceneIdRef.current, entityId: hit.id },
+        } as any);
+        dispatch({ type: 'select', selection: { kind: 'entity', id: hit.id } });
+        return;
+      }
+
       const canvas = activeScene?.game?.canvas as HTMLCanvasElement | undefined;
       const rect = canvas?.getBoundingClientRect();
       if (!rect || rect.width === 0 || rect.height === 0) {
@@ -170,11 +199,15 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
       } as any);
     };
 
+    const handleDragLeave = () => setDragAssetHint(null);
+
     container.addEventListener('dragover', handleDragOver);
     container.addEventListener('drop', handleDrop);
+    container.addEventListener('dragleave', handleDragLeave);
     return () => {
       container.removeEventListener('dragover', handleDragOver);
       container.removeEventListener('drop', handleDrop);
+      container.removeEventListener('dragleave', handleDragLeave);
     };
   }, [dispatch, state.mode]);
 
@@ -189,7 +222,6 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   }, [scene.groups, state.selection]);
 
   const showSelectionBar = state.mode === 'edit' && (state.selection.kind === 'entities' || state.selection.kind === 'group');
-  const showSelectionTopRight = state.mode === 'edit' && (state.selection.kind === 'entities' || state.selection.kind === 'group');
 
   const openMenuNearElement = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -205,6 +237,23 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
 
     setMenuPosition({ x, y });
     setMenuOpen(true);
+  };
+
+  const openGroupPromptNearElement = (element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const desiredWidth = 320;
+    const padding = 12;
+    const x = Math.min(window.innerWidth - padding, Math.max(padding, rect.left));
+    const y = Math.min(window.innerHeight - padding, Math.max(padding, rect.top - 10));
+    setGroupPromptPosition({ x, y });
+    setGroupNameDraft(getNextFormationName(scene));
+    setGroupPromptOpen(true);
+  };
+
+  const confirmCreateGroup = () => {
+    if (!canGroupSelection) return;
+    dispatch({ type: 'create-group-from-selection', name: groupNameDraft });
+    setGroupPromptOpen(false);
   };
 
   return (
@@ -251,47 +300,23 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
         </button>
       </div>
 
-      {showSelectionTopRight && (
-        <div className="canvas-selection-actions-top-right" data-testid="canvas-selection-actions-top-right">
-          <div className="canvas-selection-actions-pill">
-            <div className="canvas-selection-actions-label">Selection</div>
-            {state.selection.kind === 'entities' && (
-              <button
-                className="button"
-                data-testid="topright-create-group-button"
-                type="button"
-                disabled={!canGroupSelection}
-                onClick={() => dispatch({ type: 'create-group-from-selection', name: '' })}
-              >
-                Create Group
-              </button>
-            )}
-            {hasEntitySelection && (
-              <button
-                className="button"
-                data-testid="topright-add-to-group-button"
-                type="button"
-                disabled={!canAddToGroup}
-                onClick={(e) => openMenuNearElement(e.currentTarget)}
-              >
-                Add to Group…
-              </button>
-            )}
-            <button
-              className={`button button-compact ${menuOpen ? 'active' : ''}`}
-              data-testid="topright-selection-menu-button"
-              type="button"
-              onClick={(e) => {
-                if (menuOpen) {
-                  setMenuOpen(false);
-                  return;
-                }
-                openMenuNearElement(e.currentTarget);
-              }}
-            >
-              …
-            </button>
+      {spaceHeld && (
+        <div className="space-pan-hint" data-testid="space-pan-hint">
+          <div className="space-pan-hint-title">Pan mode: drag to move view</div>
+          <div className="space-pan-hint-sub">Release Space to exit</div>
+        </div>
+      )}
+
+      {dragAssetHint && (
+        <div
+          className="canvas-drag-hint"
+          data-testid="canvas-drag-hint"
+          style={{ left: dragAssetHint.x, top: dragAssetHint.y }}
+        >
+          <div className="canvas-drag-hint-title">
+            {dragAssetHint.kind === 'replace' ? `Replace asset on “${dragAssetHint.entityId}”` : 'Create sprite from asset'}
           </div>
+          <div className="canvas-drag-hint-sub">Drop to apply • Esc to cancel</div>
         </div>
       )}
 
@@ -305,33 +330,33 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
               data-testid="canvas-group-button"
               type="button"
               disabled={!canGroupSelection}
-              onClick={() => dispatch({ type: 'create-group-from-selection', name: '' })}
+              onClick={(e) => openGroupPromptNearElement(e.currentTarget)}
             >
-              Group
+              Group…
             </button>
           )}
           {state.selection.kind === 'group' && (
             <button
-              aria-label="Dissolve group"
+              aria-label="Dissolve formation"
               className="button"
               data-testid="canvas-dissolve-button"
               type="button"
               disabled={!canDissolveGroup}
               onClick={() => dispatch({ type: 'dissolve-group', id: state.selection.id })}
             >
-              Ungroup
+              Dissolve
             </button>
           )}
           {state.selection.kind === 'entities' && (
             <button
-              aria-label="Remove selection from groups"
+              aria-label="Remove sprites from formation"
               className="button"
               data-testid="canvas-ungroup-selection-button"
               type="button"
               disabled={!canUngroupSelection}
               onClick={() => dispatch({ type: 'remove-entities-from-groups', entityIds: selectedGroupedIds })}
             >
-              Ungroup
+              Remove from formation
             </button>
           )}
           <button
@@ -369,17 +394,24 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
               role="menuitem"
               disabled={!canGroupSelection}
               onClick={() => {
-                dispatch({ type: 'create-group-from-selection', name: '' });
                 setMenuOpen(false);
+                const anchor = document.querySelector('[data-testid="canvas-group-button"]') as HTMLElement | null;
+                if (anchor) {
+                  openGroupPromptNearElement(anchor);
+                } else {
+                  setGroupNameDraft(getNextFormationName(scene));
+                  setGroupPromptPosition(menuPosition);
+                  setGroupPromptOpen(true);
+                }
               }}
             >
-              Create Group from Selection
+              Group…
             </button>
           )}
 
           {hasEntitySelection && (
             <div className="canvas-selection-menu-section" data-testid="canvas-menu-add-to-group-section">
-              <div className="canvas-selection-menu-heading">Add to Existing Group</div>
+              <div className="canvas-selection-menu-heading">Add to formation…</div>
               {Object.values(scene.groups).map((group) => (
                 <button
                   key={group.id}
@@ -411,7 +443,7 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
                 setMenuOpen(false);
               }}
             >
-              Remove from Group
+              Remove from formation
             </button>
           )}
 
@@ -427,7 +459,7 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
                 setMenuOpen(false);
               }}
             >
-              Dissolve Group
+              Dissolve formation
             </button>
           )}
 
@@ -442,6 +474,47 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
               Convert Layout (Inspector)…
             </button>
           )}
+        </div>
+      )}
+
+      {groupPromptOpen && groupPromptPosition && (
+        <div
+          className="canvas-context-menu"
+          data-testid="canvas-group-prompt"
+          role="dialog"
+          aria-label="Group selection"
+          ref={groupPromptRootRef}
+          style={{ left: groupPromptPosition.x, top: groupPromptPosition.y }}
+        >
+          <div className="canvas-selection-menu-heading" style={{ marginBottom: 4 }}>Group…</div>
+          <label className="canvas-submenu-field" style={{ padding: 0 }}>
+            <span>Name</span>
+            <input
+              autoFocus
+              aria-label="Group name"
+              data-testid="group-name-input"
+              type="text"
+              value={groupNameDraft}
+              onChange={(e) => setGroupNameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  confirmCreateGroup();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setGroupPromptOpen(false);
+                }
+              }}
+            />
+          </label>
+          <div className="canvas-submenu-actions">
+            <button className="button" type="button" onClick={() => setGroupPromptOpen(false)} data-testid="group-prompt-cancel">
+              Cancel
+            </button>
+            <button className="button" type="button" disabled={!canGroupSelection} onClick={confirmCreateGroup} data-testid="group-prompt-confirm">
+              Create
+            </button>
+          </div>
         </div>
       )}
     </div>

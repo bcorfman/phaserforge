@@ -10,6 +10,7 @@ import {
   SceneSpec,
   StartupMode,
   TriggerZoneSpec,
+  type AssetFileSource,
   type EntitySpec,
   type InputBindingSpec,
   type SpriteAssetSpec,
@@ -201,6 +202,7 @@ export type EditorAction =
   | { type: 'add-font-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
   | { type: 'add-font-asset-from-path'; path: string; suggestedId?: string }
   | { type: 'set-asset-display-name'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id; name?: string }
+  | { type: 'relink-asset-source'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id; source: AssetFileSource }
   | { type: 'remove-asset'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id }
   | { type: 'create-entity-from-asset'; assetKind: 'image' | 'spritesheet'; assetId: Id; at?: { x: number; y: number } }
   | {
@@ -1539,6 +1541,55 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
             void _name;
             return rest;
           })()),
+        },
+      };
+
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...assets,
+          ...(action.assetKind === 'image' ? { images: nextCollection } : {}),
+          ...(action.assetKind === 'spritesheet' ? { spriteSheets: nextCollection } : {}),
+          ...(action.assetKind === 'font' ? { fonts: nextCollection } : {}),
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'relink-asset-source': {
+      if (action.assetKind === 'audio') {
+        const sounds = state.project.audio?.sounds ?? {};
+        const existing = sounds[action.assetId];
+        if (!existing) return state;
+        const nextProject: ProjectSpec = {
+          ...state.project,
+          audio: {
+            ...state.project.audio,
+            sounds: {
+              ...sounds,
+              [action.assetId]: {
+                ...existing,
+                source: action.source,
+              },
+            },
+          },
+        };
+        return { ...state, project: nextProject, dirty: true, error: undefined };
+      }
+
+      const assets = state.project.assets;
+      const collection = action.assetKind === 'image'
+        ? assets.images
+        : action.assetKind === 'spritesheet'
+          ? assets.spriteSheets
+          : assets.fonts;
+      const existing = collection?.[action.assetId];
+      if (!existing) return state;
+
+      const nextCollection: any = {
+        ...(collection ?? {}),
+        [action.assetId]: {
+          ...existing,
+          source: action.source,
         },
       };
 

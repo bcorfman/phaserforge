@@ -46,5 +46,21 @@ describe('EditorStore assets actions', () => {
 
     expect(sceneOf(assigned).music?.assetId).toBe('theme');
   });
-});
 
+  it('relinks an asset source while keeping assetId stable', () => {
+    const state = initState();
+    const withAsset = reducer(state, { type: 'add-image-asset-from-path', path: '/assets/images/player.png', suggestedId: 'player' } as any);
+    const withEntity = reducer(withAsset, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'player' } as any);
+
+    const relinked = reducer(withEntity, {
+      type: 'relink-asset-source',
+      assetKind: 'image',
+      assetId: 'player',
+      source: { kind: 'path', path: '/assets/images/player_v2.png' },
+    } as any);
+
+    expect(relinked.project.assets.images.player.source).toEqual({ kind: 'path', path: '/assets/images/player_v2.png' });
+    const entity = Object.values(sceneOf(relinked).entities)[0] as any;
+    expect(entity.asset?.source).toEqual({ kind: 'asset', assetId: 'player' });
+  });
+});

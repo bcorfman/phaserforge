@@ -1,12 +1,7 @@
-import { useRef } from 'react';
 import { useEditorStore } from './EditorStore';
-import { serializeProjectToYaml } from '../model/serialization';
-import { exportYamlToDisk } from './yamlFileExport';
-import { getYamlPickerStartIn, setYamlPickerStartIn } from './yamlPickerState';
 
 export function Toolbar() {
   const { state, dispatch } = useEditorStore();
-  const yamlFileInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
     <header className="toolbar" data-testid="toolbar">
@@ -22,18 +17,6 @@ export function Toolbar() {
       </div>
       <div className="toolbar-right">
         <div className="toolbar-right-top">
-          <label className="toolbar-field">
-            <span>Startup</span>
-            <select
-              aria-label="Startup mode"
-              data-testid="startup-mode-select"
-              value={state.startupMode}
-              onChange={(e) => dispatch({ type: 'set-startup-mode', startupMode: e.target.value as typeof state.startupMode })}
-            >
-              <option value="reload_last_yaml">Reload Last YAML</option>
-              <option value="new_empty_scene">New Empty Scene</option>
-            </select>
-          </label>
           <label className="toolbar-field toolbar-field-compact">
             <span>UI Scale</span>
             <div className="toolbar-slider-row">
@@ -109,98 +92,6 @@ export function Toolbar() {
             </button>
           </div>
         </div>
-      </div>
-      <div className="toolbar-actions toolbar-actions-bottom" role="toolbar" aria-label="Studio actions">
-        <button
-          aria-label="Export scene YAML"
-          className="button"
-          data-testid="export-yaml-button"
-          type="button"
-          onClick={async () => {
-            const yaml = serializeProjectToYaml(state.project);
-            dispatch({ type: 'export-yaml' });
-            try {
-              const result = await exportYamlToDisk(yaml, { startIn: getYamlPickerStartIn() });
-              if (result.kind === 'saved') setYamlPickerStartIn(result.handle);
-            } catch (err) {
-              if (err instanceof DOMException && err.name === 'AbortError') return;
-              dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to export YAML' });
-            }
-          }}
-        >
-          Export YAML
-        </button>
-        <button
-          aria-label="Load project YAML"
-          className="button"
-          data-testid="load-yaml-button"
-          type="button"
-          onClick={async () => {
-            dispatch({ type: 'set-error', error: undefined });
-            try {
-              if (typeof window !== 'undefined' && typeof (window as any).showOpenFilePicker === 'function') {
-                try {
-                  const handles = await (window as any).showOpenFilePicker({
-                    multiple: false,
-                    types: [
-                      {
-                        description: 'YAML',
-                        accept: {
-                          'application/x-yaml': ['.yaml', '.yml'],
-                          'text/yaml': ['.yaml', '.yml'],
-                          'text/plain': ['.yaml', '.yml'],
-                        },
-                      },
-                    ],
-                    ...(getYamlPickerStartIn() ? { startIn: getYamlPickerStartIn() } : {}),
-                  });
-                  const handle = handles?.[0];
-                  if (handle) {
-                    setYamlPickerStartIn(handle);
-                    const file = await handle.getFile();
-                    dispatch({ type: 'load-yaml-text', text: await file.text(), sourceLabel: file.name ?? 'picked file' });
-                    return;
-                  }
-                } catch (err) {
-                  if (err instanceof DOMException && err.name === 'AbortError') return;
-                  // Fall back to input picker.
-                }
-              }
-
-              const input = yamlFileInputRef.current;
-              if (!input) {
-                dispatch({ type: 'load-yaml-text', text: state.yamlText, sourceLabel: 'editor text' });
-                return;
-              }
-              input.value = '';
-              input.click();
-            } catch (err) {
-              if (err instanceof DOMException && err.name === 'AbortError') return;
-              dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to load YAML' });
-            }
-          }}
-        >
-          Load YAML
-        </button>
-        <input
-          aria-hidden="true"
-          data-testid="yaml-open-file-input"
-          ref={yamlFileInputRef}
-          type="file"
-          accept=".yaml,.yml,application/x-yaml,text/yaml,text/plain"
-          style={{ display: 'none' }}
-          onChange={async (e) => {
-            dispatch({ type: 'set-error', error: undefined });
-            const file = e.currentTarget.files?.[0];
-            if (!file) return;
-            try {
-              const text = await file.text();
-              dispatch({ type: 'load-yaml-text', text, sourceLabel: file.name });
-            } catch (err) {
-              dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to load YAML' });
-            }
-          }}
-        />
       </div>
       {state.error && <div className="toolbar-error" data-testid="toolbar-error" role="alert">{state.error}</div>}
       {state.statusMessage && <div className="toolbar-status" data-testid="toolbar-status" role="status">{state.statusMessage}</div>}

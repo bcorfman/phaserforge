@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('Load/Export YAML share the same picker start directory (startIn handle)', async ({ page }) => {
+test('Open/Save As YAML share the same picker start directory (startIn handle)', async ({ page }) => {
   const yaml = serializeProjectToYaml(sampleProject);
   await page.addInitScript((sceneYaml) => {
     const openHandle: any = {
@@ -52,19 +52,19 @@ test('Load/Export YAML share the same picker start directory (startIn handle)', 
   await gotoStudio(page);
   await dismissViewHint(page);
 
-  await page.getByTestId('load-yaml-button').click();
+  await page.getByTestId('yaml-open-button').click();
 
   await expect.poll(async () => {
     const state = await getState<{ scene?: { entities?: Record<string, unknown> } }>(page);
     return Object.keys(state.scene?.entities ?? {}).length;
   }, { timeout: 10000 }).toBeGreaterThan(0);
 
-  await page.getByTestId('export-yaml-button').click();
+  await page.getByTestId('yaml-save-as-button').click();
   await expect.poll(async () => {
     return page.evaluate(() => (window as any).__YAML_PICKER_TEST__?.saveCalls?.length ?? 0);
   }).toBe(1);
 
-  await page.getByTestId('load-yaml-button').click();
+  await page.getByTestId('yaml-open-button').click();
   await expect.poll(async () => {
     return page.evaluate(() => (window as any).__YAML_PICKER_TEST__?.openCalls?.length ?? 0);
   }).toBe(2);

@@ -10,3 +10,33 @@ The `arcadeactions` directory is for reference only. Do not modify or add files 
 
 ### Playwright Workers Default (Do Not Change)
 Do not change the default Playwright worker count in `playwright.config.ts`. The default must remain `3` (overridable only via `PW_WORKERS`).
+
+## Editor UX / Workflow Policy
+
+These rules apply to any changes under `src/editor/**`, `src/App.tsx`, or `src/phaser/EditorScene.ts`.
+
+### Priorities (in order)
+1. Intuitive primary workflow
+2. Fewer total steps
+3. Shorter mouse pointer travel distance
+4. Style consistency (match established editor patterns)
+
+### Significant Change Confirmation (ask before implementing)
+Ask the user to confirm before implementing any change that is likely to:
+- Significantly change a workflow (primary entrypoint, gesture/shortcut, selection semantics, moving controls across panes, or adding a second way to do the same task).
+- Introduce, remove, or materially alter a style contract (examples: paired inputs become stacked; context menus added/removed/moved; actions moved from near-cursor surfaces to inspector/toolbar).
+
+When asking for confirmation, include:
+- Workflow(s) impacted (use `.plans/editor-workflows-inventory.md` names when available).
+- Current vs proposed primary path (brief steps).
+- Entry points added/removed/merged (buttons/menus/shortcuts/gestures).
+- Expected change in steps and pointer travel.
+- Style contract impacted (what rule changes and why).
+
+### Style vs Workflow Tie-break
+If an established style would be violated but the user may benefit from a simpler/shorter workflow, pause and ask which to prioritize before implementing. Provide 1–2 alternatives that preserve style.
+
+### Documentation Update (only when workflows materially change)
+If a workflow is added/removed/meaningfully altered, update:
+- `.plans/editor-workflows-inventory.md`
+- `.plans/ux-checklist-workflow-simplification.md` (only if decisions/checklist need updating)

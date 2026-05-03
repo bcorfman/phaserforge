@@ -575,6 +575,31 @@ html[data-theme='dark'] .phaser-frame {
   pointer-events: none;
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-card {
+  width: min(46rem, 96vw);
+  max-height: min(80vh, 52rem);
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid var(--stroke);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
 .canvas-overlay {
   position: absolute;
   inset: 0;
@@ -592,6 +617,58 @@ html[data-theme='dark'] .phaser-frame {
   align-items: center;
   justify-content: flex-end;
   pointer-events: auto;
+}
+
+.canvas-drag-hint {
+  position: fixed;
+  z-index: 1800;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(20, 93, 102, 0.35);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+  max-width: min(22rem, 80vw);
+}
+
+.canvas-drag-hint-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.canvas-drag-hint-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.space-pan-hint {
+  position: absolute;
+  left: 1rem;
+  bottom: 5.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(20, 93, 102, 0.35);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+
+.space-pan-hint-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.space-pan-hint-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
 }
 
 .canvas-selection-bar {

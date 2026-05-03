@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <defs>
+    <style>
+      .bg{fill:#0b1020}
+      .panel{fill:#111a33;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .canvas{fill:#0f1630;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .bar{fill:#101a36;stroke:#2a3a6a;stroke-width:2;rx:14}
+      .btn{fill:#16244a;stroke:#2a3a6a;stroke-width:1.5;rx:12}
+      .btnDanger{fill:#3a1b2a;stroke:#7a3a5a;stroke-width:1.5;rx:12}
+      .menu{fill:#0f1733;stroke:#2a3a6a;stroke-width:2;rx:14}
+      .title{fill:#e8eeff;font:700 26px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .h{fill:#cfe0ff;font:700 16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .t{fill:#d6def7;font:500 14px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .muted{fill:#a9b6df;font:500 13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .mono{fill:#d6def7;font:600 12.5px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+      .kbd{fill:#1a2b4f;stroke:#2a3a6a;stroke-width:1;rx:8}
+      .hl{fill:none;stroke:#2be4a7;stroke-width:2;stroke-dasharray:6 6}
+      .chip{fill:#1a2b4f;stroke:#2a3a6a;stroke-width:1.2;rx:999}
+    </style>
+  </defs>
+  <rect class="bg" width="1400" height="900"/>
+
+  <text class="title" x="44" y="60">01 — Selection Actions Consolidation</text>
+  <text class="muted" x="44" y="86">Single surface: the on-canvas Selection Bar (no right-click menu). The “…” menu and Group… popover cover all actions.</text>
+
+  <!-- Left: canvas mock -->
+  <g transform="translate(44,120)">
+    <rect class="canvas" x="0" y="0" width="900" height="700" rx="16"/>
+    <text class="h" x="18" y="34">Canvas</text>
+    <text class="muted" x="18" y="56">Selected: 3 sprites (multi-select)</text>
+
+    <!-- fake sprites -->
+    <rect x="210" y="180" width="70" height="70" fill="#ffb86b" opacity="0.25" stroke="#ffb86b" stroke-width="3"/>
+    <rect x="320" y="230" width="70" height="70" fill="#ffb86b" opacity="0.25" stroke="#ffb86b" stroke-width="3"/>
+    <rect x="430" y="190" width="70" height="70" fill="#ffb86b" opacity="0.25" stroke="#ffb86b" stroke-width="3"/>
+    <rect class="hl" x="190" y="160" width="340" height="170" rx="14"/>
+    <text class="muted" x="200" y="350">Selection bounding area</text>
+
+    <!-- selection bar -->
+    <g transform="translate(120,560)">
+      <rect class="bar" x="0" y="0" width="660" height="96" rx="14"/>
+      <rect class="chip" x="16" y="16" width="150" height="28" rx="999"/>
+      <text class="t" x="28" y="36">Selection: 3 sprites</text>
+
+      <rect class="btn" x="16" y="52" width="110" height="32" rx="12"/>
+      <text class="t" x="44" y="73">Group…</text>
+
+      <rect class="btn" x="136" y="52" width="160" height="32" rx="12"/>
+      <text class="t" x="150" y="73">Add to formation…</text>
+
+      <rect class="btn" x="306" y="52" width="190" height="32" rx="12"/>
+      <text class="t" x="320" y="73">Remove from formation</text>
+
+      <rect class="btn" x="506" y="52" width="48" height="32" rx="12"/>
+      <text class="t" x="526" y="73">…</text>
+
+      <rect class="btnDanger" x="562" y="52" width="82" height="32" rx="12"/>
+      <text class="t" x="584" y="73">Delete</text>
+    </g>
+
+    <text class="muted" x="18" y="682">No right-click menu. Use the Selection Bar “…” for all selection actions.</text>
+  </g>
+
+  <!-- Right: selection bar menu + group popover -->
+  <g transform="translate(980,120)">
+    <rect class="panel" x="0" y="0" width="376" height="700" rx="16"/>
+    <text class="h" x="18" y="34">Selection Bar “…” Menu</text>
+    <text class="muted" x="18" y="56">Single menu for selection actions</text>
+
+    <g transform="translate(18,78)">
+      <rect class="menu" x="0" y="0" width="340" height="260" rx="14"/>
+      <text class="h" x="16" y="28">Selection Actions</text>
+      <line x1="16" y1="42" x2="324" y2="42" stroke="#2a3a6a" stroke-width="1.5"/>
+
+      <text class="t" x="16" y="74">Group…</text>
+      <rect class="kbd" x="210" y="56" width="114" height="24" rx="8"/>
+      <text class="mono" x="220" y="73">Ctrl/Cmd+⇧+G</text>
+
+      <text class="t" x="16" y="108">Add to formation…</text>
+      <text class="muted" x="250" y="108">submenu</text>
+
+      <text class="t" x="16" y="142">Remove from formation</text>
+
+      <line x1="16" y1="162" x2="324" y2="162" stroke="#2a3a6a" stroke-width="1.5"/>
+      <text class="t" x="16" y="194">Duplicate</text>
+      <text class="muted" x="250" y="194">Alt+Drag</text>
+      <text class="t" x="16" y="228">Delete</text>
+      <text class="muted" x="250" y="228">Del / Backspace</text>
+    </g>
+
+    <text class="h" x="18" y="374">Group… Popover (single flow)</text>
+    <text class="muted" x="18" y="396">Used by Selection Bar button, menu, and shortcut</text>
+
+    <g transform="translate(18,414)">
+      <rect class="menu" x="0" y="0" width="340" height="250" rx="14"/>
+      <text class="h" x="16" y="30">Group sprites</text>
+      <text class="muted" x="16" y="52">Name is prefilled; Enter confirms</text>
+
+      <text class="t" x="16" y="88">Name</text>
+      <rect class="btn" x="16" y="98" width="308" height="34" rx="12"/>
+      <text class="t" x="28" y="121">Formation 3</text>
+
+      <rect class="btn" x="16" y="148" width="308" height="34" rx="12"/>
+      <text class="t" x="28" y="171">Create as freeform</text>
+
+      <rect class="btn" x="16" y="188" width="308" height="34" rx="12"/>
+      <text class="t" x="28" y="211">Create with layout…</text>
+
+      <rect class="btn" x="16" y="232" width="110" height="34" rx="12"/>
+      <text class="t" x="48" y="255">Cancel</text>
+      <rect class="btn" x="214" y="232" width="110" height="34" rx="12"/>
+      <text class="t" x="254" y="255">Group</text>
+    </g>
+  </g>
+</svg>

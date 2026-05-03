@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState, type ChangeEvent } from 'react';
-import type { ProjectSpec } from '../model/types';
-import type { EditorAction } from './EditorStore';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import type { AssetFileSource, ProjectSpec } from '../model/types';
+import type { EditorAction, Selection } from './EditorStore';
 import { getAssetReferences, type AssetKind } from './assetReferences';
 import { ASSET_DRAG_MIME } from './dragAssets';
+import { SpriteImportPanelView } from './SpriteImportPanel';
 
 async function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -52,10 +53,14 @@ function usageBadgesForAudio(project: ProjectSpec, assetId: string): Array<'MUS'
 
 export function AssetsDock({
   project,
+  sceneId,
+  selection,
   dispatch,
   disabled,
 }: {
   project: ProjectSpec;
+  sceneId: string;
+  selection: Selection;
   dispatch: React.Dispatch<EditorAction>;
   disabled: boolean;
 }) {
@@ -70,6 +75,14 @@ export function AssetsDock({
   const [frameWidth, setFrameWidth] = useState(32);
   const [frameHeight, setFrameHeight] = useState(32);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [rowMenu, setRowMenu] = useState<{ assetKind: AssetKind; assetId: string; x: number; y: number } | null>(null);
+  const rowMenuRootRef = useRef<HTMLDivElement | null>(null);
+  const [relinkOpen, setRelinkOpen] = useState<{ assetKind: AssetKind; assetId: string } | null>(null);
+  const [relinkSourceMode, setRelinkSourceMode] = useState<'embedded' | 'path'>('path');
+  const [relinkPathDraft, setRelinkPathDraft] = useState('');
+  const [relinkError, setRelinkError] = useState<string | undefined>();
+  const relinkFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [advancedImportOpen, setAdvancedImportOpen] = useState(false);
 
   const normalizedSearch = search.trim().toLowerCase();
 
@@ -192,6 +205,34 @@ export function AssetsDock({
     }
   };
 
+  useEffect(() => {
+    if (!rowMenu) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = rowMenuRootRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setRowMenu(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setRowMenu(null);
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [rowMenu]);
+
+  useEffect(() => {
+    if (!relinkOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setRelinkOpen(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [relinkOpen]);
+
   const onRename = (assetKind: AssetKind, assetId: string) => {
     const existing = assetKind === 'audio'
       ? project.audio?.sounds?.[assetId]
@@ -215,6 +256,48 @@ export function AssetsDock({
     const ok = window.confirm(`Delete ${assetKind} asset "${assetId}"?`);
     if (!ok) return;
     dispatch({ type: 'remove-asset', assetKind, assetId } as any);
+  };
+
+  const openRelink = (assetKind: AssetKind, assetId: string) => {
+    setRelinkError(undefined);
+    setRelinkPathDraft('');
+    setRelinkSourceMode('path');
+    setRelinkOpen({ assetKind, assetId });
+  };
+
+  const applyRelink = async () => {
+    if (!relinkOpen) return;
+    setRelinkError(undefined);
+    try {
+      const { assetKind, assetId } = relinkOpen;
+      let source: AssetFileSource;
+      if (relinkSourceMode === 'path') {
+        const nextPath = relinkPathDraft.trim();
+        if (!nextPath) {
+          setRelinkError('Enter an asset path.');
+          return;
+        }
+        source = { kind: 'path', path: nextPath };
+      } else {
+        const input = relinkFileInputRef.current;
+        const file = input?.files?.[0];
+        if (!file) {
+          setRelinkError('Choose a file.');
+          return;
+        }
+        const dataUrl = await readAsDataUrl(file);
+        source = {
+          kind: 'embedded',
+          dataUrl,
+          originalName: file.name,
+          ...(file.type ? { mimeType: file.type } : {}),
+        };
+      }
+      dispatch({ type: 'relink-asset-source', assetKind, assetId, source } as any);
+      setRelinkOpen(null);
+    } catch (err) {
+      setRelinkError(err instanceof Error ? err.message : 'Failed to relink asset');
+    }
   };
 
   return (
@@ -287,6 +370,17 @@ export function AssetsDock({
               <button className="button" type="button" disabled={disabled} onClick={triggerFilePick} data-testid="assets-dock-pick-file">
                 Choose file…
               </button>
+              {(importKind === 'image' || importKind === 'spritesheet') && (
+                <button
+                  className="button"
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setAdvancedImportOpen(true)}
+                  data-testid="assets-dock-advanced-import"
+                >
+                  Advanced…
+                </button>
+              )}
               {fileError && <div className="muted">{fileError}</div>}
               {importKind === 'spritesheet' && loadedImage && (
                 <div className="assets-dock-spritesheet-grid">
@@ -359,6 +453,7 @@ export function AssetsDock({
           const label = displayLabel(assetId, asset?.name);
           const audioBadges = assetKind === 'audio' ? usageBadgesForAudio(project, assetId) : [];
           const sheetBadge = assetKind === 'spritesheet' ? ['SHEET'] : [];
+          const sourceBadge = asset?.source?.kind === 'embedded' ? 'Embedded' : asset?.source?.kind === 'path' ? 'Path' : '';
 
           return (
             <div key={`${assetKind}:${assetId}`} className="assets-dock-row" data-testid={`assets-dock-row-${assetKind}-${assetId}`}>
@@ -378,20 +473,190 @@ export function AssetsDock({
               >
                 <span className="assets-dock-label">{label}</span>
                 <span className="assets-dock-badges">
+                  {sourceBadge ? <span className="badge badge-inline">{sourceBadge}</span> : null}
                   {sheetBadge.map((b) => <span key={b} className="badge badge-inline">{b}</span>)}
                   {audioBadges.map((b) => <span key={b} className="badge badge-inline">{b}</span>)}
                 </span>
               </button>
-              <button className="scene-graph-button" type="button" disabled={disabled} onClick={() => onRename(assetKind, assetId)} aria-label="Rename asset" data-testid={`assets-dock-rename-${assetKind}-${assetId}`}>
-                ✎
-              </button>
-              <button className="scene-graph-button scene-graph-remove" type="button" disabled={disabled} onClick={() => onDelete(assetKind, assetId)} aria-label="Delete asset" data-testid={`assets-dock-delete-${assetKind}-${assetId}`}>
-                🗑
+              <button
+                className="scene-graph-button"
+                type="button"
+                disabled={disabled}
+                aria-label="Asset menu"
+                data-testid={`assets-dock-menu-${assetKind}-${assetId}`}
+                onClick={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setRowMenu({ assetKind, assetId, x: Math.min(rect.left, window.innerWidth - 240), y: rect.bottom + 6 });
+                }}
+              >
+                ⋯
               </button>
             </div>
           );
         })}
       </div>
+
+      {rowMenu && (
+        <div
+          ref={rowMenuRootRef}
+          className="scene-graph-menu"
+          style={{ position: 'fixed', left: rowMenu.x, top: rowMenu.y, zIndex: 2000, minWidth: 220 }}
+          data-testid="assets-dock-row-menu"
+          role="menu"
+        >
+          <div className="scene-graph-menu-hint">{rowMenu.assetKind}:{rowMenu.assetId}</div>
+          <button
+            type="button"
+            className="scene-graph-menu-item"
+            role="menuitem"
+            data-testid="assets-dock-row-menu-rename"
+            onClick={() => {
+              const next = rowMenu;
+              setRowMenu(null);
+              onRename(next.assetKind, next.assetId);
+            }}
+          >
+            Rename…
+          </button>
+          <button
+            type="button"
+            className="scene-graph-menu-item"
+            role="menuitem"
+            data-testid="assets-dock-row-menu-relink"
+            onClick={() => {
+              const next = rowMenu;
+              setRowMenu(null);
+              openRelink(next.assetKind, next.assetId);
+            }}
+          >
+            Relink…
+          </button>
+          <div className="scene-graph-menu-divider" />
+          <button
+            type="button"
+            className="scene-graph-menu-item scene-graph-menu-danger"
+            role="menuitem"
+            data-testid="assets-dock-row-menu-delete"
+            onClick={() => {
+              const next = rowMenu;
+              setRowMenu(null);
+              onDelete(next.assetKind, next.assetId);
+            }}
+          >
+            Delete…
+          </button>
+        </div>
+      )}
+
+      {relinkOpen && (
+        <div
+          className="modal-overlay"
+          data-testid="asset-relink-modal"
+          role="dialog"
+          aria-label="Relink asset"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setRelinkOpen(null);
+          }}
+        >
+          <div className="modal-card">
+            <div className="panel-header">
+              <p className="eyebrow">Assets</p>
+              <h2 className="panel-title">Relink Asset</h2>
+              <p className="panel-description">
+                Relink keeps the same assetId so existing references remain intact.
+              </p>
+              <div className="muted" style={{ marginTop: 6 }}>
+                Asset: <span className="mono">{relinkOpen.assetKind}:{relinkOpen.assetId}</span>
+              </div>
+            </div>
+
+            <div className="panel-scroll" style={{ overflow: 'auto', paddingRight: 2 }}>
+              <div className="field">
+                <span>New source</span>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="radio" checked={relinkSourceMode === 'embedded'} onChange={() => setRelinkSourceMode('embedded')} />
+                    Embedded file
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="radio" checked={relinkSourceMode === 'path'} onChange={() => setRelinkSourceMode('path')} />
+                    Asset path
+                  </label>
+                </div>
+              </div>
+
+              {relinkSourceMode === 'path' ? (
+                <div className="field">
+                  <span>Asset Path</span>
+                  <input
+                    className="text-input"
+                    data-testid="asset-relink-path-input"
+                    type="text"
+                    value={relinkPathDraft}
+                    onChange={(e) => setRelinkPathDraft(e.target.value)}
+                    placeholder="/assets/images/hero.png"
+                  />
+                </div>
+              ) : (
+                <div className="field">
+                  <span>Embedded File</span>
+                  <input
+                    ref={relinkFileInputRef}
+                    data-testid="asset-relink-file-input"
+                    type="file"
+                    accept={relinkOpen.assetKind === 'audio' ? 'audio/*' : relinkOpen.assetKind === 'font' ? '' : 'image/*'}
+                  />
+                </div>
+              )}
+
+              {relinkError && <div className="toolbar-error" role="alert">{relinkError}</div>}
+            </div>
+
+            <div className="toolbar-actions" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+              <button className="button" type="button" onClick={() => setRelinkOpen(null)} data-testid="asset-relink-cancel">
+                Cancel
+              </button>
+              <button className="button" type="button" onClick={() => void applyRelink()} data-testid="asset-relink-apply">
+                Relink
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {advancedImportOpen && (
+        <div
+          className="modal-overlay"
+          data-testid="advanced-import-modal"
+          role="dialog"
+          aria-label="Advanced import"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setAdvancedImportOpen(false);
+          }}
+        >
+          <div className="modal-card">
+            <div className="panel-header">
+              <p className="eyebrow">Assets</p>
+              <h2 className="panel-title">Advanced Import</h2>
+              <p className="panel-description">
+                Multi-frame sprite import with optional auto-hitbox (replaces SpriteImportPanel).
+              </p>
+            </div>
+            <div className="panel-scroll" style={{ overflow: 'auto', paddingRight: 2 }}>
+              <SpriteImportPanelView
+                scene={project.scenes[sceneId]}
+                selection={selection}
+                dispatch={dispatch as any}
+              />
+            </div>
+            <div className="toolbar-actions" style={{ justifyContent: 'flex-end' }}>
+              <button className="button" type="button" onClick={() => setAdvancedImportOpen(false)} data-testid="advanced-import-close">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
