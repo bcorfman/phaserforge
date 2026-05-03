@@ -15,13 +15,16 @@ Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki
   - **Play mode**: runtime composes **persistent base + active wave**; waves swap via `scene.gotoWave(sceneId)` without resetting the base.
 - **Sidebar scope tabs**:
   - **Scene**: everything you need to iterate a scene (tree + assets dock always visible).
-  - **Project**: project-level systems (input maps, YAML workflow).
+  - **Project**: project-level systems (input maps).
 - **Docked Assets panel (Scene tab)**:
   - Import **Images**, **Spritesheets**, **Audio**, and **Fonts** as embedded files or “asset path” references.
   - Assets have **immutable IDs** (stable references) and an **editable display name** (friendly labels).
   - Drag **image/spritesheet assets → canvas** to create sprite entities at the drop point.
+  - Drag **image/spritesheet assets → existing sprite on canvas** to **replace its asset**.
   - Drag **image assets → background layers** to add/assign backgrounds.
   - Drag **audio assets → scene music** to assign music.
+  - Asset row menu: **Rename…**, **Relink…** (Embedded ↔ Path), **Delete…**.
+  - **Advanced…** import modal for sprites (multi-frame selection + optional auto-hitbox).
   - Asset deletion is **blocked when referenced**, preventing broken scenes at runtime.
 - **Canvas editing**: drag sprites/formations, marquee multi-select, group/dissolve, grid snap, undo/redo, pan/zoom, fit/reset view.
 - **Formations (groups)**: declarative arrange layouts (grid, line, circle, arc, etc.) driven by `public/editor-registry.yaml`—repeatable patterns without hand-placing every entity.
