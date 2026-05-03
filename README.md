@@ -38,20 +38,23 @@ Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki
 
 ## YAML Round-Trip
 
-- `Export YAML` serializes the current `ProjectSpec` (assets + scenes + `initialSceneId`) and saves it to disk.
-- `Load YAML` parses + validates YAML and migrates older scene schemas (legacy `behaviors/actions/conditions`) into `attachments`.
-- Startup mode `Reload Last YAML` restores the last exported/loaded YAML from `localStorage` (configurable).
+- YAML lives in the **Scene YAML** pane (right sidebar).
+- **Open…** reads YAML from disk into the YAML textarea.
+- **Load** parses + validates the YAML textarea and applies it into the editor (including migrations from legacy `behaviors/actions/conditions` → `attachments`).
+- **Save / Save As…** write the YAML textarea contents back to disk (Save reuses the last file handle when available).
+- Startup mode **Reload Last YAML** is configured in the YAML pane and loads the last YAML stored in `localStorage`.
 
 ## Controls & Shortcuts
 
 - **Select**: click a sprite / formation. Shift+click adds to multi-select. Drag on empty space to marquee-select (Shift adds).
 - **Move**: drag selection; Arrow keys nudge (Shift+Arrow = 10px).
 - **Pan / zoom**: mouse wheel zoom; middle-mouse drag or hold Space + drag to pan; use Fit/Reset buttons in the view bar.
+- **Selection actions**: use the on-canvas **selection bar** (no right-click menu).
 - **Shortcuts** (Ctrl on Windows/Linux, Cmd on macOS):
   - Undo / redo: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y)
   - Toggle Edit/Preview: Tab
   - Toggle grid snap: Ctrl/Cmd+G
-  - Group selection: Ctrl/Cmd+Shift+G
+  - Group selection: Ctrl/Cmd+Shift+G (creates a formation with an auto name)
   - Dissolve selected formation: Ctrl/Cmd+Shift+U
 
 ## Requirements
