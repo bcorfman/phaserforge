@@ -124,3 +124,56 @@ export function ValidatedOptionalNumberInput({
   );
 }
 
+export function ValidatedNumberTextInput({
+  value,
+  onCommit,
+  clamp,
+  ...props
+}: BaseProps & {
+  value: number;
+  onCommit: (next: number) => void;
+  clamp?: (value: number) => number;
+}) {
+  const clampValue = useMemo(() => clamp ?? ((n: number) => n), [clamp]);
+  const [draft, setDraft] = useState<string>(String(value));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(String(value));
+  }, [editing, value]);
+
+  const commit = () => {
+    setEditing(false);
+    const parsed = coerceFiniteNumber(draft);
+    if (parsed === null) {
+      setDraft(String(value));
+      return;
+    }
+    const next = clampValue(parsed);
+    onCommit(next);
+    setDraft(String(next));
+  };
+
+  return (
+    <input
+      {...props}
+      type="text"
+      inputMode="decimal"
+      value={draft}
+      onChange={(e) => {
+        setEditing(true);
+        setDraft(e.target.value);
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          (e.currentTarget as HTMLInputElement).blur();
+        } else if (e.key === 'Escape') {
+          setDraft(String(value));
+          (e.currentTarget as HTMLInputElement).blur();
+        }
+        props.onKeyDown?.(e);
+      }}
+    />
+  );
+}

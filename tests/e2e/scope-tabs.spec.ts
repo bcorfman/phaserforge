@@ -28,7 +28,7 @@ test('sidebar scope tabs switch between scene and project panels', async ({ page
   // Project tab shows project-scoped tools (input maps + YAML workflow helpers).
   await page.getByTestId('sidebar-scope-tab-project').click();
   await expect(page.getByRole('heading', { name: 'Input Maps' })).toBeVisible();
-  await expect(page.getByText('Asset importing now lives')).toBeVisible();
+  await expect(page.getByText('Asset importing now lives')).toHaveCount(0);
   await expect(page.getByTestId('sprites-dropzone')).toHaveCount(0);
   await expect(page.getByTestId('assets-dock')).toHaveCount(0);
 

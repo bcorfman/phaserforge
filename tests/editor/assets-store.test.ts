@@ -8,7 +8,7 @@ function sceneOf(state: any) {
 describe('EditorStore assets actions', () => {
   it('adds an image asset and creates an entity referencing it', () => {
     const state = initState();
-    const withAsset = reducer(state, { type: 'add-image-asset-from-path', path: '/assets/images/player.png' } as any);
+    const withAsset = reducer(state, { type: 'add-image-asset-from-path', path: '/assets/images/player.png', width: 256, height: 128 } as any);
     expect(withAsset.project.assets.images.player).toBeDefined();
 
     const withEntity = reducer(withAsset, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'player', at: { x: 10, y: 20 } } as any);
@@ -18,6 +18,10 @@ describe('EditorStore assets actions', () => {
     const entity = scene.entities[ids[0]];
     expect(entity.x).toBe(10);
     expect(entity.y).toBe(20);
+    expect(entity.width).toBe(256);
+    expect(entity.height).toBe(128);
+    expect(entity.scaleX ?? 1).toBe(1);
+    expect(entity.scaleY ?? 1).toBe(1);
     expect(entity.asset?.source).toEqual({ kind: 'asset', assetId: 'player' });
     expect(entity.asset?.imageType).toBe('image');
   });

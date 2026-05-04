@@ -97,7 +97,10 @@ export async function waitForEmptyScene(page: Page): Promise<void> {
 export async function dismissViewHint(page: Page): Promise<void> {
   const hint = page.getByTestId('view-hint');
   if (await hint.isVisible().catch(() => false)) {
-    await page.getByTestId('dismiss-view-hint-button').click();
+    const dismiss = hint.getByTestId('dismiss-view-hint-button');
+    if (await dismiss.isVisible().catch(() => false)) {
+      await dismiss.click();
+    }
     await expect(hint).toBeHidden();
   }
 }
