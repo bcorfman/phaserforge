@@ -325,17 +325,72 @@ function AppShell() {
     });
   };
 
+  const appBodyRef = useRef<HTMLDivElement | null>(null);
+  const leftPaneDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(() => {
+    const storage: any = (globalThis as any).localStorage;
+    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaseractions.leftPaneWidth.v1') : null;
+    const parsed = raw == null ? NaN : Number(raw);
+    return Number.isFinite(parsed) ? Math.max(240, Math.min(520, parsed)) : 300;
+  });
+
+  useEffect(() => {
+    const storage: any = (globalThis as any).localStorage;
+    if (typeof storage?.setItem === 'function') storage.setItem('phaseractions.leftPaneWidth.v1', String(leftPaneWidth));
+  }, [leftPaneWidth]);
+
   return (
     <div className="app-root" data-testid="app-root">
       <Toolbar />
-      <div className="app-body">
+      <div
+        ref={appBodyRef}
+        className="app-body"
+        style={{
+          gridTemplateColumns: `${leftPaneWidth}px 12px minmax(0, 1fr) minmax(340px, clamp(340px, 23vw, 440px))`,
+          gap: 0,
+        }}
+      >
         <aside
           aria-labelledby="scene-graph-heading"
           className="pane pane-left"
           data-testid="entity-list-pane"
+          style={{ marginRight: '1rem' }}
         >
           <EntityList />
         </aside>
+        <div
+          className="pane-splitter-vertical"
+          data-testid="left-pane-splitter"
+          role="separator"
+          aria-orientation="vertical"
+          onPointerDown={(event) => {
+            leftPaneDragRef.current = { startX: event.clientX, startWidth: leftPaneWidth };
+            (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            const drag = leftPaneDragRef.current;
+            if (!drag) return;
+            const body = appBodyRef.current;
+            const bodyRect = body?.getBoundingClientRect();
+            const delta = event.clientX - drag.startX;
+            const desired = drag.startWidth + delta;
+            const minWidth = 240;
+            const maxWidth = 520;
+            const clamped = Math.max(minWidth, Math.min(maxWidth, desired));
+            if (bodyRect && bodyRect.width > 0) {
+              const minCanvas = 480;
+              const rightMin = 340;
+              const available = bodyRect.width - 12 - rightMin - minCanvas;
+              const maxByCanvas = Math.max(minWidth, Math.min(maxWidth, available));
+              setLeftPaneWidth(Math.max(minWidth, Math.min(maxByCanvas, clamped)));
+              return;
+            }
+            setLeftPaneWidth(clamped);
+          }}
+          onPointerUp={() => {
+            leftPaneDragRef.current = null;
+          }}
+        />
         <main aria-labelledby="viewport-heading" className="pane pane-center" data-testid="canvas-pane">
           <section className="viewbar shell-card" data-testid="viewbar">
             <div className="viewbar-copy">

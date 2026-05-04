@@ -294,7 +294,12 @@ export function EntityListView({
   };
 
   return (
-    <div ref={rootRef} className="panel panel-scroll" data-testid="entity-list" style={{ overflow: 'hidden' }}>
+    <div
+      ref={rootRef}
+      className="panel panel-scroll"
+      data-testid="entity-list"
+      style={{ overflow: 'hidden', flex: 1, minHeight: 0 }}
+    >
       <div className="sidebar-scope-tabs" role="tablist" aria-label="Sidebar Scope">
         <button
           className={`button ${sidebarScope === 'scene' ? 'active' : ''}`}
@@ -319,7 +324,7 @@ export function EntityListView({
       </div>
       {sidebarScope === 'scene' ? (
         <div className="sidebar-split" style={{ display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0, flex: 1 }}>
-          <div className="panel-scroll" style={{ overflow: 'auto', minHeight: 0, paddingRight: 2 }}>
+          <div className="panel-scroll" style={{ overflow: 'auto', minHeight: 0, paddingRight: 2, flex: 1 }}>
             <section className="panel-section" aria-labelledby="scene-list">
               <div className="panel-heading-row">
                 <h3 className="panel-heading" id="scene-list">Scenes</h3>
@@ -789,8 +794,13 @@ export function EntityListView({
               const desired = drag.startHeight + delta;
               const root = rootRef.current;
               const rootHeight = root ? root.getBoundingClientRect().height : 0;
-              const maxDock = rootHeight > 0 ? Math.max(140, Math.min(520, rootHeight - 220)) : 420;
-              setAssetsDockHeight(Math.max(120, Math.min(maxDock, desired)));
+              if (rootHeight > 0) {
+                const minDock = Math.max(120, Math.round(rootHeight * 0.25));
+                const maxDock = Math.max(minDock, Math.round(rootHeight * 0.75));
+                setAssetsDockHeight(Math.max(minDock, Math.min(maxDock, desired)));
+                return;
+              }
+              setAssetsDockHeight(Math.max(120, Math.min(420, desired)));
             }}
             onPointerUp={() => {
               dragRef.current = null;
@@ -808,14 +818,6 @@ export function EntityListView({
       {sidebarScope === 'project' ? (
         <>
           <InputMapsPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
-          <section className="panel-section" aria-labelledby="project-assets-moved">
-            <div className="panel-heading-row">
-              <h3 className="panel-heading" id="project-assets-moved">Assets</h3>
-            </div>
-            <div className="muted">
-              Asset importing now lives in the Scene sidebar’s docked Assets panel.
-            </div>
-          </section>
         </>
       ) : (
         null

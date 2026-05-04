@@ -51,7 +51,9 @@ export interface SceneAmbienceSpec {
 
 export interface SceneInputSpec {
   activeMapId?: Id;
+  activeMapNone?: boolean;
   fallbackMapId?: Id;
+  fallbackMapNone?: boolean;
   mouse?: {
     hideOsCursorInPlay?: boolean;
     driveEntityId?: Id;
@@ -112,6 +114,8 @@ export interface ImageAssetSpec {
   id: Id;
   source: AssetFileSource;
   name?: string;
+  width?: number;
+  height?: number;
 }
 
 export interface SpriteSheetAssetSpec {

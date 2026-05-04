@@ -8,11 +8,19 @@ import { AttachmentSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, Ent
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
-import { ValidatedNumberInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
+import { ValidatedNumberInput, ValidatedNumberTextInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
 import { CreateFormationPanel } from './CreateFormationPanel';
 import { parseCallArgsJson } from './callArgsJson';
 import { TriggerZoneInspector } from './TriggerZoneInspector';
 import { SceneInspectorPanel } from './SceneInspectorPanel';
+import {
+  displayPixelsFromBaseAndScale,
+  maintainAspectDisplayHeight,
+  maintainAspectDisplayWidth,
+  percentFromScale,
+  scaleFromDisplayPixels,
+  scaleFromPercent,
+} from './spriteSizing';
 
 type ArrangeParameterSpec = { name: string; type?: string };
 
@@ -288,6 +296,9 @@ function EntityInspector({
   const update = (patch: Partial<EntitySpec>) => onUpdate({ ...entity, ...patch });
   const foldouts = useInspectorFoldouts();
   const scene = actionProps?.scene;
+  const [spriteSizeTab, setSpriteSizeTab] = useState<'percent' | 'pixels'>('percent');
+  const [lockPercent, setLockPercent] = useState(true);
+  const [lockPixels, setLockPixels] = useState(true);
 
   const keyForAsset = (asset: SpriteAssetSpec): string => {
     const base = asset.source.kind === 'asset'
@@ -334,6 +345,16 @@ function EntityInspector({
     const groupEntry = Object.values(scene.groups).find((group) => group.members.includes(entity.id));
     return groupEntry ?? null;
   }, [entity.id, scene]);
+
+  const baseWidth = resolved.width;
+  const baseHeight = resolved.height;
+  const displayWidth = displayPixelsFromBaseAndScale(baseWidth, Math.abs(resolved.scaleX));
+  const displayHeight = displayPixelsFromBaseAndScale(baseHeight, Math.abs(resolved.scaleY));
+
+  const scaleXPercent = percentFromScale(Math.abs(resolved.scaleX));
+  const scaleYPercent = percentFromScale(Math.abs(resolved.scaleY));
+
+  const canUseSpriteSize = Boolean(resolved.asset);
 
   return (
     <div className="inspector-block">
@@ -382,56 +403,208 @@ function EntityInspector({
             />
           </label>
         </div>
-        <div className="inspector-grid-2">
-          <label className="field">
-            <span>Width</span>
-            <ValidatedNumberInput
-              aria-label="Entity Width"
-              data-testid="entity-width-input"
-              min={1}
-              value={resolved.width}
-              clamp={(next) => Math.max(1, next || 1)}
-              onCommit={(next) => update({ width: next })}
-            />
-          </label>
-          <label className="field">
-            <span>Height</span>
-            <ValidatedNumberInput
-              aria-label="Entity Height"
-              data-testid="entity-height-input"
-              min={1}
-              value={resolved.height}
-              clamp={(next) => Math.max(1, next || 1)}
-              onCommit={(next) => update({ height: next })}
-            />
-          </label>
-        </div>
-        <div className="inspector-grid-2">
-          <label className="field">
-            <span>Scale X</span>
-            <ValidatedNumberInput
-              aria-label="Scale X"
-              data-testid="entity-scale-x-input"
-              min={0.01}
-              step="0.1"
-              value={resolved.scaleX}
-              clamp={(next) => Math.max(0.01, next || 0.01)}
-              onCommit={(next) => update({ scaleX: next })}
-            />
-          </label>
-          <label className="field">
-            <span>Scale Y</span>
-            <ValidatedNumberInput
-              aria-label="Scale Y"
-              data-testid="entity-scale-y-input"
-              min={0.01}
-              step="0.1"
-              value={resolved.scaleY}
-              clamp={(next) => Math.max(0.01, next || 0.01)}
-              onCommit={(next) => update({ scaleY: next })}
-            />
-          </label>
-        </div>
+        {canUseSpriteSize ? (
+          <div className="inspector-block" style={{ padding: 0, marginTop: 10, border: 'none', boxShadow: 'none', background: 'transparent' }}>
+            <div className="inspector-row" style={{ marginBottom: 6, fontWeight: 700 }}>Sprite Size</div>
+            <div className="inspector-grid-2">
+              <button
+                className={`button button-compact ${spriteSizeTab === 'percent' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setSpriteSizeTab('percent')}
+                data-testid="sprite-size-tab-percent"
+              >
+                Percent
+              </button>
+              <button
+                className={`button button-compact ${spriteSizeTab === 'pixels' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setSpriteSizeTab('pixels')}
+                data-testid="sprite-size-tab-pixels"
+              >
+                Pixels
+              </button>
+            </div>
+
+            {spriteSizeTab === 'percent' ? (
+              <>
+                <div className="inspector-grid-3" style={{ marginTop: 8 }}>
+                  <label className="field">
+                    <span>Scale X (%)</span>
+                    <ValidatedNumberTextInput
+                      aria-label="Scale X (%)"
+                      data-testid="sprite-size-scale-x-percent"
+                      value={Math.round(scaleXPercent * 1000) / 1000}
+                      clamp={(next) => Math.max(0.1, next || 0.1)}
+                      onCommit={(next) => {
+                        const scale = Math.max(0.001, scaleFromPercent(next));
+                        if (lockPercent) {
+                          update({ scaleX: Math.sign(resolved.scaleX) * scale, scaleY: Math.sign(resolved.scaleY) * scale });
+                        } else {
+                          update({ scaleX: Math.sign(resolved.scaleX) * scale });
+                        }
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className={`sprite-size-aspect ${lockPercent ? 'active' : ''}`}
+                    data-testid="sprite-size-aspect-percent"
+                    title="Maintain Aspect Ratio"
+                    aria-pressed={lockPercent}
+                    onClick={() => setLockPercent((prev) => !prev)}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                      <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.9 4.03" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M14 11a5 5 0 0 0-7.07 0L4.8 13.12a5 5 0 1 0 7.07 7.07L13.1 19.97" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                  <label className="field">
+                    <span>Scale Y (%)</span>
+                    <ValidatedNumberTextInput
+                      aria-label="Scale Y (%)"
+                      data-testid="sprite-size-scale-y-percent"
+                      value={Math.round(scaleYPercent * 1000) / 1000}
+                      clamp={(next) => Math.max(0.1, next || 0.1)}
+                      onCommit={(next) => {
+                        const scale = Math.max(0.001, scaleFromPercent(next));
+                        if (lockPercent) {
+                          update({ scaleX: Math.sign(resolved.scaleX) * scale, scaleY: Math.sign(resolved.scaleY) * scale });
+                        } else {
+                          update({ scaleY: Math.sign(resolved.scaleY) * scale });
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <div className="inspector-grid-2" style={{ marginTop: 6 }}>
+                  <label className="field">
+                    <span>Width (px)</span>
+                    <input className="text-input" type="text" readOnly value={displayWidth} data-testid="sprite-size-width-px-readonly" />
+                  </label>
+                  <label className="field">
+                    <span>Height (px)</span>
+                    <input className="text-input" type="text" readOnly value={displayHeight} data-testid="sprite-size-height-px-readonly" />
+                  </label>
+                </div>
+                <div className="muted" style={{ marginTop: 6 }}>Original (natural): {baseWidth}×{baseHeight} px</div>
+              </>
+            ) : (
+              <>
+                <div className="inspector-grid-3" style={{ marginTop: 8 }}>
+                  <label className="field">
+                    <span>Width (px)</span>
+                    <ValidatedNumberTextInput
+                      aria-label="Width (px)"
+                      data-testid="sprite-size-width-px"
+                      value={displayWidth}
+                      clamp={(next) => Math.max(1, Math.round(next || 1))}
+                      onCommit={(next) => {
+                        const desiredWidth = Math.max(1, Math.round(next || 1));
+                        const desiredHeight = lockPixels ? maintainAspectDisplayHeight(baseWidth, baseHeight, desiredWidth) : displayHeight;
+                        const nextScaleX = Math.max(0.001, scaleFromDisplayPixels(baseWidth, desiredWidth));
+                        const nextScaleY = Math.max(0.001, scaleFromDisplayPixels(baseHeight, desiredHeight));
+                        update({ scaleX: Math.sign(resolved.scaleX) * nextScaleX, scaleY: Math.sign(resolved.scaleY) * nextScaleY });
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className={`sprite-size-aspect ${lockPixels ? 'active' : ''}`}
+                    data-testid="sprite-size-aspect-pixels"
+                    title="Maintain Aspect Ratio"
+                    aria-pressed={lockPixels}
+                    onClick={() => setLockPixels((prev) => !prev)}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                      <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.9 4.03" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M14 11a5 5 0 0 0-7.07 0L4.8 13.12a5 5 0 1 0 7.07 7.07L13.1 19.97" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                  <label className="field">
+                    <span>Height (px)</span>
+                    <ValidatedNumberTextInput
+                      aria-label="Height (px)"
+                      data-testid="sprite-size-height-px"
+                      value={displayHeight}
+                      clamp={(next) => Math.max(1, Math.round(next || 1))}
+                      onCommit={(next) => {
+                        const desiredHeight = Math.max(1, Math.round(next || 1));
+                        const desiredWidth = lockPixels ? maintainAspectDisplayWidth(baseWidth, baseHeight, desiredHeight) : displayWidth;
+                        const nextScaleX = Math.max(0.001, scaleFromDisplayPixels(baseWidth, desiredWidth));
+                        const nextScaleY = Math.max(0.001, scaleFromDisplayPixels(baseHeight, desiredHeight));
+                        update({ scaleX: Math.sign(resolved.scaleX) * nextScaleX, scaleY: Math.sign(resolved.scaleY) * nextScaleY });
+                      }}
+                    />
+                  </label>
+                </div>
+                <div className="inspector-grid-2" style={{ marginTop: 6 }}>
+                  <label className="field">
+                    <span>Scale X (%)</span>
+                    <input className="text-input" type="text" readOnly value={Math.round(scaleXPercent * 100) / 100} data-testid="sprite-size-scale-x-percent-readonly" />
+                  </label>
+                  <label className="field">
+                    <span>Scale Y (%)</span>
+                    <input className="text-input" type="text" readOnly value={Math.round(scaleYPercent * 100) / 100} data-testid="sprite-size-scale-y-percent-readonly" />
+                  </label>
+                </div>
+                <div className="muted" style={{ marginTop: 6 }}>Original (natural): {baseWidth}×{baseHeight} px</div>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="inspector-grid-2">
+              <label className="field">
+                <span>Width</span>
+                <ValidatedNumberInput
+                  aria-label="Entity Width"
+                  data-testid="entity-width-input"
+                  min={1}
+                  value={resolved.width}
+                  clamp={(next) => Math.max(1, next || 1)}
+                  onCommit={(next) => update({ width: next })}
+                />
+              </label>
+              <label className="field">
+                <span>Height</span>
+                <ValidatedNumberInput
+                  aria-label="Entity Height"
+                  data-testid="entity-height-input"
+                  min={1}
+                  value={resolved.height}
+                  clamp={(next) => Math.max(1, next || 1)}
+                  onCommit={(next) => update({ height: next })}
+                />
+              </label>
+            </div>
+            <div className="inspector-grid-2">
+              <label className="field">
+                <span>Scale X</span>
+                <ValidatedNumberInput
+                  aria-label="Scale X"
+                  data-testid="entity-scale-x-input"
+                  min={0.01}
+                  step="0.1"
+                  value={resolved.scaleX}
+                  clamp={(next) => Math.max(0.01, next || 0.01)}
+                  onCommit={(next) => update({ scaleX: next })}
+                />
+              </label>
+              <label className="field">
+                <span>Scale Y</span>
+                <ValidatedNumberInput
+                  aria-label="Scale Y"
+                  data-testid="entity-scale-y-input"
+                  min={0.01}
+                  step="0.1"
+                  value={resolved.scaleY}
+                  clamp={(next) => Math.max(0.01, next || 0.01)}
+                  onCommit={(next) => update({ scaleY: next })}
+                />
+              </label>
+            </div>
+          </>
+        )}
         <label className="field">
           <span>Rotation</span>
           <ValidatedNumberInput

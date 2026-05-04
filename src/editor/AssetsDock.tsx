@@ -66,6 +66,13 @@ export function AssetsDock({
 }) {
   const [tab, setTab] = useState<AssetTab>('images');
   const [search, setSearch] = useState('');
+  const [showImageThumbnails, setShowImageThumbnails] = useState(() => {
+    const storage: any = (globalThis as any).localStorage;
+    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaseractions.assetsDockShowThumbnails.v1') : null;
+    if (raw === '0') return false;
+    if (raw === '1') return true;
+    return true;
+  });
   const [importOpen, setImportOpen] = useState(false);
   const [importKind, setImportKind] = useState<'image' | 'spritesheet' | 'audio' | 'font'>('image');
   const [sourceMode, setSourceMode] = useState<'embedded' | 'path'>('embedded');
@@ -83,6 +90,11 @@ export function AssetsDock({
   const [relinkError, setRelinkError] = useState<string | undefined>();
   const relinkFileInputRef = useRef<HTMLInputElement | null>(null);
   const [advancedImportOpen, setAdvancedImportOpen] = useState(false);
+
+  useEffect(() => {
+    const storage: any = (globalThis as any).localStorage;
+    if (typeof storage?.setItem === 'function') storage.setItem('phaseractions.assetsDockShowThumbnails.v1', showImageThumbnails ? '1' : '0');
+  }, [showImageThumbnails]);
 
   const normalizedSearch = search.trim().toLowerCase();
 
@@ -133,7 +145,11 @@ export function AssetsDock({
     try {
       const dataUrl = await readAsDataUrl(file);
       if (importKind === 'image') {
-        dispatch({ type: 'add-image-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined } } as any);
+        const meta = await loadImageMetadata(dataUrl, file.name, file.type || undefined);
+        dispatch({
+          type: 'add-image-asset-from-file',
+          file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, width: meta.width, height: meta.height },
+        } as any);
         setImportOpen(false);
         return;
       }
@@ -159,7 +175,12 @@ export function AssetsDock({
     const path = pathDraft.trim();
     if (!path) return;
     if (importKind === 'image') {
-      dispatch({ type: 'add-image-asset-from-path', path } as any);
+      try {
+        const meta = await loadImageMetadata(path, path.split('/').pop() ?? path);
+        dispatch({ type: 'add-image-asset-from-path', path, width: meta.width, height: meta.height } as any);
+      } catch {
+        dispatch({ type: 'add-image-asset-from-path', path } as any);
+      }
       setImportOpen(false);
       return;
     }
@@ -437,6 +458,17 @@ export function AssetsDock({
         </div>
       )}
 
+      {tab === 'images' ? (
+        <label className="assets-dock-thumbnails-toggle" data-testid="assets-dock-show-thumbnails">
+          <input
+            type="checkbox"
+            checked={showImageThumbnails}
+            onChange={(e) => setShowImageThumbnails(e.target.checked)}
+          />
+          <span>Show thumbnails</span>
+        </label>
+      ) : null}
+
       <div className="assets-dock-list" role="list">
         {rows.length === 0 ? (
           <div className="muted">No assets.</div>
@@ -454,6 +486,9 @@ export function AssetsDock({
           const audioBadges = assetKind === 'audio' ? usageBadgesForAudio(project, assetId) : [];
           const sheetBadge = assetKind === 'spritesheet' ? ['SHEET'] : [];
           const sourceBadge = asset?.source?.kind === 'embedded' ? 'Embedded' : asset?.source?.kind === 'path' ? 'Path' : '';
+          const thumbnailSrc = (assetKind === 'image' || assetKind === 'spritesheet') && asset?.source
+            ? (asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path)
+            : '';
 
           return (
             <div key={`${assetKind}:${assetId}`} className="assets-dock-row" data-testid={`assets-dock-row-${assetKind}-${assetId}`}>
@@ -471,6 +506,11 @@ export function AssetsDock({
                 data-testid={`assets-dock-item-${assetKind}-${assetId}`}
                 style={{ flex: 1, textAlign: 'left', opacity: disabled ? 0.7 : 1 }}
               >
+                {tab === 'images' && showImageThumbnails && (assetKind === 'image' || assetKind === 'spritesheet') && thumbnailSrc ? (
+                  <span className="assets-dock-thumb" aria-hidden="true">
+                    <img src={thumbnailSrc} alt="" draggable={false} />
+                  </span>
+                ) : null}
                 <span className="assets-dock-label">{label}</span>
                 <span className="assets-dock-badges">
                   {sourceBadge ? <span className="badge badge-inline">{sourceBadge}</span> : null}

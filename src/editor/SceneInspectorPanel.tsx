@@ -5,6 +5,7 @@ import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { SceneAudioBody } from './SceneAudioPanel';
 import { SceneCollisionsBody } from './SceneCollisionsPanel';
 import { SceneInputBody } from './SceneInputPanel';
+import { readSceneMapSelection } from './sceneInputMaps';
 
 function summarizeCount(label: string, count: number): string {
   if (count === 1) return `1 ${label}`;
@@ -34,10 +35,26 @@ export function SceneInspectorPanel({
   const audioSummary = `Music: ${musicLabel} · Ambience: ${ambience.length}`;
 
   const projectDefault = project.defaultInputMapId ?? '';
-  const activeId = scene.input?.activeMapId ?? projectDefault;
-  const fallbackId = scene.input?.fallbackMapId ?? projectDefault;
-  const activeLabel = activeId ? activeId : '(none)';
-  const fallbackLabel = fallbackId ? fallbackId : '(none)';
+  const activeSelection = readSceneMapSelection(scene.input, 'active');
+  const fallbackSelection = readSceneMapSelection(scene.input, 'fallback');
+  const activeId = activeSelection.kind === 'map'
+    ? activeSelection.mapId
+    : activeSelection.kind === 'project-default'
+      ? projectDefault
+      : '';
+  const fallbackId = fallbackSelection.kind === 'map'
+    ? fallbackSelection.mapId
+    : fallbackSelection.kind === 'project-default'
+      ? projectDefault
+      : '';
+  const activeLabel = activeSelection.kind === 'none'
+    ? '(none)'
+    : activeId
+      ? activeId
+      : '(none)';
+  const fallbackLabel = activeSelection.kind === 'none'
+    ? '(disabled)'
+    : (fallbackSelection.kind === 'none' ? '(none)' : fallbackId ? fallbackId : '(none)');
   const inputSummary = `Active: ${activeLabel} · Fallback: ${fallbackLabel}`;
 
   const backgroundSummary = summarizeCount('layer', backgroundLayers.length);
@@ -100,6 +117,7 @@ export function SceneInspectorPanel({
         summary={inputSummary}
         open={foldouts.isOpen('scene.input', false)}
         onToggle={() => foldouts.toggle('scene.input', false)}
+        testId="scene-input-foldout"
       >
         <SceneInputBody project={project} scene={scene} dispatch={dispatch} disabled={disabled} />
       </InspectorFoldout>
