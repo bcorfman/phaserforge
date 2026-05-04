@@ -195,8 +195,8 @@ export type EditorAction =
   | { type: 'convert-group-layout-arrange'; id: Id; arrangeKind: string }
   | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'attachment'; id: Id } }
   | { type: 'add-background-layer-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; defaults?: { layout?: BackgroundLayerSpec['layout'] } }
-  | { type: 'add-image-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
-  | { type: 'add-image-asset-from-path'; path: string; suggestedId?: string }
+  | { type: 'add-image-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; width?: number; height?: number } }
+  | { type: 'add-image-asset-from-path'; path: string; suggestedId?: string; width?: number; height?: number }
   | { type: 'add-spritesheet-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
   | { type: 'add-spritesheet-asset-from-path'; path: string; suggestedId?: string; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
   | { type: 'add-font-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
@@ -1274,7 +1274,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const input = action.input;
       const hasAny = Boolean(
         input
-        && (input.activeMapId || input.fallbackMapId || (input as any).mouse)
+        && (input.activeMapId || input.fallbackMapId || (input as any).activeMapNone || (input as any).fallbackMapNone || (input as any).mouse)
       );
       if (!hasAny) {
         const { input: _input, ...rest } = scene as any;
@@ -1284,6 +1284,8 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const nextInput: any = { ...(input ?? {}) };
       if (!nextInput.activeMapId) delete nextInput.activeMapId;
       if (!nextInput.fallbackMapId) delete nextInput.fallbackMapId;
+      if (!nextInput.activeMapNone) delete nextInput.activeMapNone;
+      if (!nextInput.fallbackMapNone) delete nextInput.fallbackMapNone;
       return withScene(state, { ...scene, input: nextInput } as GameSceneSpec, true);
     }
     case 'add-background-layer-from-file': {
@@ -1341,6 +1343,8 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const base = assetIdBaseFromOriginalName(action.file.originalName, 'image');
       const assetId = allocUniqueId(images, base);
       const rawName = (action.file.originalName ?? '').replace(/\.[a-z0-9]+$/i, '').trim();
+      const width = action.file.width;
+      const height = action.file.height;
       const nextProject: ProjectSpec = {
         ...state.project,
         assets: {
@@ -1350,6 +1354,8 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
             [assetId]: {
               id: assetId,
               ...(rawName ? { name: rawName } : {}),
+              ...(typeof width === 'number' && Number.isFinite(width) && width > 0 ? { width } : {}),
+              ...(typeof height === 'number' && Number.isFinite(height) && height > 0 ? { height } : {}),
               source: {
                 kind: 'embedded',
                 dataUrl: action.file.dataUrl,
@@ -1369,6 +1375,8 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const base = rawSuggested.length > 0 ? rawSuggested : assetIdBaseFromOriginalName(derived, 'image');
       const assetId = allocUniqueId(images, base);
       const rawName = derived.replace(/\.[a-z0-9]+$/i, '').trim();
+      const width = action.width;
+      const height = action.height;
       const nextProject: ProjectSpec = {
         ...state.project,
         assets: {
@@ -1378,6 +1386,8 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
             [assetId]: {
               id: assetId,
               ...(rawName ? { name: rawName } : {}),
+              ...(typeof width === 'number' && Number.isFinite(width) && width > 0 ? { width } : {}),
+              ...(typeof height === 'number' && Number.isFinite(height) && height > 0 ? { height } : {}),
               source: { kind: 'path', path: action.path },
             },
           },
@@ -1656,11 +1666,18 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const world = getSceneWorld(scene);
       const at = action.at ?? { x: world.width / 2, y: world.height / 2 };
       const defaultSize = 64;
+      const image = action.assetKind === 'image'
+        ? state.project.assets.images?.[action.assetId]
+        : undefined;
       const spritesheet = action.assetKind === 'spritesheet'
         ? state.project.assets.spriteSheets?.[action.assetId]
         : undefined;
-      const width = spritesheet?.grid?.frameWidth ?? defaultSize;
-      const height = spritesheet?.grid?.frameHeight ?? defaultSize;
+      const width = action.assetKind === 'image'
+        ? (image?.width ?? defaultSize)
+        : (spritesheet?.grid?.frameWidth ?? defaultSize);
+      const height = action.assetKind === 'image'
+        ? (image?.height ?? defaultSize)
+        : (spritesheet?.grid?.frameHeight ?? defaultSize);
 
       const entity: EntitySpec = resolveEntityDefaults({
         id: entityId,
@@ -1669,6 +1686,8 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         width,
         height,
         rotationDeg: 0,
+        scaleX: 1,
+        scaleY: 1,
         asset: {
           source: { kind: 'asset', assetId: action.assetId },
           imageType: action.assetKind === 'spritesheet' ? 'spritesheet' : 'image',

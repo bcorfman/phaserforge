@@ -118,11 +118,27 @@ describe('EntityList', () => {
     );
 
     expect(markup).toContain('Input Maps');
-    expect(markup).toContain('Assets');
-    expect(markup).toContain('Asset importing now lives');
+    expect(markup).not.toContain('Asset importing now lives');
     expect(markup).not.toContain('Scenes');
     expect(markup).not.toContain('create-scene-button');
     expect(markup).not.toContain('Formations');
     expect(markup).not.toContain('Trigger Zones');
+  });
+
+  it('flexes the scenes list so the assets dock can reach the bottom', () => {
+    const markup = renderToStaticMarkup(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
+        selection={{ kind: 'none' }}
+        sidebarScope="scene"
+        expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
+        dispatch={() => {}}
+      />
+    );
+
+    expect(markup).toContain('class=\"panel-scroll\" style=\"overflow:auto;min-height:0;padding-right:2px;flex:1');
   });
 });

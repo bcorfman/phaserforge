@@ -158,7 +158,7 @@ export function InputMapsPanel({
   };
 
   return (
-    <section className="panel-section" aria-labelledby="input-maps">
+    <section className="panel-section" aria-labelledby="input-maps" data-testid="input-maps-panel">
       <div className="panel-heading-row">
         <h3 className="panel-heading" id="input-maps">Input Maps</h3>
       </div>

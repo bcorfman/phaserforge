@@ -2,38 +2,21 @@ import { useMemo } from 'react';
 import type { GameSceneSpec, ProjectSpec } from '../model/types';
 import type { EditorAction } from './EditorStore';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
+import { listActiveSceneInputActionIds, readSceneMapSelection, type SceneMapSelection } from './sceneInputMaps';
 
-function summarizeActionPreview(scene: GameSceneSpec, project: ProjectSpec): Array<{ actionId: string; summary: string }> {
-  const inputMaps = project.inputMaps ?? {};
-  const projectDefault = project.defaultInputMapId;
-  const activeId = scene.input?.activeMapId ?? projectDefault;
-  const fallbackId = scene.input?.fallbackMapId ?? projectDefault;
-  const ids = [activeId, fallbackId].filter((id): id is string => typeof id === 'string' && id.length > 0);
-  const unique: string[] = [];
-  for (const id of ids) if (!unique.includes(id)) unique.push(id);
+const PROJECT_DEFAULT_VALUE = '__project_default__';
+const NONE_VALUE = '__none__';
 
-  const merged: Record<string, string[]> = {};
-  for (const id of unique) {
-    const map = inputMaps[id];
-    if (!map) continue;
-    for (const [actionId, bindings] of Object.entries(map.actions ?? {})) {
-      if (!merged[actionId]) merged[actionId] = [];
-      for (const b of bindings ?? []) {
-        if (b.device === 'keyboard') {
-          const key = b.key.startsWith('Key') && b.key.length === 4 ? b.key.slice(3) : b.key;
-          merged[actionId].push(key);
-        } else if (b.device === 'gamepad') {
-          merged[actionId].push(String(b.control));
-        } else if (b.device === 'mouse') {
-          merged[actionId].push(b.button);
-        }
-      }
-    }
-  }
+function selectionValue(selection: SceneMapSelection): string {
+  if (selection.kind === 'project-default') return PROJECT_DEFAULT_VALUE;
+  if (selection.kind === 'none') return NONE_VALUE;
+  return selection.mapId;
+}
 
-  return Object.keys(merged)
-    .sort()
-    .map((actionId) => ({ actionId, summary: merged[actionId].join(' / ') }));
+function selectionFromValue(value: string): SceneMapSelection {
+  if (value === PROJECT_DEFAULT_VALUE) return { kind: 'project-default' };
+  if (value === NONE_VALUE) return { kind: 'none' };
+  return { kind: 'map', mapId: value };
 }
 
 export function SceneInputPanel({
@@ -78,23 +61,50 @@ export function SceneInputBody({
   disabled: boolean;
 }) {
   const mapIds = useMemo(() => Object.keys(project.inputMaps ?? {}).sort(), [project.inputMaps]);
-  const preview = useMemo(() => summarizeActionPreview(scene, project), [scene, project]);
+  const actionIds = useMemo(() => listActiveSceneInputActionIds(scene, project), [scene, project]);
   const entityIds = useMemo(() => Object.keys(scene.entities ?? {}).sort(), [scene.entities]);
 
-  const projectDefault = project.defaultInputMapId ?? '';
-  const activeValue = scene.input?.activeMapId ?? '';
-  const fallbackValue = scene.input?.fallbackMapId ?? '';
+  const activeSelection = readSceneMapSelection(scene.input, 'active');
+  const fallbackSelection = readSceneMapSelection(scene.input, 'fallback');
   const mouse = scene.input?.mouse ?? {};
   const hideOsCursorInPlay = Boolean(mouse.hideOsCursorInPlay);
   const driveEntityId = mouse.driveEntityId ?? '';
   const affectX = mouse.affectX ?? true;
   const affectY = mouse.affectY ?? true;
 
-  const setSceneInput = (patch: Partial<NonNullable<GameSceneSpec['input']>>) => {
-    const next: any = { ...(scene.input ?? {}), ...patch };
-    if (!next.activeMapId) delete next.activeMapId;
-    if (!next.fallbackMapId) delete next.fallbackMapId;
-    const hasAny = Boolean(next.activeMapId || next.fallbackMapId || next.mouse);
+  const setSceneMapSelection = (which: 'active' | 'fallback', selection: SceneMapSelection) => {
+    const next: any = { ...(scene.input ?? {}) };
+    if (which === 'active') {
+      if (selection.kind === 'none') {
+        next.activeMapNone = true;
+        delete next.activeMapId;
+      } else if (selection.kind === 'map') {
+        delete next.activeMapNone;
+        next.activeMapId = selection.mapId;
+      } else {
+        delete next.activeMapNone;
+        delete next.activeMapId;
+      }
+    } else {
+      if (selection.kind === 'none') {
+        next.fallbackMapNone = true;
+        delete next.fallbackMapId;
+      } else if (selection.kind === 'map') {
+        delete next.fallbackMapNone;
+        next.fallbackMapId = selection.mapId;
+      } else {
+        delete next.fallbackMapNone;
+        delete next.fallbackMapId;
+      }
+    }
+
+    const hasAny = Boolean(
+      next.activeMapId
+      || next.fallbackMapId
+      || next.activeMapNone
+      || next.fallbackMapNone
+      || next.mouse
+    );
     dispatch({ type: 'set-scene-input', input: hasAny ? next : undefined } as any);
   };
 
@@ -115,6 +125,8 @@ export function SceneInputBody({
     else delete nextInput.mouse;
     if (!nextInput.activeMapId) delete nextInput.activeMapId;
     if (!nextInput.fallbackMapId) delete nextInput.fallbackMapId;
+    if (!nextInput.activeMapNone) delete nextInput.activeMapNone;
+    if (!nextInput.fallbackMapNone) delete nextInput.fallbackMapNone;
     const hasAny = Boolean(nextInput.activeMapId || nextInput.fallbackMapId || nextInput.mouse);
     dispatch({ type: 'set-scene-input', input: hasAny ? nextInput : undefined } as any);
   };
@@ -123,20 +135,21 @@ export function SceneInputBody({
     <>
       {mapIds.length === 0 && (
         <div className="inspector-row muted">
-          Create an input map in the left panel to enable scene bindings.
+          Create an input map in the Project tab to enable scene bindings.
         </div>
       )}
 
       <label className="field">
-        <span>Active Input Map</span>
+        <span>Active Map</span>
         <select
           aria-label="Scene active input map"
           data-testid="scene-active-input-map-select"
-          value={activeValue}
+          value={selectionValue(activeSelection)}
           disabled={disabled || mapIds.length === 0}
-          onChange={(e) => setSceneInput({ activeMapId: e.target.value || undefined })}
+          onChange={(e) => setSceneMapSelection('active', selectionFromValue(e.target.value))}
         >
-          <option value="">{projectDefault ? '(project default)' : '(none)'}</option>
+          <option value={PROJECT_DEFAULT_VALUE}>(project default)</option>
+          <option value={NONE_VALUE}>(none)</option>
           {mapIds.map((id) => (
             <option key={id} value={id}>{id}</option>
           ))}
@@ -144,30 +157,48 @@ export function SceneInputBody({
       </label>
 
       <label className="field">
-        <span>Fallback</span>
+        <span>Fallback Map</span>
         <select
           aria-label="Scene fallback input map"
           data-testid="scene-fallback-input-map-select"
-          value={fallbackValue}
-          disabled={disabled || mapIds.length === 0}
-          onChange={(e) => setSceneInput({ fallbackMapId: e.target.value || undefined })}
+          value={selectionValue(fallbackSelection)}
+          disabled={disabled || mapIds.length === 0 || activeSelection.kind === 'none'}
+          onChange={(e) => setSceneMapSelection('fallback', selectionFromValue(e.target.value))}
         >
-          <option value="">{projectDefault ? '(project default)' : '(none)'}</option>
+          <option value={PROJECT_DEFAULT_VALUE}>(project default)</option>
+          <option value={NONE_VALUE}>(none)</option>
           {mapIds.map((id) => (
             <option key={id} value={id}>{id}</option>
           ))}
         </select>
       </label>
 
-      <div className="inspector-row" style={{ marginTop: 10, fontWeight: 700 }}>Actions (preview)</div>
-      {preview.length === 0 && (
-        <div className="inspector-row muted">No actions found in the active/fallback maps.</div>
+      <div className="inspector-row muted" style={{ fontSize: 12, marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+        <span>Input maps are defined at Project level.</span>
+        <button
+          type="button"
+          className="button button-compact"
+          data-testid="edit-input-maps-button"
+          disabled={disabled}
+          onClick={() => {
+            dispatch({ type: 'set-sidebar-scope', scope: 'project' } as any);
+            window.setTimeout(() => {
+              const target = document.querySelector('[data-testid=\"input-maps-panel\"]');
+              (target as HTMLElement | null)?.scrollIntoView?.({ block: 'start' });
+            }, 0);
+          }}
+        >
+          Edit Input Maps…
+        </button>
+      </div>
+
+      <div className="inspector-row" style={{ marginTop: 10, fontWeight: 700 }}>Actions in Active Map</div>
+      {actionIds.length === 0 && (
+        <div className="inspector-row muted">No actions found in the selected maps.</div>
       )}
-      {preview.map((entry) => (
-        <div key={entry.actionId} className="inspector-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 4 }}>
-          <div className="muted" style={{ fontSize: 12 }}>
-            <span style={{ fontWeight: 800, color: 'var(--text)' }}>{entry.actionId}</span> → {entry.summary}
-          </div>
+      {actionIds.map((actionId) => (
+        <div key={actionId} className="inspector-row muted" style={{ fontSize: 12 }}>
+          <span style={{ fontWeight: 800, color: 'var(--text)' }}>{actionId}</span>
         </div>
       ))}
 

@@ -8,6 +8,8 @@ test.describe('Assets dock', () => {
     await dismissViewHint(page);
     await openSceneScope(page);
 
+    await expect(page.getByTestId('assets-dock-show-thumbnails')).toBeVisible();
+
     await page.getByTestId('assets-dock-import-button').click();
     await expect(page.getByTestId('assets-dock-import-panel')).toBeVisible();
 
@@ -15,6 +17,15 @@ test.describe('Assets dock', () => {
     await fileChooser.setInputFiles('res/images/enemy_A.png');
 
     await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
+
+    const importedMeta = await page.evaluate(() => {
+      const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+      const asset = state?.project?.assets?.images?.['enemy-a'];
+      return { width: asset?.width ?? null, height: asset?.height ?? null };
+    });
+    if (typeof importedMeta.width !== 'number' || typeof importedMeta.height !== 'number') {
+      throw new Error(`Expected imported image metadata width/height; got ${JSON.stringify(importedMeta)}`);
+    }
 
     const source = page.getByTestId('assets-dock-item-image-enemy-a');
     const canvas = page.locator('#game-container canvas');
@@ -26,6 +37,17 @@ test.describe('Assets dock', () => {
       const withAssetRef = Object.values(entities).filter((e: any) => e?.asset?.source?.kind === 'asset' && e?.asset?.source?.assetId === 'enemy-a');
       return withAssetRef.length;
     }).toBe(1);
+
+    const created = await page.evaluate(() => {
+      const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+      const entities = state?.scene?.entities ?? {};
+      return Object.values(entities).find((e: any) => e?.asset?.source?.kind === 'asset' && e?.asset?.source?.assetId === 'enemy-a') ?? null;
+    });
+    if (!created) throw new Error('Failed to find created entity');
+    expect(created.width).toBe(importedMeta.width);
+    expect(created.height).toBe(importedMeta.height);
+    expect(created.scaleX ?? 1).toBe(1);
+    expect(created.scaleY ?? 1).toBe(1);
   });
 
   test('dragging an image asset onto an existing sprite replaces its asset', async ({ page }) => {
