@@ -260,6 +260,10 @@ export class GameScene extends Phaser.Scene {
     const assetScenes = layered ? [sceneSpec, baseSceneSpec!] : [sceneSpec];
     void this.ensureSceneAssets(project, assetScenes).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
+      if (project) {
+        // Audio playback may have failed if it was applied before assets were loaded; retry once assets are ready.
+        this.audioService?.applySceneAudio(sceneSpec, project);
+      }
       if (layered && rebuildBase && this.baseCompiled) {
         this.buildBackgroundLayersInto(project, baseSceneSpec!, this.baseBackgroundObjects);
         this.buildSpritesForLayer(this.baseCompiled, baseSceneSpec!, {
@@ -352,6 +356,7 @@ export class GameScene extends Phaser.Scene {
     viewportHeight: number;
     backgroundLayerCount: number;
     audio?: { musicAssetId?: string; ambienceAssetIds: string[] };
+    audioPlayback?: { musicIsPlaying: boolean; ambiencePlayingAssetIds: string[] };
     input?: any;
     collisions?: any;
     lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
@@ -365,6 +370,7 @@ export class GameScene extends Phaser.Scene {
     activeLastProcessedCollisionEventCount?: number;
   } {
     const audio = this.audioService?.getSnapshot();
+    const audioPlayback = this.audioService?.getDebugPlayback?.();
     const input = this.inputService?.getSnapshot();
     const collisions = this.collisionService?.getSnapshot();
     const activeCollisionEventCount = Array.isArray((collisions as any)?.collisionEvents) ? (collisions as any).collisionEvents.length : 0;
@@ -386,6 +392,7 @@ export class GameScene extends Phaser.Scene {
       viewportHeight: this.scale.height,
       backgroundLayerCount: this.baseBackgroundObjects.length + this.backgroundObjects.length,
       ...(audio ? { audio } : {}),
+      ...(audioPlayback ? { audioPlayback } : {}),
       ...(input ? { input } : {}),
       ...(collisions ? { collisions } : {}),
       ...(this.lastEntityPointerDown ? { lastEntityPointerDown: { ...this.lastEntityPointerDown } } : {}),

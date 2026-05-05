@@ -85,5 +85,53 @@ describe('BasicAudioService', () => {
     svc.applySceneAudio({} as any, project);
     expect(svc.getSnapshot()).toEqual({ musicAssetId: undefined, ambienceAssetIds: [] });
   });
-});
 
+  it('retries music playback when the first attempt fails', () => {
+    let shouldThrow = true;
+    const manager: SoundManagerLike = {
+      add(key: string) {
+        if (shouldThrow) throw new Error('missing audio cache entry');
+        return new FakeSoundManager().add(key);
+      },
+      removeByKey() {},
+    };
+
+    const svc = new BasicAudioService(manager, (id) => `audio:${id}`);
+    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'path', path: '/a.mp3' } } } } } as any;
+
+    svc.applySceneAudio({ music: { assetId: 'a', loop: true, volume: 1, fadeMs: 0 } } as any, project);
+    expect(svc.getSnapshot()).toEqual({ musicAssetId: 'a', ambienceAssetIds: [] });
+
+    shouldThrow = false;
+    svc.applySceneAudio({ music: { assetId: 'a', loop: true, volume: 1, fadeMs: 0 } } as any, project);
+
+    const playback = (svc as any).getDebugPlayback?.();
+    expect(playback?.musicIsPlaying).toBe(true);
+  });
+
+  it('retries ambience playback when the first attempt fails', () => {
+    let shouldThrow = true;
+    const sounds = new Map<string, FakeSound>();
+    const manager: SoundManagerLike = {
+      add(key: string) {
+        if (shouldThrow) throw new Error('missing audio cache entry');
+        const s = new FakeSound();
+        sounds.set(key, s);
+        return s;
+      },
+      removeByKey() {},
+    };
+
+    const svc = new BasicAudioService(manager, (id) => `audio:${id}`);
+    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'path', path: '/a.mp3' } } } } } as any;
+
+    svc.applySceneAudio({ ambience: [{ assetId: 'a', loop: true, volume: 0.4 }] } as any, project);
+    expect(svc.getSnapshot()).toEqual({ musicAssetId: undefined, ambienceAssetIds: ['a'] });
+
+    shouldThrow = false;
+    svc.applySceneAudio({ ambience: [{ assetId: 'a', loop: true, volume: 0.4 }] } as any, project);
+
+    const playback = (svc as any).getDebugPlayback?.();
+    expect(playback?.ambiencePlayingAssetIds ?? []).toEqual(['a']);
+  });
+});
