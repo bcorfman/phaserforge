@@ -44,7 +44,19 @@ export class BasicAudioService implements AudioService {
       } catch {
         // ignore playback errors
       }
-      this.music = { ...this.music, loop, volume, fadeMs };
+      const current = this.music;
+      this.music = { ...current, loop, volume, fadeMs };
+      if (current.sound) return;
+
+      // Initial playback may have failed (missing cache entry, locked audio context, etc.). Retry.
+      try {
+        const sound = this.manager.add(current.key, { loop, volume });
+        sound.setLoop(loop).setVolume(volume);
+        sound.play({ loop, volume });
+        this.music = { assetId, key: current.key, sound, volume, loop, fadeMs };
+      } catch {
+        // ignore playback errors
+      }
       return;
     }
 
@@ -129,6 +141,16 @@ export class BasicAudioService implements AudioService {
         } catch {
           // ignore
         }
+        if (!existing.sound) {
+          try {
+            const sound = this.manager.add(existing.key, { loop, volume });
+            sound.setLoop(loop).setVolume(volume);
+            sound.play({ loop, volume });
+            this.ambience.set(entry.assetId, { key: existing.key, sound, loop, volume });
+          } catch {
+            // ignore
+          }
+        }
         continue;
       }
 
@@ -151,6 +173,15 @@ export class BasicAudioService implements AudioService {
       musicAssetId: this.music?.assetId,
       ambienceAssetIds: Array.from(this.ambience.keys()).sort(),
     };
+  }
+
+  // Debug helper used by tests and the bridge snapshot. Not part of the RuntimeServices AudioService contract.
+  public getDebugPlayback(): { musicIsPlaying: boolean; ambiencePlayingAssetIds: string[] } {
+    const ambiencePlayingAssetIds = Array.from(this.ambience.entries())
+      .filter(([, entry]) => Boolean(entry.sound?.isPlaying))
+      .map(([assetId]) => assetId)
+      .sort();
+    return { musicIsPlaying: Boolean(this.music?.sound?.isPlaying), ambiencePlayingAssetIds };
   }
 
   public stopAll(): void {

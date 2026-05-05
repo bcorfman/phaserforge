@@ -214,6 +214,13 @@ export class BootScene extends Phaser.Scene {
     this.runtimeSceneId = currentSceneId;
     this.captureViewStateForModeSwitch(mode);
     this.mode = mode;
+    if (mode === 'play') {
+      try {
+        (this.sound as any)?.unlock?.();
+      } catch {
+        // ignore unlock errors
+      }
+    }
     this.playStartSceneId = mode === 'play' ? currentSceneId : undefined;
     this.syncActiveScene();
   }
@@ -222,6 +229,11 @@ export class BootScene extends Phaser.Scene {
     if (!this.project) return;
     this.captureViewStateForModeSwitch(mode);
     if (mode === 'play') {
+      try {
+        (this.sound as any)?.unlock?.();
+      } catch {
+        // ignore unlock errors
+      }
       this.playStartSceneId = this.authoredSceneId ?? this.runtimeSceneId;
       if (this.playStartSceneId) this.runtimeSceneId = this.playStartSceneId;
     } else {
