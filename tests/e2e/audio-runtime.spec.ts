@@ -48,4 +48,3 @@ test('entering play mode applies scene music/ambience (bridge snapshot)', async 
     };
   }).toEqual({ music: 'music_theme', ambience: ['forest_ambience'] });
 });
-
