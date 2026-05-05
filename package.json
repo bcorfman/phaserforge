@@ -71,7 +71,7 @@
         "eslint": "^10.0.0",
         "eslint-plugin-react-hooks": "^7.1.1",
         "eslint-plugin-react-refresh": "^0.5.2",
-        "globals": "^17.5.0",
+        "globals": "^17.6.0",
         "prisma": "^6.16.0",
         "supertest": "^7.1.4",
         "terser": "^5.46.2",
