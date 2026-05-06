@@ -98,10 +98,10 @@ export async function dismissViewHint(page: Page): Promise<void> {
   const hint = page.getByTestId('view-hint');
   if (await hint.isVisible().catch(() => false)) {
     const dismiss = hint.getByTestId('dismiss-view-hint-button');
-    if (await dismiss.isVisible().catch(() => false)) {
-      await dismiss.click();
-    }
-    await expect(hint).toBeHidden();
+    // The hint may auto-dismiss quickly after the first `scene-view-state` event.
+    // Avoid a full test-timeout hang if the dismiss button is removed between checks.
+    await dismiss.click({ timeout: 2000 }).catch(() => {});
+    await expect(hint).toBeHidden({ timeout: 10000 });
   }
 }
 
