@@ -227,9 +227,13 @@ test('creates a formation from imported sprites and arranges it into a grid', as
   await page.getByTestId('ungrouped-entity-e').click();
   await page.getByTestId('ungrouped-entity-e-2').click({ modifiers: ['Shift'] });
 
-  await expect(page.getByTestId('multi-entity-inspector')).toBeVisible();
-  await page.getByTestId('new-formation-name-input').fill('Raid Wing');
-  await page.getByTestId('create-formation-from-selection-button').click();
+  await expect(page.getByTestId('inspector')).toContainText('Select sprites');
+  await expect(page.getByTestId('pin-selection-checkbox')).toBeVisible();
+  await expect(page.getByTestId('canvas-group-button')).toBeVisible();
+  await page.getByTestId('canvas-group-button').click();
+  await expect(page.getByTestId('canvas-group-prompt')).toBeVisible();
+  await page.getByTestId('group-name-input').fill('Raid Wing');
+  await page.getByTestId('group-prompt-confirm').click();
   await expectInputValue(page.getByTestId('formation-name-input'), 'Raid Wing');
 
   await page.getByTestId('inspector').getByLabel('Expand Layout Inspector').click();
@@ -298,7 +302,10 @@ test('assigns a group MoveUntil action to imported sprites and runs it in play m
   await openSceneScope(page);
   await page.getByTestId('ungrouped-entity-e').click();
   await page.getByTestId('ungrouped-entity-e-2').click({ modifiers: ['Shift'] });
-  await page.getByTestId('create-formation-from-selection-button').click();
+  await expect(page.getByTestId('canvas-group-button')).toBeVisible();
+  await page.getByTestId('canvas-group-button').click();
+  await expect(page.getByTestId('canvas-group-prompt')).toBeVisible();
+  await page.getByTestId('group-prompt-confirm').click();
 
   await page.getByTestId('add-attachment-MoveUntil').click();
   await page.getByTestId('attachment-velocity-x-input').fill('120');

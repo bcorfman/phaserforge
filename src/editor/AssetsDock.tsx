@@ -526,7 +526,12 @@ export function AssetsDock({
                 data-testid={`assets-dock-menu-${assetKind}-${assetId}`}
                 onClick={(e) => {
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  setRowMenu({ assetKind, assetId, x: Math.min(rect.left, window.innerWidth - 240), y: rect.bottom + 6 });
+                  const menuWidth = 240;
+                  const menuHeight = 220;
+                  const padding = 12;
+                  const x = Math.min(Math.max(padding, rect.left), window.innerWidth - menuWidth - padding);
+                  const y = Math.min(Math.max(padding, rect.bottom + 6), window.innerHeight - menuHeight - padding);
+                  setRowMenu({ assetKind, assetId, x, y });
                 }}
               >
                 ⋯
@@ -545,6 +550,27 @@ export function AssetsDock({
           role="menu"
         >
           <div className="scene-graph-menu-hint">{rowMenu.assetKind}:{rowMenu.assetId}</div>
+          {(rowMenu.assetKind === 'image' || rowMenu.assetKind === 'spritesheet') && (
+            <>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                role="menuitem"
+                data-testid="assets-dock-row-menu-create-formation"
+                onClick={() => {
+                  const next = rowMenu;
+                  setRowMenu(null);
+                  dispatch({
+                    type: 'begin-formation-draft',
+                    template: { kind: 'asset', assetKind: next.assetKind, assetId: next.assetId },
+                  } as any);
+                }}
+              >
+                Create formation from…
+              </button>
+              <div className="scene-graph-menu-divider" />
+            </>
+          )}
           <button
             type="button"
             className="scene-graph-menu-item"

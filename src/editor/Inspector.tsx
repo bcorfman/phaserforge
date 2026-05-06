@@ -9,7 +9,6 @@ import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedNumberTextInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
-import { CreateFormationPanel } from './CreateFormationPanel';
 import { parseCallArgsJson } from './callArgsJson';
 import { TriggerZoneInspector } from './TriggerZoneInspector';
 import { SceneInspectorPanel } from './SceneInspectorPanel';
@@ -63,18 +62,11 @@ export function Inspector() {
   const scene = state.project.scenes[state.currentSceneId];
   const { selection, interaction } = state;
   const [pinDuringDrag, setPinDuringDrag] = useState(false);
-  const [formationNameDraft, setFormationNameDraft] = useState('');
 
   const updateGroup = (next: GroupSpec) =>
     dispatch({ type: 'update-group', id: next.id, next });
   const updateEntity = (next: EntitySpec) =>
     dispatch({ type: 'update-entity', id: next.id, next });
-
-  useEffect(() => {
-    if (selection.kind === 'entities') {
-      setFormationNameDraft(getNextFormationName(scene));
-    }
-  }, [scene, selection]);
 
   let content: ReactNode = null;
 
@@ -193,28 +185,17 @@ export function Inspector() {
       );
     } else if (selection.kind === 'entities') {
       content = (
-        <div className="inspector-block" data-testid="multi-entity-inspector">
-          <div className="inspector-title">Selected Sprites</div>
-          <div className="inspector-row">{selection.ids.length} sprites selected.</div>
-          <div className="inspector-row">Group these sprites to get a single formation bounding box.</div>
-          <label className="field">
-            <span>Formation Name</span>
-            <input
-              aria-label="New Formation Name"
-              data-testid="new-formation-name-input"
-              type="text"
-              value={formationNameDraft}
-              onChange={(event) => setFormationNameDraft(event.target.value)}
-            />
-          </label>
-          <button
-            className="button"
-            data-testid="create-formation-from-selection-button"
-            type="button"
-            onClick={() => dispatch({ type: 'group-selection', name: formationNameDraft })}
-          >
-            Group
-          </button>
+        <div className="inspector-block" data-testid="multi-selection-instructions">
+          <div className="inspector-title">Selection</div>
+          <div className="inspector-row">
+            Select sprites by clicking them on the canvas or in the Scene Graph.
+          </div>
+          <div className="inspector-row">
+            Clear selection by clicking empty canvas.
+          </div>
+          <div className="inspector-row">
+            To create a formation from multiple sprites, use the on-canvas selection bar “Group…” action.
+          </div>
         </div>
       );
     } else {
@@ -227,7 +208,6 @@ export function Inspector() {
             dispatch={dispatch}
             disabled={state.mode !== 'edit'}
           />
-          <CreateFormationPanel scene={scene} registry={state.registry} dispatch={dispatch} />
         </>
       );
     }

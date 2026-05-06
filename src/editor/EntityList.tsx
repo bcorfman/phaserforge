@@ -513,11 +513,7 @@ export function EntityListView({
                           disabled={mode !== 'edit'}
                           onClick={() => {
                             ensureCurrentScene(sceneId);
-                            dispatch({ type: 'select', selection: { kind: 'none' } });
-                            queueMicrotask(() => {
-                              const panel = document.querySelector('[data-testid=\"create-formation-panel\"]');
-                              if (panel instanceof HTMLElement) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            });
+                            dispatch({ type: 'begin-formation-draft' } as any);
                           }}
                         >
                           + Add
@@ -890,6 +886,19 @@ export function EntityListView({
           {menuOpen.kind === 'entity' ? (
             <>
               <div className="scene-graph-menu-hint">{menuOpen.entityId}</div>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid={`entity-menu-create-formation-${menuOpen.entityId}`}
+                onClick={() => {
+                  setMenuOpen(null);
+                  ensureCurrentScene(menuOpen.sceneId);
+                  dispatch({ type: 'begin-formation-draft', template: { kind: 'entity', entityId: menuOpen.entityId } } as any);
+                }}
+              >
+                Create formation from…
+              </button>
+              <div className="scene-graph-menu-divider" />
               <button
                 type="button"
                 className="scene-graph-menu-item"
