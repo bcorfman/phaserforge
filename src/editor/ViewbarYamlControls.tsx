@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import { serializeProjectToYaml } from '../model/serialization';
 import { useEditorStore } from './EditorStore';
 import { exportYamlToDisk } from './yamlFileExport';
@@ -8,7 +8,6 @@ import { getOpenFilePicker, readFileHandleText, writeTextToHandle } from './yaml
 export function ViewbarYamlControls() {
   const { state, dispatch } = useEditorStore();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const yaml = useMemo(() => serializeProjectToYaml(state.project), [state.project]);
 
   const openFromPicker = async () => {
     dispatch({ type: 'set-error', error: undefined });
@@ -75,7 +74,7 @@ export function ViewbarYamlControls() {
       return;
     }
     try {
-      await writeTextToHandle(handle, yaml);
+      await writeTextToHandle(handle, serializeProjectToYaml(state.project));
       dispatch({ type: 'set-status', message: `Saved YAML: ${getYamlFileSourceLabel() ?? 'file'}`, expiresAt: Date.now() + 4000 });
     } catch (err) {
       dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to save YAML' });
@@ -85,7 +84,7 @@ export function ViewbarYamlControls() {
   const saveAs = async () => {
     dispatch({ type: 'set-error', error: undefined });
     try {
-      const result = await exportYamlToDisk(yaml, { startIn: getYamlPickerStartIn() });
+      const result = await exportYamlToDisk(serializeProjectToYaml(state.project), { startIn: getYamlPickerStartIn() });
       if (result.kind === 'saved') {
         setYamlPickerStartIn(result.handle);
         setYamlFileHandle(result.handle);
@@ -131,4 +130,3 @@ export function ViewbarYamlControls() {
     </div>
   );
 }
-

@@ -21,7 +21,9 @@ export default defineConfig({
   webServer: {
     command: 'npx vite --config vite/config.dev.mjs --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
+    // Reusing an existing dev server across runs can leave Playwright attached to a stale/bad state,
+    // which shows up as intermittent "app never boots" timeouts. Prefer a fresh server per run.
+    reuseExistingServer: false,
     timeout: process.env.CI ? 180000 : 120000,
   },
   projects: [
