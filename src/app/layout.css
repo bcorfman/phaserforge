@@ -494,9 +494,9 @@ textarea:focus-visible {
 }
 
 .viewbar-controls-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
   flex-wrap: nowrap;
 }
@@ -518,6 +518,10 @@ textarea:focus-visible {
   gap: 0.9rem;
   justify-content: flex-end;
   flex-wrap: nowrap;
+}
+
+.viewbar-yaml {
+  justify-self: center;
 }
 
 .section-title,

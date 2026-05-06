@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getState, gotoStudio } from './helpers';
 import { serializeProjectToYaml } from '../../src/model/serialization';
-import { sampleProject } from '../../src/model/sampleProject';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -14,9 +13,8 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('Save As YAML downloads the YAML pane text (download fallback)', async ({ page }) => {
-  const expectedYaml = serializeProjectToYaml(sampleProject);
-  await page.addInitScript((yaml) => {
+test('Save As YAML writes the current project YAML (download fallback)', async ({ page }) => {
+  await page.addInitScript(() => {
     const saved: any[] = [];
     (window as any).__YAML_SAVE_AS_TEST__ = { saved };
 
@@ -29,7 +27,7 @@ test('Save As YAML downloads the YAML pane text (download fallback)', async ({ p
     // Ensure this test never triggers a browser download.
     (window as any).URL.createObjectURL = () => 'blob:yaml-save-as-test';
     (window as any).URL.revokeObjectURL = () => {};
-  }, expectedYaml);
+  });
 
   // Ensure the init script is applied to the loaded document.
   await page.reload();
@@ -37,11 +35,7 @@ test('Save As YAML downloads the YAML pane text (download fallback)', async ({ p
   await gotoStudio(page);
   await dismissViewHint(page);
 
-  await page.getByTestId('yaml-textarea').fill(expectedYaml);
-  await expect.poll(async () => {
-    const state = await getState<{ yamlText?: string }>(page);
-    return state.yamlText ?? '';
-  }).toBe(expectedYaml);
+  const expectedYaml = serializeProjectToYaml((await getState<{ project: any }>(page)).project);
   await page.getByTestId('yaml-save-as-button').click();
 
   await expect.poll(async () => {

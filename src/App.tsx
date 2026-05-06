@@ -6,6 +6,7 @@ import { EntityList } from './editor/EntityList';
 import { InspectorPane } from './editor/InspectorPane';
 import { Toolbar } from './editor/Toolbar';
 import { CanvasOverlay } from './editor/CanvasOverlay';
+import { ViewbarYamlControls } from './editor/ViewbarYamlControls';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
@@ -440,6 +441,7 @@ function AppShell() {
                   +
                 </button>
               </div>
+              <ViewbarYamlControls />
               <div className="viewbar-world">
                 <div className="viewbar-copy viewbar-copy-secondary">
                   <p className="eyebrow">Scene Bounds</p>
