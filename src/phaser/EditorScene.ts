@@ -61,6 +61,9 @@ export class EditorScene extends Phaser.Scene {
   private dragOverlay?: Phaser.GameObjects.Text;
   private hoverOutline?: Phaser.GameObjects.Graphics;
   private selectionFrames?: Phaser.GameObjects.Graphics;
+  private formationDraftGraphics?: Phaser.GameObjects.Graphics;
+  private formationDraftHandle?: Phaser.GameObjects.Arc;
+  private formationDraftActive = false;
   private pendingDrag?: { startPoint: { x: number; y: number }; hitResult: HitTestResult };
   private gridEnabled = false;
   private gridSize = 8;
@@ -99,6 +102,19 @@ export class EditorScene extends Phaser.Scene {
     this.hoverOutline = createHoverOutline(this);
     this.selectionFrames = this.add.graphics();
     this.selectionFrames.setDepth(11);
+    this.formationDraftGraphics = this.add.graphics();
+    this.formationDraftGraphics.setDepth(10);
+    this.formationDraftHandle = this.add.circle(0, 0, 10, 0x0b1220, 0.85).setStrokeStyle(2, 0x6ad6ff, 0.9) as Phaser.GameObjects.Arc;
+    this.formationDraftHandle.setDepth(12);
+    this.formationDraftHandle.setVisible(false);
+    this.formationDraftHandle.setInteractive(new Phaser.Geom.Circle(0, 0, 14), Phaser.Geom.Circle.Contains);
+    this.input.setDraggable(this.formationDraftHandle);
+    this.input.on('drag', (_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => {
+      if (!this.formationDraftHandle) return;
+      if (gameObject !== this.formationDraftHandle) return;
+      this.formationDraftHandle.setPosition(dragX, dragY);
+      EventBus.emit('formation-draft-center-moved', { x: dragX, y: dragY });
+    });
 
     this.events.on(Phaser.Scenes.Events.SLEEP, this.unbindSceneListeners, this);
     this.events.on(Phaser.Scenes.Events.WAKE, this.bindSceneListeners, this);
@@ -171,6 +187,7 @@ export class EditorScene extends Phaser.Scene {
     setActiveScene(this);
     registerSceneGetter(this.sceneBridgeGetter);
     EventBus.on('selection-changed', this.handleSelectionChanged, this);
+    EventBus.on('formation-draft-changed', this.handleFormationDraftChanged, this);
     EventBus.on('canvas-update-bounds', this.updateBounds, this);
     EventBus.on('toggle-grid-snap', this.toggleGridSnap, this);
     EventBus.on('scene-zoom-in', this.zoomIn, this);
@@ -196,6 +213,7 @@ export class EditorScene extends Phaser.Scene {
     if (getActiveScene() === this) setActiveScene(null);
     unregisterSceneGetter(this.sceneBridgeGetter);
     EventBus.off('selection-changed', this.handleSelectionChanged, this);
+    EventBus.off('formation-draft-changed', this.handleFormationDraftChanged, this);
     EventBus.off('canvas-update-bounds', this.updateBounds, this);
     EventBus.off('toggle-grid-snap', this.toggleGridSnap, this);
     EventBus.off('scene-zoom-in', this.zoomIn, this);
@@ -916,6 +934,45 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
+  private handleFormationDraftChanged(payload: any): void {
+    const gfx = this.formationDraftGraphics;
+    if (!gfx) return;
+
+    const active = Boolean(payload?.active);
+    this.formationDraftActive = active;
+    gfx.clear();
+
+    if (!active) {
+      if (this.formationDraftHandle) this.formationDraftHandle.setVisible(false);
+      return;
+    }
+
+    const positions = Array.isArray(payload?.positions) ? payload.positions : [];
+    const center = payload?.center && typeof payload.center.x === 'number' && typeof payload.center.y === 'number'
+      ? { x: payload.center.x, y: payload.center.y }
+      : { x: 0, y: 0 };
+
+    gfx.lineStyle(2, 0x6ad6ff, 0.7);
+    gfx.fillStyle(0x6ad6ff, 0.12);
+    for (const item of positions) {
+      if (!item) continue;
+      const x = Number(item.x);
+      const y = Number(item.y);
+      const w = Number(item.width);
+      const h = Number(item.height);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h)) continue;
+      const left = x - w / 2;
+      const top = y - h / 2;
+      gfx.fillRect(left, top, w, h);
+      gfx.strokeRect(left, top, w, h);
+    }
+
+    if (this.formationDraftHandle) {
+      this.formationDraftHandle.setVisible(true);
+      this.formationDraftHandle.setPosition(center.x, center.y);
+    }
+  }
+
   private handleSelectionChanged(selection: Selection): void {
     this.selection = selection;
     if (this.dragState?.kind === 'entity' && this.dragState.awaitingDuplicate) {
@@ -1118,6 +1175,10 @@ export class EditorScene extends Phaser.Scene {
       return;
     }
     const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    if (this.formationDraftActive && this.formationDraftHandle?.visible) {
+      const bounds = this.formationDraftHandle.getBounds();
+      if (bounds.contains(worldPoint.x, worldPoint.y)) return;
+    }
 
     // Use new hit testing
     const hitResult = hitTestCanvas(

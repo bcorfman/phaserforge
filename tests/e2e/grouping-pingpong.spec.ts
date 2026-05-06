@@ -29,8 +29,10 @@ test('Ungroup / Group ping-pongs between formation and member multi-select', asy
     attachmentCount: 0,
   });
 
-  await expect(page.getByTestId('create-formation-from-selection-button')).toBeVisible();
-  await page.getByTestId('create-formation-from-selection-button').click();
+  await expect(page.getByTestId('canvas-group-button')).toBeVisible();
+  await page.getByTestId('canvas-group-button').click();
+  await expect(page.getByTestId('canvas-group-prompt')).toBeVisible();
+  await page.getByTestId('group-prompt-confirm').click();
 
   await expect.poll(async () => {
     const state = await getState<{ selection: { kind: string; id?: string }; scene: { groups: Record<string, unknown>; attachments: Record<string, unknown> } }>(page);
