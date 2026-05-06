@@ -29,6 +29,7 @@ import { createAttachment, moveAttachmentWithinTarget, removeAttachment, updateA
 import type { AttachmentSpec, TargetRef } from '../model/types';
 import { getSceneWorld } from './sceneWorld';
 import { getAssetReferences } from './assetReferences';
+import { buildDefaultDraftParams, type FormationDraftSpec, type FormationTemplateSource } from './formationDraft';
 
 export const PROJECT_STORAGE_KEY = 'phaseractions.projectYaml.v1';
 export const SCENE_STORAGE_KEY_V1 = 'phaseractions.sceneYaml.v1';
@@ -130,6 +131,7 @@ export interface EditorState {
   registry: EditorRegistryConfig;
   initialized: boolean;
   pendingGroupRestore?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec> };
+  formationDraft?: FormationDraftSpec;
 }
 
 export type ImportedEntityDraft = {
@@ -178,6 +180,10 @@ export type EditorAction =
   | { type: 'arrange-group-grid'; id: Id; layout: GroupGridLayout }
   | { type: 'arrange-group'; id: Id; arrangeKind: string; params: Record<string, number | string | boolean> }
   | { type: 'create-group-from-arrange'; name: string; templateEntityId: Id; arrangeKind: string; params: Record<string, number | string | boolean>; memberCount?: number }
+  | { type: 'begin-formation-draft'; template?: FormationTemplateSource }
+  | { type: 'update-formation-draft'; patch: Partial<FormationDraftSpec> }
+  | { type: 'cancel-formation-draft' }
+  | { type: 'commit-formation-draft' }
   | { type: 'update-bounds'; id: Id; bounds: { minX: number; maxX: number; minY: number; maxY: number } }
   | { type: 'begin-canvas-interaction'; kind: 'entity' | 'entities' | 'group' | 'bounds'; id: string; handle?: string }
   | { type: 'end-canvas-interaction' }
@@ -332,6 +338,7 @@ function defaultState(): EditorState {
     registry: EMPTY_EDITOR_REGISTRY,
     initialized: false,
     pendingGroupRestore: undefined,
+    formationDraft: undefined,
   };
 }
 
@@ -410,6 +417,103 @@ function importEntities(state: EditorState, drafts: ImportedEntityDraft[]): Edit
   return {
     ...withScene(state, { ...scene, entities, groups }, true),
     selection: importedIds.length === 1 ? { kind: 'entity', id: importedIds[0] } : { kind: 'entities', ids: importedIds },
+  };
+}
+
+function templateEntityFromSource(state: EditorState, scene: GameSceneSpec, template: FormationTemplateSource): EntitySpec | undefined {
+  if (template.kind === 'entity') return scene.entities[template.entityId];
+
+  const defaultSize = 64;
+  const image = template.assetKind === 'image' ? state.project.assets.images?.[template.assetId] : undefined;
+  const spritesheet = template.assetKind === 'spritesheet' ? state.project.assets.spriteSheets?.[template.assetId] : undefined;
+  if (!image && !spritesheet) return undefined;
+
+  const width = template.assetKind === 'image'
+    ? (image?.width ?? defaultSize)
+    : (spritesheet?.grid?.frameWidth ?? defaultSize);
+  const height = template.assetKind === 'image'
+    ? (image?.height ?? defaultSize)
+    : (spritesheet?.grid?.frameHeight ?? defaultSize);
+
+  return resolveEntityDefaults({
+    id: 'draft-template',
+    x: 0,
+    y: 0,
+    width,
+    height,
+    rotationDeg: 0,
+    scaleX: 1,
+    scaleY: 1,
+    asset: {
+      source: { kind: 'asset', assetId: template.assetId },
+      imageType: template.assetKind === 'spritesheet' ? 'spritesheet' : 'image',
+      ...(spritesheet ? { grid: spritesheet.grid } : {}),
+      frame: template.assetKind === 'spritesheet' ? { kind: 'spritesheet-frame', frameIndex: 0 } : { kind: 'single' },
+    },
+  });
+}
+
+function createGroupFromArrangeTemplate(
+  scene: GameSceneSpec,
+  template: EntitySpec,
+  formationName: string,
+  arrangeKind: string,
+  params: Record<string, number | string | boolean>,
+  memberCount?: number
+): { scene: GameSceneSpec; groupId: Id } {
+  const groupId = createGroupIdFromName(scene, formationName);
+  const world = scene.world ?? { width: 1024, height: 768 };
+  const baseX = world.width / 2;
+  const baseY = world.height / 2;
+
+  let count = Math.max(1, Math.floor(Number(memberCount ?? 12)));
+  if (arrangeKind === 'grid') {
+    const rows = Math.max(1, Math.floor(Number((params as any).rows ?? 1)));
+    const cols = Math.max(1, Math.floor(Number((params as any).cols ?? 1)));
+    count = rows * cols;
+  }
+  count = Math.max(1, Math.min(200, count));
+
+  const { id: _id, name: _name, x: _x, y: _y, ...templateFields } = template as any;
+  void _id; void _name; void _x; void _y;
+
+  const nextEntities = { ...scene.entities };
+  const memberIds: Id[] = [];
+  const createdAt = Date.now();
+  for (let index = 0; index < count; index += 1) {
+    const id = `e-form-${createdAt}-${index}`;
+    memberIds.push(id);
+    nextEntities[id] = resolveEntityDefaults({
+      ...templateFields,
+      id,
+      name: `${template.name ?? template.id} ${index + 1}`,
+      x: baseX,
+      y: baseY,
+    });
+  }
+
+  const nextScene: GameSceneSpec = {
+    ...scene,
+    entities: nextEntities,
+    groups: {
+      ...scene.groups,
+      [groupId]: createGroupSpec(groupId, memberIds, formationName),
+    },
+  };
+
+  const arranged = applyGroupArrangeLayout(nextScene, groupId, arrangeKind, params) as GameSceneSpec;
+  return {
+    scene: {
+      ...arranged,
+      groups: {
+        ...arranged.groups,
+        [groupId]: {
+          ...arranged.groups[groupId],
+          layout: { type: 'freeform' },
+        },
+      },
+    },
+    groupId,
   };
 }
 
@@ -2131,64 +2235,94 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
 
       const rawName = action.name.trim();
       const formationName = rawName.length > 0 ? rawName : getNextFormationName(scene);
-      const groupId = createGroupIdFromName(scene, formationName);
-
-      const world = scene.world ?? { width: 1024, height: 768 };
-      const baseX = world.width / 2;
-      const baseY = world.height / 2;
-
-      let count = Math.max(1, Math.floor(Number(action.memberCount ?? 12)));
-      if (action.arrangeKind === 'grid') {
-        const rows = Math.max(1, Math.floor(Number((action.params as any).rows ?? 1)));
-        const cols = Math.max(1, Math.floor(Number((action.params as any).cols ?? 1)));
-        count = rows * cols;
-      }
-      count = Math.max(1, Math.min(200, count));
-
-      const { id: _id, name: _name, x: _x, y: _y, ...templateFields } = template;
-      const nextEntities = { ...scene.entities };
-      const memberIds: Id[] = [];
-      const createdAt = Date.now();
-
-      for (let index = 0; index < count; index += 1) {
-        const id = `e-form-${createdAt}-${index}`;
-        memberIds.push(id);
-        nextEntities[id] = resolveEntityDefaults({
-          ...templateFields,
-          id,
-          name: `${template.name ?? template.id} ${index + 1}`,
-          x: baseX,
-          y: baseY,
-        });
-      }
-
-      const nextScene: GameSceneSpec = {
-        ...scene,
-        entities: nextEntities,
-        groups: {
-          ...scene.groups,
-          [groupId]: createGroupSpec(groupId, memberIds, formationName),
-        },
-      };
-
-      const arranged = applyGroupArrangeLayout(nextScene, groupId, action.arrangeKind, action.params);
-      const strippedLayout: GameSceneSpec = {
-        ...arranged,
-        groups: {
-          ...arranged.groups,
-          [groupId]: {
-            ...arranged.groups[groupId],
-            layout: { type: 'freeform' },
-          },
-        },
-      };
+      const { scene: nextScene, groupId } = createGroupFromArrangeTemplate(
+        scene,
+        template,
+        formationName,
+        action.arrangeKind,
+        action.params,
+        action.memberCount
+      );
 
       return {
-        ...withScene(state, strippedLayout, true, { kind: 'group', id: groupId }),
-        expandedGroups: {
-          ...state.expandedGroups,
-          [groupId]: true,
+        ...withScene(state, nextScene, true, { kind: 'group', id: groupId }),
+        expandedGroups: { ...state.expandedGroups, [groupId]: true },
+      };
+    }
+    case 'begin-formation-draft': {
+      const scene = getActiveScene(state);
+      const arrangeEntries = state.registry.arrange.filter((entry) => entry.implemented);
+      const defaultArrangeKind = arrangeEntries.some((e) => e.type === 'grid')
+        ? 'grid'
+        : (arrangeEntries[0]?.type ?? 'grid');
+
+      const template = action.template
+        ?? (Object.keys(scene.entities).length > 0 ? { kind: 'entity', entityId: Object.keys(scene.entities)[0] as Id } : undefined)
+        ?? (Object.keys(state.project.assets.images ?? {}).length > 0 ? { kind: 'asset', assetKind: 'image', assetId: Object.keys(state.project.assets.images ?? {})[0] as Id } : undefined);
+      if (!template) return state;
+
+      return {
+        ...state,
+        selection: { kind: 'none' },
+        formationDraft: {
+          template,
+          name: getNextFormationName(scene),
+          arrangeKind: defaultArrangeKind,
+          params: buildDefaultDraftParams(defaultArrangeKind, scene),
+          memberCount: 12,
         },
+      };
+    }
+    case 'update-formation-draft': {
+      if (!state.formationDraft) return state;
+      const nextDraft: FormationDraftSpec = {
+        ...state.formationDraft,
+        ...action.patch,
+        params: action.patch.params ? { ...action.patch.params } : state.formationDraft.params,
+      };
+      if (action.patch.arrangeKind && action.patch.arrangeKind !== state.formationDraft.arrangeKind && !action.patch.params) {
+        const scene = getActiveScene(state);
+        nextDraft.params = buildDefaultDraftParams(action.patch.arrangeKind, scene);
+      }
+      return { ...state, formationDraft: nextDraft };
+    }
+    case 'cancel-formation-draft':
+      if (!state.formationDraft) return state;
+      return { ...state, formationDraft: undefined };
+    case 'commit-formation-draft': {
+      const draft = state.formationDraft;
+      if (!draft) return state;
+      const scene = getActiveScene(state);
+      const template = templateEntityFromSource(state, scene, draft.template);
+      if (!template) return state;
+
+      const rawName = (draft.name ?? '').trim();
+      const formationName = rawName.length > 0 ? rawName : getNextFormationName(scene);
+      const memberCount = draft.arrangeKind === 'grid' ? undefined : draft.memberCount;
+      const paramsForArrange = (() => {
+        if (draft.arrangeKind !== 'grid') return draft.params;
+        const rows = Math.max(1, Math.floor(Number((draft.params as any).rows ?? 1)));
+        const cols = Math.max(1, Math.floor(Number((draft.params as any).cols ?? 1)));
+        const spacing = Math.round(Number((draft.params as any).spacing ?? 24));
+        const centerX = Math.round(Number((draft.params as any).centerX ?? 0));
+        const centerY = Math.round(Number((draft.params as any).centerY ?? 0));
+        const startX = centerX - ((cols - 1) * spacing) / 2;
+        const startY = centerY - ((rows - 1) * spacing) / 2;
+        return { rows, cols, startX, startY, spacingX: spacing, spacingY: spacing } as Record<string, number | string | boolean>;
+      })();
+
+      const { scene: nextScene, groupId } = createGroupFromArrangeTemplate(
+        scene,
+        template,
+        formationName,
+        draft.arrangeKind,
+        paramsForArrange,
+        memberCount
+      );
+
+      return {
+        ...withScene({ ...state, formationDraft: undefined }, nextScene, true, { kind: 'group', id: groupId }),
+        expandedGroups: { ...state.expandedGroups, [groupId]: true },
       };
     }
     case 'update-bounds': {

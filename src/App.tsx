@@ -10,6 +10,7 @@ import { ViewbarYamlControls } from './editor/ViewbarYamlControls';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
+import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
 import {
   registerAppStateGetter,
   registerResetSceneHandler,
@@ -200,6 +201,26 @@ function AppShell() {
   }, [state.selection]);
 
   useEffect(() => {
+    if (!sceneReady || !runtimeLoadedRef.current) return;
+    const draft = state.formationDraft;
+    if (!draft) {
+      EventBus.emit('formation-draft-changed', { active: false });
+      return;
+    }
+    const scene = state.project.scenes[state.currentSceneId];
+    const templateSize = getTemplateSize(scene, state.project, draft.template);
+    const positions = computeFormationDraftPositions(
+      { arrangeKind: draft.arrangeKind, params: draft.params, memberCount: draft.memberCount },
+      templateSize
+    );
+    const center = {
+      x: Math.round(Number((draft.params as any).centerX ?? (draft.params as any).startX ?? 0) || 0),
+      y: Math.round(Number((draft.params as any).centerY ?? (draft.params as any).startY ?? 0) || 0),
+    };
+    EventBus.emit('formation-draft-changed', { active: true, positions, center });
+  }, [sceneReady, state.currentSceneId, state.formationDraft, state.project]);
+
+  useEffect(() => {
     const handleViewState = (payload: { zoom: number }) => {
       setZoom(payload.zoom);
       if (!state.hasSeenViewHint) {
@@ -284,6 +305,29 @@ function AppShell() {
       dispatch({ type: 'delete-selection' });
     };
 
+    const handleFormationDraftCenterMoved = (payload: { x: number; y: number }) => {
+      const draft = state.formationDraft;
+      if (!draft) return;
+      if (state.mode !== 'edit') return;
+      const x = Math.round(payload.x);
+      const y = Math.round(payload.y);
+      const params: any = { ...(draft.params ?? {}) };
+      if (draft.arrangeKind === 'grid') {
+        params.centerX = x;
+        params.centerY = y;
+      } else if ('centerX' in params || 'centerY' in params) {
+        params.centerX = x;
+        params.centerY = y;
+      } else if ('startX' in params || 'startY' in params) {
+        params.startX = x;
+        params.startY = y;
+      } else {
+        params.centerX = x;
+        params.centerY = y;
+      }
+      dispatch({ type: 'update-formation-draft', patch: { params } } as any);
+    };
+
     EventBus.on('canvas-select', handleCanvasSelect);
     EventBus.on('canvas-move-entity', handleCanvasMoveEntity);
     EventBus.on('canvas-move-group', handleCanvasMoveGroup);
@@ -297,6 +341,7 @@ function AppShell() {
     EventBus.on('canvas-interaction-start', handleCanvasInteractionStart);
     EventBus.on('canvas-interaction-end', handleCanvasInteractionEnd);
     EventBus.on('canvas-update-bounds', handleCanvasUpdateBounds);
+    EventBus.on('formation-draft-center-moved', handleFormationDraftCenterMoved);
 
     return () => {
       EventBus.off('canvas-select', handleCanvasSelect);
@@ -312,8 +357,9 @@ function AppShell() {
       EventBus.off('canvas-interaction-start', handleCanvasInteractionStart);
       EventBus.off('canvas-interaction-end', handleCanvasInteractionEnd);
       EventBus.off('canvas-update-bounds', handleCanvasUpdateBounds);
+      EventBus.off('formation-draft-center-moved', handleFormationDraftCenterMoved);
     };
-  }, [dispatch, activeScene, state.selection, state.mode]);
+  }, [dispatch, activeScene, state.selection, state.mode, state.formationDraft]);
 
   const commitWorldDraft = (dimension: 'width' | 'height') => {
     const raw = dimension === 'width' ? worldWidthDraft : worldHeightDraft;

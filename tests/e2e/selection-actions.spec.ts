@@ -49,6 +49,21 @@ test('selection bar groups ungrouped entities and can add to an existing group',
 
   await page.getByTestId('canvas-group-button').click();
   await expect(page.getByTestId('canvas-group-prompt')).toBeVisible();
+  const promptBox = await page.getByTestId('canvas-group-prompt').boundingBox();
+  const nameLabelBox = await page.getByTestId('canvas-group-prompt').getByText('Name').boundingBox();
+  const nameInputBox = await page.getByTestId('group-name-input').boundingBox();
+  if (!promptBox || !nameLabelBox || !nameInputBox) throw new Error('Group prompt bounds unavailable');
+  expect(nameInputBox.width).toBeGreaterThanOrEqual(160);
+  expect(nameInputBox.x - (nameLabelBox.x + nameLabelBox.width)).toBeLessThanOrEqual(24);
+  const viewport = page.viewportSize();
+  if (!promptBox || !viewport) throw new Error('Viewport or prompt bounds unavailable');
+  const inputRightDelta = (nameInputBox.x + nameInputBox.width) - (promptBox.x + promptBox.width);
+  expect(inputRightDelta).toBeLessThanOrEqual(-4);
+  expect(inputRightDelta).toBeGreaterThanOrEqual(-18);
+  expect(promptBox.x).toBeGreaterThanOrEqual(0);
+  expect(promptBox.y).toBeGreaterThanOrEqual(0);
+  expect(promptBox.x + promptBox.width).toBeLessThanOrEqual(viewport.width);
+  expect(promptBox.y + promptBox.height).toBeLessThanOrEqual(viewport.height);
   await page.getByTestId('group-prompt-confirm').click();
 
   await expect.poll(async () => {

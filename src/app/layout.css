@@ -800,13 +800,21 @@ html[data-theme='dark'] .phaser-frame {
 }
 
 .canvas-submenu-field input {
-  width: 5.2rem;
+  width: 11rem;
   padding: 0.35rem 0.5rem;
   border-radius: 0.7rem;
   border: 1px solid rgba(20, 93, 102, 0.45);
   background: var(--surface);
   color: var(--ink);
   font-family: inherit;
+}
+
+.canvas-group-prompt .canvas-submenu-field input {
+  width: 13rem;
+}
+
+.canvas-group-prompt .canvas-submenu-field {
+  width: 100%;
 }
 
 .canvas-submenu-actions {

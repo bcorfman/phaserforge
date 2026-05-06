@@ -6,7 +6,7 @@
 All phases and implementation changes should be TDD-driven. Each gesture or editing behavior starts with store/helper tests, then scene-level interaction tests where practical, then implementation. Maintain comprehensive test coverage for reducers, helpers, and integrations.
 
 ### Completion Verification (E2E Required)
-Before reporting any code changes (including new code) as completed, run `npm run test:e2e` and ensure it passes. If E2E cannot be run (environment/tooling constraints), explicitly say so and report results of the closest equivalent verification performed.
+Before reporting any **code** changes (including new code) as completed, run `npm run test:e2e` and ensure it passes. Non-code-only changes (docs, plans, mockups, etc.) do not require an E2E run. If E2E cannot be run (environment/tooling constraints), explicitly say so and report results of the closest equivalent verification performed.
 
 ### ArcadeActions Reference Only
 The `arcadeactions` directory is for reference only. Do not modify or add files to it. Use it to understand formations, actions, and arrange functions, but all changes must stay within `phaseractions-studio`. For expandability, rely on external config files and editor-side logic.
