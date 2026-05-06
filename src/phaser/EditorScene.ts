@@ -378,12 +378,14 @@ export class EditorScene extends Phaser.Scene {
 
     const scaleX = rect.width / this.scale.width;
     const scaleY = rect.height / this.scale.height;
-    const viewportCenterX = this.scale.width / 2;
-    const viewportCenterY = this.scale.height / 2;
+
+    const cameraMatrix = this.cameras.main.matrixCombined.matrix;
+    const screenX = point.x * cameraMatrix[0] + point.y * cameraMatrix[2] + cameraMatrix[4];
+    const screenY = point.x * cameraMatrix[1] + point.y * cameraMatrix[3] + cameraMatrix[5];
 
     return {
-      x: rect.left + (((point.x - this.cameras.main.scrollX - viewportCenterX) * this.currentZoom) + viewportCenterX) * scaleX,
-      y: rect.top + (((point.y - this.cameras.main.scrollY - viewportCenterY) * this.currentZoom) + viewportCenterY) * scaleY,
+      x: rect.left + screenX * scaleX,
+      y: rect.top + screenY * scaleY,
     };
   }
 
