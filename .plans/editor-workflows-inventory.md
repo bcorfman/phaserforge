@@ -80,15 +80,15 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### A22 — Set Scene World Size
 - Edit W/H in the Viewbar; commit on blur or Enter.
 
-### A23 — Edit Scene YAML Text
-- Open YAML populates the YAML textarea; you edit text; Load applies it back into the editor state.
+### A23 — Open YAML
+- Use “Open YAML…” in the Viewbar (Viewport pane) to pick a `.yaml/.yml` file and load it directly into the editor state.
+- Cloud panel can also load YAML into the editor.
 
-### A24 — Load YAML Source
-- Load from file picker in the Scene YAML pane, or load via Cloud panel.
+### A24 — Save YAML
+- “Save YAML” writes the *current project YAML* back to the last opened/saved file handle when available (otherwise routes to Save As…).
 
-### A25 — Save YAML
-- Save As… writes the YAML textarea contents to disk.
-- Save writes back to the last opened/saved file handle when available (otherwise routes to Save As…).
+### A25 — Save YAML As
+- “Save YAML As…” writes the *current project YAML* to a chosen location (File System Access API when available; download fallback otherwise).
 
 ### A26 — Create Formation (arrange + template clone)
 - Pick arrange preset + params + template sprite; create a new formation by cloning.
@@ -149,8 +149,8 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### W9 — Trigger Setup
 - A34 add/select zone → (inspector) edit zone properties/hooks → A7 test in Play mode.
 
-### W10 — YAML Round-trip
-- A25 export YAML → A23 edit YAML text → A24 load YAML → A6 undo/redo as needed.
+### W10 — YAML Import / Export
+- A25 Save YAML As… (export) or A23 Open YAML (import) → A6 undo/redo as needed.
 
 ### W11 — Mode-based Testing Loop
 - Do any authoring workflow (W1–W9) → A7 toggle Play → validate → A7 back to Edit → A6 undo/redo or adjust.
@@ -174,9 +174,8 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 - AudioLibraryPanel imports audio (duplicated vs Assets Dock audio tab).
 
 ### YAML load sources are duplicated / fragmented
-- Toolbar Load YAML (file picker / file input fallback)
-- Cloud panel can load YAML into the editor
-- YAML textarea exists but Load doesn’t live there (toolbar-only), increasing pointer travel.
+- Cloud panel can load YAML into the editor.
+- Viewbar contains the local file Open/Save/Save As entrypoints (single primary surface for file-based YAML).
 
 ### Mode toggle is duplicated (likely OK)
 - Canvas overlay toggle, `Tab`, runtime also emits toggle-mode.
@@ -190,7 +189,7 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 - Import supports embedded vs path at creation time, but there’s no clear “convert later” workflow.
 
 ### “Save” mental model (in-place save loop)
-- UI shows “Unsaved” and supports Export YAML, but there’s no “Save to same file” workflow (only export-as / picker).
+- Viewbar supports “Save YAML” (in-place when a writable file handle exists) and “Save YAML As…” for first-time export.
 
 ### Pan instruction mismatch
 - Viewbar copy mentions “Shift + drag” panning, but panning is `Space`+drag or middle mouse.
