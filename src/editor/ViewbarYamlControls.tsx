@@ -1,37 +1,14 @@
 import { useMemo, useRef } from 'react';
+import { serializeProjectToYaml } from '../model/serialization';
 import { useEditorStore } from './EditorStore';
 import { exportYamlToDisk } from './yamlFileExport';
 import { getYamlFileHandle, getYamlFileSourceLabel, getYamlPickerStartIn, setYamlFileHandle, setYamlFileSourceLabel, setYamlPickerStartIn } from './yamlPickerState';
+import { getOpenFilePicker, readFileHandleText, writeTextToHandle } from './yamlFileHandles';
 
-type FilePickerLike = (options?: unknown) => Promise<any>;
-
-function getOpenFilePicker(): FilePickerLike | null {
-  if (typeof window === 'undefined') return null;
-  const picker = (window as any).showOpenFilePicker;
-  return typeof picker === 'function' ? (picker as FilePickerLike) : null;
-}
-
-async function readFileHandleText(handle: any): Promise<{ text: string; label: string }> {
-  const file = await handle.getFile();
-  const label = file?.name ? String(file.name) : 'picked file';
-  return { text: await file.text(), label };
-}
-
-async function writeYamlToHandle(handle: any, yaml: string): Promise<void> {
-  if (!handle || typeof handle.createWritable !== 'function') {
-    throw new Error('File handle is not writable');
-  }
-  const writable = await handle.createWritable();
-  await writable.write(yaml);
-  await writable.close();
-}
-
-export function YamlPanel() {
+export function ViewbarYamlControls() {
   const { state, dispatch } = useEditorStore();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const yamlSourceLabel = useMemo(() => getYamlFileSourceLabel(), [state.statusMessage, state.yamlText]);
-  const hasWritableHandle = Boolean(getYamlFileHandle() && typeof (getYamlFileHandle() as any).createWritable === 'function');
+  const yaml = useMemo(() => serializeProjectToYaml(state.project), [state.project]);
 
   const openFromPicker = async () => {
     dispatch({ type: 'set-error', error: undefined });
@@ -90,11 +67,6 @@ export function YamlPanel() {
     }
   };
 
-  const applyYamlText = () => {
-    dispatch({ type: 'set-error', error: undefined });
-    dispatch({ type: 'load-yaml' });
-  };
-
   const saveToSameFile = async () => {
     dispatch({ type: 'set-error', error: undefined });
     const handle = getYamlFileHandle();
@@ -103,7 +75,7 @@ export function YamlPanel() {
       return;
     }
     try {
-      await writeYamlToHandle(handle, state.yamlText);
+      await writeTextToHandle(handle, yaml);
       dispatch({ type: 'set-status', message: `Saved YAML: ${getYamlFileSourceLabel() ?? 'file'}`, expiresAt: Date.now() + 4000 });
     } catch (err) {
       dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to save YAML' });
@@ -113,7 +85,7 @@ export function YamlPanel() {
   const saveAs = async () => {
     dispatch({ type: 'set-error', error: undefined });
     try {
-      const result = await exportYamlToDisk(state.yamlText, { startIn: getYamlPickerStartIn() });
+      const result = await exportYamlToDisk(yaml, { startIn: getYamlPickerStartIn() });
       if (result.kind === 'saved') {
         setYamlPickerStartIn(result.handle);
         setYamlFileHandle(result.handle);
@@ -130,57 +102,18 @@ export function YamlPanel() {
   };
 
   return (
-    <div className="panel json-panel" data-testid="yaml-panel">
-      <div className="panel-header">
-        <p className="eyebrow">Serialization</p>
-        <h2 className="panel-title">Scene YAML</h2>
-        <p className="panel-description">
-          Open YAML from disk, edit it here, then load it into the editor. Save writes the YAML text back to the current file.
-        </p>
-        <div className="toolbar-right-top" style={{ justifyContent: 'flex-start', marginTop: 10 }}>
-          <label className="toolbar-field" style={{ minWidth: 0, maxWidth: 260 }}>
-            <span>Startup</span>
-            <select
-              aria-label="Startup mode"
-              data-testid="startup-mode-select"
-              value={state.startupMode}
-              onChange={(e) => dispatch({ type: 'set-startup-mode', startupMode: e.target.value as typeof state.startupMode })}
-            >
-              <option value="reload_last_yaml">Reload Last YAML</option>
-              <option value="new_empty_scene">New Empty Scene</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="toolbar-actions" role="toolbar" aria-label="YAML actions" style={{ justifyContent: 'flex-start', marginTop: 10 }}>
-          <button className="button" type="button" data-testid="yaml-open-button" onClick={() => void openFromPicker()}>
-            Open…
-          </button>
-          <button className="button" type="button" data-testid="yaml-load-button" onClick={applyYamlText} disabled={!state.yamlText.trim()}>
-            Load
-          </button>
-          <button className="button" type="button" data-testid="yaml-save-button" onClick={() => void saveToSameFile()} disabled={!state.yamlText.trim()}>
-            Save
-          </button>
-          <button className="button" type="button" data-testid="yaml-save-as-button" onClick={() => void saveAs()} disabled={!state.yamlText.trim()}>
-            Save As…
-          </button>
-          {yamlSourceLabel && (
-            <div className="muted" style={{ alignSelf: 'center' }}>
-              File: <span className="mono">{yamlSourceLabel}</span>{hasWritableHandle ? '' : ' (read-only)'}
-            </div>
-          )}
-        </div>
+    <div className="viewbar-yaml" role="toolbar" aria-label="YAML file actions">
+      <div className="viewbar-group">
+        <button className="button" type="button" data-testid="yaml-open-button" onClick={() => void openFromPicker()}>
+          Open YAML…
+        </button>
+        <button className="button" type="button" data-testid="yaml-save-button" onClick={() => void saveToSameFile()}>
+          Save YAML
+        </button>
+        <button className="button" type="button" data-testid="yaml-save-as-button" onClick={() => void saveAs()}>
+          Save YAML As…
+        </button>
       </div>
-
-      <textarea
-        aria-label="Scene YAML"
-        className="json-textarea"
-        data-testid="yaml-textarea"
-        value={state.yamlText}
-        onChange={(e) => dispatch({ type: 'set-yaml-text', value: e.target.value })}
-        placeholder="Open a YAML file, edit, then click Load."
-      />
 
       <input
         aria-hidden="true"
