@@ -65,7 +65,18 @@ export function hitTestCanvas(
   // Priority 2: Entities
   for (const [entityId, sprite] of sprites.entries()) {
     const bounds = sprite.getBounds();
-    if (pointInRect(worldPoint, bounds, entityHitPadding)) {
+    if (
+      typeof (bounds as any)?.x === 'number' &&
+      typeof (bounds as any)?.y === 'number' &&
+      typeof (bounds as any)?.width === 'number' &&
+      typeof (bounds as any)?.height === 'number' &&
+      pointInRect(worldPoint, bounds as any, entityHitPadding)
+    ) {
+      return { kind: 'entity', id: entityId };
+    }
+
+    // Back-compat for tests / Phaser bounds variants that only expose `contains`.
+    if (typeof (bounds as any)?.contains === 'function' && (bounds as any).contains(worldPoint.x, worldPoint.y)) {
       return { kind: 'entity', id: entityId };
     }
   }
