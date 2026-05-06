@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, type CompiledScene } from '../compiler/compileScene';
-import type { AssetFileSource, CollisionRuleSpec, GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, SpriteSheetGridSpec, type HitboxSpec } from '../model/types';
+import type { AssetFileSource, CollisionRuleSpec, GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, SpriteSheetGridSpec, HitboxSpec } from '../model/types';
 import { getRotatedEntityBounds } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
