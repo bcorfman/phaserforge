@@ -54,6 +54,7 @@ export function hitTestCanvas(
   groupZones: Map<string, Phaser.GameObjects.Zone>,
   boundsHandles: Map<string, Phaser.GameObjects.Zone>
 ): HitTestResult {
+  const entityHitPadding = 6;
   // Priority 1: Bounds handles
   for (const [handleId, zone] of boundsHandles.entries()) {
     if (zone.getBounds().contains(worldPoint.x, worldPoint.y)) {
@@ -63,7 +64,8 @@ export function hitTestCanvas(
 
   // Priority 2: Entities
   for (const [entityId, sprite] of sprites.entries()) {
-    if (sprite.getBounds().contains(worldPoint.x, worldPoint.y)) {
+    const bounds = sprite.getBounds();
+    if (pointInRect(worldPoint, bounds, entityHitPadding)) {
       return { kind: 'entity', id: entityId };
     }
   }
