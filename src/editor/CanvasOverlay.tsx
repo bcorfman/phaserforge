@@ -3,6 +3,8 @@ import { EventBus, getActiveScene } from '../phaser/EventBus';
 import { useEditorStore, type Selection } from './EditorStore';
 import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
 import { getNextFormationName } from './behaviorCommands';
+import { placePopupNearRect } from './popupPositioning';
+import { CreateFormationDraftPanel } from './CreateFormationDraftPanel';
 
 function getSelectedEntityIds(selection: Selection): string[] {
   if (selection.kind === 'entity') return [selection.id];
@@ -122,8 +124,6 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     };
   }, [groupPromptOpen]);
 
-  // Selection actions are intentionally kept on the on-canvas Selection Bar (no right-click menu).
-
   useEffect(() => {
     if (state.mode !== 'edit') return;
     const container = document.querySelector<HTMLDivElement>('#game-container');
@@ -228,12 +228,15 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     const desiredWidth = 320;
     const desiredHeight = 360;
     const padding = 12;
-    const x = Math.min(window.innerWidth - padding, Math.max(padding, rect.right - desiredWidth));
-    let y = rect.bottom + 10;
-    if (y + desiredHeight > window.innerHeight - padding) {
-      y = rect.top - desiredHeight - 10;
-    }
-    y = Math.max(padding, Math.min(window.innerHeight - padding, y));
+    const { x, y } = placePopupNearRect({
+      anchorRect: rect,
+      popupSize: { width: desiredWidth, height: desiredHeight },
+      viewportSize: { width: window.innerWidth, height: window.innerHeight },
+      padding,
+      offset: 10,
+      prefer: 'below',
+      align: 'right',
+    });
 
     setMenuPosition({ x, y });
     setMenuOpen(true);
@@ -243,8 +246,16 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     const rect = element.getBoundingClientRect();
     const desiredWidth = 320;
     const padding = 12;
-    const x = Math.min(window.innerWidth - padding, Math.max(padding, rect.left));
-    const y = Math.min(window.innerHeight - padding, Math.max(padding, rect.top - 10));
+    const desiredHeight = 160;
+    const { x, y } = placePopupNearRect({
+      anchorRect: rect,
+      popupSize: { width: desiredWidth, height: desiredHeight },
+      viewportSize: { width: window.innerWidth, height: window.innerHeight },
+      padding,
+      offset: 10,
+      prefer: 'above',
+      align: 'left',
+    });
     setGroupPromptPosition({ x, y });
     setGroupNameDraft(getNextFormationName(scene));
     setGroupPromptOpen(true);
@@ -252,7 +263,7 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
 
   const confirmCreateGroup = () => {
     if (!canGroupSelection) return;
-    dispatch({ type: 'create-group-from-selection', name: groupNameDraft });
+    dispatch({ type: 'group-selection', name: groupNameDraft });
     setGroupPromptOpen(false);
   };
 
@@ -377,6 +388,18 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
         </div>
       )}
 
+      {state.mode === 'edit' && state.formationDraft && (
+        <div style={{ position: 'fixed', left: 12, top: 76, zIndex: 80 }}>
+          <CreateFormationDraftPanel
+            project={state.project}
+            scene={scene}
+            registry={state.registry}
+            draft={state.formationDraft}
+            dispatch={dispatch}
+          />
+        </div>
+      )}
+
       {menuOpen && menuPosition && (
         <div
           className="canvas-context-menu"
@@ -479,7 +502,7 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
 
       {groupPromptOpen && groupPromptPosition && (
         <div
-          className="canvas-context-menu"
+          className="canvas-context-menu canvas-group-prompt"
           data-testid="canvas-group-prompt"
           role="dialog"
           aria-label="Group selection"

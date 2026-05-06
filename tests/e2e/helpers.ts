@@ -22,10 +22,19 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
     }
   }
 
-  await page.goto('/');
-  await page.waitForLoadState('domcontentloaded');
-  await page.waitForFunction(() => Boolean(window.__PHASER_ACTIONS_STUDIO_TEST__?.isEnabled), { timeout: APP_BOOT_TIMEOUT_MS });
-  await expect(page.getByTestId('app-root')).toBeVisible({ timeout: APP_BOOT_TIMEOUT_MS });
+  const bootOnce = async () => {
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForFunction(() => Boolean(window.__PHASER_ACTIONS_STUDIO_TEST__?.isEnabled), { timeout: APP_BOOT_TIMEOUT_MS });
+    await expect(page.getByTestId('app-root')).toBeVisible({ timeout: APP_BOOT_TIMEOUT_MS });
+  };
+
+  try {
+    await bootOnce();
+  } catch (error) {
+    // One retry helps when a worker lands on a stale/blank page after navigation.
+    await bootOnce();
+  }
   await waitForSceneReady(page);
 }
 
