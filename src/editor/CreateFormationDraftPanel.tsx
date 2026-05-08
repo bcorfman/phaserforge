@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type CSSProperties, type PointerEvent } from 'react';
 import type { EditorRegistryConfig, Id, ProjectSpec, SceneSpec } from '../model/types';
 import { ValidatedNumberInput } from './ValidatedNumberInput';
 import { getTemplateDisplayLabel, type FormationDraftSpec, type FormationTemplateSource } from './formationDraft';
@@ -23,12 +23,18 @@ export function CreateFormationDraftPanel({
   registry,
   draft,
   dispatch,
+  popupClassName,
+  popupStyle,
+  onPopupPointerDown,
 }: {
   project: ProjectSpec;
   scene: SceneSpec;
   registry: EditorRegistryConfig;
   draft: FormationDraftSpec;
   dispatch: (action: any) => void;
+  popupClassName?: string;
+  popupStyle?: CSSProperties;
+  onPopupPointerDown?: (event: PointerEvent<HTMLDivElement>) => void;
 }) {
   const arrangeEntries = useMemo(() => registry.arrange.filter((entry) => entry.implemented), [registry.arrange]);
   const presetOptions = arrangeEntries.length > 0 ? arrangeEntries : [{ type: 'grid', displayName: 'Grid', implemented: true } as any];
@@ -82,7 +88,14 @@ export function CreateFormationDraftPanel({
   const count = isGrid ? rows * cols : Math.max(1, Math.floor(Number(draft.memberCount ?? 12) || 12));
 
   return (
-    <div className="canvas-context-menu" data-testid="create-formation-draft-panel" role="dialog" aria-label="Create formation draft">
+    <div
+      className={`canvas-context-menu${popupClassName ? ` ${popupClassName}` : ''}`}
+      data-testid="create-formation-draft-panel"
+      role="dialog"
+      aria-label="Create formation draft"
+      style={popupStyle}
+      onPointerDown={onPopupPointerDown}
+    >
       <div className="inspector-block" style={{ width: 360 }}>
         <div className="inspector-title">Create Formation (Draft)</div>
         <div className="inspector-row">Edits update the real canvas immediately</div>

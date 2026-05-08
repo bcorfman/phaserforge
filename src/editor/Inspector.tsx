@@ -595,6 +595,7 @@ function EntityInspector({
             value={resolved.rotationDeg}
             clamp={(next) => Math.max(0, Math.min(359, next || 0))}
             onCommit={(next) => update({ rotationDeg: next })}
+            onLiveChange={(next) => update({ rotationDeg: next })}
           />
         </label>
         <div className="inspector-grid-2">

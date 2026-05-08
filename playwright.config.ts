@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const includeAllBrowsers = Boolean(process.env.CI) || process.env.PW_ALL_BROWSERS === '1';
+const includeEdge = includeAllBrowsers || process.env.PW_INCLUDE_EDGE === '1';
+
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: process.env.CI ? 120000 : 60000,
@@ -31,5 +34,25 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    ...(includeAllBrowsers
+      ? [
+          {
+            name: 'firefox',
+            use: { ...devices['Desktop Firefox'] },
+          },
+          {
+            name: 'webkit',
+            use: { ...devices['Desktop Safari'] },
+          },
+        ]
+      : []),
+    ...(includeEdge
+      ? [
+          {
+            name: 'edge',
+            use: { ...devices['Desktop Edge'], channel: 'msedge' as const },
+          },
+        ]
+      : []),
   ],
 });
