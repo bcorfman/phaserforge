@@ -7,7 +7,9 @@
   --bg-wash: #e7ddd0;
   --surface: rgba(255, 250, 242, 0.92);
   --surface-strong: #fffdf8;
+  --surface-strong-translucent: rgba(255, 253, 248, 0.5);
   --surface-muted: #efe6d9;
+  --surface-muted-translucent: rgba(239, 230, 217, 0.5);
   --surface-contrast: #e5dac8;
   --ink: #1f2933;
   --muted: #5f6b76;
@@ -31,7 +33,9 @@ html[data-theme='dark'] {
   --bg-wash: #0f1418;
   --surface: rgba(18, 24, 30, 0.92);
   --surface-strong: #141b22;
+  --surface-strong-translucent: rgba(20, 27, 34, 0.5);
   --surface-muted: rgba(20, 28, 35, 0.92);
+  --surface-muted-translucent: rgba(20, 28, 35, 0.5);
   --surface-contrast: rgba(31, 43, 54, 0.92);
   --ink: #eef4f8;
   --muted: #a7b4bf;
@@ -56,7 +60,9 @@ html[data-theme='dark'] {
     --bg-wash: #0f1418;
     --surface: rgba(18, 24, 30, 0.92);
     --surface-strong: #141b22;
+    --surface-strong-translucent: rgba(20, 27, 34, 0.5);
     --surface-muted: rgba(20, 28, 35, 0.92);
+    --surface-muted-translucent: rgba(20, 28, 35, 0.5);
     --surface-contrast: rgba(31, 43, 54, 0.92);
     --ink: #eef4f8;
     --muted: #a7b4bf;
@@ -761,6 +767,16 @@ html[data-theme='dark'] .phaser-frame {
   box-shadow: var(--shadow);
 }
 
+.canvas-context-menu--translucent {
+  background: transparent;
+  backdrop-filter: blur(8px);
+}
+
+.canvas-context-menu--translucent .inspector-title {
+  cursor: move;
+  user-select: none;
+}
+
 .canvas-context-submenu {
   position: absolute;
   z-index: 2001;
@@ -1459,6 +1475,10 @@ html[data-theme='dark'] .phaser-frame {
   border-radius: 1rem;
   border: 1px solid rgba(186, 168, 143, 0.35);
   background: var(--surface-muted);
+}
+
+.canvas-context-menu--translucent .inspector-block {
+  background: var(--surface-muted-translucent);
 }
 
 .inspector-block .field {

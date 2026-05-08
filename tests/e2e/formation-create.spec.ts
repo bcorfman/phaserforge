@@ -29,6 +29,24 @@ test('creates a formation via the new draft workflow from Formations + Add', asy
   await page.getByTestId('formations-add-scene-1').click();
 
   await expect(page.getByTestId('create-formation-draft-panel')).toBeVisible();
+  await expect.poll(async () => {
+    return await page.getByTestId('create-formation-draft-panel').evaluate((el) => {
+      const block = el.querySelector('.inspector-block');
+      if (!(block instanceof HTMLElement)) return 1;
+      const bg = getComputedStyle(block).backgroundColor;
+      const slash = bg.match(/\/\s*([0-9.]+)/);
+      if (slash) {
+        const alpha = Number(slash[1]);
+        return Number.isFinite(alpha) ? alpha : 1;
+      }
+      const comma = bg.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\s*\)/i);
+      if (comma) {
+        const alpha = Number(comma[1]);
+        return Number.isFinite(alpha) ? alpha : 1;
+      }
+      return 1;
+    });
+  }).toBeLessThan(1);
   await page.getByTestId('formation-draft-name-input').fill('Enemy Formation');
   await page.getByTestId('formation-draft-grid-rows').fill('2');
   await page.getByTestId('formation-draft-grid-cols').fill('3');
@@ -71,6 +89,24 @@ test('assets menu entrypoint opens a formation draft seeded with that asset', as
   const templateValue = await page.getByTestId('formation-draft-template-select').inputValue();
   expect(templateValue).toBe('asset:image:enemy-a');
   await expect(page.getByTestId('create-formation-draft-panel')).toBeVisible();
+  await expect.poll(async () => {
+    return await page.getByTestId('create-formation-draft-panel').evaluate((el) => {
+      const block = el.querySelector('.inspector-block');
+      if (!(block instanceof HTMLElement)) return 1;
+      const bg = getComputedStyle(block).backgroundColor;
+      const slash = bg.match(/\/\s*([0-9.]+)/);
+      if (slash) {
+        const alpha = Number(slash[1]);
+        return Number.isFinite(alpha) ? alpha : 1;
+      }
+      const comma = bg.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\s*\)/i);
+      if (comma) {
+        const alpha = Number(comma[1]);
+        return Number.isFinite(alpha) ? alpha : 1;
+      }
+      return 1;
+    });
+  }).toBeLessThan(1);
   await page.getByTestId('formation-draft-cancel').click();
   await expect(page.getByTestId('create-formation-draft-panel')).toHaveCount(0);
 });

@@ -3,7 +3,7 @@ import { EventBus, getActiveScene } from '../phaser/EventBus';
 import { useEditorStore, type Selection } from './EditorStore';
 import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
 import { getNextFormationName } from './behaviorCommands';
-import { placePopupNearRect } from './popupPositioning';
+import { clampPopupToViewport, placePopupNearRect } from './popupPositioning';
 import { CreateFormationDraftPanel } from './CreateFormationDraftPanel';
 
 function getSelectedEntityIds(selection: Selection): string[] {
@@ -23,6 +23,10 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   const [groupNameDraft, setGroupNameDraft] = useState('');
   const groupPromptRootRef = useRef<HTMLDivElement | null>(null);
   const [dragAssetHint, setDragAssetHint] = useState<{ kind: 'replace'; entityId: string; x: number; y: number } | { kind: 'create'; x: number; y: number } | null>(null);
+  const [draftPosition, setDraftPosition] = useState<{ x: number; y: number } | null>(null);
+  const [draftDragOffset, setDraftDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const draftDragStateRef = useRef<{ startPointer: { x: number; y: number }; startOffset: { x: number; y: number } } | null>(null);
+  const draftPopupSizeRef = useRef<{ width: number; height: number } | null>(null);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const suppressSelectionCloseRef = useRef(false);
   const latestSelectionRef = useRef(state.selection);
@@ -104,6 +108,82 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     if (suppressSelectionCloseRef.current) return;
     setMenuOpen(false);
   }, [state.selection.kind, selectedEntityIds.join(','), state.mode]);
+
+  useEffect(() => {
+    if (!state.formationDraft || state.mode !== 'edit') {
+      setDraftPosition(null);
+      setDraftDragOffset(null);
+      return;
+    }
+
+    const measure = () => {
+      const padding = 12;
+      const fallbackSize = { width: 460, height: 520 };
+      const measured = document.querySelector<HTMLElement>('[data-testid="create-formation-draft-panel"]')?.getBoundingClientRect();
+      const popupSize = measured && measured.width > 0 && measured.height > 0
+        ? { width: measured.width, height: measured.height }
+        : (draftPopupSizeRef.current ?? fallbackSize);
+      draftPopupSizeRef.current = popupSize;
+      const { x, y } = placePopupNearRect({
+        anchorRect: {
+          left: 0,
+          top: 0,
+          right: window.innerWidth - padding,
+          bottom: window.innerHeight - padding,
+        },
+        popupSize,
+        viewportSize: { width: window.innerWidth, height: window.innerHeight },
+        padding,
+        offset: 0,
+        prefer: 'above',
+        align: 'right',
+      });
+      const base = { x, y: y + 50 };
+      const next = clampPopupToViewport({
+        position: {
+          x: base.x + (draftDragOffset?.x ?? 0),
+          y: base.y + (draftDragOffset?.y ?? 0),
+        },
+        popupSize,
+        viewportSize: { width: window.innerWidth, height: window.innerHeight },
+        padding,
+      });
+      setDraftPosition(next);
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, { passive: true });
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure);
+    };
+  }, [state.formationDraft, state.mode, draftDragOffset]);
+
+  useEffect(() => {
+    if (!state.formationDraft || state.mode !== 'edit') return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const drag = draftDragStateRef.current;
+      if (!drag) return;
+      const dx = event.clientX - drag.startPointer.x;
+      const dy = event.clientY - drag.startPointer.y;
+      setDraftDragOffset({ x: drag.startOffset.x + dx, y: drag.startOffset.y + dy });
+    };
+
+    const handlePointerUp = () => {
+      draftDragStateRef.current = null;
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [state.formationDraft, state.mode]);
 
   useEffect(() => {
     if (!groupPromptOpen) return;
@@ -389,15 +469,33 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
       )}
 
       {state.mode === 'edit' && state.formationDraft && (
-        <div style={{ position: 'fixed', left: 12, top: 76, zIndex: 80 }}>
-          <CreateFormationDraftPanel
-            project={state.project}
-            scene={scene}
-            registry={state.registry}
-            draft={state.formationDraft}
-            dispatch={dispatch}
-          />
-        </div>
+        <CreateFormationDraftPanel
+          project={state.project}
+          scene={scene}
+          registry={state.registry}
+          draft={state.formationDraft}
+          dispatch={dispatch}
+          popupClassName="canvas-context-menu--translucent"
+          popupStyle={{
+            left: draftPosition?.x ?? 12,
+            top: draftPosition?.y ?? 12,
+            width: '28rem',
+            maxWidth: 'min(28rem, 92vw)',
+            overflowX: 'hidden',
+          }}
+          onPopupPointerDown={(event) => {
+            if (event.button !== 0) return;
+            if (!(event.target instanceof Element)) return;
+            if (!event.target.closest('.inspector-title')) return;
+            if (!draftPosition) return;
+            event.preventDefault();
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+            draftDragStateRef.current = {
+              startPointer: { x: event.clientX, y: event.clientY },
+              startOffset: draftDragOffset ?? { x: 0, y: 0 },
+            };
+          }}
+        />
       )}
 
       {menuOpen && menuPosition && (
