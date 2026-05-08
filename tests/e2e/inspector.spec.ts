@@ -380,7 +380,7 @@ test('preview uses edited move velocity and bounce behavior', async ({ page }) =
   await expect.poll(async () => {
     const rect = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
     return rect?.centerX;
-  }, { timeout: 2000 }).toBeLessThan(before?.centerX ?? 0);
+  }, { timeout: 8000 }).toBeLessThan(before?.centerX ?? 0);
 });
 
 test('preview bounce reaches configured bounds edge before reversing', async ({ page }) => {

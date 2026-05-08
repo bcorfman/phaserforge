@@ -39,6 +39,8 @@ export interface SceneBridge {
   getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
   getEditableBoundsRect(): Rect | null;
   worldToClient(point: Point): Point | null;
+  testSetPointerWorld(point: Point): void;
+  testPointerDownEntity(entityId: string): void;
   testTapWorld(point: Point, options?: { additive?: boolean }): void;
   testDragWorld(start: Point, end: Point): void;
   testDragBoundsHandle(handle: string, delta: Point): void;
@@ -112,6 +114,14 @@ function ensureBridge(): void {
     worldToClient(point: Point) {
       const scene = sceneGetter?.();
       return scene ? clone(scene.worldToClient(point)) : null;
+    },
+    setPointerWorld(point: Point) {
+      const scene = sceneGetter?.();
+      scene?.testSetPointerWorld(point);
+    },
+    pointerDownEntity(entityId: string) {
+      const scene = sceneGetter?.();
+      scene?.testPointerDownEntity(entityId);
     },
     tapWorld(point: Point, options?: { additive?: boolean }) {
       const scene = sceneGetter?.();

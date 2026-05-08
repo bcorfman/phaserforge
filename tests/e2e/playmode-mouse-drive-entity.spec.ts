@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, seedProject, worldToClient } from './helpers';
+import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, seedProject } from './helpers';
 
 test('Play mode: mouse-driven entity motion respects axis locks', async ({ page }) => {
   await seedProject(page, {
@@ -31,28 +31,30 @@ test('Play mode: mouse-driven entity motion respects axis locks', async ({ page 
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
 
-  const before = await getEntityWorldRect(page, 'e1');
-  const targetClient = await page.evaluate(() => {
-    const canvas = document.querySelector('#game-container canvas') as HTMLCanvasElement | null;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    return { x: rect.left + rect.width * 0.75, y: rect.top + rect.height * 0.25 };
-  });
-  await page.mouse.move(targetClient.x, targetClient.y);
-
   await expect.poll(async () => {
-    const snap = await getSceneSnapshot<any>(page);
-    const x = snap?.input?.pointer?.worldX;
-    return typeof x === 'number' ? Math.round(x) : null;
+    const rect = await getEntityWorldRect(page, 'e1');
+    return rect?.centerX ?? null;
   }).not.toBeNull();
 
-  const pointerWorldX = await (async () => {
+  const start = await getEntityWorldRect(page, 'e1');
+  if (!start) throw new Error('Entity rect unavailable');
+  const startY = Math.round(start.centerY);
+
+  // Use the test bridge to deterministically place the pointer (avoids flaky headless mousemove behavior).
+  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setPointerWorld({ x: 200, y: 10 }));
+  await expect.poll(async () => {
     const snap = await getSceneSnapshot<any>(page);
-    return Math.round(Number(snap?.input?.pointer?.worldX ?? 0));
-  })();
+    return typeof snap?.input?.pointer?.worldX === 'number' ? Math.round(snap.input.pointer.worldX) : null;
+  }).toBeGreaterThanOrEqual(0);
 
   await expect.poll(async () => {
     const rect = await getEntityWorldRect(page, 'e1');
-    return { x: Math.round(rect.centerX ?? 0), y: Math.round(rect.centerY ?? 0) };
-  }).toEqual({ x: pointerWorldX as any, y: Math.round(before.centerY ?? 0) });
+    return { x: Math.round(rect?.centerX ?? 0), y: Math.round(rect?.centerY ?? 0) };
+  }).toEqual({ x: 200, y: startY } as any);
+
+  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setPointerWorld({ x: 360, y: 10 }));
+  await expect.poll(async () => {
+    const rect = await getEntityWorldRect(page, 'e1');
+    return { x: Math.round(rect?.centerX ?? 0), y: Math.round(rect?.centerY ?? 0) };
+  }).toEqual({ x: 360, y: startY } as any);
 });

@@ -24,6 +24,8 @@ interface PhaserActionsStudioTestBridge {
   getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
   getEditableBoundsRect(): PhaserActionsStudioRect | null;
   worldToClient(point: PhaserActionsStudioPoint): PhaserActionsStudioPoint | null;
+  setPointerWorld(point: PhaserActionsStudioPoint): void;
+  pointerDownEntity(entityId: string): void;
   tapWorld(point: PhaserActionsStudioPoint, options?: { additive?: boolean }): void;
   dragWorld(start: PhaserActionsStudioPoint, end: PhaserActionsStudioPoint): void;
   dragBoundsHandle(handle: string, delta: PhaserActionsStudioPoint): void;

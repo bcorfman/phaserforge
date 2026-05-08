@@ -31,7 +31,13 @@ test('Edit and Preview preserve camera view state', async ({ page }) => {
   expect(Math.abs(playSnapshot.scrollY - editSnapshot.scrollY)).toBeLessThanOrEqual(1);
 
   const playPoint = await worldToClient(page, anchorWorld);
-  if (!playPoint) throw new Error('Anchor point unavailable in preview mode');
-  expect(Math.abs(playPoint.x - editPoint.x)).toBeLessThanOrEqual(2);
-  expect(Math.abs(playPoint.y - editPoint.y)).toBeLessThanOrEqual(2);
+  expect(playPoint).toBeTruthy();
+
+  // Some browsers apply the camera view state on the next frame after the mode toggle.
+  await expect.poll(async () => {
+    const nextPlayPoint = await worldToClient(page, anchorWorld);
+    const dx = Math.abs(nextPlayPoint.x - editPoint.x);
+    const dy = Math.abs(nextPlayPoint.y - editPoint.y);
+    return Math.max(dx, dy);
+  }, { timeout: 10000 }).toBeLessThanOrEqual(2);
 });

@@ -241,7 +241,16 @@ export async function getEditableBoundsRect(page: Page): Promise<Rect> {
 }
 
 export async function worldToClient(page: Page, point: Point): Promise<Point> {
-  return page.evaluate((worldPoint) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(worldPoint), point) as Promise<Point>;
+  const result = await page.evaluate((worldPoint) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(worldPoint), point);
+  if (!result || typeof (result as any).x !== 'number' || typeof (result as any).y !== 'number') {
+    throw new Error(`worldToClient returned null/invalid for ${JSON.stringify(point)}`);
+  }
+  const x = Number((result as any).x);
+  const y = Number((result as any).y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    throw new Error(`worldToClient returned non-finite coords for ${JSON.stringify(point)}: ${JSON.stringify(result)}`);
+  }
+  return { x, y };
 }
 
 export async function entityClientCenter(page: Page, id: string): Promise<Point> {
@@ -274,19 +283,20 @@ export async function dragOnCanvas(page: Page, from: Point, to: Point, button: '
   const canvas = page.locator('#game-container canvas');
   await expect(canvas).toBeVisible();
 
-  // Ensure the pointer is positioned over the canvas before starting the drag.
-  const rect = await canvas.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    return { left: r.left, top: r.top, width: r.width, height: r.height };
-  });
+  const rect = await canvas.boundingBox();
   if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
-  const start = { x: Math.max(1, from.x - rect.left), y: Math.max(1, from.y - rect.top) };
 
-  await canvas.hover({ position: start });
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+  const startX = clamp(from.x, rect.x + 1, rect.x + rect.width - 1);
+  const startY = clamp(from.y, rect.y + 1, rect.y + rect.height - 1);
+  const endX = clamp(to.x, rect.x + 1, rect.x + rect.width - 1);
+  const endY = clamp(to.y, rect.y + 1, rect.y + rect.height - 1);
+
+  await page.mouse.move(startX, startY);
   await page.mouse.down({ button });
   // Use low-level mouse.move with steps to reliably generate intermediate pointer events
   // (critical for drag thresholds and modifier-driven drags like Alt-duplicate).
-  await page.mouse.move(to.x, to.y, { steps: 12 });
+  await page.mouse.move(endX, endY, { steps: 12 });
   await page.mouse.up({ button });
 }
 
@@ -297,18 +307,53 @@ export async function clickCanvasAt(
 ): Promise<void> {
   const canvas = page.locator('#game-container canvas');
   await expect(canvas).toBeVisible();
-  const rect = await canvas.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    return { left: r.left, top: r.top, width: r.width, height: r.height };
-  });
+  const rect = await canvas.boundingBox();
   if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
-  const pos = { x: point.x - rect.left, y: point.y - rect.top };
-  await canvas.hover({ position: { x: Math.max(1, pos.x), y: Math.max(1, pos.y) } });
-  await canvas.click({
-    position: { x: Math.max(1, pos.x), y: Math.max(1, pos.y) },
-    modifiers: options.modifiers,
+
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+  const x = clamp(point.x, rect.x + 1, rect.x + rect.width - 1);
+  const y = clamp(point.y, rect.y + 1, rect.y + rect.height - 1);
+
+  await page.mouse.move(x, y);
+  await page.mouse.click(x, y, {
     button: options.button ?? 'left',
+    modifiers: options.modifiers,
   });
+}
+
+export async function clickCanvasAtFraction(
+  page: Page,
+  fraction: { x: number; y: number },
+  options: { modifiers?: Array<'Shift' | 'Alt' | 'Control' | 'Meta'>; button?: 'left' | 'middle' | 'right' } = {}
+): Promise<void> {
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const rect = await canvas.boundingBox();
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+  const x = rect.x + Math.max(1, Math.min(rect.width - 1, rect.width * fraction.x));
+  const y = rect.y + Math.max(1, Math.min(rect.height - 1, rect.height * fraction.y));
+  await page.mouse.move(x, y);
+  await page.mouse.click(x, y, { button: options.button ?? 'left', modifiers: options.modifiers });
+}
+
+export async function moveMouseToCanvasFraction(page: Page, fraction: { x: number; y: number }): Promise<void> {
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const rect = await canvas.boundingBox();
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+  const x = rect.x + Math.max(1, Math.min(rect.width - 1, rect.width * fraction.x));
+  const y = rect.y + Math.max(1, Math.min(rect.height - 1, rect.height * fraction.y));
+  await page.mouse.move(x, y);
+}
+
+export async function canvasClientPoint(page: Page, fraction: { x: number; y: number }): Promise<Point> {
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const rect = await canvas.boundingBox();
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+  const x = rect.x + Math.max(1, Math.min(rect.width - 1, rect.width * fraction.x));
+  const y = rect.y + Math.max(1, Math.min(rect.height - 1, rect.height * fraction.y));
+  return { x, y };
 }
 
 export async function tapWorld(page: Page, point: Point, options?: { additive?: boolean }): Promise<void> {

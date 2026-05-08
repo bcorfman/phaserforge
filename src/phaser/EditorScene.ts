@@ -410,6 +410,28 @@ export class EditorScene extends Phaser.Scene {
     };
   }
 
+  public testSetPointerWorld(point: { x: number; y: number }): void {
+    const client = this.worldToClient(point);
+    if (!client) return;
+    const canvas = this.game.canvas;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const scaleX = this.scale.width / rect.width;
+    const scaleY = this.scale.height / rect.height;
+    const pointer = this.input?.activePointer;
+    if (!pointer) return;
+    pointer.x = (client.x - rect.left) * scaleX;
+    pointer.y = (client.y - rect.top) * scaleY;
+    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    pointer.worldX = world.x;
+    pointer.worldY = world.y;
+  }
+
+  public testPointerDownEntity(_entityId: string): void {
+    // EditorScene does not expose playmode pointerdown snapshots.
+  }
+
   public hitTestAtClientPoint(clientX: number, clientY: number): { kind: 'none' | 'entity' | 'group'; id?: string } {
     if (this.mode !== 'edit') return { kind: 'none' };
     const canvas = this.game.canvas;

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
-  clickCanvasAt,
+  tapWorld,
   dragWorld,
   dismissViewHint,
   expectSelection,
@@ -31,8 +31,7 @@ test('selection bar groups ungrouped entities and can add to an existing group',
   }).toBe(false);
 
   // Clear selection and multi-select two ungrouped entities.
-  const emptyPoint = await worldToClient(page, { x: 20, y: 20 });
-  await clickCanvasAt(page, emptyPoint);
+  await tapWorld(page, { x: -9999, y: -9999 });
   await expectSelection(page, { kind: 'none' });
 
   const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
@@ -80,7 +79,7 @@ test('selection bar groups ungrouped entities and can add to an existing group',
   const createdGroupId = stateAfterCreate.selection.id;
 
   // Select two more entities, then add them to the group from the selection menu.
-  await clickCanvasAt(page, emptyPoint);
+  await tapWorld(page, { x: -9999, y: -9999 });
   await expectSelection(page, { kind: 'none' });
 
   const e3 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e3') ?? null) as any);
