@@ -28,6 +28,7 @@ interface PhaserActionsStudioTestBridge {
   pointerDownEntity(entityId: string): void;
   tapWorld(point: PhaserActionsStudioPoint, options?: { additive?: boolean }): void;
   dragWorld(start: PhaserActionsStudioPoint, end: PhaserActionsStudioPoint): void;
+  duplicateEntities(entityIds: string[], delta: PhaserActionsStudioPoint): void;
   dragBoundsHandle(handle: string, delta: PhaserActionsStudioPoint): void;
   panByScreenDelta(delta: PhaserActionsStudioPoint): void;
   undo(): void;

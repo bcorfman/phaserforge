@@ -575,6 +575,10 @@ export class GameScene extends Phaser.Scene {
     (sprite as any).emit?.('pointerdown', pointer);
   }
 
+  public testDuplicateEntities(_entityIds: string[], _delta: { x: number; y: number }): void {
+    // Not used in play mode.
+  }
+
   public computeAutoHitboxForEntity(_entityId: string, _options: { alphaThreshold?: number } = {}): HitboxSpec | null {
     return null;
   }
