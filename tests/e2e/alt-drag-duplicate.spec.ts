@@ -34,9 +34,11 @@ test('alt-drag duplicates a selected sprite', async ({ page }) => {
   const start = await worldToClient(page, { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 });
   const end = await worldToClient(page, { x: (rect.centerX ?? (rect.minX + rect.maxX) / 2) + 80, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 });
 
-  await page.keyboard.down('Alt');
+  // Headless Firefox can treat Alt as a browser-level modifier and fail to deliver key events reliably.
+  // Dispatch directly to the window so EditorScene modifier tracking stays deterministic.
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt' })));
   await dragOnCanvas(page, start, end);
-  await page.keyboard.up('Alt');
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt' })));
 
   await expect.poll(async () => {
     const state = await getState<{

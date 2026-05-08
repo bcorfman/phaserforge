@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, seedProject } from './helpers';
+import { dismissViewHint, dragOnCanvas, getEntityWorldRect, getSceneSnapshot, seedProject } from './helpers';
 
 test('Play mode: entering a trigger zone emits an enter event in the snapshot', async ({ page }) => {
   await seedProject(page, {
@@ -47,16 +47,19 @@ test('Play mode: entering a trigger zone emits an enter event in the snapshot', 
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
   await expect.poll(async () => (await getSceneSnapshot<{ ready?: boolean }>(page))?.ready).toBe(true);
 
-  const targetClient = await page.evaluate(() => {
-    const canvas = document.querySelector('#game-container canvas') as HTMLCanvasElement | null;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    return { x: rect.left + rect.width * 0.95, y: rect.top + rect.height * 0.5 };
-  });
-  await page.mouse.move(targetClient.x, targetClient.y);
+  const canvas = page.locator('#game-container canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Canvas bounding box unavailable');
+  const y = box.y + box.height * 0.5;
+  // Hover alone can be flaky in headless Firefox for Phaser pointer world coords,
+  // so click before dragging to ensure the canvas has active pointer state.
+  await canvas.click({ position: { x: Math.max(1, box.width * 0.15), y: Math.max(1, box.height * 0.5) } });
+  await dragOnCanvas(page, { x: box.x + box.width * 0.15, y }, { x: box.x + box.width * 0.95, y }, 'left');
+  await page.waitForTimeout(100);
 
   await expect.poll(async () => {
     const rect = await getEntityWorldRect(page, 'e1');
+    if (!rect) return -1;
     return Math.round(rect.centerX ?? 0);
   }).toBeGreaterThanOrEqual(400);
 

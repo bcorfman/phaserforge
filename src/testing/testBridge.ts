@@ -39,7 +39,7 @@ export interface SceneBridge {
   getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
   getEditableBoundsRect(): Rect | null;
   worldToClient(point: Point): Point | null;
-  testTapWorld(point: Point): void;
+  testTapWorld(point: Point, options?: { additive?: boolean }): void;
   testDragWorld(start: Point, end: Point): void;
   testDragBoundsHandle(handle: string, delta: Point): void;
   testPanByScreenDelta(delta: Point): void;
@@ -113,9 +113,9 @@ function ensureBridge(): void {
       const scene = sceneGetter?.();
       return scene ? clone(scene.worldToClient(point)) : null;
     },
-    tapWorld(point: Point) {
+    tapWorld(point: Point, options?: { additive?: boolean }) {
       const scene = sceneGetter?.();
-      scene?.testTapWorld(point);
+      (scene as any)?.testTapWorld(point, options);
     },
     dragWorld(start: Point, end: Point) {
       const scene = sceneGetter?.();

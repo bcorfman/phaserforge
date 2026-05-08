@@ -11,7 +11,6 @@ const IS_CI = Boolean(process.env.CI);
 const APP_BOOT_TIMEOUT_MS = 60000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 30000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
-const TEST_SEED_SENTINEL_KEY = 'phaseractions.testSeeded.v1';
 
 export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean }): Promise<void> {
   if (!options?.forceNavigate) {
@@ -38,17 +37,20 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
   await waitForSceneReady(page);
 }
 
-export async function seedSampleScene(page: Page): Promise<void> {
+export async function seedSampleScene(page: Page, options: { once?: boolean } = {}): Promise<void> {
   const yaml = serializeProjectToYaml(sampleProject);
   await page.addInitScript(
-    ([sceneYaml, sentinelKey]) => {
-      if (window.localStorage.getItem(sentinelKey)) return;
-      window.localStorage.setItem(sentinelKey, '1');
+    ([sceneYaml, seedOnce]) => {
+      const sentinelKey = 'phaseractions.testSeeded.v1';
+      if (seedOnce && window.localStorage.getItem(sentinelKey)) return;
+      if (seedOnce) window.localStorage.setItem(sentinelKey, '1');
+
+      // Tests must be isolated by default: reset the persisted authored project before boot.
       window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
       window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
       window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
     },
-    [yaml, TEST_SEED_SENTINEL_KEY]
+    [yaml, Boolean(options.once)]
   );
   await gotoStudio(page, { forceNavigate: true });
   await waitForSampleScene(page);
@@ -57,6 +59,7 @@ export async function seedSampleScene(page: Page): Promise<void> {
 export async function seedProject(page: Page, project: any): Promise<void> {
   const yaml = serializeProjectToYaml(project);
   await page.addInitScript((sceneYaml) => {
+    // Keep tests deterministic by clearing persisted UI state tied to previous runs.
     window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
     window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
     window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
@@ -268,18 +271,51 @@ export async function boundsHandleClient(page: Page, handle: 'nw' | 'n' | 'ne' |
 }
 
 export async function dragOnCanvas(page: Page, from: Point, to: Point, button: 'left' | 'middle' = 'left'): Promise<void> {
-  await page.mouse.move(from.x, from.y);
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+
+  // Ensure the pointer is positioned over the canvas before starting the drag.
+  const rect = await canvas.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, top: r.top, width: r.width, height: r.height };
+  });
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+  const start = { x: Math.max(1, from.x - rect.left), y: Math.max(1, from.y - rect.top) };
+
+  await canvas.hover({ position: start });
   await page.mouse.down({ button });
+  // Use low-level mouse.move with steps to reliably generate intermediate pointer events
+  // (critical for drag thresholds and modifier-driven drags like Alt-duplicate).
   await page.mouse.move(to.x, to.y, { steps: 12 });
   await page.mouse.up({ button });
 }
 
-export async function clickCanvasAt(page: Page, point: Point): Promise<void> {
-  await page.mouse.click(point.x, point.y);
+export async function clickCanvasAt(
+  page: Page,
+  point: Point,
+  options: { modifiers?: Array<'Shift' | 'Alt' | 'Control' | 'Meta'>; button?: 'left' | 'middle' | 'right' } = {}
+): Promise<void> {
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const rect = await canvas.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, top: r.top, width: r.width, height: r.height };
+  });
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+  const pos = { x: point.x - rect.left, y: point.y - rect.top };
+  await canvas.hover({ position: { x: Math.max(1, pos.x), y: Math.max(1, pos.y) } });
+  await canvas.click({
+    position: { x: Math.max(1, pos.x), y: Math.max(1, pos.y) },
+    modifiers: options.modifiers,
+    button: options.button ?? 'left',
+  });
 }
 
-export async function tapWorld(page: Page, point: Point): Promise<void> {
-  await page.evaluate((worldPoint) => window.__PHASER_ACTIONS_STUDIO_TEST__?.tapWorld(worldPoint), point);
+export async function tapWorld(page: Page, point: Point, options?: { additive?: boolean }): Promise<void> {
+  await page.evaluate(([worldPoint, nextOptions]) => window.__PHASER_ACTIONS_STUDIO_TEST__?.tapWorld(worldPoint, nextOptions), [
+    point,
+    options ?? {},
+  ]);
 }
 
 export async function dragWorld(page: Page, start: Point, end: Point): Promise<void> {
@@ -325,6 +361,40 @@ export async function dragDropByTestId(
       fire(source, 'dragend');
     },
     [sourceTestId, targetTestId, targetYFraction]
+  );
+}
+
+export async function dragDropByTestIdAtClientPoint(
+  page: Page,
+  sourceTestId: string,
+  targetTestId: string,
+  clientPoint: { x: number; y: number }
+): Promise<void> {
+  await page.evaluate(
+    ([sourceId, targetId, point]) => {
+      const source = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
+      const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
+      if (!source) throw new Error(`dragDropByTestIdAtClientPoint: missing source ${sourceId}`);
+      if (!target) throw new Error(`dragDropByTestIdAtClientPoint: missing target ${targetId}`);
+
+      source.scrollIntoView({ block: 'center', inline: 'center' });
+      target.scrollIntoView({ block: 'center', inline: 'center' });
+
+      const dataTransfer = new DataTransfer();
+      const clientX = point.x;
+      const clientY = point.y;
+
+      const fire = (el: Element, type: string) => {
+        el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }));
+      };
+
+      fire(source, 'dragstart');
+      fire(target, 'dragenter');
+      fire(target, 'dragover');
+      fire(target, 'drop');
+      fire(source, 'dragend');
+    },
+    [sourceTestId, targetTestId, clientPoint]
   );
 }
 
