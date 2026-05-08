@@ -346,6 +346,7 @@ export class GameScene extends Phaser.Scene {
 
   public getTestSnapshot(): {
     ready: boolean;
+    isActive: boolean;
     sceneKey: string;
     compiledSceneId?: string;
     baseCompiledSceneId?: string;
@@ -382,6 +383,7 @@ export class GameScene extends Phaser.Scene {
     ].sort();
     return {
       ready: Boolean(this.compiled),
+      isActive: this.scene.isActive(),
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
       ...(this.baseCompiled ? { baseCompiledSceneId: this.baseCompiled.scene.id } : {}),

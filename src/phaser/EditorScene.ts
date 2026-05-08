@@ -238,6 +238,7 @@ export class EditorScene extends Phaser.Scene {
 
   public getTestSnapshot(): {
     ready: boolean;
+    isActive: boolean;
     sceneKey: string;
     compiledSceneId?: string;
     referenceSpriteCount: number;
@@ -250,6 +251,7 @@ export class EditorScene extends Phaser.Scene {
   } {
     return {
       ready: Boolean(this.compiled),
+      isActive: this.scene.isActive(),
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
       referenceSpriteCount: this.referenceSprites.size,
@@ -1567,8 +1569,10 @@ export class EditorScene extends Phaser.Scene {
       && clientX <= canvasRect.left + canvasRect.width
       && clientY >= canvasRect.top
       && clientY <= canvasRect.top + canvasRect.height;
-    const pointerX = hasUsableClientPoint ? (clientX - canvasRect.left) * scaleX : this.input.activePointer.x;
-    const pointerY = hasUsableClientPoint ? (clientY - canvasRect.top) * scaleY : this.input.activePointer.y;
+    const fallbackX = Number.isFinite(pointer.x) ? pointer.x : this.input.activePointer.x;
+    const fallbackY = Number.isFinite(pointer.y) ? pointer.y : this.input.activePointer.y;
+    const pointerX = hasUsableClientPoint ? (clientX - canvasRect.left) * scaleX : fallbackX;
+    const pointerY = hasUsableClientPoint ? (clientY - canvasRect.top) * scaleY : fallbackY;
     this.applyWheelZoom(pointerX, pointerY, deltaX, deltaY);
   }
 
