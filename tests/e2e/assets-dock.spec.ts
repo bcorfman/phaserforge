@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, getEntityWorldRect, getState, openSceneScope, seedProject, worldToClient } from './helpers';
+import { dismissViewHint, dragDropByTestIdAtClientPoint, getEntityWorldRect, getState, openSceneScope, seedProject, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test('imports an image and drags to canvas to create an entity with asset ref', async ({ page }) => {
@@ -84,11 +84,7 @@ test.describe('Assets dock', () => {
 
     const rect = await getEntityWorldRect(page, createdEntityId);
     const point = await worldToClient(page, { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 });
-    const canvasBox = await canvas.boundingBox();
-    if (!canvasBox) throw new Error('Canvas bounding box unavailable');
-    await page.getByTestId('assets-dock-item-image-meteor-large').dragTo(canvas, {
-      targetPosition: { x: Math.max(1, point.x - canvasBox.x), y: Math.max(1, point.y - canvasBox.y) },
-    });
+    await dragDropByTestIdAtClientPoint(page, 'assets-dock-item-image-meteor-large', 'game-container', point);
 
     await expect.poll(async () => {
       const state = await getState<any>(page);

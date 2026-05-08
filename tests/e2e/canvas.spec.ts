@@ -51,9 +51,7 @@ test('marquee selects multiple entities by click-dragging empty canvas', async (
   const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
   if (!e1 || !e2) throw new Error('Entity rects unavailable');
 
-  const start = await worldToClient(page, { x: e1.minX - 30, y: e1.minY - 30 });
-  const end = await worldToClient(page, { x: e2.maxX + 5, y: e2.maxY + 5 });
-  await dragOnCanvas(page, start, end, 'left');
+  await dragWorld(page, { x: e1.minX - 30, y: e1.minY - 30 }, { x: e2.maxX + 5, y: e2.maxY + 5 });
 
   await expect.poll(async () => {
     const state = await getState<{ selection?: { kind: string; ids?: string[] } }>(page);
@@ -69,10 +67,7 @@ test('shift-click additively selects entities on the canvas', async ({ page }) =
 
   const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
   if (!e2) throw new Error('Entity rect unavailable');
-  const e2Client = await worldToClient(page, { x: e2.centerX, y: e2.centerY });
-  await page.keyboard.down('Shift');
-  await clickCanvasAt(page, e2Client);
-  await page.keyboard.up('Shift');
+  await tapWorld(page, { x: e2.centerX, y: e2.centerY }, { additive: true });
 
   await expect.poll(async () => {
     const state = await getState<{ selection?: { kind: string; ids?: string[] } }>(page);

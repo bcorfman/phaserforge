@@ -924,6 +924,9 @@ export class GameScene extends Phaser.Scene {
         sprite = this.physics.add.image(entity.x, entity.y, PLACEHOLDER_TEXTURE_KEY);
       }
       this.configurePhysicsObject(entity.id, sprite as any, stores.physicsObjects);
+      this.applyEntityDisplayProps(sprite, entity, asset);
+      // Ensure the interactive hit area matches the final display size.
+      // (Firefox + placeholder textures can otherwise end up with a tiny hit area.)
       sprite.setInteractive();
       sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         this.lastEntityPointerDown = {
@@ -935,7 +938,6 @@ export class GameScene extends Phaser.Scene {
           y: pointer.y,
         };
       });
-      this.applyEntityDisplayProps(sprite, entity, asset);
       stores.sprites.set(entity.id, sprite);
       stores.velocityCache.delete(entity.id);
       stores.sizeCache.delete(entity.id);
@@ -1047,6 +1049,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.configurePhysicsObject(entity.id, sprite as any, stores.physicsObjects);
+    this.applyEntityDisplayProps(sprite, entity, asset);
+    // Ensure the interactive hit area matches the final display size.
     sprite.setInteractive();
     sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.lastEntityPointerDown = {
@@ -1058,7 +1062,6 @@ export class GameScene extends Phaser.Scene {
         y: pointer.y,
       };
     });
-    this.applyEntityDisplayProps(sprite, entity, asset);
     stores.sprites.set(entity.id, sprite);
     stores.velocityCache.delete(entity.id);
     stores.sizeCache.delete(entity.id);

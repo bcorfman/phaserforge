@@ -170,7 +170,7 @@ test('validated numeric fields allow clearing until blur', async ({ page }) => {
   await expect(scaleX).toHaveValue('2');
 
   // Commit on blur.
-  await scaleY.click();
+  await scaleX.evaluate((el: HTMLInputElement) => el.blur());
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, { scaleX?: number }> } }>(page);
@@ -228,7 +228,8 @@ test('move-until velocity inputs allow clearing until blur', async ({ page }) =>
   await velocityX.type('123');
   await expect(velocityX).toHaveValue('123');
 
-  await velocityY.click();
+  // Commit on blur.
+  await velocityX.evaluate((el: HTMLInputElement) => el.blur());
   await expect.poll(async () => {
     const state = await getState<{ scene: { attachments: Record<string, { params?: Record<string, unknown> }> } }>(page);
     const params = state.scene.attachments['att-move-right'].params ?? {};

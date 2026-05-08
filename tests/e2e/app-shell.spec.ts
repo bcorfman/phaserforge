@@ -37,7 +37,7 @@ test('boots empty by default and loads scenes', async ({ page }) => {
 });
 
 test('updates startup mode and persists the last YAML-backed scene across reloads', async ({ page }) => {
-  await seedSampleScene(page);
+  await seedSampleScene(page, { once: true });
   await gotoStudio(page);
   await waitForSampleScene(page);
   await dismissViewHint(page);

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getSceneSnapshot, seedProject, worldToClient } from './helpers';
+import { clickCanvasAt, dismissViewHint, getSceneSnapshot, seedProject, worldToClient } from './helpers';
 
 test('Play mode: clicking an entity records a runtime click snapshot', async ({ page }) => {
   await seedProject(page, {
@@ -29,7 +29,7 @@ test('Play mode: clicking an entity records a runtime click snapshot', async ({ 
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
 
   const point = await worldToClient(page, { x: 120, y: 120 });
-  await page.mouse.click(point.x, point.y, { button: 'left' });
+  await clickCanvasAt(page, point);
 
   await expect.poll(async () => {
     const snap = await getSceneSnapshot<any>(page);
