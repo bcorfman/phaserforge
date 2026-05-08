@@ -22,6 +22,7 @@ export interface AppStateSnapshot {
 export interface SceneBridge {
   getTestSnapshot(): {
     ready: boolean;
+    isActive?: boolean;
     sceneKey?: string;
     compiledSceneId?: string;
     zoom: number;
@@ -74,6 +75,7 @@ function getSceneBridge(): SceneBridge | null {
   const preferredKey = getPreferredSceneKey(snapshot?.mode);
 
   let firstNonNull: SceneBridge | null = null;
+  let activeScene: SceneBridge | null = null;
   for (const getter of sceneGetters) {
     let scene: SceneBridge | null = null;
     try {
@@ -83,17 +85,24 @@ function getSceneBridge(): SceneBridge | null {
     }
     if (!scene) continue;
     if (!firstNonNull) firstNonNull = scene;
-    if (!preferredKey) continue;
-    let key: string | undefined;
+    let testSnapshot: ReturnType<SceneBridge['getTestSnapshot']> | null = null;
     try {
-      key = scene.getTestSnapshot().sceneKey;
+      testSnapshot = scene.getTestSnapshot();
     } catch {
-      key = undefined;
+      testSnapshot = null;
     }
-    if (key === preferredKey) return scene;
+    if (testSnapshot?.isActive) {
+      if (!activeScene) activeScene = scene;
+      // If the active scene matches the preferred key, return immediately.
+      if (preferredKey && testSnapshot?.sceneKey === preferredKey) return scene;
+    }
+    if (preferredKey && testSnapshot?.sceneKey === preferredKey) {
+      // Prefer the mapped scene if nothing is marked active (fallback).
+      if (!activeScene) activeScene = scene;
+    }
   }
 
-  return firstNonNull;
+  return activeScene ?? firstNonNull;
 }
 
 function ensureBridge(): void {
