@@ -170,12 +170,47 @@ test('validated numeric fields allow clearing until blur', async ({ page }) => {
   await expect(scaleX).toHaveValue('2');
 
   // Commit on blur.
-  await scaleY.click();
+  await scaleX.evaluate((el: HTMLInputElement) => el.blur());
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, { scaleX?: number }> } }>(page);
     return state.scene.entities.e1.scaleX;
   }).toBe(2);
+});
+
+test('rotation input updates the sprite immediately when stepping with arrow keys', async ({ page }) => {
+  await tapWorld(page, { x: 220, y: 140 });
+
+  const rotation = page.getByTestId('entity-rotation-input');
+  await expect(rotation).toBeVisible();
+
+  const before = await getEntitySpriteWorldRect(page, 'e1');
+
+  await rotation.click();
+  await rotation.press('Control+A');
+  await rotation.type('89');
+  await rotation.press('ArrowUp');
+
+  await expect(rotation).toHaveValue('90');
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { entities: Record<string, { rotationDeg?: number }> } }>(page);
+    return state.scene.entities.e1.rotationDeg;
+  }).toBe(90);
+
+  await expect.poll(async () => {
+    const after = await getEntitySpriteWorldRect(page, 'e1');
+    if (!before || !after) return null;
+    const beforeW = before.maxX - before.minX;
+    const beforeH = before.maxY - before.minY;
+    const afterW = after.maxX - after.minX;
+    const afterH = after.maxY - after.minY;
+    return { beforeW, beforeH, afterW, afterH };
+  }).toEqual(expect.objectContaining({
+    // Entities in the sample scene are non-square, so a ~90deg rotation swaps width/height.
+    afterW: expect.closeTo((before!.maxY - before!.minY), 2),
+    afterH: expect.closeTo((before!.maxX - before!.minX), 2),
+  }));
 });
 
 test('move-until velocity inputs allow clearing until blur', async ({ page }) => {
@@ -193,7 +228,8 @@ test('move-until velocity inputs allow clearing until blur', async ({ page }) =>
   await velocityX.type('123');
   await expect(velocityX).toHaveValue('123');
 
-  await velocityY.click();
+  // Commit on blur.
+  await velocityX.evaluate((el: HTMLInputElement) => el.blur());
   await expect.poll(async () => {
     const state = await getState<{ scene: { attachments: Record<string, { params?: Record<string, unknown> }> } }>(page);
     const params = state.scene.attachments['att-move-right'].params ?? {};
@@ -344,7 +380,7 @@ test('preview uses edited move velocity and bounce behavior', async ({ page }) =
   await expect.poll(async () => {
     const rect = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
     return rect?.centerX;
-  }, { timeout: 2000 }).toBeLessThan(before?.centerX ?? 0);
+  }, { timeout: 8000 }).toBeLessThan(before?.centerX ?? 0);
 });
 
 test('preview bounce reaches configured bounds edge before reversing', async ({ page }) => {

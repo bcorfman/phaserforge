@@ -14,6 +14,25 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+export function clampPopupToViewport({
+  position,
+  popupSize,
+  viewportSize,
+  padding = 12,
+}: {
+  position: Point;
+  popupSize: Size;
+  viewportSize: Size;
+  padding?: number;
+}): Point {
+  const maxX = viewportSize.width - padding - popupSize.width;
+  const maxY = viewportSize.height - padding - popupSize.height;
+  return {
+    x: clamp(position.x, padding, maxX),
+    y: clamp(position.y, padding, maxY),
+  };
+}
+
 export function placePopupNearRect({
   anchorRect,
   popupSize,
@@ -50,4 +69,3 @@ export function placePopupNearRect({
 
   return { x, y };
 }
-

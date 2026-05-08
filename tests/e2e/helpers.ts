@@ -11,7 +11,6 @@ const IS_CI = Boolean(process.env.CI);
 const APP_BOOT_TIMEOUT_MS = 60000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 30000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
-const TEST_SEED_SENTINEL_KEY = 'phaseractions.testSeeded.v1';
 
 export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean }): Promise<void> {
   if (!options?.forceNavigate) {
@@ -38,17 +37,20 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
   await waitForSceneReady(page);
 }
 
-export async function seedSampleScene(page: Page): Promise<void> {
+export async function seedSampleScene(page: Page, options: { once?: boolean } = {}): Promise<void> {
   const yaml = serializeProjectToYaml(sampleProject);
   await page.addInitScript(
-    ([sceneYaml, sentinelKey]) => {
-      if (window.localStorage.getItem(sentinelKey)) return;
-      window.localStorage.setItem(sentinelKey, '1');
+    ([sceneYaml, seedOnce]) => {
+      const sentinelKey = 'phaseractions.testSeeded.v1';
+      if (seedOnce && window.localStorage.getItem(sentinelKey)) return;
+      if (seedOnce) window.localStorage.setItem(sentinelKey, '1');
+
+      // Tests must be isolated by default: reset the persisted authored project before boot.
       window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
       window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
       window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
     },
-    [yaml, TEST_SEED_SENTINEL_KEY]
+    [yaml, Boolean(options.once)]
   );
   await gotoStudio(page, { forceNavigate: true });
   await waitForSampleScene(page);
@@ -57,6 +59,7 @@ export async function seedSampleScene(page: Page): Promise<void> {
 export async function seedProject(page: Page, project: any): Promise<void> {
   const yaml = serializeProjectToYaml(project);
   await page.addInitScript((sceneYaml) => {
+    // Keep tests deterministic by clearing persisted UI state tied to previous runs.
     window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
     window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
     window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
@@ -238,7 +241,16 @@ export async function getEditableBoundsRect(page: Page): Promise<Rect> {
 }
 
 export async function worldToClient(page: Page, point: Point): Promise<Point> {
-  return page.evaluate((worldPoint) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(worldPoint), point) as Promise<Point>;
+  const result = await page.evaluate((worldPoint) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(worldPoint), point);
+  if (!result || typeof (result as any).x !== 'number' || typeof (result as any).y !== 'number') {
+    throw new Error(`worldToClient returned null/invalid for ${JSON.stringify(point)}`);
+  }
+  const x = Number((result as any).x);
+  const y = Number((result as any).y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    throw new Error(`worldToClient returned non-finite coords for ${JSON.stringify(point)}: ${JSON.stringify(result)}`);
+  }
+  return { x, y };
 }
 
 export async function entityClientCenter(page: Page, id: string): Promise<Point> {
@@ -268,18 +280,87 @@ export async function boundsHandleClient(page: Page, handle: 'nw' | 'n' | 'ne' |
 }
 
 export async function dragOnCanvas(page: Page, from: Point, to: Point, button: 'left' | 'middle' = 'left'): Promise<void> {
-  await page.mouse.move(from.x, from.y);
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+
+  const rect = await canvas.boundingBox();
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+  const startX = clamp(from.x, rect.x + 1, rect.x + rect.width - 1);
+  const startY = clamp(from.y, rect.y + 1, rect.y + rect.height - 1);
+  const endX = clamp(to.x, rect.x + 1, rect.x + rect.width - 1);
+  const endY = clamp(to.y, rect.y + 1, rect.y + rect.height - 1);
+
+  await page.mouse.move(startX, startY);
   await page.mouse.down({ button });
-  await page.mouse.move(to.x, to.y, { steps: 12 });
+  // Use low-level mouse.move with steps to reliably generate intermediate pointer events
+  // (critical for drag thresholds and modifier-driven drags like Alt-duplicate).
+  await page.mouse.move(endX, endY, { steps: 12 });
   await page.mouse.up({ button });
 }
 
-export async function clickCanvasAt(page: Page, point: Point): Promise<void> {
-  await page.mouse.click(point.x, point.y);
+export async function clickCanvasAt(
+  page: Page,
+  point: Point,
+  options: { modifiers?: Array<'Shift' | 'Alt' | 'Control' | 'Meta'>; button?: 'left' | 'middle' | 'right' } = {}
+): Promise<void> {
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const rect = await canvas.boundingBox();
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+  const x = clamp(point.x, rect.x + 1, rect.x + rect.width - 1);
+  const y = clamp(point.y, rect.y + 1, rect.y + rect.height - 1);
+
+  await page.mouse.move(x, y);
+  await page.mouse.click(x, y, {
+    button: options.button ?? 'left',
+    modifiers: options.modifiers,
+  });
 }
 
-export async function tapWorld(page: Page, point: Point): Promise<void> {
-  await page.evaluate((worldPoint) => window.__PHASER_ACTIONS_STUDIO_TEST__?.tapWorld(worldPoint), point);
+export async function clickCanvasAtFraction(
+  page: Page,
+  fraction: { x: number; y: number },
+  options: { modifiers?: Array<'Shift' | 'Alt' | 'Control' | 'Meta'>; button?: 'left' | 'middle' | 'right' } = {}
+): Promise<void> {
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const rect = await canvas.boundingBox();
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+  const x = rect.x + Math.max(1, Math.min(rect.width - 1, rect.width * fraction.x));
+  const y = rect.y + Math.max(1, Math.min(rect.height - 1, rect.height * fraction.y));
+  await page.mouse.move(x, y);
+  await page.mouse.click(x, y, { button: options.button ?? 'left', modifiers: options.modifiers });
+}
+
+export async function moveMouseToCanvasFraction(page: Page, fraction: { x: number; y: number }): Promise<void> {
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const rect = await canvas.boundingBox();
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+  const x = rect.x + Math.max(1, Math.min(rect.width - 1, rect.width * fraction.x));
+  const y = rect.y + Math.max(1, Math.min(rect.height - 1, rect.height * fraction.y));
+  await page.mouse.move(x, y);
+}
+
+export async function canvasClientPoint(page: Page, fraction: { x: number; y: number }): Promise<Point> {
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const rect = await canvas.boundingBox();
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+  const x = rect.x + Math.max(1, Math.min(rect.width - 1, rect.width * fraction.x));
+  const y = rect.y + Math.max(1, Math.min(rect.height - 1, rect.height * fraction.y));
+  return { x, y };
+}
+
+export async function tapWorld(page: Page, point: Point, options?: { additive?: boolean }): Promise<void> {
+  await page.evaluate(([worldPoint, nextOptions]) => window.__PHASER_ACTIONS_STUDIO_TEST__?.tapWorld(worldPoint, nextOptions), [
+    point,
+    options ?? {},
+  ]);
 }
 
 export async function dragWorld(page: Page, start: Point, end: Point): Promise<void> {
@@ -325,6 +406,40 @@ export async function dragDropByTestId(
       fire(source, 'dragend');
     },
     [sourceTestId, targetTestId, targetYFraction]
+  );
+}
+
+export async function dragDropByTestIdAtClientPoint(
+  page: Page,
+  sourceTestId: string,
+  targetTestId: string,
+  clientPoint: { x: number; y: number }
+): Promise<void> {
+  await page.evaluate(
+    ([sourceId, targetId, point]) => {
+      const source = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
+      const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
+      if (!source) throw new Error(`dragDropByTestIdAtClientPoint: missing source ${sourceId}`);
+      if (!target) throw new Error(`dragDropByTestIdAtClientPoint: missing target ${targetId}`);
+
+      source.scrollIntoView({ block: 'center', inline: 'center' });
+      target.scrollIntoView({ block: 'center', inline: 'center' });
+
+      const dataTransfer = new DataTransfer();
+      const clientX = point.x;
+      const clientY = point.y;
+
+      const fire = (el: Element, type: string) => {
+        el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }));
+      };
+
+      fire(source, 'dragstart');
+      fire(target, 'dragenter');
+      fire(target, 'dragover');
+      fire(target, 'drop');
+      fire(source, 'dragend');
+    },
+    [sourceTestId, targetTestId, clientPoint]
   );
 }
 

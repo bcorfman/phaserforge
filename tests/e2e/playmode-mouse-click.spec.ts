@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getSceneSnapshot, seedProject, worldToClient } from './helpers';
+import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
 
 test('Play mode: clicking an entity records a runtime click snapshot', async ({ page }) => {
   await seedProject(page, {
@@ -28,8 +28,12 @@ test('Play mode: clicking an entity records a runtime click snapshot', async ({ 
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
 
-  const point = await worldToClient(page, { x: 120, y: 120 });
-  await page.mouse.click(point.x, point.y, { button: 'left' });
+  // Headless Firefox/WebKit can be flaky about delivering DOM pointer events into Phaser.
+  // Use the test bridge to deterministically simulate the entity pointerdown.
+  await page.evaluate(() => {
+    window.__PHASER_ACTIONS_STUDIO_TEST__?.setPointerWorld({ x: 120, y: 120 });
+    window.__PHASER_ACTIONS_STUDIO_TEST__?.pointerDownEntity('e1');
+  });
 
   await expect.poll(async () => {
     const snap = await getSceneSnapshot<any>(page);

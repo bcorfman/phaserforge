@@ -15,11 +15,13 @@ type BaseProps = Omit<
 export function ValidatedNumberInput({
   value,
   onCommit,
+  onLiveChange,
   clamp,
   ...props
 }: BaseProps & {
   value: number;
   onCommit: (next: number) => void;
+  onLiveChange?: (next: number) => void;
   clamp?: (value: number) => number;
 }) {
   const clampValue = useMemo(() => clamp ?? ((n: number) => n), [clamp]);
@@ -49,7 +51,12 @@ export function ValidatedNumberInput({
       value={draft}
       onChange={(e) => {
         setEditing(true);
-        setDraft(e.target.value);
+        const raw = e.target.value;
+        setDraft(raw);
+        if (onLiveChange) {
+          const parsed = coerceFiniteNumber(raw);
+          if (parsed !== null) onLiveChange(clampValue(parsed));
+        }
       }}
       onBlur={commit}
       onKeyDown={(e) => {

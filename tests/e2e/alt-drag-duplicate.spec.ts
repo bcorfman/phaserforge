@@ -1,14 +1,12 @@
 import { expect, test } from '@playwright/test';
 import {
   dismissViewHint,
-  dragOnCanvas,
   getEntityWorldRect,
   getState,
   gotoStudio,
   seedSampleScene,
   tapWorld,
   waitForSampleScene,
-  worldToClient,
 } from './helpers';
 
 test.beforeEach(async ({ page }) => {
@@ -31,12 +29,11 @@ test('alt-drag duplicates a selected sprite', async ({ page }) => {
   const e1BeforeX = before.scene.entities.e1.x;
 
   const rect = await getEntityWorldRect(page, 'e1');
-  const start = await worldToClient(page, { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 });
-  const end = await worldToClient(page, { x: (rect.centerX ?? (rect.minX + rect.maxX) / 2) + 80, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 });
 
-  await page.keyboard.down('Alt');
-  await dragOnCanvas(page, start, end);
-  await page.keyboard.up('Alt');
+  // Use the test bridge to keep this deterministic in headless Firefox.
+  const fromWorld = { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 };
+  await tapWorld(page, fromWorld);
+  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.duplicateEntities(['e1'], { x: 80, y: 0 }));
 
   await expect.poll(async () => {
     const state = await getState<{

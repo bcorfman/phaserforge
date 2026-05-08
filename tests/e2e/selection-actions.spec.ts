@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
-  clickCanvasAt,
-  dragOnCanvas,
+  tapWorld,
+  dragWorld,
   dismissViewHint,
   expectSelection,
   getState,
@@ -31,16 +31,13 @@ test('selection bar groups ungrouped entities and can add to an existing group',
   }).toBe(false);
 
   // Clear selection and multi-select two ungrouped entities.
-  const emptyPoint = await worldToClient(page, { x: 20, y: 20 });
-  await clickCanvasAt(page, emptyPoint);
+  await tapWorld(page, { x: -9999, y: -9999 });
   await expectSelection(page, { kind: 'none' });
 
   const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
   const e1 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1') ?? null) as any);
   if (!e1 || !e2) throw new Error('Entity rects unavailable');
-  const start = await worldToClient(page, { x: e1.minX - 30, y: e1.minY - 30 });
-  const end = await worldToClient(page, { x: e2.maxX + 5, y: e2.maxY + 5 });
-  await dragOnCanvas(page, start, end, 'left');
+  await dragWorld(page, { x: e1.minX - 30, y: e1.minY - 30 }, { x: e2.maxX + 5, y: e2.maxY + 5 });
 
   await expect.poll(async () => {
     const state = await getState<{ selection?: unknown }>(page);
@@ -82,14 +79,12 @@ test('selection bar groups ungrouped entities and can add to an existing group',
   const createdGroupId = stateAfterCreate.selection.id;
 
   // Select two more entities, then add them to the group from the selection menu.
-  await clickCanvasAt(page, emptyPoint);
+  await tapWorld(page, { x: -9999, y: -9999 });
   await expectSelection(page, { kind: 'none' });
 
   const e3 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e3') ?? null) as any);
   if (!e2 || !e3) throw new Error('Entity rects unavailable');
-  const startAdd = await worldToClient(page, { x: e2.minX - 30, y: e2.minY - 30 });
-  const endAdd = await worldToClient(page, { x: e3.maxX + 5, y: e3.maxY + 5 });
-  await dragOnCanvas(page, startAdd, endAdd, 'left');
+  await dragWorld(page, { x: e2.minX - 30, y: e2.minY - 30 }, { x: e3.maxX + 5, y: e3.maxY + 5 });
 
   await expect.poll(async () => {
     const state = await getState<{ selection?: unknown }>(page);

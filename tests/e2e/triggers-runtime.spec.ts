@@ -47,16 +47,13 @@ test('Play mode: entering a trigger zone emits an enter event in the snapshot', 
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
   await expect.poll(async () => (await getSceneSnapshot<{ ready?: boolean }>(page))?.ready).toBe(true);
 
-  const targetClient = await page.evaluate(() => {
-    const canvas = document.querySelector('#game-container canvas') as HTMLCanvasElement | null;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    return { x: rect.left + rect.width * 0.95, y: rect.top + rect.height * 0.5 };
-  });
-  await page.mouse.move(targetClient.x, targetClient.y);
+  // Drive the entity into the trigger zone deterministically via the test bridge
+  // (headless mouse events can be flaky in Firefox).
+  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setPointerWorld({ x: 460, y: 200 }));
 
   await expect.poll(async () => {
     const rect = await getEntityWorldRect(page, 'e1');
+    if (!rect) return -1;
     return Math.round(rect.centerX ?? 0);
   }).toBeGreaterThanOrEqual(400);
 

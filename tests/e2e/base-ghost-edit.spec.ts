@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { clickCanvasAt, dismissViewHint, entityClientCenter, getSceneSnapshot, getState, seedProject, worldToClient } from './helpers';
+import { clickCanvasAt, dismissViewHint, getSceneSnapshot, getState, seedProject, tapWorld, worldToClient } from './helpers';
 
 test('Edit mode: base scene ghost renders but is non-interactive', async ({ page }) => {
   await seedProject(page, {
@@ -42,8 +42,7 @@ test('Edit mode: base scene ghost renders but is non-interactive', async ({ page
   await expect.poll(async () => (await getSceneSnapshot<any>(page))?.compiledSceneId).toBe('wave');
   await expect.poll(async () => (await getSceneSnapshot<any>(page))?.referenceSpriteCount).toBe(1);
 
-  const activePoint = await entityClientCenter(page, 'w1');
-  await clickCanvasAt(page, activePoint);
+  await tapWorld(page, { x: 500, y: 300 });
   await expect.poll(async () => (await getState<any>(page))?.selection).toEqual({ kind: 'entity', id: 'w1' });
 
   const ghostPoint = await worldToClient(page, { x: 200, y: 200 });

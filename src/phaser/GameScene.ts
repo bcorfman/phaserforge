@@ -346,6 +346,7 @@ export class GameScene extends Phaser.Scene {
 
   public getTestSnapshot(): {
     ready: boolean;
+    isActive: boolean;
     sceneKey: string;
     compiledSceneId?: string;
     baseCompiledSceneId?: string;
@@ -382,6 +383,7 @@ export class GameScene extends Phaser.Scene {
     ].sort();
     return {
       ready: Boolean(this.compiled),
+      isActive: this.scene.isActive(),
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
       ...(this.baseCompiled ? { baseCompiledSceneId: this.baseCompiled.scene.id } : {}),
@@ -546,6 +548,37 @@ export class GameScene extends Phaser.Scene {
       x: rect.left + screenX * scaleX,
       y: rect.top + screenY * scaleY,
     };
+  }
+
+  public testSetPointerWorld(point: { x: number; y: number }): void {
+    const client = this.worldToClient(point);
+    if (!client) return;
+    const canvas = this.game.canvas;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const scaleX = this.scale.width / rect.width;
+    const scaleY = this.scale.height / rect.height;
+    const pointer = this.input?.activePointer;
+    if (!pointer) return;
+    pointer.x = (client.x - rect.left) * scaleX;
+    pointer.y = (client.y - rect.top) * scaleY;
+    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    pointer.worldX = world.x;
+    pointer.worldY = world.y;
+  }
+
+  public testPointerDownEntity(entityId: string): void {
+    const sprite = this.sprites.get(entityId) ?? this.baseSprites.get(entityId);
+    if (!sprite) return;
+    const pointer = this.input?.activePointer;
+    if (!pointer) return;
+    // Emit directly on the sprite to avoid headless browser flakiness around DOM-delivered pointer events.
+    (sprite as any).emit?.('pointerdown', pointer);
+  }
+
+  public testDuplicateEntities(_entityIds: string[], _delta: { x: number; y: number }): void {
+    // Not used in play mode.
   }
 
   public computeAutoHitboxForEntity(_entityId: string, _options: { alphaThreshold?: number } = {}): HitboxSpec | null {
@@ -924,7 +957,17 @@ export class GameScene extends Phaser.Scene {
         sprite = this.physics.add.image(entity.x, entity.y, PLACEHOLDER_TEXTURE_KEY);
       }
       this.configurePhysicsObject(entity.id, sprite as any, stores.physicsObjects);
-      sprite.setInteractive();
+      this.applyEntityDisplayProps(sprite, entity, asset);
+      // Ensure the interactive hit area matches the final display size.
+      // (Firefox + placeholder textures can otherwise end up with a tiny hit area.)
+      const displayW = sprite instanceof Phaser.GameObjects.Rectangle ? entity.width : (sprite.displayWidth || entity.width);
+      const displayH = sprite instanceof Phaser.GameObjects.Rectangle ? entity.height : (sprite.displayHeight || entity.height);
+      const ox = (sprite as any).originX ?? 0.5;
+      const oy = (sprite as any).originY ?? 0.5;
+      sprite.setInteractive(
+        new Phaser.Geom.Rectangle(-displayW * ox, -displayH * oy, displayW, displayH),
+        Phaser.Geom.Rectangle.Contains
+      );
       sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         this.lastEntityPointerDown = {
           entityId: entity.id,
@@ -935,7 +978,6 @@ export class GameScene extends Phaser.Scene {
           y: pointer.y,
         };
       });
-      this.applyEntityDisplayProps(sprite, entity, asset);
       stores.sprites.set(entity.id, sprite);
       stores.velocityCache.delete(entity.id);
       stores.sizeCache.delete(entity.id);
@@ -1047,7 +1089,18 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.configurePhysicsObject(entity.id, sprite as any, stores.physicsObjects);
-    sprite.setInteractive();
+    this.applyEntityDisplayProps(sprite, entity, asset);
+    // Ensure the interactive hit area matches the final display size.
+    {
+      const displayW = sprite instanceof Phaser.GameObjects.Rectangle ? entity.width : (sprite.displayWidth || entity.width);
+      const displayH = sprite instanceof Phaser.GameObjects.Rectangle ? entity.height : (sprite.displayHeight || entity.height);
+      const ox = (sprite as any).originX ?? 0.5;
+      const oy = (sprite as any).originY ?? 0.5;
+      sprite.setInteractive(
+        new Phaser.Geom.Rectangle(-displayW * ox, -displayH * oy, displayW, displayH),
+        Phaser.Geom.Rectangle.Contains
+      );
+    }
     sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.lastEntityPointerDown = {
         entityId: entity.id,
@@ -1058,7 +1111,6 @@ export class GameScene extends Phaser.Scene {
         y: pointer.y,
       };
     });
-    this.applyEntityDisplayProps(sprite, entity, asset);
     stores.sprites.set(entity.id, sprite);
     stores.velocityCache.delete(entity.id);
     stores.sizeCache.delete(entity.id);

@@ -17,6 +17,7 @@ import {
 } from '../editor/canvasGeometry';
 import {
   hasExceededDragThreshold,
+  DRAG_THRESHOLD,
   createDragOverlayText,
   updateDragOverlay,
   createHoverOutline,
@@ -77,7 +78,10 @@ export class EditorScene extends Phaser.Scene {
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private isSpacePanning = false;
   private isMiddleMouseDown = false;
+  private isShiftDown = false;
+  private isAltDown = false;
   private wheelZoomAnchor?: { pointerX: number; pointerY: number; worldX: number; worldY: number };
+  private pendingTestMoveAfterDuplicate?: { dx: number; dy: number; sourceIds: string[] };
   private panState?: { startPointerX: number; startPointerY: number; startScrollX: number; startScrollY: number };
   private lastPointerWorldPoint?: { x: number; y: number };
   private readonly sceneBridgeGetter = () => this;
@@ -234,6 +238,7 @@ export class EditorScene extends Phaser.Scene {
 
   public getTestSnapshot(): {
     ready: boolean;
+    isActive: boolean;
     sceneKey: string;
     compiledSceneId?: string;
     referenceSpriteCount: number;
@@ -246,6 +251,7 @@ export class EditorScene extends Phaser.Scene {
   } {
     return {
       ready: Boolean(this.compiled),
+      isActive: this.scene.isActive(),
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
       referenceSpriteCount: this.referenceSprites.size,
@@ -407,6 +413,41 @@ export class EditorScene extends Phaser.Scene {
     };
   }
 
+  public testSetPointerWorld(point: { x: number; y: number }): void {
+    const client = this.worldToClient(point);
+    if (!client) return;
+    const canvas = this.game.canvas;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const scaleX = this.scale.width / rect.width;
+    const scaleY = this.scale.height / rect.height;
+    const pointer = this.input?.activePointer;
+    if (!pointer) return;
+    pointer.x = (client.x - rect.left) * scaleX;
+    pointer.y = (client.y - rect.top) * scaleY;
+    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    pointer.worldX = world.x;
+    pointer.worldY = world.y;
+  }
+
+  public testPointerDownEntity(_entityId: string): void {
+    // EditorScene does not expose playmode pointerdown snapshots.
+  }
+
+  public testDuplicateEntities(entityIds: string[], delta: { x: number; y: number }): void {
+    if (this.mode !== 'edit') return;
+    const uniqueIds = [...new Set(entityIds)].filter((id) => typeof id === 'string' && id.length > 0);
+    if (uniqueIds.length === 0) return;
+    EventBus.emit('canvas-duplicate-entities', { entityIds: uniqueIds });
+    const dx = Math.round(delta.x);
+    const dy = Math.round(delta.y);
+    if (dx !== 0 || dy !== 0) {
+      // Move happens after the store selects the duplicates.
+      this.pendingTestMoveAfterDuplicate = { dx, dy, sourceIds: uniqueIds };
+    }
+  }
+
   public hitTestAtClientPoint(clientX: number, clientY: number): { kind: 'none' | 'entity' | 'group'; id?: string } {
     if (this.mode !== 'edit') return { kind: 'none' };
     const canvas = this.game.canvas;
@@ -436,7 +477,7 @@ export class EditorScene extends Phaser.Scene {
     return { kind: 'none' };
   }
 
-  public testTapWorld(point: { x: number; y: number }): void {
+  public testTapWorld(point: { x: number; y: number }, options: { additive?: boolean } = {}): void {
     const hitResult = hitTestCanvas(
       point,
       this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
@@ -446,7 +487,11 @@ export class EditorScene extends Phaser.Scene {
     );
 
     if (hitResult.kind === 'entity' || hitResult.kind === 'group') {
-      EventBus.emit('canvas-select', hitResult);
+      if (hitResult.kind === 'entity' && options.additive) {
+        EventBus.emit('canvas-select-multiple', { entityIds: [hitResult.id], additive: true });
+      } else {
+        EventBus.emit('canvas-select', hitResult);
+      }
     } else if (hitResult.kind === 'none') {
       EventBus.emit('canvas-select-multiple', { entityIds: [], additive: false });
     }
@@ -472,6 +517,11 @@ export class EditorScene extends Phaser.Scene {
         EventBus.emit('canvas-move-entity', { id: hitResult.id, dx, dy });
         EventBus.emit('canvas-interaction-end');
         break;
+      case 'none': {
+        const selectedEntityIds = this.getEntitiesInMarquee(start.x, start.y, end.x, end.y);
+        EventBus.emit('canvas-select-multiple', { entityIds: selectedEntityIds, additive: false });
+        break;
+      }
       case 'group': {
         EventBus.emit('canvas-select', hitResult);
         EventBus.emit('canvas-interaction-start', hitResult);
@@ -975,6 +1025,20 @@ export class EditorScene extends Phaser.Scene {
 
   private handleSelectionChanged(selection: Selection): void {
     this.selection = selection;
+    if (this.pendingTestMoveAfterDuplicate) {
+      const { dx, dy, sourceIds } = this.pendingTestMoveAfterDuplicate;
+      const ids = selection.kind === 'entity'
+        ? [selection.id]
+        : selection.kind === 'entities'
+          ? selection.ids
+          : [];
+      const looksLikeDuplicateSelection = ids.length > 0 && ids.some((id) => !sourceIds.includes(id));
+      if (looksLikeDuplicateSelection && (dx !== 0 || dy !== 0)) {
+        // Dispatch after the current selection change has propagated to avoid races with React effects.
+        this.time.delayedCall(0, () => EventBus.emit('canvas-move-entities', { entityIds: ids, dx, dy }));
+        this.pendingTestMoveAfterDuplicate = undefined;
+      }
+    }
     if (this.dragState?.kind === 'entity' && this.dragState.awaitingDuplicate) {
       const ids = selection.kind === 'entity'
         ? [selection.id]
@@ -1232,7 +1296,9 @@ export class EditorScene extends Phaser.Scene {
     // Handle pending drag (drag threshold)
     if (this.pendingDrag && !this.dragState) {
       if (hasExceededDragThreshold(this.pendingDrag.startPoint, worldPoint)) {
-        const altKey = Boolean(pointer.event && 'altKey' in pointer.event && (pointer.event as MouseEvent).altKey);
+        const altKey =
+          this.isAltDown ||
+          Boolean(pointer.event && 'altKey' in pointer.event && (pointer.event as MouseEvent).altKey);
         // Start actual drag
         const { hitResult } = this.pendingDrag;
         if (hitResult.kind === 'none') {
@@ -1373,7 +1439,9 @@ export class EditorScene extends Phaser.Scene {
         const endX = this.dragState.currentX || this.dragState.startX;
         const endY = this.dragState.currentY || this.dragState.startY;
         const selectedEntityIds = this.getEntitiesInMarquee(this.dragState.startX, this.dragState.startY, endX, endY);
-        const shiftKey = Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
+        const shiftKey =
+          this.isShiftDown ||
+          Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
         if (shiftKey) {
           const baseIds =
             this.selection.kind === 'entities'
@@ -1399,15 +1467,82 @@ export class EditorScene extends Phaser.Scene {
     } else if (this.pendingDrag) {
       const { hitResult } = this.pendingDrag;
       if (hitResult.kind === 'entity' || hitResult.kind === 'group') {
-        const shiftKey = Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
-        if (shiftKey && hitResult.kind === 'entity') {
+        const shiftKey =
+          this.isShiftDown ||
+          Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
+        const dragDistance = pointer.getDistance ? pointer.getDistance() : 0;
+        if (hitResult.kind === 'entity' && dragDistance > DRAG_THRESHOLD) {
+          const startWorld = this.cameras.main.getWorldPoint(pointer.downX, pointer.downY);
+          const endWorld = this.cameras.main.getWorldPoint(pointer.upX, pointer.upY);
+          const rawDx = endWorld.x - startWorld.x;
+          const rawDy = endWorld.y - startWorld.y;
+          const dx = Math.round(this.snapDeltaToGrid(rawDx));
+          const dy = Math.round(this.snapDeltaToGrid(rawDy));
+
+          const altKey =
+            this.isAltDown ||
+            Boolean(pointer.event && 'altKey' in pointer.event && (pointer.event as MouseEvent).altKey);
+          const isMulti = this.selection.kind === 'entities' && this.selection.ids.includes(hitResult.id);
+          const dragEntityIds = isMulti ? this.selection.ids : [hitResult.id];
+
+          EventBus.emit(
+            'canvas-interaction-start',
+            dragEntityIds.length > 1 ? { kind: 'entities', id: dragEntityIds.join(',') } : { kind: 'entity', id: hitResult.id }
+          );
+
+          if (altKey) {
+            EventBus.emit('canvas-duplicate-entities', { entityIds: dragEntityIds });
+            // Duplicate selection is applied by the store; defer movement until the selection update is visible.
+            this.time.delayedCall(0, () => {
+              const ids =
+                this.selection.kind === 'entity'
+                  ? [this.selection.id]
+                  : this.selection.kind === 'entities'
+                    ? this.selection.ids
+                    : [];
+              if (ids.length > 0 && (dx !== 0 || dy !== 0)) {
+                EventBus.emit('canvas-move-entities', { entityIds: ids, dx, dy });
+              }
+              EventBus.emit('canvas-interaction-end');
+            });
+          } else {
+            if (!isMulti) EventBus.emit('canvas-select', hitResult);
+            if (dx !== 0 || dy !== 0) {
+              EventBus.emit('canvas-move-entities', { entityIds: dragEntityIds, dx, dy });
+            }
+            EventBus.emit('canvas-interaction-end');
+          }
+        } else if (shiftKey && hitResult.kind === 'entity') {
           EventBus.emit('canvas-select-multiple', { entityIds: [hitResult.id], additive: true });
         } else {
           EventBus.emit('canvas-select', hitResult);
         }
       } else if (hitResult.kind === 'none') {
-        const shiftKey = Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
-        if (!shiftKey) {
+        const shiftKey =
+          this.isShiftDown ||
+          Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
+        // Fallback: if pointermove events are throttled (notably in headless Firefox),
+        // complete marquee selection using the down/up coordinates.
+        if (pointer.getDistance && pointer.getDistance() > DRAG_THRESHOLD) {
+          const startWorld = this.cameras.main.getWorldPoint(pointer.downX, pointer.downY);
+          const endWorld = this.cameras.main.getWorldPoint(pointer.upX, pointer.upY);
+          const selectedEntityIds = this.getEntitiesInMarquee(startWorld.x, startWorld.y, endWorld.x, endWorld.y);
+          if (shiftKey) {
+            const baseIds =
+              this.selection.kind === 'entities'
+                ? this.selection.ids
+                : this.selection.kind === 'entity'
+                  ? [this.selection.id]
+                  : [];
+            const merged = [...baseIds];
+            for (const id of selectedEntityIds) {
+              if (!merged.includes(id)) merged.push(id);
+            }
+            EventBus.emit('canvas-select-multiple', { entityIds: merged, additive: false });
+          } else {
+            EventBus.emit('canvas-select-multiple', { entityIds: selectedEntityIds, additive: false });
+          }
+        } else if (!shiftKey) {
           EventBus.emit('canvas-select-multiple', { entityIds: [], additive: false });
         }
       }
@@ -1426,12 +1561,18 @@ export class EditorScene extends Phaser.Scene {
     const canvasRect = this.game.canvas.getBoundingClientRect();
     const scaleX = canvasRect.width > 0 ? this.scale.width / canvasRect.width : 1;
     const scaleY = canvasRect.height > 0 ? this.scale.height / canvasRect.height : 1;
-    const pointerX = rawEvent && 'clientX' in rawEvent
-      ? (rawEvent.clientX - canvasRect.left) * scaleX
-      : this.input.activePointer.x;
-    const pointerY = rawEvent && 'clientY' in rawEvent
-      ? (rawEvent.clientY - canvasRect.top) * scaleY
-      : this.input.activePointer.y;
+    const clientX = rawEvent && 'clientX' in rawEvent ? Number((rawEvent as any).clientX) : NaN;
+    const clientY = rawEvent && 'clientY' in rawEvent ? Number((rawEvent as any).clientY) : NaN;
+    const hasUsableClientPoint = Number.isFinite(clientX)
+      && Number.isFinite(clientY)
+      && clientX >= canvasRect.left
+      && clientX <= canvasRect.left + canvasRect.width
+      && clientY >= canvasRect.top
+      && clientY <= canvasRect.top + canvasRect.height;
+    const fallbackX = Number.isFinite(pointer.x) ? pointer.x : this.input.activePointer.x;
+    const fallbackY = Number.isFinite(pointer.y) ? pointer.y : this.input.activePointer.y;
+    const pointerX = hasUsableClientPoint ? (clientX - canvasRect.left) * scaleX : fallbackX;
+    const pointerY = hasUsableClientPoint ? (clientY - canvasRect.top) * scaleY : fallbackY;
     this.applyWheelZoom(pointerX, pointerY, deltaX, deltaY);
   }
 
@@ -1522,6 +1663,8 @@ export class EditorScene extends Phaser.Scene {
         return;
       }
     }
+    if (event.key === 'Shift') this.isShiftDown = true;
+    if (event.key === 'Alt') this.isAltDown = true;
     if (event.code === 'Space') {
       event.preventDefault();
       this.isSpacePanning = true;
@@ -1607,6 +1750,8 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private handleKeyUp(event: KeyboardEvent): void {
+    if (event.key === 'Shift') this.isShiftDown = false;
+    if (event.key === 'Alt') this.isAltDown = false;
     if (event.code !== 'Space') return;
     this.isSpacePanning = false;
     if (!this.panState) this.input.setDefaultCursor('default');
