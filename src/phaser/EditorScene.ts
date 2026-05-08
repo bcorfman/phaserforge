@@ -81,6 +81,7 @@ export class EditorScene extends Phaser.Scene {
   private isShiftDown = false;
   private isAltDown = false;
   private wheelZoomAnchor?: { pointerX: number; pointerY: number; worldX: number; worldY: number };
+  private pendingTestMoveAfterDuplicate?: { dx: number; dy: number; sourceIds: string[] };
   private panState?: { startPointerX: number; startPointerY: number; startScrollX: number; startScrollY: number };
   private lastPointerWorldPoint?: { x: number; y: number };
   private readonly sceneBridgeGetter = () => this;
@@ -430,6 +431,19 @@ export class EditorScene extends Phaser.Scene {
 
   public testPointerDownEntity(_entityId: string): void {
     // EditorScene does not expose playmode pointerdown snapshots.
+  }
+
+  public testDuplicateEntities(entityIds: string[], delta: { x: number; y: number }): void {
+    if (this.mode !== 'edit') return;
+    const uniqueIds = [...new Set(entityIds)].filter((id) => typeof id === 'string' && id.length > 0);
+    if (uniqueIds.length === 0) return;
+    EventBus.emit('canvas-duplicate-entities', { entityIds: uniqueIds });
+    const dx = Math.round(delta.x);
+    const dy = Math.round(delta.y);
+    if (dx !== 0 || dy !== 0) {
+      // Move happens after the store selects the duplicates.
+      this.pendingTestMoveAfterDuplicate = { dx, dy, sourceIds: uniqueIds };
+    }
   }
 
   public hitTestAtClientPoint(clientX: number, clientY: number): { kind: 'none' | 'entity' | 'group'; id?: string } {
@@ -1009,6 +1023,20 @@ export class EditorScene extends Phaser.Scene {
 
   private handleSelectionChanged(selection: Selection): void {
     this.selection = selection;
+    if (this.pendingTestMoveAfterDuplicate) {
+      const { dx, dy, sourceIds } = this.pendingTestMoveAfterDuplicate;
+      const ids = selection.kind === 'entity'
+        ? [selection.id]
+        : selection.kind === 'entities'
+          ? selection.ids
+          : [];
+      const looksLikeDuplicateSelection = ids.length > 0 && ids.some((id) => !sourceIds.includes(id));
+      if (looksLikeDuplicateSelection && (dx !== 0 || dy !== 0)) {
+        // Dispatch after the current selection change has propagated to avoid races with React effects.
+        this.time.delayedCall(0, () => EventBus.emit('canvas-move-entities', { entityIds: ids, dx, dy }));
+        this.pendingTestMoveAfterDuplicate = undefined;
+      }
+    }
     if (this.dragState?.kind === 'entity' && this.dragState.awaitingDuplicate) {
       const ids = selection.kind === 'entity'
         ? [selection.id]
