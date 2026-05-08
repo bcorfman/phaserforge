@@ -1531,12 +1531,16 @@ export class EditorScene extends Phaser.Scene {
     const canvasRect = this.game.canvas.getBoundingClientRect();
     const scaleX = canvasRect.width > 0 ? this.scale.width / canvasRect.width : 1;
     const scaleY = canvasRect.height > 0 ? this.scale.height / canvasRect.height : 1;
-    const pointerX = rawEvent && 'clientX' in rawEvent
-      ? (rawEvent.clientX - canvasRect.left) * scaleX
-      : this.input.activePointer.x;
-    const pointerY = rawEvent && 'clientY' in rawEvent
-      ? (rawEvent.clientY - canvasRect.top) * scaleY
-      : this.input.activePointer.y;
+    const clientX = rawEvent && 'clientX' in rawEvent ? Number((rawEvent as any).clientX) : NaN;
+    const clientY = rawEvent && 'clientY' in rawEvent ? Number((rawEvent as any).clientY) : NaN;
+    const hasUsableClientPoint = Number.isFinite(clientX)
+      && Number.isFinite(clientY)
+      && clientX >= canvasRect.left
+      && clientX <= canvasRect.left + canvasRect.width
+      && clientY >= canvasRect.top
+      && clientY <= canvasRect.top + canvasRect.height;
+    const pointerX = hasUsableClientPoint ? (clientX - canvasRect.left) * scaleX : this.input.activePointer.x;
+    const pointerY = hasUsableClientPoint ? (clientY - canvasRect.top) * scaleY : this.input.activePointer.y;
     this.applyWheelZoom(pointerX, pointerY, deltaX, deltaY);
   }
 
