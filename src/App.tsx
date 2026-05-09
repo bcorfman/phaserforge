@@ -201,6 +201,10 @@ function AppShell() {
   }, [state.selection]);
 
   useEffect(() => {
+    EventBus.emit('hitbox-overlay-changed', state.showHitboxOverlay);
+  }, [state.showHitboxOverlay]);
+
+  useEffect(() => {
     if (!sceneReady || !runtimeLoadedRef.current) return;
     const draft = state.formationDraft;
     if (!draft) {

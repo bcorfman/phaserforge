@@ -37,6 +37,7 @@ export const SCENE_STORAGE_KEY = 'phaseractions.sceneYaml.v2';
 export const STARTUP_MODE_STORAGE_KEY = 'phaseractions.startupMode.v1';
 export const THEME_MODE_STORAGE_KEY = 'phaseractions.themeMode.v1';
 export const UI_SCALE_STORAGE_KEY = 'phaseractions.uiScale.v1';
+export const SHOW_HITBOX_OVERLAY_STORAGE_KEY = 'phaseractions.showHitboxOverlay.v1';
 export const DEFAULT_UI_SCALE = 0.95;
 
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -128,6 +129,7 @@ export interface EditorState {
   startupMode: StartupMode;
   themeMode: ThemeMode;
   uiScale: number;
+  showHitboxOverlay: boolean;
   registry: EditorRegistryConfig;
   initialized: boolean;
   pendingGroupRestore?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec> };
@@ -140,10 +142,11 @@ export type ImportedEntityDraft = {
 };
 
 export type EditorAction =
-  | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; registry: EditorRegistryConfig }
+  | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; registry: EditorRegistryConfig }
   | { type: 'set-startup-mode'; startupMode: StartupMode }
   | { type: 'set-theme-mode'; themeMode: ThemeMode }
   | { type: 'set-ui-scale'; uiScale: number }
+  | { type: 'set-show-hitbox-overlay'; value: boolean }
   | { type: 'set-sidebar-scope'; scope: SidebarScope }
   | { type: 'select'; selection: Selection }
   | { type: 'select-multiple'; entityIds: Id[]; additive: boolean }
@@ -335,6 +338,7 @@ function defaultState(): EditorState {
     startupMode: 'reload_last_yaml',
     themeMode: 'system',
     uiScale: DEFAULT_UI_SCALE,
+    showHitboxOverlay: true,
     registry: EMPTY_EDITOR_REGISTRY,
     initialized: false,
     pendingGroupRestore: undefined,
@@ -886,6 +890,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           startupMode: action.startupMode,
           themeMode: action.themeMode,
           uiScale: coerceUiScale(String(action.uiScale), DEFAULT_UI_SCALE),
+          showHitboxOverlay: action.showHitboxOverlay ?? true,
           registry: action.registry,
           initialized: true,
         };
@@ -904,6 +909,11 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         uiScale: coerceUiScale(String(action.uiScale), state.uiScale),
+      };
+    case 'set-show-hitbox-overlay':
+      return {
+        ...state,
+        showHitboxOverlay: Boolean(action.value),
       };
     case 'set-sidebar-scope':
       return {
@@ -2718,10 +2728,13 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       const storedUiScale = typeof window !== 'undefined'
         ? coerceUiScale(window.localStorage.getItem(UI_SCALE_STORAGE_KEY), DEFAULT_UI_SCALE)
         : DEFAULT_UI_SCALE;
+      const storedShowHitboxOverlay = typeof window !== 'undefined'
+        ? window.localStorage.getItem(SHOW_HITBOX_OVERLAY_STORAGE_KEY) !== '0'
+        : true;
       const project = storedMode === 'reload_last_yaml' ? (loadStoredProjectYaml() ?? createEmptyProject()) : createEmptyProject();
       const currentSceneId = project.initialSceneId;
 
-      dispatch({ type: 'initialize', project, currentSceneId, startupMode: storedMode, themeMode: storedThemeMode, uiScale: storedUiScale, registry });
+      dispatch({ type: 'initialize', project, currentSceneId, startupMode: storedMode, themeMode: storedThemeMode, uiScale: storedUiScale, showHitboxOverlay: storedShowHitboxOverlay, registry });
     };
 
     void initialize();
@@ -2756,6 +2769,15 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       // ignore storage errors
     }
   }, [state.initialized, state.uiScale]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !state.initialized) return;
+    try {
+      window.localStorage.setItem(SHOW_HITBOX_OVERLAY_STORAGE_KEY, state.showHitboxOverlay ? '1' : '0');
+    } catch {
+      // ignore storage errors
+    }
+  }, [state.initialized, state.showHitboxOverlay]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !state.initialized) return;

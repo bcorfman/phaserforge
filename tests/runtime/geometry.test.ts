@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getRotatedEntityBounds } from '../../src/runtime/geometry';
+import { getRotatedEntityBounds, getRotatedEntityBoundaryCorners } from '../../src/runtime/geometry';
 
 describe('rotated entity bounds', () => {
   it('matches raw width/height at zero degrees', () => {
@@ -37,5 +37,44 @@ describe('rotated entity bounds', () => {
       minY: 100,
       maxY: 110,
     });
+  });
+});
+
+describe('rotated entity boundary corners', () => {
+  it('returns null when no hitbox is present', () => {
+    expect(getRotatedEntityBoundaryCorners({ x: 0, y: 0, width: 10, height: 10, rotationDeg: 0 })).toBeNull();
+  });
+
+  it('returns world-space corners for an unrotated hitbox', () => {
+    expect(getRotatedEntityBoundaryCorners({
+      x: 100,
+      y: 200,
+      width: 20,
+      height: 10,
+      rotationDeg: 0,
+      hitbox: { x: 2, y: 3, width: 4, height: 5 },
+    })).toEqual([
+      { x: 92, y: 198 },
+      { x: 96, y: 198 },
+      { x: 96, y: 203 },
+      { x: 92, y: 203 },
+    ]);
+  });
+
+  it('mirrors the hitbox when flipX is enabled', () => {
+    expect(getRotatedEntityBoundaryCorners({
+      x: 100,
+      y: 200,
+      width: 20,
+      height: 10,
+      rotationDeg: 0,
+      flipX: true,
+      hitbox: { x: 2, y: 3, width: 4, height: 5 },
+    })).toEqual([
+      { x: 104, y: 198 },
+      { x: 108, y: 198 },
+      { x: 108, y: 203 },
+      { x: 104, y: 203 },
+    ]);
   });
 });
