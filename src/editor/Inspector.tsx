@@ -272,6 +272,15 @@ function EntityInspector({
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   };
 }) {
+  let showHitboxOverlay = true;
+  let setShowHitboxOverlay: ((value: boolean) => void) | null = null;
+  try {
+    const store = useEditorStore();
+    showHitboxOverlay = store.state.showHitboxOverlay;
+    setShowHitboxOverlay = (value: boolean) => store.dispatch({ type: 'set-show-hitbox-overlay', value });
+  } catch {
+    // Allow renderEntityInspector() to be used in isolated tests without the EditorStore provider.
+  }
   const resolved = resolveEntityDefaults(entity);
   const update = (patch: Partial<EntitySpec>) => onUpdate({ ...entity, ...patch });
   const foldouts = useInspectorFoldouts();
@@ -641,6 +650,19 @@ function EntityInspector({
         title="Hitbox (Bounds)"
         open={foldouts.isOpen('entity.hitbox', true)}
         onToggle={() => foldouts.toggle('entity.hitbox', true)}
+        summary={(
+          <label className="field field-checkbox" onClick={(e) => e.stopPropagation()}>
+            <span>👁 Show</span>
+            <input
+              aria-label="Show Hitbox Overlay"
+              data-testid="entity-hitbox-overlay-enabled-input"
+              type="checkbox"
+              disabled={!setShowHitboxOverlay}
+              checked={showHitboxOverlay}
+              onChange={(e) => setShowHitboxOverlay?.(e.target.checked)}
+            />
+          </label>
+        )}
       >
         <label className="field">
           <span>Use Hitbox</span>

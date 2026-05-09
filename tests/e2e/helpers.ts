@@ -47,6 +47,7 @@ export async function seedSampleScene(page: Page, options: { once?: boolean } = 
 
       // Tests must be isolated by default: reset the persisted authored project before boot.
       window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
+      window.localStorage.setItem('phaseractions.showHitboxOverlay.v1', '1');
       window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
       window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
     },
@@ -61,6 +62,7 @@ export async function seedProject(page: Page, project: any): Promise<void> {
   await page.addInitScript((sceneYaml) => {
     // Keep tests deterministic by clearing persisted UI state tied to previous runs.
     window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
+    window.localStorage.setItem('phaseractions.showHitboxOverlay.v1', '1');
     window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
     window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
   }, yaml);

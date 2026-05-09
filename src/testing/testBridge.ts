@@ -39,6 +39,7 @@ export interface SceneBridge {
   getGroupLabelVisible(id: string): boolean | null;
   getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
   getEditableBoundsRect(): Rect | null;
+  getHitboxOverlayInfo(): { visible: boolean; labelX: number; labelY: number } | null;
   worldToClient(point: Point): Point | null;
   testSetPointerWorld(point: Point): void;
   testPointerDownEntity(entityId: string): void;
@@ -153,6 +154,10 @@ function ensureBridge(): void {
     getEditableBoundsRect() {
       const scene = getSceneBridge();
       return scene ? clone(scene.getEditableBoundsRect()) : null;
+    },
+    getHitboxOverlayInfo() {
+      const scene = getSceneBridge();
+      return scene ? clone(scene.getHitboxOverlayInfo()) : null;
     },
     worldToClient(point: Point) {
       const scene = getSceneBridge();

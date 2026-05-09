@@ -29,6 +29,15 @@ describe('EditorStore reducer', () => {
     expect(back.sidebarScope).toBe('scene');
   });
 
+  it('toggles hitbox overlay visibility flag', () => {
+    const state = initState();
+    expect(state.showHitboxOverlay).toBe(true);
+    const hidden = reducer(state, { type: 'set-show-hitbox-overlay', value: false } as any);
+    expect(hidden.showHitboxOverlay).toBe(false);
+    const shown = reducer(hidden, { type: 'set-show-hitbox-overlay', value: true } as any);
+    expect(shown.showHitboxOverlay).toBe(true);
+  });
+
   it('loads YAML text into the scene and sets a transient status message', () => {
     const now = 1_700_000_000_000;
     vi.spyOn(Date, 'now').mockReturnValue(now);

@@ -48,10 +48,22 @@ export function getRotatedEntityBounds(entity: Pick<RuntimeEntity, 'x' | 'y' | '
 export function getRotatedEntityBoundaryBounds(
   entity: Pick<RuntimeEntity, 'x' | 'y' | 'width' | 'height' | 'hitbox' | 'rotationDeg' | 'scaleX' | 'scaleY' | 'originX' | 'originY' | 'flipX' | 'flipY'>
 ): RectBounds {
+  const corners = getRotatedEntityBoundaryCorners(entity);
+  if (!corners) return getRotatedEntityBounds(entity);
+
+  return {
+    minX: Math.min(...corners.map((corner) => corner.x)),
+    maxX: Math.max(...corners.map((corner) => corner.x)),
+    minY: Math.min(...corners.map((corner) => corner.y)),
+    maxY: Math.max(...corners.map((corner) => corner.y)),
+  };
+}
+
+export function getRotatedEntityBoundaryCorners(
+  entity: Pick<RuntimeEntity, 'x' | 'y' | 'width' | 'height' | 'hitbox' | 'rotationDeg' | 'scaleX' | 'scaleY' | 'originX' | 'originY' | 'flipX' | 'flipY'>
+): Array<{ x: number; y: number }> | null {
   const hitbox = entity.hitbox;
-  if (!hitbox) {
-    return getRotatedEntityBounds(entity);
-  }
+  if (!hitbox) return null;
 
   const angle = normalizeRotationDeg(entity.rotationDeg) * (Math.PI / 180);
   const cos = Math.cos(angle);
@@ -71,11 +83,11 @@ export function getRotatedEntityBoundaryBounds(
   const originPxX = originX * baseWidth;
   const originPxY = originY * baseHeight;
 
-  const corners = [
+  return [
     { x: hbX, y: hbY },
     { x: hbX + hitbox.width, y: hbY },
-    { x: hbX, y: hbY + hitbox.height },
     { x: hbX + hitbox.width, y: hbY + hitbox.height },
+    { x: hbX, y: hbY + hitbox.height },
   ].map((corner) => {
     const dx = (corner.x - originPxX) * scaleX;
     const dy = (corner.y - originPxY) * scaleY;
@@ -84,13 +96,6 @@ export function getRotatedEntityBoundaryBounds(
       y: entity.y + (dx * sin + dy * cos),
     };
   });
-
-  return {
-    minX: Math.min(...corners.map((corner) => corner.x)),
-    maxX: Math.max(...corners.map((corner) => corner.x)),
-    minY: Math.min(...corners.map((corner) => corner.y)),
-    maxY: Math.max(...corners.map((corner) => corner.y)),
-  };
 }
 
 export function getRectSpan(bounds: RectBounds): { width: number; height: number } {
