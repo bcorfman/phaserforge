@@ -453,10 +453,13 @@ export class EditorScene extends Phaser.Scene {
 
     const scaleX = rect.width / this.scale.width;
     const scaleY = rect.height / this.scale.height;
-
-    const cameraMatrix = this.cameras.main.matrixCombined.matrix;
-    const screenX = point.x * cameraMatrix[0] + point.y * cameraMatrix[2] + cameraMatrix[4];
-    const screenY = point.x * cameraMatrix[1] + point.y * cameraMatrix[3] + cameraMatrix[5];
+    const camera = this.cameras.main;
+    const originX = camera.width * camera.originX;
+    const originY = camera.height * camera.originY;
+    // Avoid `matrixCombined` (which has shown cross-browser headless drift) but still match Phaser's
+    // regular camera projection (no rotation) including origin offsets.
+    const screenX = (point.x - camera.scrollX - originX) * camera.zoomX + originX + camera.x;
+    const screenY = (point.y - camera.scrollY - originY) * camera.zoomY + originY + camera.y;
 
     return {
       x: rect.left + screenX * scaleX,
