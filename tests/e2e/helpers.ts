@@ -9,6 +9,7 @@ type Rect = { minX: number; minY: number; maxX: number; maxY: number; centerX?: 
 
 const IS_CI = Boolean(process.env.CI);
 const APP_BOOT_TIMEOUT_MS = 60000;
+const NAVIGATE_TIMEOUT_MS = IS_CI ? 45000 : 20000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 30000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 
@@ -22,17 +23,25 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
   }
 
   const bootOnce = async () => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    // Explicit timeouts make failures deterministic (instead of hanging until the overall test timeout).
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: NAVIGATE_TIMEOUT_MS });
     await page.waitForFunction(() => Boolean(window.__PHASER_ACTIONS_STUDIO_TEST__?.isEnabled), { timeout: APP_BOOT_TIMEOUT_MS });
     await expect(page.getByTestId('app-root')).toBeVisible({ timeout: APP_BOOT_TIMEOUT_MS });
   };
 
-  try {
-    await bootOnce();
-  } catch (error) {
-    // One retry helps when a worker lands on a stale/blank page after navigation.
-    await bootOnce();
+  // Multiple retries help when a worker lands on a stale/blank page after navigation.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await bootOnce();
+      lastError = undefined;
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError) {
+    throw lastError;
   }
   await waitForSceneReady(page);
 }

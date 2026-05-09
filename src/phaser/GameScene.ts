@@ -48,6 +48,7 @@ export class GameScene extends Phaser.Scene {
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private audioService?: BasicAudioService;
   private inputService?: BasicInputService;
+  private testPointerOverride?: { x: number; y: number; worldX: number; worldY: number };
   private baseCollisionService?: BasicCollisionService;
   private collisionService?: BasicCollisionService;
   private baseTriggerZones: TriggerZoneSpec[] = [];
@@ -128,7 +129,14 @@ export class GameScene extends Phaser.Scene {
       getPointer: () => {
         const p = this.input?.activePointer;
         if (!p) return null;
-        return { x: p.x, y: p.y, worldX: p.worldX, worldY: p.worldY };
+        const override = this.testPointerOverride;
+        if (override && (Math.abs(p.x - override.x) > 0.5 || Math.abs(p.y - override.y) > 0.5)) {
+          // If the pointer moved via real DOM events, drop the test override so camera-based world
+          // coordinates behave normally for subsequent interactions.
+          this.testPointerOverride = undefined;
+        }
+        const nextOverride = this.testPointerOverride;
+        return { x: p.x, y: p.y, worldX: nextOverride?.worldX ?? p.worldX, worldY: nextOverride?.worldY ?? p.worldY };
       },
     });
     this.baseCollisionService = new BasicCollisionService();
@@ -540,9 +548,11 @@ export class GameScene extends Phaser.Scene {
 
     const scaleX = rect.width / this.scale.width;
     const scaleY = rect.height / this.scale.height;
-    const cameraMatrix = this.cameras.main.matrixCombined.matrix;
-    const screenX = point.x * cameraMatrix[0] + point.y * cameraMatrix[2] + cameraMatrix[4];
-    const screenY = point.x * cameraMatrix[1] + point.y * cameraMatrix[3] + cameraMatrix[5];
+    const camera = this.cameras.main;
+    const originX = camera.width * camera.originX;
+    const originY = camera.height * camera.originY;
+    const screenX = (point.x - camera.scrollX - originX) * camera.zoomX + originX + camera.x;
+    const screenY = (point.y - camera.scrollY - originY) * camera.zoomY + originY + camera.y;
 
     return {
       x: rect.left + screenX * scaleX,
@@ -563,9 +573,9 @@ export class GameScene extends Phaser.Scene {
     if (!pointer) return;
     pointer.x = (client.x - rect.left) * scaleX;
     pointer.y = (client.y - rect.top) * scaleY;
-    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-    pointer.worldX = world.x;
-    pointer.worldY = world.y;
+    pointer.worldX = point.x;
+    pointer.worldY = point.y;
+    this.testPointerOverride = { x: pointer.x, y: pointer.y, worldX: point.x, worldY: point.y };
   }
 
   public testPointerDownEntity(entityId: string): void {
