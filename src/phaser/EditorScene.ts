@@ -84,6 +84,8 @@ export class EditorScene extends Phaser.Scene {
   private isShiftDown = false;
   private isAltDown = false;
   private wheelZoomAnchor?: { pointerX: number; pointerY: number; worldX: number; worldY: number };
+  private wheelListener?: (event: WheelEvent) => void;
+  private lastWheelHandledAt = -Infinity;
   private pendingTestMoveAfterDuplicate?: { dx: number; dy: number; sourceIds: string[] };
   private panState?: { startPointerX: number; startPointerY: number; startScrollX: number; startScrollY: number };
   private lastPointerWorldPoint?: { x: number; y: number };
@@ -224,6 +226,24 @@ export class EditorScene extends Phaser.Scene {
     window.addEventListener('keyup', this.handleKeyUpBound);
     window.addEventListener('mousedown', this.handleMouseDownBound);
     window.addEventListener('mouseup', this.handleMouseUpBound);
+
+    const canvas = this.game.canvas as HTMLCanvasElement | undefined;
+    if (canvas) {
+      this.wheelListener = (event: WheelEvent) => {
+        // Avoid double-handling when Phaser emits `wheel` in the same frame.
+        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        if (now - this.lastWheelHandledAt < 8) return;
+
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const scaleX = rect.width > 0 ? this.scale.width / rect.width : 1;
+        const scaleY = rect.height > 0 ? this.scale.height / rect.height : 1;
+        const pointerX = (event.clientX - rect.left) * scaleX;
+        const pointerY = (event.clientY - rect.top) * scaleY;
+        this.applyWheelZoom(pointerX, pointerY, event.deltaX, event.deltaY);
+      };
+      canvas.addEventListener('wheel', this.wheelListener, { passive: true });
+    }
   }
 
   private unbindSceneListeners(): void {
@@ -250,6 +270,12 @@ export class EditorScene extends Phaser.Scene {
     window.removeEventListener('keyup', this.handleKeyUpBound);
     window.removeEventListener('mousedown', this.handleMouseDownBound);
     window.removeEventListener('mouseup', this.handleMouseUpBound);
+
+    const canvas = this.game.canvas as HTMLCanvasElement | undefined;
+    if (canvas && this.wheelListener) {
+      canvas.removeEventListener('wheel', this.wheelListener);
+      this.wheelListener = undefined;
+    }
   }
 
   public getTestSnapshot(): {
@@ -427,10 +453,13 @@ export class EditorScene extends Phaser.Scene {
 
     const scaleX = rect.width / this.scale.width;
     const scaleY = rect.height / this.scale.height;
-
-    const cameraMatrix = this.cameras.main.matrixCombined.matrix;
-    const screenX = point.x * cameraMatrix[0] + point.y * cameraMatrix[2] + cameraMatrix[4];
-    const screenY = point.x * cameraMatrix[1] + point.y * cameraMatrix[3] + cameraMatrix[5];
+    const camera = this.cameras.main;
+    const originX = camera.width * camera.originX;
+    const originY = camera.height * camera.originY;
+    // Avoid `matrixCombined` (which has shown cross-browser headless drift) but still match Phaser's
+    // regular camera projection (no rotation) including origin offsets.
+    const screenX = (point.x - camera.scrollX - originX) * camera.zoomX + originX + camera.x;
+    const screenY = (point.y - camera.scrollY - originY) * camera.zoomY + originY + camera.y;
 
     return {
       x: rect.left + screenX * scaleX,
@@ -451,9 +480,11 @@ export class EditorScene extends Phaser.Scene {
     if (!pointer) return;
     pointer.x = (client.x - rect.left) * scaleX;
     pointer.y = (client.y - rect.top) * scaleY;
-    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-    pointer.worldX = world.x;
-    pointer.worldY = world.y;
+    // Don't use `getWorldPoint` here: it relies on `matrixCombined`, which is one of the primary
+    // sources of cross-browser headless flakiness. Tests that call this bridge already have the
+    // desired world-space coordinates; set them directly.
+    pointer.worldX = point.x;
+    pointer.worldY = point.y;
   }
 
   public testPointerDownEntity(_entityId: string): void {
@@ -1679,6 +1710,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private applyWheelZoom(pointerX: number, pointerY: number, deltaX: number, deltaY: number): void {
+    this.lastWheelHandledAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
     if (!this.wheelZoomAnchor
       || Math.abs(this.wheelZoomAnchor.pointerX - pointerX) > 0.5
       || Math.abs(this.wheelZoomAnchor.pointerY - pointerY) > 0.5) {

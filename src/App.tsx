@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PhaserGame } from './phaser/PhaserHost';
 import { EventBus, getActiveScene } from './phaser/EventBus';
+import { consumePendingRuntimeRequestedSceneId } from './phaser/pendingRuntimeRequest';
 import { EditorProvider, useEditorStore } from './editor/EditorStore';
 import { EntityList } from './editor/EntityList';
 import { InspectorPane } from './editor/InspectorPane';
@@ -189,6 +190,9 @@ function AppShell() {
       if (typeof sceneId !== 'string' || sceneId.length === 0) return;
       dispatch({ type: 'set-current-scene', sceneId });
     };
+
+    const pending = consumePendingRuntimeRequestedSceneId();
+    if (pending) dispatch({ type: 'set-current-scene', sceneId: pending });
 
     EventBus.on('runtime-request-scene', handleRuntimeRequestScene);
     return () => {

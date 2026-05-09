@@ -4,6 +4,7 @@ import type { EditorAction, Selection } from './EditorStore';
 import { getAssetReferences, type AssetKind } from './assetReferences';
 import { ASSET_DRAG_MIME } from './dragAssets';
 import { SpriteImportPanelView } from './SpriteImportPanel';
+import { loadImageMetadataFromFile, loadImageMetadataFromSrc, type LoadedImageMetadata } from './imageMetadata';
 
 async function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -21,14 +22,8 @@ type LoadedImage = {
   width: number;
   height: number;
 };
-
-function loadImageMetadata(src: string, name: string, mimeType?: string): Promise<LoadedImage> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve({ src, name, mimeType, width: image.naturalWidth, height: image.naturalHeight });
-    image.onerror = () => reject(new Error('Unable to load image'));
-    image.src = src;
-  });
+function toLoadedImage(meta: LoadedImageMetadata): LoadedImage {
+  return { src: meta.src, name: meta.name, mimeType: meta.mimeType, width: meta.width, height: meta.height };
 }
 
 type AssetTab = 'images' | 'audio' | 'fonts';
@@ -145,7 +140,7 @@ export function AssetsDock({
     try {
       const dataUrl = await readAsDataUrl(file);
       if (importKind === 'image') {
-        const meta = await loadImageMetadata(dataUrl, file.name, file.type || undefined);
+        const meta = toLoadedImage(await loadImageMetadataFromFile(file, dataUrl));
         dispatch({
           type: 'add-image-asset-from-file',
           file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, width: meta.width, height: meta.height },
@@ -164,8 +159,7 @@ export function AssetsDock({
         return;
       }
 
-      const meta = await loadImageMetadata(dataUrl, file.name, file.type || undefined);
-      setLoadedImage(meta);
+      setLoadedImage(toLoadedImage(await loadImageMetadataFromFile(file, dataUrl)));
     } catch (err) {
       setFileError(err instanceof Error ? err.message : 'Unable to import file');
     }
@@ -176,7 +170,7 @@ export function AssetsDock({
     if (!path) return;
     if (importKind === 'image') {
       try {
-        const meta = await loadImageMetadata(path, path.split('/').pop() ?? path);
+        const meta = toLoadedImage(await loadImageMetadataFromSrc(path, path.split('/').pop() ?? path));
         dispatch({ type: 'add-image-asset-from-path', path, width: meta.width, height: meta.height } as any);
       } catch {
         dispatch({ type: 'add-image-asset-from-path', path } as any);
