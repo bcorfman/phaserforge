@@ -5,7 +5,7 @@ import { OpRegistry } from '../compiler/opRegistry';
 import { AssetFileSource, GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, SpriteSheetGridSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
 import { getGroupFrameDisplay } from '../editor/groupFrameDisplay';
-import { getRotatedEntityBounds } from '../runtime/geometry';
+import { getRotatedEntityBounds, getRotatedEntityBoundaryCorners } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { clampHitboxToEntity, computeHitboxFromImageData, mapHitboxToEntitySize } from '../editor/hitboxAuto';
 import {
@@ -62,6 +62,9 @@ export class EditorScene extends Phaser.Scene {
   private dragOverlay?: Phaser.GameObjects.Text;
   private hoverOutline?: Phaser.GameObjects.Graphics;
   private selectionFrames?: Phaser.GameObjects.Graphics;
+  private hitboxOverlayGraphics?: Phaser.GameObjects.Graphics;
+  private hitboxOverlayLabel?: Phaser.GameObjects.Text;
+  private showHitboxOverlay = true;
   private formationDraftGraphics?: Phaser.GameObjects.Graphics;
   private formationDraftHandle?: Phaser.GameObjects.Arc;
   private formationDraftActive = false;
@@ -106,6 +109,17 @@ export class EditorScene extends Phaser.Scene {
     this.hoverOutline = createHoverOutline(this);
     this.selectionFrames = this.add.graphics();
     this.selectionFrames.setDepth(11);
+    this.hitboxOverlayGraphics = this.add.graphics();
+    this.hitboxOverlayGraphics.setDepth(12);
+    this.hitboxOverlayLabel = this.add.text(0, 0, 'HITBOX', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+      fontSize: '12px',
+      color: '#22d3ee',
+      backgroundColor: '#052f3a',
+      padding: { left: 8, right: 8, top: 4, bottom: 4 },
+    });
+    this.hitboxOverlayLabel.setDepth(13);
+    this.hitboxOverlayLabel.setVisible(false);
     this.formationDraftGraphics = this.add.graphics();
     this.formationDraftGraphics.setDepth(10);
     this.formationDraftHandle = this.add.circle(0, 0, 10, 0x0b1220, 0.85).setStrokeStyle(2, 0x6ad6ff, 0.9) as Phaser.GameObjects.Arc;
@@ -191,6 +205,7 @@ export class EditorScene extends Phaser.Scene {
     setActiveScene(this);
     registerSceneGetter(this.sceneBridgeGetter);
     EventBus.on('selection-changed', this.handleSelectionChanged, this);
+    EventBus.on('hitbox-overlay-changed', this.handleHitboxOverlayChanged, this);
     EventBus.on('formation-draft-changed', this.handleFormationDraftChanged, this);
     EventBus.on('canvas-update-bounds', this.updateBounds, this);
     EventBus.on('toggle-grid-snap', this.toggleGridSnap, this);
@@ -217,6 +232,7 @@ export class EditorScene extends Phaser.Scene {
     if (getActiveScene() === this) setActiveScene(null);
     unregisterSceneGetter(this.sceneBridgeGetter);
     EventBus.off('selection-changed', this.handleSelectionChanged, this);
+    EventBus.off('hitbox-overlay-changed', this.handleHitboxOverlayChanged, this);
     EventBus.off('formation-draft-changed', this.handleFormationDraftChanged, this);
     EventBus.off('canvas-update-bounds', this.updateBounds, this);
     EventBus.off('toggle-grid-snap', this.toggleGridSnap, this);
@@ -290,6 +306,15 @@ export class EditorScene extends Phaser.Scene {
       maxY: bounds.y + bounds.height,
       centerX: sprite.x,
       centerY: sprite.y,
+    };
+  }
+
+  public getHitboxOverlayInfo(): { visible: boolean; labelX: number; labelY: number } | null {
+    if (!this.hitboxOverlayLabel) return null;
+    return {
+      visible: this.hitboxOverlayLabel.visible,
+      labelX: this.hitboxOverlayLabel.x,
+      labelY: this.hitboxOverlayLabel.y,
     };
   }
 
@@ -573,6 +598,7 @@ export class EditorScene extends Phaser.Scene {
       if (this.mode === 'play') this.syncPhysicsState(entity.id, sprite, entity);
     }
     this.updateSelectionFrames();
+    this.updateHitboxOverlay();
     this.updateGroupFrames();
   }
 
@@ -1056,8 +1082,84 @@ export class EditorScene extends Phaser.Scene {
     }
     this.applySelectionStyles();
     this.updateSelectionFrames();
+    this.updateHitboxOverlay();
     this.updateGroupFrames();
     if (this.compiled) this.refreshBoundsOverlay(this.compiled.scene);
+  }
+
+  private handleHitboxOverlayChanged(enabled: boolean): void {
+    this.showHitboxOverlay = Boolean(enabled);
+    this.updateHitboxOverlay();
+  }
+
+  private updateHitboxOverlay(): void {
+    const gfx = this.hitboxOverlayGraphics;
+    const label = this.hitboxOverlayLabel;
+    if (!gfx || !label) return;
+
+    gfx.clear();
+    label.setVisible(false);
+
+    if (!this.showHitboxOverlay) return;
+    if (!this.compiled) return;
+
+    const id = this.selection.kind === 'entity'
+      ? this.selection.id
+      : null;
+    if (!id) return;
+
+    const entity = this.compiled.entities[id];
+    if (!entity?.hitbox) return;
+
+    const corners = getRotatedEntityBoundaryCorners(entity);
+    if (!corners) return;
+
+    gfx.lineStyle(2, 0x22d3ee, 0.95);
+    const dash = 8;
+    const gap = 6;
+    for (let i = 0; i < corners.length; i += 1) {
+      const a = corners[i];
+      const b = corners[(i + 1) % corners.length];
+      this.strokeDashedLine(gfx, a.x, a.y, b.x, b.y, dash, gap);
+    }
+
+    const maxX = Math.max(...corners.map((c) => c.x));
+    const maxY = Math.max(...corners.map((c) => c.y));
+    label.setPosition(maxX + 6, maxY + 6);
+    label.setVisible(true);
+  }
+
+  private strokeDashedLine(
+    gfx: Phaser.GameObjects.Graphics,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    dashLength: number,
+    gapLength: number
+  ): void {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= 0.0001) return;
+
+    const ux = dx / dist;
+    const uy = dy / dist;
+
+    let t = 0;
+    while (t < dist) {
+      const segStart = t;
+      const segEnd = Math.min(dist, t + dashLength);
+      const sx = x1 + ux * segStart;
+      const sy = y1 + uy * segStart;
+      const ex = x1 + ux * segEnd;
+      const ey = y1 + uy * segEnd;
+      gfx.beginPath();
+      gfx.moveTo(sx, sy);
+      gfx.lineTo(ex, ey);
+      gfx.strokePath();
+      t += dashLength + gapLength;
+    }
   }
 
   private applySelectionStyles(): void {
