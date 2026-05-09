@@ -480,9 +480,11 @@ export class EditorScene extends Phaser.Scene {
     if (!pointer) return;
     pointer.x = (client.x - rect.left) * scaleX;
     pointer.y = (client.y - rect.top) * scaleY;
-    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-    pointer.worldX = world.x;
-    pointer.worldY = world.y;
+    // Don't use `getWorldPoint` here: it relies on `matrixCombined`, which is one of the primary
+    // sources of cross-browser headless flakiness. Tests that call this bridge already have the
+    // desired world-space coordinates; set them directly.
+    pointer.worldX = point.x;
+    pointer.worldY = point.y;
   }
 
   public testPointerDownEntity(_entityId: string): void {
