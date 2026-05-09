@@ -5,6 +5,7 @@ import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getSceneWorld } from './sceneWorld';
 import { clampHitboxToEntity, computeHitboxFromImageData } from './hitboxAuto';
 import type { GameSceneSpec } from '../model/types';
+import { readImageDimensionsFromFile } from './imageMetadata';
 
 type LoadedImage = {
   src: string;
@@ -19,7 +20,12 @@ type LoadedImage = {
 function loadImageMetadata(src: string, name: string, mimeType: string | undefined, sourceKind: LoadedImage['sourceKind']): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    image.onload = () => {
+    image.onload = async () => {
+      try {
+        await image.decode?.();
+      } catch {
+        // Ignore decode errors; we still might have a usable size.
+      }
       resolve({
         src,
         name,
@@ -88,6 +94,7 @@ export function SpriteImportPanelView({
     const file = event.target.files?.[0];
     if (!file) return;
     try {
+      const parsed = await readImageDimensionsFromFile(file);
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
@@ -95,6 +102,10 @@ export function SpriteImportPanelView({
         reader.readAsDataURL(file);
       });
       const metadata = await loadImageMetadata(dataUrl, file.name, file.type, 'embedded');
+      if (parsed && (metadata.width <= 0 || metadata.height <= 0)) {
+        metadata.width = parsed.width;
+        metadata.height = parsed.height;
+      }
       setLoadedImage(metadata);
       setError(undefined);
     } catch (err) {
