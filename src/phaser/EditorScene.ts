@@ -84,6 +84,8 @@ export class EditorScene extends Phaser.Scene {
   private isShiftDown = false;
   private isAltDown = false;
   private wheelZoomAnchor?: { pointerX: number; pointerY: number; worldX: number; worldY: number };
+  private wheelListener?: (event: WheelEvent) => void;
+  private lastWheelHandledAt = -Infinity;
   private pendingTestMoveAfterDuplicate?: { dx: number; dy: number; sourceIds: string[] };
   private panState?: { startPointerX: number; startPointerY: number; startScrollX: number; startScrollY: number };
   private lastPointerWorldPoint?: { x: number; y: number };
@@ -224,6 +226,24 @@ export class EditorScene extends Phaser.Scene {
     window.addEventListener('keyup', this.handleKeyUpBound);
     window.addEventListener('mousedown', this.handleMouseDownBound);
     window.addEventListener('mouseup', this.handleMouseUpBound);
+
+    const canvas = this.game.canvas as HTMLCanvasElement | undefined;
+    if (canvas) {
+      this.wheelListener = (event: WheelEvent) => {
+        // Avoid double-handling when Phaser emits `wheel` in the same frame.
+        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        if (now - this.lastWheelHandledAt < 8) return;
+
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const scaleX = rect.width > 0 ? this.scale.width / rect.width : 1;
+        const scaleY = rect.height > 0 ? this.scale.height / rect.height : 1;
+        const pointerX = (event.clientX - rect.left) * scaleX;
+        const pointerY = (event.clientY - rect.top) * scaleY;
+        this.applyWheelZoom(pointerX, pointerY, event.deltaX, event.deltaY);
+      };
+      canvas.addEventListener('wheel', this.wheelListener, { passive: true });
+    }
   }
 
   private unbindSceneListeners(): void {
@@ -250,6 +270,12 @@ export class EditorScene extends Phaser.Scene {
     window.removeEventListener('keyup', this.handleKeyUpBound);
     window.removeEventListener('mousedown', this.handleMouseDownBound);
     window.removeEventListener('mouseup', this.handleMouseUpBound);
+
+    const canvas = this.game.canvas as HTMLCanvasElement | undefined;
+    if (canvas && this.wheelListener) {
+      canvas.removeEventListener('wheel', this.wheelListener);
+      this.wheelListener = undefined;
+    }
   }
 
   public getTestSnapshot(): {
@@ -1679,6 +1705,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private applyWheelZoom(pointerX: number, pointerY: number, deltaX: number, deltaY: number): void {
+    this.lastWheelHandledAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
     if (!this.wheelZoomAnchor
       || Math.abs(this.wheelZoomAnchor.pointerX - pointerX) > 0.5
       || Math.abs(this.wheelZoomAnchor.pointerY - pointerY) > 0.5) {
