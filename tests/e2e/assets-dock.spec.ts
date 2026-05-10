@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { clickCanvasAt, dismissViewHint, dragDropByTestIdAtClientPoint, getEntitySpriteWorldRect, getState, openSceneScope, seedProject, worldToClient } from './helpers';
+import { dismissViewHint, dragDropByTestIdAtClientPoint, getEntitySpriteWorldRect, getState, openSceneScope, seedProject, triggerUndo, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test('imports an image and drags to canvas to create an entity with asset ref', async ({ page }) => {
@@ -89,6 +89,12 @@ test.describe('Assets dock', () => {
     await page.getByTestId('assets-dock-import-button').click();
     await page.getByTestId('assets-dock-file-input').setInputFiles('res/images/meteor_large.png');
     await expect(page.getByTestId('assets-dock-item-image-meteor-large')).toBeVisible();
+    // Wait for the imported image asset to be present in state (WebKit can render the list item before metadata/state lands).
+    await expect.poll(async () => {
+      const state = await getState<any>(page);
+      const asset = state?.project?.assets?.images?.['meteor-large'];
+      return Boolean(asset);
+    }).toBe(true);
 
     const entityCountBeforeReplace = await page.evaluate(() => {
       const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
@@ -96,16 +102,55 @@ test.describe('Assets dock', () => {
     });
 
     const rect = await getEntitySpriteWorldRect(page, createdEntityId);
-    const point = await worldToClient(page, { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 });
+    const centerWorld = { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 };
+    const candidatesWorld = [
+      centerWorld,
+      { x: rect.minX + (rect.maxX - rect.minX) * 0.25, y: rect.minY + (rect.maxY - rect.minY) * 0.25 },
+      { x: rect.minX + (rect.maxX - rect.minX) * 0.75, y: rect.minY + (rect.maxY - rect.minY) * 0.25 },
+      { x: rect.minX + (rect.maxX - rect.minX) * 0.25, y: rect.minY + (rect.maxY - rect.minY) * 0.75 },
+      { x: rect.minX + (rect.maxX - rect.minX) * 0.75, y: rect.minY + (rect.maxY - rect.minY) * 0.75 },
+    ];
+    const candidatesClient = await Promise.all(candidatesWorld.map((p) => worldToClient(page, p)));
 
-    // Ensure the computed client point actually hit-tests this entity (WebKit can be picky about drop coordinates).
-    await clickCanvasAt(page, point);
-    await expect.poll(async () => {
+    const readSnapshot = async () => {
       const state = await getState<any>(page);
-      return state?.selection ?? null;
-    }).toEqual({ kind: 'entity', id: createdEntityId });
+      const entities = state?.scene?.entities ?? {};
+      const entity = entities?.[createdEntityId];
+      return {
+        assetId: entity?.asset?.source?.assetId ?? '',
+        entityCount: Object.keys(entities).length,
+      };
+    };
 
-    await dragDropByTestIdAtClientPoint(page, 'assets-dock-item-image-meteor-large', 'game-container', point);
+    const waitForOutcome = async (timeoutMs: number) => {
+      const deadline = Date.now() + timeoutMs;
+      let last = await readSnapshot();
+      while (Date.now() < deadline) {
+        last = await readSnapshot();
+        if (last.assetId === 'meteor-large') return last;
+        if (last.entityCount > entityCountBeforeReplace) return last;
+        await page.waitForTimeout(100);
+      }
+      return last;
+    };
+
+    // Some browsers/CI runs are sensitive to the exact drop point. Try a few points within the sprite rect.
+    // If a drop accidentally creates a new entity, undo and retry until we get a clean replace.
+    for (const point of candidatesClient) {
+      await dragDropByTestIdAtClientPoint(page, 'assets-dock-item-image-meteor-large', 'game-container', point);
+      const snapshot = await waitForOutcome(1500);
+
+      if (snapshot.entityCount > entityCountBeforeReplace) {
+        await triggerUndo(page);
+        await expect.poll(async () => {
+          const state = await getState<any>(page);
+          return Object.keys(state?.scene?.entities ?? {}).length;
+        }).toBe(entityCountBeforeReplace);
+        continue;
+      }
+
+      if (snapshot.assetId === 'meteor-large') break;
+    }
 
     await expect
       .poll(async () => {

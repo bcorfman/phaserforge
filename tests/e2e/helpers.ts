@@ -426,34 +426,56 @@ export async function dragDropByTestIdAtClientPoint(
   targetTestId: string,
   clientPoint: { x: number; y: number }
 ): Promise<void> {
+  const source = page.getByTestId(sourceTestId);
+  const target = page.getByTestId(targetTestId);
+  await expect(source).toBeVisible();
+  await expect(target).toBeVisible();
+  await source.scrollIntoViewIfNeeded();
+  await target.scrollIntoViewIfNeeded();
+
+  // Prefer dropping onto the actual game canvas when it exists.
+  const canvas = target.locator('canvas').first();
+  const dropTarget = (await canvas.count()) > 0 ? canvas : target;
+
+  const box = await dropTarget.boundingBox();
+  if (!box || box.width === 0 || box.height === 0) {
+    throw new Error(`dragDropByTestIdAtClientPoint: target bounding box unavailable for ${targetTestId}`);
+  }
+
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+  const relativeX = clamp(clientPoint.x - box.x, 1, box.width - 1);
+  const relativeY = clamp(clientPoint.y - box.y, 1, box.height - 1);
+
+  try {
+    // First try Playwright's drag emulation (most faithful across engines).
+    await source.dragTo(dropTarget, { targetPosition: { x: relativeX, y: relativeY }, timeout: 10000 });
+    return;
+  } catch {
+    // Fallback: synthetic HTML5 drag/drop (helps on Firefox when panes/overlays intercept pointer events).
+  }
+
   await page.evaluate(
     ([sourceId, targetId, point]) => {
-      const source = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
-      const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
-      if (!source) throw new Error(`dragDropByTestIdAtClientPoint: missing source ${sourceId}`);
-      if (!target) throw new Error(`dragDropByTestIdAtClientPoint: missing target ${targetId}`);
+      const sourceEl = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
+      const targetEl = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
+      if (!sourceEl) throw new Error(`dragDropByTestIdAtClientPoint: missing source ${sourceId}`);
+      if (!targetEl) throw new Error(`dragDropByTestIdAtClientPoint: missing target ${targetId}`);
 
-      source.scrollIntoView({ block: 'center', inline: 'center' });
-      target.scrollIntoView({ block: 'center', inline: 'center' });
+      sourceEl.scrollIntoView({ block: 'center', inline: 'center' });
+      targetEl.scrollIntoView({ block: 'center', inline: 'center' });
 
-      // Many drops in the studio are ultimately handled by the game canvas; prefer it when present
-      // to ensure events reach the correct handlers.
-      const dropRoot = (target.querySelector('canvas') ?? target) as HTMLElement;
+      const dropRoot = (targetEl.querySelector('canvas') ?? targetEl) as HTMLElement;
       const rect = dropRoot.getBoundingClientRect();
       const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
       const clientX = clamp(point.x, rect.left + 1, rect.right - 1);
       const clientY = clamp(point.y, rect.top + 1, rect.bottom - 1);
 
-      // Prefer the actual element under the cursor when possible to avoid flaky "pointer intercept" issues
-      // in Playwright's dragTo (notably on Firefox when panes/overlays are involved).
       const elAtPoint = document.elementFromPoint(clientX, clientY);
-      const dropTarget = (elAtPoint && dropRoot.contains(elAtPoint) ? elAtPoint : dropRoot) as Element;
+      const actualDropTarget = (elAtPoint && dropRoot.contains(elAtPoint) ? elAtPoint : dropRoot) as Element;
 
       const dataTransfer = new DataTransfer();
       const fire = (el: Element, type: string) => {
         const event = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer });
-        // Some engines (notably WebKit) can ignore DragEventInit coordinates.
-        // Force-define them so downstream hit tests that rely on clientX/clientY behave consistently.
         for (const [key, value] of Object.entries({
           clientX,
           clientY,
@@ -471,11 +493,11 @@ export async function dragDropByTestIdAtClientPoint(
         el.dispatchEvent(event);
       };
 
-      fire(source, 'dragstart');
-      fire(dropTarget, 'dragenter');
-      fire(dropTarget, 'dragover');
-      fire(dropTarget, 'drop');
-      fire(source, 'dragend');
+      fire(sourceEl, 'dragstart');
+      fire(actualDropTarget, 'dragenter');
+      fire(actualDropTarget, 'dragover');
+      fire(actualDropTarget, 'drop');
+      fire(sourceEl, 'dragend');
     },
     [sourceTestId, targetTestId, clientPoint]
   );
