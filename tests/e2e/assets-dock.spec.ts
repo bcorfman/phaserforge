@@ -62,28 +62,38 @@ test.describe('Assets dock', () => {
     await page.getByTestId('assets-dock-file-input').setInputFiles('res/images/enemy_A.png');
     await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
 
+    const beforeEntityIds = await page.evaluate(() => {
+      const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+      return Object.keys(state?.scene?.entities ?? {});
+    });
+
     const enemyAsset = page.getByTestId('assets-dock-item-image-enemy-a');
     const canvas = page.locator('#game-container canvas');
     await enemyAsset.dragTo(canvas, { targetPosition: { x: 220, y: 160 } });
 
     await expect.poll(async () => {
       const state = await getState<any>(page);
-      const entities = state?.scene?.entities ?? {};
-      const entry = Object.values(entities).find((e: any) => e?.asset?.source?.kind === 'asset' && e?.asset?.source?.assetId === 'enemy-a') as any;
-      return entry?.id ?? null;
-    }).not.toBeNull();
+      const ids = Object.keys(state?.scene?.entities ?? {});
+      const added = ids.filter((id) => !beforeEntityIds.includes(id));
+      return added.length;
+    }).toBe(1);
 
-    const createdEntityId = await page.evaluate(() => {
+    const createdEntityId = await page.evaluate((existingIds) => {
       const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
-      const entities = state?.scene?.entities ?? {};
-      const entry = Object.values(entities).find((e: any) => e?.asset?.source?.kind === 'asset' && e?.asset?.source?.assetId === 'enemy-a') as any;
-      return entry?.id ?? null;
-    });
+      const ids = Object.keys(state?.scene?.entities ?? {});
+      const added = ids.filter((id) => !(existingIds as string[]).includes(id));
+      return added[0] ?? null;
+    }, beforeEntityIds);
     if (typeof createdEntityId !== 'string') throw new Error('Failed to create entity from asset');
 
     await page.getByTestId('assets-dock-import-button').click();
     await page.getByTestId('assets-dock-file-input').setInputFiles('res/images/meteor_large.png');
     await expect(page.getByTestId('assets-dock-item-image-meteor-large')).toBeVisible();
+
+    const entityCountBeforeReplace = await page.evaluate(() => {
+      const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+      return Object.keys(state?.scene?.entities ?? {}).length;
+    });
 
     const rect = await getEntityWorldRect(page, createdEntityId);
     const point = await worldToClient(page, { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 });
@@ -94,6 +104,11 @@ test.describe('Assets dock', () => {
       const entity = state?.scene?.entities?.[createdEntityId];
       return entity?.asset?.source?.assetId ?? '';
     }).toBe('meteor-large');
+
+    await expect.poll(async () => {
+      const state = await getState<any>(page);
+      return Object.keys(state?.scene?.entities ?? {}).length;
+    }).toBe(entityCountBeforeReplace);
   });
 
   test('imports audio by path and assigns it to scene music via drop', async ({ page }) => {
