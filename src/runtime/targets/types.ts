@@ -17,6 +17,7 @@ export interface RuntimeEntity {
   flipX?: boolean;
   flipY?: boolean;
   asset?: unknown;
+  frame?: string | number;
   homeX?: number;
   homeY?: number;
   vx?: number;

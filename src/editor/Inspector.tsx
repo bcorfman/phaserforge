@@ -1491,7 +1491,18 @@ function AttachmentInspector({
     attachment.target.type === 'entity'
       ? (scene.entities[attachment.target.entityId]?.name ?? attachment.target.entityId)
       : (scene.groups[attachment.target.groupId]?.name ?? attachment.target.groupId);
-  const supportedPresets = registry.actions.filter((entry) => entry.implemented && (entry.type === 'MoveUntil' || entry.type === 'Wait' || entry.type === 'Call' || entry.type === 'Repeat'));
+  const supportedPresetIds = new Set([
+    'MoveUntil',
+    'MoveXUntil',
+    'MoveYUntil',
+    'Wait',
+    'Call',
+    'Repeat',
+    'BlinkUntil',
+    'CallbackUntil',
+    'CycleFramesUntil',
+  ]);
+  const supportedPresets = registry.actions.filter((entry) => entry.implemented && supportedPresetIds.has(entry.type));
   const params = attachment.params ?? {};
   const world = getSceneWorld(scene);
   const foldouts = useInspectorFoldouts();
@@ -1524,7 +1535,13 @@ function AttachmentInspector({
     };
   };
 
+  const ensureElapsedTimeCondition = (): { type: 'ElapsedTime'; durationMs: number } => {
+    if (attachment.condition?.type === 'ElapsedTime') return attachment.condition;
+    return { type: 'ElapsedTime', durationMs: 1000 };
+  };
+
   const boundsCondition = attachment.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+  const elapsedCondition = attachment.condition?.type === 'ElapsedTime' ? attachment.condition : undefined;
 
   return (
     <div className="inspector-block" data-testid="attachment-inspector">
@@ -1582,6 +1599,14 @@ function AttachmentInspector({
                 onUpdate({ ...base, params: { velocityX: 0, velocityY: 0 }, condition: ensureBoundsCondition() });
                 return;
               }
+              if (nextType === 'MoveXUntil') {
+                onUpdate({ ...base, params: { velocityX: 0 }, condition: ensureBoundsCondition() });
+                return;
+              }
+              if (nextType === 'MoveYUntil') {
+                onUpdate({ ...base, params: { velocityY: 0 }, condition: ensureBoundsCondition() });
+                return;
+              }
               if (nextType === 'Wait') {
                 onUpdate({ ...base, params: { durationMs: 100 } });
                 return;
@@ -1592,6 +1617,18 @@ function AttachmentInspector({
               }
               if (nextType === 'Repeat') {
                 onUpdate({ ...base, params: {} });
+                return;
+              }
+              if (nextType === 'BlinkUntil') {
+                onUpdate({ ...base, params: { secondsUntilChange: 0.25, startVisible: true }, condition: ensureElapsedTimeCondition() as any });
+                return;
+              }
+              if (nextType === 'CallbackUntil') {
+                onUpdate({ ...base, params: { callId: 'callback', secondsBetweenCalls: 0.25 }, condition: ensureElapsedTimeCondition() as any });
+                return;
+              }
+              if (nextType === 'CycleFramesUntil') {
+                onUpdate({ ...base, params: { fps: 6, startFrame: 0, endFrame: 3, direction: 1 }, condition: ensureElapsedTimeCondition() as any });
                 return;
               }
               onUpdate(base);
@@ -1704,6 +1741,210 @@ function AttachmentInspector({
                     <ValidatedNumberInput
                       aria-label="Bounds Max Y"
                       data-testid="attachment-bounds-max-y-input"
+                      value={boundsCondition.bounds.maxY}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
+                      }
+                    />
+                  </label>
+                </div>
+              </>
+            )}
+          </InspectorFoldout>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'MoveXUntil' && (
+        <InspectorFoldout
+          title="Move X Until"
+          open={foldouts.isOpen('attachment.movexuntil', true)}
+          onToggle={() => foldouts.toggle('attachment.movexuntil', true)}
+        >
+          <label className="field">
+            <span>Velocity X</span>
+            <ValidatedNumberInput
+              aria-label="Velocity X"
+              data-testid="attachment-movexuntil-velocity-x-input"
+              value={Number(params.velocityX ?? 0)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocityX: next } })}
+            />
+          </label>
+          <InspectorFoldout
+            title="Bounds"
+            open={foldouts.isOpen('attachment.movexuntil.bounds', true)}
+            onToggle={() => foldouts.toggle('attachment.movexuntil.bounds', true)}
+          >
+            <label className="field">
+              <span>Enabled</span>
+              <input
+                aria-label="Enabled"
+                data-testid="attachment-movexuntil-bounds-enabled-input"
+                type="checkbox"
+                checked={Boolean(boundsCondition)}
+                onChange={(e) =>
+                  onUpdate({ ...attachment, condition: e.target.checked ? ensureBoundsCondition() : undefined })
+                }
+              />
+            </label>
+            {boundsCondition && (
+              <>
+                <label className="field">
+                  <span>Behavior</span>
+                  <select
+                    aria-label="Behavior"
+                    data-testid="attachment-movexuntil-bounds-behavior-select"
+                    value={boundsCondition.behavior ?? 'limit'}
+                    onChange={(e) => onUpdate({ ...attachment, condition: { ...boundsCondition, behavior: e.target.value as any } })}
+                  >
+                    <option value="stop">Stop</option>
+                    <option value="limit">Clamp at Edge</option>
+                    <option value="bounce">Bounce</option>
+                    <option value="wrap">Wrap</option>
+                  </select>
+                </label>
+                <div className="inspector-grid-2">
+                  <label className="field">
+                    <span>Min X</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Min X"
+                      data-testid="attachment-movexuntil-bounds-min-x-input"
+                      value={boundsCondition.bounds.minX}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Max X</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Max X"
+                      data-testid="attachment-movexuntil-bounds-max-x-input"
+                      value={boundsCondition.bounds.maxX}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="inspector-grid-2">
+                  <label className="field">
+                    <span>Min Y</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Min Y"
+                      data-testid="attachment-movexuntil-bounds-min-y-input"
+                      value={boundsCondition.bounds.minY}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Max Y</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Max Y"
+                      data-testid="attachment-movexuntil-bounds-max-y-input"
+                      value={boundsCondition.bounds.maxY}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
+                      }
+                    />
+                  </label>
+                </div>
+              </>
+            )}
+          </InspectorFoldout>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'MoveYUntil' && (
+        <InspectorFoldout
+          title="Move Y Until"
+          open={foldouts.isOpen('attachment.moveyuntil', true)}
+          onToggle={() => foldouts.toggle('attachment.moveyuntil', true)}
+        >
+          <label className="field">
+            <span>Velocity Y</span>
+            <ValidatedNumberInput
+              aria-label="Velocity Y"
+              data-testid="attachment-moveyuntil-velocity-y-input"
+              value={Number(params.velocityY ?? 0)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocityY: next } })}
+            />
+          </label>
+          <InspectorFoldout
+            title="Bounds"
+            open={foldouts.isOpen('attachment.moveyuntil.bounds', true)}
+            onToggle={() => foldouts.toggle('attachment.moveyuntil.bounds', true)}
+          >
+            <label className="field">
+              <span>Enabled</span>
+              <input
+                aria-label="Enabled"
+                data-testid="attachment-moveyuntil-bounds-enabled-input"
+                type="checkbox"
+                checked={Boolean(boundsCondition)}
+                onChange={(e) =>
+                  onUpdate({ ...attachment, condition: e.target.checked ? ensureBoundsCondition() : undefined })
+                }
+              />
+            </label>
+            {boundsCondition && (
+              <>
+                <label className="field">
+                  <span>Behavior</span>
+                  <select
+                    aria-label="Behavior"
+                    data-testid="attachment-moveyuntil-bounds-behavior-select"
+                    value={boundsCondition.behavior ?? 'limit'}
+                    onChange={(e) => onUpdate({ ...attachment, condition: { ...boundsCondition, behavior: e.target.value as any } })}
+                  >
+                    <option value="stop">Stop</option>
+                    <option value="limit">Clamp at Edge</option>
+                    <option value="bounce">Bounce</option>
+                    <option value="wrap">Wrap</option>
+                  </select>
+                </label>
+                <div className="inspector-grid-2">
+                  <label className="field">
+                    <span>Min X</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Min X"
+                      data-testid="attachment-moveyuntil-bounds-min-x-input"
+                      value={boundsCondition.bounds.minX}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Max X</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Max X"
+                      data-testid="attachment-moveyuntil-bounds-max-x-input"
+                      value={boundsCondition.bounds.maxX}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="inspector-grid-2">
+                  <label className="field">
+                    <span>Min Y</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Min Y"
+                      data-testid="attachment-moveyuntil-bounds-min-y-input"
+                      value={boundsCondition.bounds.minY}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Max Y</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Max Y"
+                      data-testid="attachment-moveyuntil-bounds-max-y-input"
                       value={boundsCondition.bounds.maxY}
                       onCommit={(next) =>
                         onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
@@ -1908,8 +2149,239 @@ function AttachmentInspector({
 	              }}
 	            />
 	          </label>
-	        </InspectorFoldout>
-	      )}
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'BlinkUntil' && (
+        <InspectorFoldout
+          title="Blink Until"
+          open={foldouts.isOpen('attachment.blinkuntil', true)}
+          onToggle={() => foldouts.toggle('attachment.blinkuntil', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Seconds Until Change</span>
+              <ValidatedNumberInput
+                aria-label="Seconds Until Change"
+                data-testid="attachment-blinkuntil-seconds-input"
+                min={0.01}
+                value={Number(params.secondsUntilChange ?? 0.25)}
+                clamp={(next) => Math.max(0.01, next || 0.01)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, secondsUntilChange: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Start Visible</span>
+              <input
+                aria-label="Start Visible"
+                data-testid="attachment-blinkuntil-start-visible-input"
+                type="checkbox"
+                checked={params.startVisible !== false}
+                onChange={(e) => onUpdate({ ...attachment, params: { ...params, startVisible: e.target.checked } })}
+              />
+            </label>
+          </div>
+          <InspectorFoldout
+            title="Stop After"
+            open={foldouts.isOpen('attachment.blinkuntil.stopafter', true)}
+            onToggle={() => foldouts.toggle('attachment.blinkuntil.stopafter', true)}
+          >
+            <label className="field">
+              <span>Enabled</span>
+              <input
+                aria-label="Enabled"
+                data-testid="attachment-blinkuntil-stopafter-enabled-input"
+                type="checkbox"
+                checked={Boolean(elapsedCondition)}
+                onChange={(e) =>
+                  onUpdate({ ...attachment, condition: e.target.checked ? (ensureElapsedTimeCondition() as any) : undefined })
+                }
+              />
+            </label>
+            {elapsedCondition && (
+              <label className="field">
+                <span>Duration (ms)</span>
+                <ValidatedNumberInput
+                  aria-label="Duration (ms)"
+                  data-testid="attachment-blinkuntil-stopafter-duration-input"
+                  min={0}
+                  value={Number(elapsedCondition.durationMs ?? 0)}
+                  clamp={(next) => Math.max(0, next || 0)}
+                  onCommit={(next) => onUpdate({ ...attachment, condition: { ...elapsedCondition, durationMs: next } as any })}
+                />
+              </label>
+            )}
+          </InspectorFoldout>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'CallbackUntil' && (
+        <InspectorFoldout
+          title="Callback Until"
+          open={foldouts.isOpen('attachment.callbackuntil', true)}
+          onToggle={() => foldouts.toggle('attachment.callbackuntil', true)}
+        >
+          <label className="field">
+            <span>Call Id</span>
+            <input
+              aria-label="Call Id"
+              data-testid="attachment-callbackuntil-call-id-input"
+              type="text"
+              value={String(params.callId ?? '')}
+              onChange={(e) => onUpdate({ ...attachment, params: { ...params, callId: e.target.value } })}
+            />
+          </label>
+          <label className="field">
+            <span>Seconds Between Calls</span>
+            <ValidatedOptionalNumberInput
+              aria-label="Seconds Between Calls"
+              data-testid="attachment-callbackuntil-seconds-between-input"
+              min={0}
+              value={typeof params.secondsBetweenCalls === 'number' ? params.secondsBetweenCalls : undefined}
+              clamp={(next) => Math.max(0, next || 0)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, secondsBetweenCalls: next as any } })}
+            />
+          </label>
+          <InspectorFoldout
+            title="Stop After"
+            open={foldouts.isOpen('attachment.callbackuntil.stopafter', true)}
+            onToggle={() => foldouts.toggle('attachment.callbackuntil.stopafter', true)}
+          >
+            <label className="field">
+              <span>Enabled</span>
+              <input
+                aria-label="Enabled"
+                data-testid="attachment-callbackuntil-stopafter-enabled-input"
+                type="checkbox"
+                checked={Boolean(elapsedCondition)}
+                onChange={(e) =>
+                  onUpdate({ ...attachment, condition: e.target.checked ? (ensureElapsedTimeCondition() as any) : undefined })
+                }
+              />
+            </label>
+            {elapsedCondition && (
+              <label className="field">
+                <span>Duration (ms)</span>
+                <ValidatedNumberInput
+                  aria-label="Duration (ms)"
+                  data-testid="attachment-callbackuntil-stopafter-duration-input"
+                  min={0}
+                  value={Number(elapsedCondition.durationMs ?? 0)}
+                  clamp={(next) => Math.max(0, next || 0)}
+                  onCommit={(next) => onUpdate({ ...attachment, condition: { ...elapsedCondition, durationMs: next } as any })}
+                />
+              </label>
+            )}
+          </InspectorFoldout>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'CycleFramesUntil' && (
+        <InspectorFoldout
+          title="Cycle Frames Until"
+          open={foldouts.isOpen('attachment.cycleframesuntil', true)}
+          onToggle={() => foldouts.toggle('attachment.cycleframesuntil', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>FPS</span>
+              <ValidatedNumberInput
+                aria-label="FPS"
+                data-testid="attachment-cycleframesuntil-fps-input"
+                min={0.1}
+                value={Number(params.fps ?? 6)}
+                clamp={(next) => Math.max(0.1, next || 0.1)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, fps: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Direction</span>
+              <select
+                aria-label="Direction"
+                data-testid="attachment-cycleframesuntil-direction-select"
+                value={params.direction === -1 ? '-1' : '1'}
+                onChange={(e) => onUpdate({ ...attachment, params: { ...params, direction: e.target.value === '-1' ? -1 : 1 } })}
+              >
+                <option value="1">Forward</option>
+                <option value="-1">Backward</option>
+              </select>
+            </label>
+          </div>
+          <InspectorFoldout
+            title="Frames"
+            open={foldouts.isOpen('attachment.cycleframesuntil.frames', true)}
+            onToggle={() => foldouts.toggle('attachment.cycleframesuntil.frames', true)}
+          >
+            <label className="field">
+              <span>Frames CSV (optional)</span>
+              <input
+                aria-label="Frames CSV"
+                data-testid="attachment-cycleframesuntil-frames-csv-input"
+                type="text"
+                value={typeof params.framesCsv === 'string' ? params.framesCsv : ''}
+                onChange={(e) => onUpdate({ ...attachment, params: { ...params, framesCsv: e.target.value } })}
+              />
+            </label>
+            {!(typeof params.framesCsv === 'string' && params.framesCsv.trim().length > 0) && (
+              <div className="inspector-grid-2">
+                <label className="field">
+                  <span>Start Frame</span>
+                  <ValidatedNumberInput
+                    aria-label="Start Frame"
+                    data-testid="attachment-cycleframesuntil-start-frame-input"
+                    min={0}
+                    value={Number(params.startFrame ?? 0)}
+                    clamp={(next) => Math.max(0, Math.floor(next || 0))}
+                    onCommit={(next) => onUpdate({ ...attachment, params: { ...params, startFrame: next } })}
+                  />
+                </label>
+                <label className="field">
+                  <span>End Frame</span>
+                  <ValidatedNumberInput
+                    aria-label="End Frame"
+                    data-testid="attachment-cycleframesuntil-end-frame-input"
+                    min={0}
+                    value={Number(params.endFrame ?? 0)}
+                    clamp={(next) => Math.max(0, Math.floor(next || 0))}
+                    onCommit={(next) => onUpdate({ ...attachment, params: { ...params, endFrame: next } })}
+                  />
+                </label>
+              </div>
+            )}
+          </InspectorFoldout>
+          <InspectorFoldout
+            title="Stop After"
+            open={foldouts.isOpen('attachment.cycleframesuntil.stopafter', true)}
+            onToggle={() => foldouts.toggle('attachment.cycleframesuntil.stopafter', true)}
+          >
+            <label className="field">
+              <span>Enabled</span>
+              <input
+                aria-label="Enabled"
+                data-testid="attachment-cycleframesuntil-stopafter-enabled-input"
+                type="checkbox"
+                checked={Boolean(elapsedCondition)}
+                onChange={(e) =>
+                  onUpdate({ ...attachment, condition: e.target.checked ? (ensureElapsedTimeCondition() as any) : undefined })
+                }
+              />
+            </label>
+            {elapsedCondition && (
+              <label className="field">
+                <span>Duration (ms)</span>
+                <ValidatedNumberInput
+                  aria-label="Duration (ms)"
+                  data-testid="attachment-cycleframesuntil-stopafter-duration-input"
+                  min={0}
+                  value={Number(elapsedCondition.durationMs ?? 0)}
+                  clamp={(next) => Math.max(0, next || 0)}
+                  onCommit={(next) => onUpdate({ ...attachment, condition: { ...elapsedCondition, durationMs: next } as any })}
+                />
+              </label>
+            )}
+          </InspectorFoldout>
+        </InspectorFoldout>
+      )}
 
       <button className="button button-danger" data-testid="attachment-delete-button" type="button" onClick={onRemove}>
         Delete Action

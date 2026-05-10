@@ -8,6 +8,11 @@ import { ElapsedTime } from '../../src/runtime/conditions/ElapsedTime';
 import { ActionManager } from '../../src/runtime/ActionManager';
 import { InputDrive } from '../../src/runtime/actions/InputDrive';
 import { InputFire } from '../../src/runtime/actions/InputFire';
+import { MoveXUntil } from '../../src/runtime/actions/MoveXUntil';
+import { MoveYUntil } from '../../src/runtime/actions/MoveYUntil';
+import { BlinkUntil } from '../../src/runtime/actions/BlinkUntil';
+import { CallbackUntil } from '../../src/runtime/actions/CallbackUntil';
+import { CycleFramesUntil } from '../../src/runtime/actions/CycleFramesUntil';
 
 function makeEntity(id: string, x = 0, y = 0) {
   return { id, x, y, width: 10, height: 10 };
@@ -198,5 +203,80 @@ describe('runtime actions', () => {
     pressed = true;
     fire.update(1);
     expect(spawned).toHaveLength(2);
+  });
+
+  it('B13 MoveXUntil only affects x velocity and stop zeros vx', () => {
+    const entity: any = makeEntity('e1');
+    entity.vx = 0;
+    entity.vy = 7;
+    const condition = new ElapsedTime(1000);
+    const move = new MoveXUntil([entity], 50, condition);
+    move.start();
+    expect(entity.vx).toBe(50);
+    expect(entity.vy).toBe(7);
+    move.stop();
+    expect(entity.vx).toBe(0);
+    expect(entity.vy).toBe(7);
+  });
+
+  it('B14 MoveYUntil only affects y velocity and stop zeros vy', () => {
+    const entity: any = makeEntity('e1');
+    entity.vx = 9;
+    entity.vy = 0;
+    const condition = new ElapsedTime(1000);
+    const move = new MoveYUntil([entity], -20, condition);
+    move.start();
+    expect(entity.vx).toBe(9);
+    expect(entity.vy).toBe(-20);
+    move.stop();
+    expect(entity.vx).toBe(9);
+    expect(entity.vy).toBe(0);
+  });
+
+  it('B15 BlinkUntil toggles visibility and restores on stop', () => {
+    const entity: any = makeEntity('e1');
+    entity.visible = true;
+    const condition = new ElapsedTime(250);
+    const blink = new BlinkUntil([entity], { secondsUntilChange: 0.1, startVisible: true, condition });
+    blink.start();
+    expect(entity.visible).toBe(true);
+    blink.update(100);
+    expect(entity.visible).toBe(false);
+    blink.update(100);
+    expect(entity.visible).toBe(true);
+    blink.update(50);
+    expect(blink.isComplete()).toBe(true);
+    expect(entity.visible).toBe(true);
+  });
+
+  it('B16 CallbackUntil calls at cadence and stops on condition', () => {
+    let calls = 0;
+    const condition = new ElapsedTime(120);
+    const cb = new CallbackUntil({
+      targets: [] as any,
+      condition,
+      callback: () => { calls += 1; },
+      secondsBetweenCalls: 0.05,
+    });
+    cb.start();
+    cb.update(50);
+    cb.update(50);
+    expect(calls).toBe(2);
+    cb.update(20);
+    expect(cb.isComplete()).toBe(true);
+  });
+
+  it('B17 CycleFramesUntil advances frames at FPS', () => {
+    const entity: any = makeEntity('e1');
+    const condition = new ElapsedTime(1000);
+    const cycle = new CycleFramesUntil([entity], { frames: [0, 1, 2], fps: 10, direction: 1, condition });
+    cycle.start();
+    expect(entity.frame).toBe(0);
+    cycle.update(100);
+    expect(entity.frame).toBe(1);
+    cycle.update(100);
+    expect(entity.frame).toBe(2);
+    cycle.update(100);
+    expect(entity.frame).toBe(0);
   });
 });

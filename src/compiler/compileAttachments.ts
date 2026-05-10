@@ -8,6 +8,11 @@ import { Wait } from '../runtime/actions/Wait';
 import { Parallel } from '../runtime/actions/Parallel';
 import { InputDrive } from '../runtime/actions/InputDrive';
 import { InputFire } from '../runtime/actions/InputFire';
+import { MoveXUntil } from '../runtime/actions/MoveXUntil';
+import { MoveYUntil } from '../runtime/actions/MoveYUntil';
+import { BlinkUntil } from '../runtime/actions/BlinkUntil';
+import { CallbackUntil } from '../runtime/actions/CallbackUntil';
+import { CycleFramesUntil } from '../runtime/actions/CycleFramesUntil';
 import { BoundsHit } from '../runtime/conditions/BoundsHit';
 import { ElapsedTime } from '../runtime/conditions/ElapsedTime';
 import { Never } from '../runtime/conditions/Never';
@@ -27,6 +32,13 @@ function attachmentEnabled(attachment: AttachmentSpec): boolean {
 
 function stableTargetKey(target: TargetRef): string {
   return target.type === 'entity' ? `entity:${target.entityId}` : `group:${target.groupId}`;
+}
+
+export interface CompiledAttachmentScript {
+  key: string;
+  targetKey: string;
+  tag?: string;
+  action: Action;
 }
 
 function instantiateInlineCondition(condition: InlineConditionSpec | undefined) {
@@ -68,6 +80,24 @@ function compileCallAttachment(attachment: AttachmentSpec, ctx: CompileContext):
 
 function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext, targetOverride?: TargetRef): Action {
   const presetId = attachment.presetId;
+  const opRegistry = ctx.options?.opRegistry;
+  const buildCallback = (callId: string | undefined): (() => void) | undefined => {
+    if (!callId) return undefined;
+    if (!opRegistry) {
+      console.warn(`[phaseractions] Missing opRegistry for callback ${callId}`);
+      return undefined;
+    }
+    const spec: CallActionSpec = {
+      id: attachment.id,
+      type: 'Call',
+      name: attachment.name,
+      callId,
+      target: targetOverride ?? attachment.target,
+      args: {},
+    };
+    return () => opRegistry.invoke(callId, spec, ctx);
+  };
+
   if (presetId === 'Wait') {
     const durationMs = Number(attachment.params?.durationMs ?? 0);
     return new Wait(durationMs);
@@ -82,6 +112,69 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const target = resolveTarget(targetRef, ctx.targets);
     const condition = instantiateInlineCondition(attachment.condition);
     return new MoveUntil(target, { x: velocityX, y: velocityY }, condition);
+  }
+  if (presetId === 'MoveXUntil') {
+    const velocityX = Number(attachment.params?.velocityX ?? attachment.params?.velocity ?? 0);
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition);
+    return new MoveXUntil(target, velocityX, condition);
+  }
+  if (presetId === 'MoveYUntil') {
+    const velocityY = Number(attachment.params?.velocityY ?? attachment.params?.velocity ?? 0);
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition);
+    return new MoveYUntil(target, velocityY, condition);
+  }
+  if (presetId === 'BlinkUntil') {
+    const secondsUntilChange = Number(attachment.params?.secondsUntilChange ?? 0.25);
+    const startVisible = attachment.params?.startVisible !== false;
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition);
+    const onEnterVisible = buildCallback(typeof attachment.params?.onEnterCallId === 'string' ? String(attachment.params.onEnterCallId) : undefined);
+    const onExitVisible = buildCallback(typeof attachment.params?.onExitCallId === 'string' ? String(attachment.params.onExitCallId) : undefined);
+    return new BlinkUntil(target, { secondsUntilChange, startVisible, condition, onEnterVisible, onExitVisible });
+  }
+  if (presetId === 'CallbackUntil') {
+    const secondsBetweenCalls = typeof attachment.params?.secondsBetweenCalls === 'number'
+      ? Number(attachment.params.secondsBetweenCalls)
+      : typeof attachment.params?.secondsBetweenCalls === 'string'
+        ? Number(attachment.params.secondsBetweenCalls)
+        : undefined;
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition);
+    const callId = typeof attachment.params?.callId === 'string' ? String(attachment.params.callId) : undefined;
+    const cb = buildCallback(callId);
+    if (!cb) return new Sequence([]);
+    return new CallbackUntil({ targets: target, condition, callback: cb, secondsBetweenCalls });
+  }
+  if (presetId === 'CycleFramesUntil') {
+    const fps = Number(attachment.params?.fps ?? 6);
+    const directionRaw = attachment.params?.direction;
+    const direction = directionRaw === -1 || directionRaw === 'backward' ? -1 : 1;
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition);
+
+    const frames: Array<string | number> = [];
+    if (attachment.params?.framesCsv && typeof attachment.params.framesCsv === 'string') {
+      const parts = attachment.params.framesCsv.split(',').map((p) => p.trim()).filter(Boolean);
+      for (const part of parts) {
+        const num = Number(part);
+        frames.push(Number.isFinite(num) && part !== '' && String(num) === part ? num : part);
+      }
+    } else {
+      const startFrame = Number(attachment.params?.startFrame ?? 0);
+      const endFrame = Number(attachment.params?.endFrame ?? startFrame);
+      const a = Math.min(startFrame, endFrame);
+      const b = Math.max(startFrame, endFrame);
+      for (let i = a; i <= b; i += 1) frames.push(i);
+    }
+
+    return new CycleFramesUntil(target, { frames, fps, direction, condition });
   }
   if (presetId === 'Repeat') {
     // Repeat is handled at the script level (wrapper). If it appears here, treat as no-op.
@@ -147,20 +240,22 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
   throw new Error(`Unknown attachment presetId: ${presetId}`);
 }
 
-export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetContext; options?: CompileOptions }): Record<string, Action> {
+export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetContext; options?: CompileOptions }): CompiledAttachmentScript[] {
   const compileCtx: CompileContext = { scene, targets: ctx.targets, options: ctx.options };
   const enabled = Object.values(scene.attachments).filter(attachmentEnabled);
-  const byTarget = new Map<string, AttachmentSpec[]>();
+  const byTargetAndTag = new Map<string, { targetKey: string; tag?: string; attachments: AttachmentSpec[] }>();
   for (const attachment of enabled) {
-    const key = stableTargetKey(attachment.target);
-    const list = byTarget.get(key) ?? [];
-    list.push(attachment);
-    byTarget.set(key, list);
+    const targetKey = stableTargetKey(attachment.target);
+    const tag = typeof attachment.tag === 'string' && attachment.tag.length > 0 ? attachment.tag : undefined;
+    const key = `${targetKey}::${tag ?? ''}`;
+    const bucket = byTargetAndTag.get(key) ?? { targetKey, tag, attachments: [] };
+    bucket.attachments.push(attachment);
+    byTargetAndTag.set(key, bucket);
   }
 
-  const scripts: Record<string, Action> = {};
-  for (const [key, attachments] of byTarget.entries()) {
-    const sorted = [...attachments].sort((a, b) => {
+  const scripts: CompiledAttachmentScript[] = [];
+  for (const bucket of byTargetAndTag.values()) {
+    const sorted = [...bucket.attachments].sort((a, b) => {
       const ao = a.order ?? 0;
       const bo = b.order ?? 0;
       if (ao !== bo) return ao - bo;
@@ -188,7 +283,12 @@ export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetConte
       const count = typeof countRaw === 'number' ? countRaw : undefined;
       script = new Repeat(script, count);
     }
-    scripts[key] = script;
+    scripts.push({
+      key: bucket.tag ? `${bucket.targetKey}#${bucket.tag}` : bucket.targetKey,
+      targetKey: bucket.targetKey,
+      tag: bucket.tag,
+      action: script,
+    });
   }
 
   return scripts;
