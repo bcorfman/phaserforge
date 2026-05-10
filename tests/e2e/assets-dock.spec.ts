@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dragDropByTestIdAtClientPoint, getEntityWorldRect, getState, openSceneScope, seedProject, worldToClient } from './helpers';
+import { clickCanvasAt, dismissViewHint, dragDropByTestIdAtClientPoint, getEntitySpriteWorldRect, getState, openSceneScope, seedProject, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test('imports an image and drags to canvas to create an entity with asset ref', async ({ page }) => {
@@ -95,20 +95,29 @@ test.describe('Assets dock', () => {
       return Object.keys(state?.scene?.entities ?? {}).length;
     });
 
-    const rect = await getEntityWorldRect(page, createdEntityId);
+    const rect = await getEntitySpriteWorldRect(page, createdEntityId);
     const point = await worldToClient(page, { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 });
+
+    // Ensure the computed client point actually hit-tests this entity (WebKit can be picky about drop coordinates).
+    await clickCanvasAt(page, point);
+    await expect.poll(async () => {
+      const state = await getState<any>(page);
+      return state?.selection ?? null;
+    }).toEqual({ kind: 'entity', id: createdEntityId });
+
     await dragDropByTestIdAtClientPoint(page, 'assets-dock-item-image-meteor-large', 'game-container', point);
 
-    await expect.poll(async () => {
-      const state = await getState<any>(page);
-      const entity = state?.scene?.entities?.[createdEntityId];
-      return entity?.asset?.source?.assetId ?? '';
-    }).toBe('meteor-large');
-
-    await expect.poll(async () => {
-      const state = await getState<any>(page);
-      return Object.keys(state?.scene?.entities ?? {}).length;
-    }).toBe(entityCountBeforeReplace);
+    await expect
+      .poll(async () => {
+        const state = await getState<any>(page);
+        const entities = state?.scene?.entities ?? {};
+        const entity = entities?.[createdEntityId];
+        return {
+          assetId: entity?.asset?.source?.assetId ?? '',
+          entityCount: Object.keys(entities).length,
+        };
+      })
+      .toEqual({ assetId: 'meteor-large', entityCount: entityCountBeforeReplace });
   });
 
   test('imports audio by path and assigns it to scene music via drop', async ({ page }) => {
