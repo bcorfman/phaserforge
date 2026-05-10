@@ -18,14 +18,17 @@ test.describe('Assets dock', () => {
 
     await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
 
-    const importedMeta = await page.evaluate(() => {
-      const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
-      const asset = state?.project?.assets?.images?.['enemy-a'];
-      return { width: asset?.width ?? null, height: asset?.height ?? null };
-    });
-    if (typeof importedMeta.width !== 'number' || typeof importedMeta.height !== 'number') {
-      throw new Error(`Expected imported image metadata width/height; got ${JSON.stringify(importedMeta)}`);
-    }
+    let importedMeta: { width: number | null; height: number | null } = { width: null, height: null };
+    await expect
+      .poll(async () => {
+        importedMeta = await page.evaluate(() => {
+          const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+          const asset = state?.project?.assets?.images?.['enemy-a'];
+          return { width: asset?.width ?? null, height: asset?.height ?? null };
+        });
+        return importedMeta;
+      })
+      .toEqual({ width: expect.any(Number), height: expect.any(Number) });
 
     const source = page.getByTestId('assets-dock-item-image-enemy-a');
     const canvas = page.locator('#game-container canvas');

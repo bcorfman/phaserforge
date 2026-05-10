@@ -14,6 +14,7 @@ interface PhaserActionsStudioTestBridge {
   isEnabled: boolean;
   clearStoredScene(): void;
   getState(): unknown;
+  setMode(mode: 'edit' | 'play'): void;
   isSceneReady(): boolean;
   getSceneSnapshot(): unknown;
   getEntityWorldRect(id: string): PhaserActionsStudioRect | null;

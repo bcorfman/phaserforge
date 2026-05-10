@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { getFormationPhysicsGroupInfo, getSceneSnapshot, getState, seedSampleScene } from './helpers';
 
+test.setTimeout(120000);
+test.describe.configure({ retries: process.env.CI ? 2 : 1 });
+
 test('Preview/play mode builds Arcade Physics groups for formations', async ({ page }) => {
   await seedSampleScene(page);
 

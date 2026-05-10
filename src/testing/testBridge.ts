@@ -61,6 +61,7 @@ function clone<T>(value: T): T {
 let appStateGetter: (() => AppStateSnapshot) | null = null;
 const sceneGetters = new Set<() => SceneBridge | null>();
 let selectionSetter: ((selection: Selection) => void) | null = null;
+let toggleModeHandler: (() => void) | null = null;
 let undoHandler: (() => void) | null = null;
 let redoHandler: (() => void) | null = null;
 let resetSceneHandler: (() => void) | null = null;
@@ -117,6 +118,13 @@ function ensureBridge(): void {
     },
     getState() {
       return appStateGetter ? clone(appStateGetter()) : null;
+    },
+    setMode(mode: 'edit' | 'play') {
+      const current = appStateGetter?.()?.mode;
+      if (!current || current === mode) return;
+      // In case the handler triggers async state updates, keep this as a single toggle
+      // and let tests poll `getState()` / `getSceneSnapshot()` for completion.
+      toggleModeHandler?.();
     },
     isSceneReady() {
       const scene = getSceneBridge();
@@ -250,6 +258,15 @@ export function registerUndoRedoHandlers(handlers: { undo: () => void; redo: () 
 export function unregisterUndoRedoHandlers(handlers: { undo: () => void; redo: () => void }): void {
   if (undoHandler === handlers.undo) undoHandler = null;
   if (redoHandler === handlers.redo) redoHandler = null;
+}
+
+export function registerModeToggleHandler(handler: () => void): void {
+  toggleModeHandler = handler;
+  ensureBridge();
+}
+
+export function unregisterModeToggleHandler(handler: () => void): void {
+  if (toggleModeHandler === handler) toggleModeHandler = null;
 }
 
 export function registerResetSceneHandler(handler: () => void): void {

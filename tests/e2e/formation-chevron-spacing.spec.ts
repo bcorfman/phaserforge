@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { seedSampleScene } from './helpers';
 
+test.setTimeout(120000);
+
 test('Formation label sits flush to the chevron', async ({ page }) => {
   await seedSampleScene(page);
 

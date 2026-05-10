@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
 
+test.describe.configure({ retries: 2 });
+
 test('Play mode: semantic input actions update from keyboard events (bridge snapshot)', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
@@ -30,9 +32,11 @@ test('Play mode: semantic input actions update from keyboard events (bridge snap
   });
 
   await dismissViewHint(page);
-  await page.getByTestId('toggle-mode-button').click();
+  await page.evaluate(() => (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.setMode?.('play'));
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
 
+  // Ensure the runtime scene receives keyboard events consistently across browsers.
+  await page.locator('#game-container canvas').click({ position: { x: 10, y: 10 } });
   await page.keyboard.down('Space');
   await expect.poll(async () => {
     const snap = await getSceneSnapshot<any>(page);

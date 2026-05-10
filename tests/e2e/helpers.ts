@@ -426,32 +426,24 @@ export async function dragDropByTestIdAtClientPoint(
   targetTestId: string,
   clientPoint: { x: number; y: number }
 ): Promise<void> {
-  await page.evaluate(
-    ([sourceId, targetId, point]) => {
-      const source = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
-      const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
-      if (!source) throw new Error(`dragDropByTestIdAtClientPoint: missing source ${sourceId}`);
-      if (!target) throw new Error(`dragDropByTestIdAtClientPoint: missing target ${targetId}`);
+  const source = page.getByTestId(sourceTestId);
+  const target = page.getByTestId(targetTestId);
+  await expect(source).toBeVisible();
+  await expect(target).toBeVisible();
+  await source.scrollIntoViewIfNeeded();
+  await target.scrollIntoViewIfNeeded();
 
-      source.scrollIntoView({ block: 'center', inline: 'center' });
-      target.scrollIntoView({ block: 'center', inline: 'center' });
+  const targetBox = await target.boundingBox();
+  if (!targetBox || targetBox.width === 0 || targetBox.height === 0) {
+    throw new Error(`dragDropByTestIdAtClientPoint: target bounding box unavailable for ${targetTestId}`);
+  }
 
-      const dataTransfer = new DataTransfer();
-      const clientX = point.x;
-      const clientY = point.y;
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+  const relativeX = clamp(clientPoint.x - targetBox.x, 1, targetBox.width - 1);
+  const relativeY = clamp(clientPoint.y - targetBox.y, 1, targetBox.height - 1);
 
-      const fire = (el: Element, type: string) => {
-        el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }));
-      };
-
-      fire(source, 'dragstart');
-      fire(target, 'dragenter');
-      fire(target, 'dragover');
-      fire(target, 'drop');
-      fire(source, 'dragend');
-    },
-    [sourceTestId, targetTestId, clientPoint]
-  );
+  // Prefer Playwright's drag emulation (fires HTML5 drag/drop + DataTransfer) for consistency across engines.
+  await source.dragTo(target, { targetPosition: { x: relativeX, y: relativeY } });
 }
 
 export async function panByScreenDelta(page: Page, delta: Point): Promise<void> {
