@@ -436,7 +436,10 @@ export async function dragDropByTestIdAtClientPoint(
       source.scrollIntoView({ block: 'center', inline: 'center' });
       target.scrollIntoView({ block: 'center', inline: 'center' });
 
-      const rect = target.getBoundingClientRect();
+      // Many drops in the studio are ultimately handled by the game canvas; prefer it when present
+      // to ensure events reach the correct handlers.
+      const dropRoot = (target.querySelector('canvas') ?? target) as HTMLElement;
+      const rect = dropRoot.getBoundingClientRect();
       const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
       const clientX = clamp(point.x, rect.left + 1, rect.right - 1);
       const clientY = clamp(point.y, rect.top + 1, rect.bottom - 1);
@@ -444,11 +447,28 @@ export async function dragDropByTestIdAtClientPoint(
       // Prefer the actual element under the cursor when possible to avoid flaky "pointer intercept" issues
       // in Playwright's dragTo (notably on Firefox when panes/overlays are involved).
       const elAtPoint = document.elementFromPoint(clientX, clientY);
-      const dropTarget = (elAtPoint && target.contains(elAtPoint) ? elAtPoint : target) as Element;
+      const dropTarget = (elAtPoint && dropRoot.contains(elAtPoint) ? elAtPoint : dropRoot) as Element;
 
       const dataTransfer = new DataTransfer();
       const fire = (el: Element, type: string) => {
-        el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }));
+        const event = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer });
+        // Some engines (notably WebKit) can ignore DragEventInit coordinates.
+        // Force-define them so downstream hit tests that rely on clientX/clientY behave consistently.
+        for (const [key, value] of Object.entries({
+          clientX,
+          clientY,
+          pageX: clientX + window.scrollX,
+          pageY: clientY + window.scrollY,
+          screenX: clientX,
+          screenY: clientY,
+        })) {
+          try {
+            Object.defineProperty(event, key, { value, configurable: true });
+          } catch {
+            // ignore
+          }
+        }
+        el.dispatchEvent(event);
       };
 
       fire(source, 'dragstart');
