@@ -1,7 +1,27 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const includeAllBrowsers = Boolean(process.env.CI) || process.env.PW_ALL_BROWSERS === '1';
-const includeEdge = includeAllBrowsers || process.env.PW_INCLUDE_EDGE === '1';
+type E2EProjectName = 'chromium' | 'firefox' | 'webkit' | 'edge';
+type EnvLike = Record<string, string | undefined>;
+
+export function resolveE2EProjectNames(env: EnvLike): E2EProjectName[] {
+  const includeAllBrowsers = env.PW_ALL_BROWSERS === '1';
+  if (includeAllBrowsers) {
+    return ['chromium', 'firefox', 'webkit', 'edge'];
+  }
+
+  const isGitHubActions = env.GITHUB_ACTIONS === 'true';
+  const includeEdge = env.PW_INCLUDE_EDGE === '1' || (!isGitHubActions && env.PW_EXCLUDE_EDGE !== '1');
+
+  if (isGitHubActions) {
+    return includeEdge ? ['firefox', 'webkit', 'edge'] : ['firefox', 'webkit'];
+  }
+
+  return includeEdge ? ['chromium', 'edge'] : ['chromium'];
+}
+
+const projectNames = resolveE2EProjectNames(process.env);
+// Opt-in only: using a real Edge channel requires a locally-installed Edge build.
+const edgeChannel = process.env.PW_EDGE_CHANNEL;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -29,30 +49,31 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: process.env.CI ? 180000 : 120000,
   },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    ...(includeAllBrowsers
-      ? [
-          {
-            name: 'firefox',
-            use: { ...devices['Desktop Firefox'] },
+  projects: projectNames.map((name) => {
+    switch (name) {
+      case 'chromium':
+        return {
+          name,
+          use: { ...devices['Desktop Chrome'] },
+        };
+      case 'firefox':
+        return {
+          name,
+          use: { ...devices['Desktop Firefox'] },
+        };
+      case 'webkit':
+        return {
+          name,
+          use: { ...devices['Desktop Safari'] },
+        };
+      case 'edge':
+        return {
+          name,
+          use: {
+            ...devices['Desktop Edge'],
+            ...(edgeChannel ? { channel: edgeChannel as 'msedge' | 'msedge-beta' | 'msedge-dev' | 'msedge-canary' } : {}),
           },
-          {
-            name: 'webkit',
-            use: { ...devices['Desktop Safari'] },
-          },
-        ]
-      : []),
-    ...(includeEdge
-      ? [
-          {
-            name: 'edge',
-            use: { ...devices['Desktop Edge'], channel: 'msedge' as const },
-          },
-        ]
-      : []),
-  ],
+        };
+    }
+  }),
 });

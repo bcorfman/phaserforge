@@ -30,16 +30,7 @@ jobs:
         run: npm ci
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium firefox webkit
-
-      - name: Install Microsoft Edge (Linux)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl gpg
-          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
-          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/edge stable main" | sudo tee /etc/apt/sources.list.d/microsoft-edge.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install -y microsoft-edge-stable
+        run: npx playwright install --with-deps firefox webkit
 
       - name: Unit Tests
         run: npm run test:unit
