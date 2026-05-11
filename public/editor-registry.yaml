@@ -111,6 +111,11 @@ actions:
     category: flow
     targetKinds: [entity, group]
     implemented: true
+  - type: Parallel
+    displayName: Parallel
+    category: flow
+    targetKinds: [entity, group]
+    implemented: true
   - type: MoveUntil
     displayName: Move Until
     category: movement
@@ -118,6 +123,20 @@ actions:
     implemented: true
     propertyTargets:
       - { key: x, type: number, tweenable: true, affectsBounds: true }
+      - { key: y, type: number, tweenable: true, affectsBounds: true }
+  - type: MoveXUntil
+    displayName: Move X Until
+    category: movement
+    targetKinds: [entity, group]
+    implemented: true
+    propertyTargets:
+      - { key: x, type: number, tweenable: true, affectsBounds: true }
+  - type: MoveYUntil
+    displayName: Move Y Until
+    category: movement
+    targetKinds: [entity, group]
+    implemented: true
+    propertyTargets:
       - { key: y, type: number, tweenable: true, affectsBounds: true }
   - type: Wait
     displayName: Wait
@@ -132,6 +151,23 @@ actions:
   - type: Repeat
     displayName: Repeat
     category: flow
+    targetKinds: [entity, group]
+    implemented: true
+  - type: BlinkUntil
+    displayName: Blink Until
+    category: visual
+    targetKinds: [entity, group]
+    implemented: true
+    propertyTargets:
+      - { key: visible, type: boolean, tweenable: false, affectsBounds: false }
+  - type: CallbackUntil
+    displayName: Callback Until
+    category: flow
+    targetKinds: [entity, group]
+    implemented: true
+  - type: CycleFramesUntil
+    displayName: Cycle Frames Until
+    category: visual
     targetKinds: [entity, group]
     implemented: true
   - type: RotateUntil
@@ -193,6 +229,11 @@ conditions:
     implemented: true
   - type: ElapsedTime
     displayName: Elapsed Time
+    category: condition
+    targetKinds: [entity, group]
+    implemented: true
+  - type: Never
+    displayName: Never
     category: condition
     targetKinds: [entity, group]
     implemented: true

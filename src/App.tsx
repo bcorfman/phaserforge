@@ -14,10 +14,12 @@ import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
 import {
   registerAppStateGetter,
+  registerModeToggleHandler,
   registerResetSceneHandler,
   registerSelectionSetter,
   registerUndoRedoHandlers,
   unregisterAppStateGetter,
+  unregisterModeToggleHandler,
   unregisterResetSceneHandler,
   unregisterSelectionSetter,
   unregisterUndoRedoHandlers,
@@ -122,6 +124,14 @@ function AppShell() {
     registerResetSceneHandler(handler);
     return () => {
       unregisterResetSceneHandler(handler);
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    const handler = () => dispatch({ type: 'toggle-mode' });
+    registerModeToggleHandler(handler);
+    return () => {
+      unregisterModeToggleHandler(handler);
     };
   }, [dispatch]);
 

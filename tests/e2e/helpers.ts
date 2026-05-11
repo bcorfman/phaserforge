@@ -7,10 +7,14 @@ import { sampleProject } from '../../src/model/sampleProject';
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number; centerX?: number; centerY?: number };
 
+type AssetDragPayload = { assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: string };
+
 const IS_CI = Boolean(process.env.CI);
 const APP_BOOT_TIMEOUT_MS = 60000;
-const NAVIGATE_TIMEOUT_MS = IS_CI ? 45000 : 20000;
-const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 30000;
+// Local runs can still be resource constrained (e.g. 3 workers + fresh Vite server per run),
+// so keep navigation/scene timeouts a bit more forgiving to avoid false negatives.
+const NAVIGATE_TIMEOUT_MS = IS_CI ? 45000 : 30000;
+const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 60000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 
 export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean }): Promise<void> {
@@ -223,6 +227,15 @@ export async function getSceneSnapshot<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getSceneSnapshot()) as Promise<T>;
 }
 
+export async function hitTestAtClientPoint(
+  page: Page,
+  point: Point
+): Promise<{ kind: 'none' | 'entity' | 'group'; id?: string } | null> {
+  return page.evaluate(([p]) => (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.hitTestAtClientPoint?.(p.x, p.y) ?? null, [point]) as Promise<
+    { kind: 'none' | 'entity' | 'group'; id?: string } | null
+  >;
+}
+
 export async function getEntityWorldRect(page: Page, id: string): Promise<Rect> {
   return page.evaluate((entityId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(entityId), id) as Promise<Rect>;
 }
@@ -426,31 +439,138 @@ export async function dragDropByTestIdAtClientPoint(
   targetTestId: string,
   clientPoint: { x: number; y: number }
 ): Promise<void> {
+  const source = page.getByTestId(sourceTestId);
+  const target = page.getByTestId(targetTestId);
+  await expect(source).toBeVisible();
+  await expect(target).toBeVisible();
+  await source.scrollIntoViewIfNeeded();
+  await target.scrollIntoViewIfNeeded();
+
+  // Prefer dropping onto the actual game canvas when it exists.
+  const canvas = target.locator('canvas').first();
+  const dropTarget = (await canvas.count()) > 0 ? canvas : target;
+
+  const box = await dropTarget.boundingBox();
+  if (!box || box.width === 0 || box.height === 0) {
+    throw new Error(`dragDropByTestIdAtClientPoint: target bounding box unavailable for ${targetTestId}`);
+  }
+
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+  const relativeX = clamp(clientPoint.x - box.x, 1, box.width - 1);
+  const relativeY = clamp(clientPoint.y - box.y, 1, box.height - 1);
+
+  try {
+    // First try Playwright's drag emulation (most faithful across engines).
+    await source.dragTo(dropTarget, { targetPosition: { x: relativeX, y: relativeY }, timeout: 10000 });
+    return;
+  } catch {
+    // Fallback: synthetic HTML5 drag/drop (helps on Firefox when panes/overlays intercept pointer events).
+  }
+
   await page.evaluate(
     ([sourceId, targetId, point]) => {
-      const source = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
-      const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
-      if (!source) throw new Error(`dragDropByTestIdAtClientPoint: missing source ${sourceId}`);
-      if (!target) throw new Error(`dragDropByTestIdAtClientPoint: missing target ${targetId}`);
+      const sourceEl = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
+      const targetEl = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
+      if (!sourceEl) throw new Error(`dragDropByTestIdAtClientPoint: missing source ${sourceId}`);
+      if (!targetEl) throw new Error(`dragDropByTestIdAtClientPoint: missing target ${targetId}`);
 
-      source.scrollIntoView({ block: 'center', inline: 'center' });
-      target.scrollIntoView({ block: 'center', inline: 'center' });
+      sourceEl.scrollIntoView({ block: 'center', inline: 'center' });
+      targetEl.scrollIntoView({ block: 'center', inline: 'center' });
+
+      const dropRoot = (targetEl.querySelector('canvas') ?? targetEl) as HTMLElement;
+      const rect = dropRoot.getBoundingClientRect();
+      const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+      const clientX = clamp(point.x, rect.left + 1, rect.right - 1);
+      const clientY = clamp(point.y, rect.top + 1, rect.bottom - 1);
+
+      const elAtPoint = document.elementFromPoint(clientX, clientY);
+      const actualDropTarget = (elAtPoint && dropRoot.contains(elAtPoint) ? elAtPoint : dropRoot) as Element;
 
       const dataTransfer = new DataTransfer();
-      const clientX = point.x;
-      const clientY = point.y;
-
       const fire = (el: Element, type: string) => {
-        el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }));
+        const event = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY });
+        for (const [key, value] of Object.entries({
+          clientX,
+          clientY,
+          pageX: clientX + window.scrollX,
+          pageY: clientY + window.scrollY,
+          screenX: clientX,
+          screenY: clientY,
+        })) {
+          try {
+            Object.defineProperty(event, key, { value, configurable: true });
+          } catch {
+            // ignore
+          }
+        }
+        el.dispatchEvent(event);
       };
 
-      fire(source, 'dragstart');
-      fire(target, 'dragenter');
-      fire(target, 'dragover');
-      fire(target, 'drop');
-      fire(source, 'dragend');
+      fire(sourceEl, 'dragstart');
+      fire(actualDropTarget, 'dragenter');
+      fire(actualDropTarget, 'dragover');
+      fire(actualDropTarget, 'drop');
+      fire(sourceEl, 'dragend');
     },
     [sourceTestId, targetTestId, clientPoint]
+  );
+}
+
+export async function dropAssetAtClientPoint(
+  page: Page,
+  payload: AssetDragPayload,
+  targetTestId: string,
+  clientPoint: { x: number; y: number }
+): Promise<void> {
+  await page.evaluate(
+    ([nextPayload, targetId, point]) => {
+      const ASSET_DRAG_MIME = 'application/x-phaseractions-studio-asset';
+      const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
+      if (!target) throw new Error(`dropAssetAtClientPoint: missing target ${targetId}`);
+
+      const dropRoot = (target.querySelector('canvas') ?? target) as HTMLElement;
+      const rect = dropRoot.getBoundingClientRect();
+      const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+      const clientX = clamp(point.x, rect.left + 1, rect.right - 1);
+      const clientY = clamp(point.y, rect.top + 1, rect.bottom - 1);
+
+      const dataTransfer = new DataTransfer();
+      // Provide both the custom MIME and a text/plain fallback.
+      try {
+        dataTransfer.setData(ASSET_DRAG_MIME, JSON.stringify(nextPayload));
+      } catch {
+        // ignore
+      }
+      try {
+        dataTransfer.setData('text/plain', `${(nextPayload as any).assetKind}:${(nextPayload as any).assetId}`);
+      } catch {
+        // ignore
+      }
+
+      const fire = (el: Element, type: string) => {
+        const event = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY });
+        for (const [key, value] of Object.entries({
+          clientX,
+          clientY,
+          pageX: clientX + window.scrollX,
+          pageY: clientY + window.scrollY,
+          screenX: clientX,
+          screenY: clientY,
+        })) {
+          try {
+            Object.defineProperty(event, key, { value, configurable: true });
+          } catch {
+            // ignore
+          }
+        }
+        el.dispatchEvent(event);
+      };
+
+      // Ensure dragover runs (sets dropEffect + hint), then drop.
+      fire(dropRoot, 'dragover');
+      fire(dropRoot, 'drop');
+    },
+    [payload, targetTestId, clientPoint]
   );
 }
 

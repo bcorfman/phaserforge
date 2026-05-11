@@ -46,20 +46,29 @@ export class MoveUntil extends ActionBase {
       const hit = this.condition.apply(this.target);
       if (hit.hit && this.isTerminalBoundaryBehavior() && this.isMovingIntoBoundary(hit.sides, velocitiesBefore)) {
         console.log('[MoveUntil] completed due to boundary hit');
-        this.complete = true;
+        this.stop();
       }
       return;
     }
 
     if (this.condition.isMet(this.target)) {
       console.log('[MoveUntil] completed due to condition met');
-      this.complete = true;
+      this.stop();
     }
   }
 
   reset(): void {
     super.reset();
     this.condition.reset();
+  }
+
+  protected removeEffect(): void {
+    if ('members' in this.target) {
+      this.target.stopVelocity();
+      return;
+    }
+    this.target.vx = 0;
+    this.target.vy = 0;
   }
 
   private setTargetVelocity(velocity: { x: number; y: number }): void {

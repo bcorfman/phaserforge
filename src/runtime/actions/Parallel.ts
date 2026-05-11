@@ -29,9 +29,18 @@ export class Parallel extends ActionBase {
   cancel(): void {
     if (this.cancelled) return;
     for (const child of this.children) {
-      if (child.cancel) child.cancel();
+      child.stop?.();
+      child.cancel?.();
     }
     super.cancel();
+  }
+
+  stop(): void {
+    for (const child of this.children) {
+      child.stop?.();
+      child.cancel?.();
+    }
+    super.stop();
   }
 
   reset(): void {
@@ -41,4 +50,3 @@ export class Parallel extends ActionBase {
     }
   }
 }
-

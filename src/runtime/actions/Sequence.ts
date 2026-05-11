@@ -40,6 +40,15 @@ export class Sequence extends ActionBase {
     }
   }
 
+  stop(): void {
+    // Stop all children deterministically to ensure effects are removed.
+    for (const child of this.children) {
+      child.stop?.();
+      child.cancel?.();
+    }
+    super.stop();
+  }
+
   reset(): void {
     super.reset();
     this.index = 0;
