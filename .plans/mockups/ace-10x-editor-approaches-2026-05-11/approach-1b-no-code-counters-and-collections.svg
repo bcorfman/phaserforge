@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .eventHdr{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .actionRow{fill:rgba(124,240,199,0.08); stroke:rgba(124,240,199,0.65); stroke-width:1;}
+      .untilRow{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.85); stroke-width:1;}
+      .counterRow{fill:rgba(255,106,122,0.08); stroke:rgba(255,106,122,0.75); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+      .shadow{filter:url(#shadow);}
+    </style>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Approach 1b — No-code Counters/Collections (no queries): “Until: counter == N”</text>
+
+  <!-- Left: Collections + Counters (editor-managed) -->
+  <rect x="24" y="90" width="380" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Collections (explicit membership)</text>
+  <line x1="24" y1="140" x2="404" y2="140" class="divider"/>
+  <rect x="46" y="156" width="336" height="30" rx="10" class="chipAccent"/>
+  <text x="58" y="176" class="nodeText">Collection: LasersEnabled</text>
+  <text x="46" y="208" class="tiny">Members (drag sprites/groups here):</text>
+  <rect x="46" y="220" width="336" height="28" rx="10" class="chip"/>
+  <text x="58" y="239" class="nodeTextMuted">LaserA</text>
+  <rect x="46" y="252" width="336" height="28" rx="10" class="chip"/>
+  <text x="58" y="271" class="nodeTextMuted">LaserB</text>
+  <rect x="46" y="284" width="336" height="28" rx="10" class="chip"/>
+  <text x="58" y="303" class="nodeTextMuted">LaserC</text>
+
+  <text x="46" y="346" class="label">Counters (derived, no code)</text>
+  <rect x="46" y="364" width="336" height="30" rx="10" class="counterRow"/>
+  <text x="58" y="384" class="nodeText">Counter: LasersEnabledCount = 3</text>
+  <text x="46" y="414" class="tiny">Counter updates are built-in actions:</text>
+  <text x="64" y="434" class="tiny">• Add to collection → counter +1</text>
+  <text x="64" y="454" class="tiny">• Remove from collection → counter -1</text>
+  <text x="64" y="474" class="tiny">• (Optional) clamp at 0</text>
+
+  <rect x="46" y="560" width="336" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">Why this stays no-code</text>
+  <text x="66" y="610" class="tiny">No “query engine” required.</text>
+  <text x="66" y="630" class="tiny">Designer explicitly defines membership (drag/drop).</text>
+  <text x="66" y="650" class="tiny">Actions mutate membership; “Until” watches the counter.</text>
+
+  <!-- Right: Events editor -->
+  <rect x="428" y="90" width="748" height="606" rx="12" class="panel"/>
+  <text x="452" y="122" class="label">Events — LaserGateGroup</text>
+  <line x1="428" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <rect x="452" y="156" width="700" height="44" rx="12" class="panel2"/>
+  <rect x="474" y="166" width="240" height="24" rx="8" class="chipAccent"/>
+  <text x="488" y="184" class="nodeText">Add Action… (search)</text>
+  <rect x="722" y="166" width="200" height="24" rx="8" class="chip"/>
+  <text x="734" y="184" class="nodeTextMuted">Add Until…</text>
+  <rect x="930" y="166" width="222" height="24" rx="8" class="chip"/>
+  <text x="942" y="184" class="nodeTextMuted">Insert Snippet…</text>
+
+  <!-- Gate logic event -->
+  <rect x="452" y="214" width="700" height="34" rx="10" class="eventHdr"/>
+  <text x="472" y="236" class="nodeText">Event: On Update</text>
+  <rect x="472" y="256" width="680" height="30" rx="10" class="actionRow"/>
+  <text x="492" y="276" class="nodeText">Action: Open Gate</text>
+  <rect x="492" y="290" width="660" height="30" rx="10" class="untilRow"/>
+  <text x="512" y="310" class="nodeText">Until: Counter (LasersEnabledCount == 0)</text>
+
+  <!-- Laser sprite logic (one example) -->
+  <rect x="452" y="356" width="700" height="34" rx="10" class="eventHdr"/>
+  <text x="472" y="378" class="nodeText">Event: LaserA • On Disabled</text>
+  <rect x="472" y="398" width="680" height="30" rx="10" class="actionRow"/>
+  <text x="492" y="418" class="nodeText">Action: Remove Self from Collection (LasersEnabled)</text>
+  <rect x="492" y="432" width="660" height="30" rx="10" class="untilRow"/>
+  <text x="512" y="452" class="nodeText">Until: Instant</text>
+
+  <rect x="452" y="490" width="700" height="34" rx="10" class="eventHdr"/>
+  <text x="472" y="512" class="nodeText">Event: LaserA • On Enabled</text>
+  <rect x="472" y="532" width="680" height="30" rx="10" class="actionRow"/>
+  <text x="492" y="552" class="nodeText">Action: Add Self to Collection (LasersEnabled)</text>
+  <rect x="492" y="566" width="660" height="30" rx="10" class="untilRow"/>
+  <text x="512" y="586" class="nodeText">Until: Instant</text>
+
+  <!-- Floating Until palette shows Counter option -->
+  <rect x="620" y="236" width="520" height="220" rx="14" class="panel shadow"/>
+  <text x="644" y="270" class="nodeText">Until…</text>
+  <rect x="644" y="284" width="472" height="30" rx="10" class="chip"/>
+  <text x="656" y="304" class="nodeTextMuted">Search: “time”, “collision”, “counter”…</text>
+
+  <rect x="644" y="324" width="472" height="32" rx="12" class="chipAccent"/>
+  <text x="656" y="345" class="nodeText">Counter reaches value…</text>
+  <rect x="644" y="362" width="472" height="32" rx="12" class="chip"/>
+  <text x="656" y="383" class="nodeText">Time Elapsed</text>
+  <rect x="644" y="400" width="472" height="32" rx="12" class="chip"/>
+  <text x="656" y="421" class="nodeText">Collision with…</text>
+</svg>
+

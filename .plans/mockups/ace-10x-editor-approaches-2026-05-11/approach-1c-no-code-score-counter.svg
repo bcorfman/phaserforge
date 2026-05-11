@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .chipGreen{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+
+      .eventHdr{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .actionRow{fill:rgba(124,240,199,0.08); stroke:rgba(124,240,199,0.65); stroke-width:1;}
+      .untilRow{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.85); stroke-width:1;}
+      .counterRow{fill:rgba(255,106,122,0.08); stroke:rgba(255,106,122,0.75); stroke-width:1;}
+
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Approach 1c — No-code Score: Counters + Event payloads + Until(score ≥ N)</text>
+
+  <!-- Left: State/Counters -->
+  <rect x="24" y="90" width="360" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">State (Counters)</text>
+  <line x1="24" y1="140" x2="384" y2="140" class="divider"/>
+
+  <rect x="46" y="156" width="316" height="30" rx="10" class="chipAccent"/>
+  <text x="58" y="176" class="nodeText">+ Add Counter</text>
+  <rect x="46" y="198" width="316" height="30" rx="10" class="counterRow"/>
+  <text x="58" y="218" class="nodeText">score (global) = 0</text>
+  <rect x="46" y="232" width="316" height="30" rx="10" class="counterRow"/>
+  <text x="58" y="252" class="nodeTextMuted">keys_collected (scene) = 0</text>
+
+  <text x="46" y="302" class="small">Built-in actions (no code)</text>
+  <rect x="46" y="318" width="316" height="28" rx="10" class="chipGreen"/>
+  <text x="58" y="337" class="nodeText">Add to Counter (score, +N)</text>
+  <rect x="46" y="350" width="316" height="28" rx="10" class="chipGreen"/>
+  <text x="58" y="369" class="nodeText">Set Counter (score, value)</text>
+  <rect x="46" y="382" width="316" height="28" rx="10" class="chipGreen"/>
+  <text x="58" y="401" class="nodeText">Clamp Counter (score, min/max)</text>
+
+  <rect x="46" y="560" width="316" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">Non-coder mental model</text>
+  <text x="66" y="610" class="tiny">Pickups “award points”.</text>
+  <text x="66" y="630" class="tiny">Events deliver that number as a payload.</text>
+  <text x="66" y="650" class="tiny">Goals stop actions when score reaches a target.</text>
+
+  <!-- Middle: Pickup inspector (points) -->
+  <rect x="408" y="90" width="360" height="606" rx="12" class="panel"/>
+  <text x="432" y="122" class="label">Inspector — Pickup: Coin</text>
+  <line x1="408" y1="140" x2="768" y2="140" class="divider"/>
+
+  <rect x="432" y="160" width="312" height="110" rx="12" class="panel2"/>
+  <text x="454" y="190" class="nodeText">Properties</text>
+  <rect x="454" y="204" width="290" height="30" rx="10" class="chip"/>
+  <text x="466" y="224" class="nodeTextMuted">Tag: Pickup</text>
+  <rect x="454" y="238" width="290" height="30" rx="10" class="chipAccent"/>
+  <text x="466" y="258" class="nodeText">Points: 50</text>
+
+  <rect x="432" y="296" width="312" height="160" rx="12" class="panel2"/>
+  <text x="454" y="326" class="nodeText">Events (Coin)</text>
+  <rect x="454" y="342" width="290" height="30" rx="10" class="eventHdr"/>
+  <text x="466" y="362" class="nodeText">Event: On Collected</text>
+  <rect x="474" y="378" width="270" height="30" rx="10" class="chip"/>
+  <text x="486" y="398" class="nodeTextMuted">Payload: points = 50</text>
+  <rect x="474" y="412" width="270" height="30" rx="10" class="chip"/>
+  <text x="486" y="432" class="nodeTextMuted">Payload: pickupTag = "Coin"</text>
+
+  <!-- Right: Game events (player + goal) -->
+  <rect x="792" y="90" width="384" height="606" rx="12" class="panel"/>
+  <text x="816" y="122" class="label">Events — Player / Goal</text>
+  <line x1="792" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <rect x="816" y="156" width="336" height="44" rx="12" class="panel2"/>
+  <rect x="838" y="166" width="314" height="24" rx="8" class="chipAccent"/>
+  <text x="852" y="184" class="nodeText">Add Action… (search)</text>
+
+  <!-- Player: award score -->
+  <rect x="816" y="214" width="336" height="34" rx="10" class="eventHdr"/>
+  <text x="836" y="236" class="nodeText">Event: On Pickup Collected</text>
+  <rect x="836" y="256" width="316" height="30" rx="10" class="actionRow"/>
+  <text x="856" y="276" class="nodeText">Action: Add to Counter (score, +points)</text>
+  <rect x="856" y="290" width="296" height="30" rx="10" class="untilRow"/>
+  <text x="876" y="310" class="nodeText">Until: Instant</text>
+
+  <!-- Goal: win when score reached -->
+  <rect x="816" y="354" width="336" height="34" rx="10" class="eventHdr"/>
+  <text x="836" y="376" class="nodeText">Event: On Update (Goal)</text>
+  <rect x="836" y="396" width="316" height="30" rx="10" class="actionRow"/>
+  <text x="856" y="416" class="nodeText">Action: Show “You Win”</text>
+  <rect x="856" y="430" width="296" height="30" rx="10" class="untilRow"/>
+  <text x="876" y="450" class="nodeText">Until: Counter (score ≥ 500)</text>
+
+  <rect x="816" y="496" width="336" height="180" rx="12" class="callout"/>
+  <text x="836" y="524" class="calloutText">No-code conditional on Score</text>
+  <text x="836" y="546" class="tiny">1) Score is a Counter.</text>
+  <text x="836" y="566" class="tiny">2) Pickups emit points as an event payload.</text>
+  <text x="836" y="586" class="tiny">3) Add-to-counter uses that payload.</text>
+  <text x="836" y="606" class="tiny">4) “Until score ≥ N” is just a counter comparison.</text>
+  <text x="836" y="626" class="tiny">No query engine and no custom code required.</text>
+</svg>
+
