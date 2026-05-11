@@ -139,6 +139,9 @@ export function Inspector() {
           onSelectAttachment={(id) => dispatch({ type: 'select', selection: { kind: 'attachment', id } })}
           onMoveAttachment={(id, direction) => dispatch({ type: 'move-attachment', id, direction })}
           onRemoveAttachment={(id) => dispatch({ type: 'remove-attachment', id })}
+          onMakeParallelAttachments={(ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'group', groupId: group.id }, ids })}
+          onUngroupParallelAttachments={(groupId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'group', groupId: group.id }, groupId })}
+          onMoveParallelAttachmentGroup={(groupId, direction) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'group', groupId: group.id }, groupId, direction })}
           onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
           onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
           onUpdateGroup={updateGroup}
@@ -165,6 +168,9 @@ export function Inspector() {
           onSelectAttachment: (id) => dispatch({ type: 'select', selection: { kind: 'attachment', id } }),
           onMoveAttachment: (id, direction) => dispatch({ type: 'move-attachment', id, direction }),
           onRemoveAttachment: (id) => dispatch({ type: 'remove-attachment', id }),
+          onMakeParallelAttachments: (ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'entity', entityId: entity.id }, ids }),
+          onUngroupParallelAttachments: (groupId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'entity', entityId: entity.id }, groupId }),
+          onMoveParallelAttachmentGroup: (groupId, direction) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'entity', entityId: entity.id }, groupId, direction }),
           onSetEntitiesAsset: (entityIds, asset) => dispatch({ type: 'set-entities-asset', entityIds, asset }),
         })
       ) : (
@@ -248,6 +254,9 @@ export function renderEntityInspector(
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
     onRemoveAttachment: (id: string) => void;
+    onMakeParallelAttachments: (ids: Id[]) => void;
+    onUngroupParallelAttachments: (groupId: string) => void;
+    onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down') => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   }
 ) {
@@ -269,6 +278,9 @@ function EntityInspector({
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
     onRemoveAttachment: (id: string) => void;
+    onMakeParallelAttachments: (ids: Id[]) => void;
+    onUngroupParallelAttachments: (groupId: string) => void;
+    onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down') => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   };
 }) {
@@ -363,6 +375,9 @@ function EntityInspector({
             onSelectAttachment={actionProps.onSelectAttachment}
             onMoveAttachment={actionProps.onMoveAttachment}
             onRemoveAttachment={actionProps.onRemoveAttachment}
+            onMakeParallel={actionProps.onMakeParallelAttachments}
+            onUngroupParallel={actionProps.onUngroupParallelAttachments}
+            onMoveParallelGroup={actionProps.onMoveParallelAttachmentGroup}
             selectedAttachmentId={actionProps.selectedAttachmentId}
           />
         </InspectorFoldout>
@@ -1162,6 +1177,9 @@ export function renderGroupInspector(
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
     onRemoveAttachment: (id: string) => void;
+    onMakeParallelAttachments: (ids: Id[]) => void;
+    onUngroupParallelAttachments: (groupId: string) => void;
+    onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down') => void;
     onSelectMember: (id: string) => void;
     onRemoveMember: (id: string) => void;
     onUpdateGroup: (next: GroupSpec) => void;
@@ -1204,6 +1222,9 @@ export function renderGroupInspector(
           onSelectAttachment={handlers.onSelectAttachment}
           onMoveAttachment={handlers.onMoveAttachment}
           onRemoveAttachment={handlers.onRemoveAttachment}
+          onMakeParallel={handlers.onMakeParallelAttachments}
+          onUngroupParallel={handlers.onUngroupParallelAttachments}
+          onMoveParallelGroup={handlers.onMoveParallelAttachmentGroup}
           selectedAttachmentId={handlers.selectedAttachmentId}
         />
       </InspectorFoldout>

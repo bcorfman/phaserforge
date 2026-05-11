@@ -10,6 +10,82 @@ export function getAttachmentsForTarget(scene: SceneSpec, target: TargetRef): At
   });
 }
 
+export type AttachedActionRow =
+  | { kind: 'attachment'; attachment: AttachmentSpec }
+  | { kind: 'parallel-group'; groupId: string; attachments: AttachmentSpec[] };
+
+const PARALLEL_GROUP_TAG_PREFIX = 'pargrp:';
+
+function parseParallelGroupTag(tag: string | undefined): { groupId: string; slot: string } | null {
+  if (!tag) return null;
+  if (!tag.startsWith(PARALLEL_GROUP_TAG_PREFIX)) return null;
+  const rest = tag.slice(PARALLEL_GROUP_TAG_PREFIX.length);
+  const parts = rest.split(':');
+  if (parts.length < 2) return null;
+  const groupId = parts[0];
+  const slot = parts.slice(1).join(':');
+  if (!groupId || !slot) return null;
+  return { groupId, slot };
+}
+
+function buildParallelGroupTag(groupId: string, slot: string): string {
+  return `${PARALLEL_GROUP_TAG_PREFIX}${groupId}:${slot}`;
+}
+
+export function buildAttachedActionRowsForTarget(scene: SceneSpec, target: TargetRef): AttachedActionRow[] {
+  const attachments = getAttachmentsForTarget(scene, target);
+  const byGroupId = new Map<string, AttachmentSpec[]>();
+  const ungrouped: AttachmentSpec[] = [];
+
+  for (const attachment of attachments) {
+    const parsed = parseParallelGroupTag(attachment.tag);
+    if (!parsed) {
+      ungrouped.push(attachment);
+      continue;
+    }
+    const list = byGroupId.get(parsed.groupId) ?? [];
+    list.push(attachment);
+    byGroupId.set(parsed.groupId, list);
+  }
+
+  const rows: Array<{ sortKey: { order: number; id: string }; row: AttachedActionRow }> = [];
+
+  for (const attachment of ungrouped) {
+    rows.push({
+      sortKey: { order: attachment.order ?? 0, id: attachment.id },
+      row: { kind: 'attachment', attachment },
+    });
+  }
+
+  for (const [groupId, groupAttachments] of byGroupId.entries()) {
+    if (groupAttachments.length < 2) {
+      // If a "parallel group" only has one member, treat it like a normal attachment row.
+      const only = groupAttachments[0];
+      rows.push({
+        sortKey: { order: only.order ?? 0, id: only.id },
+        row: { kind: 'attachment', attachment: only },
+      });
+      continue;
+    }
+    const sorted = [...groupAttachments].sort((a, b) => {
+      const ao = a.order ?? 0;
+      const bo = b.order ?? 0;
+      if (ao !== bo) return ao - bo;
+      return a.id.localeCompare(b.id);
+    });
+    const minOrder = Math.min(...sorted.map((a) => a.order ?? 0));
+    const minId = sorted[0]?.id ?? groupId;
+    rows.push({
+      sortKey: { order: minOrder, id: minId },
+      row: { kind: 'parallel-group', groupId, attachments: sorted },
+    });
+  }
+
+  return rows
+    .sort((a, b) => (a.sortKey.order !== b.sortKey.order ? a.sortKey.order - b.sortKey.order : a.sortKey.id.localeCompare(b.sortKey.id)))
+    .map((r) => r.row);
+}
+
 export function getAttachmentById(scene: SceneSpec, id: Id): AttachmentSpec | undefined {
   return scene.attachments[id];
 }
@@ -77,6 +153,58 @@ export function updateAttachment(scene: SceneSpec, id: Id, next: AttachmentSpec)
   };
 }
 
+export function makeAttachmentsParallel(
+  scene: SceneSpec,
+  target: TargetRef,
+  attachmentIds: Id[],
+  opts: { groupId?: string } = {}
+): { scene: SceneSpec; groupId: string } {
+  const uniqueIds = Array.from(new Set(attachmentIds)).filter(Boolean);
+  if (uniqueIds.length < 2) return { scene, groupId: opts.groupId ?? 'pg-empty' };
+
+  const attachments = uniqueIds.map((id) => scene.attachments[id]).filter(Boolean) as AttachmentSpec[];
+  if (attachments.length < 2) return { scene, groupId: opts.groupId ?? 'pg-empty' };
+  if (!attachments.every((a) => targetsEqual(a.target, target))) return { scene, groupId: opts.groupId ?? 'pg-empty' };
+
+  const groupId = opts.groupId ?? `pg-${Date.now()}`;
+  const minOrder = Math.min(...attachments.map((a) => a.order ?? 0));
+  const sorted = [...attachments].sort((a, b) => {
+    const ao = a.order ?? 0;
+    const bo = b.order ?? 0;
+    if (ao !== bo) return ao - bo;
+    return a.id.localeCompare(b.id);
+  });
+
+  const nextAttachments: Record<Id, AttachmentSpec> = { ...scene.attachments };
+  for (let index = 0; index < sorted.length; index += 1) {
+    const attachment = sorted[index];
+    const slot = String(index + 1);
+    const tag = buildParallelGroupTag(groupId, slot);
+    nextAttachments[attachment.id] = {
+      ...attachment,
+      tag,
+      order: minOrder + index,
+    };
+  }
+
+  return { groupId, scene: { ...scene, attachments: nextAttachments } };
+}
+
+export function ungroupParallelAttachments(scene: SceneSpec, target: TargetRef, groupId: string): SceneSpec {
+  if (!groupId) return scene;
+  const nextAttachments: Record<Id, AttachmentSpec> = { ...scene.attachments };
+  let changed = false;
+  for (const attachment of Object.values(scene.attachments)) {
+    if (!targetsEqual(attachment.target, target)) continue;
+    const parsed = parseParallelGroupTag(attachment.tag);
+    if (!parsed || parsed.groupId !== groupId) continue;
+    const { tag: _tag, ...rest } = attachment as any;
+    nextAttachments[attachment.id] = { ...rest };
+    changed = true;
+  }
+  return changed ? { ...scene, attachments: nextAttachments } : scene;
+}
+
 export function removeAttachment(scene: SceneSpec, id: Id): SceneSpec {
   if (!scene.attachments[id]) return scene;
   const { [id]: _removed, ...remaining } = scene.attachments;
@@ -103,6 +231,40 @@ export function moveAttachmentWithinTarget(scene: SceneSpec, id: Id, direction: 
       [b.id]: { ...b, order: aOrder },
     },
   };
+}
+
+export function moveParallelGroupWithinTarget(scene: SceneSpec, target: TargetRef, groupId: string, direction: 'up' | 'down'): SceneSpec {
+  const rows = buildAttachedActionRowsForTarget(scene, target);
+  const index = rows.findIndex((r) => r.kind === 'parallel-group' && r.groupId === groupId);
+  if (index < 0) return scene;
+  const swapIndex = direction === 'up' ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= rows.length) return scene;
+
+  const rowA = rows[index];
+  const rowB = rows[swapIndex];
+  if (rowA.kind !== 'parallel-group') return scene;
+
+  const aAttachments = rowA.attachments;
+  const bAttachments = rowB.kind === 'parallel-group' ? rowB.attachments : [rowB.attachment];
+
+  const aOrders = aAttachments.map((a) => a.order ?? 0);
+  const bOrders = bAttachments.map((a) => a.order ?? 0);
+  const aMin = Math.min(...aOrders);
+  const bMin = Math.min(...bOrders);
+
+  // Swap blocks by shifting each set so their mins swap.
+  const aDelta = bMin - aMin;
+  const bDelta = aMin - bMin;
+
+  const nextAttachments: Record<Id, AttachmentSpec> = { ...scene.attachments };
+  for (const attachment of aAttachments) {
+    nextAttachments[attachment.id] = { ...attachment, order: (attachment.order ?? 0) + aDelta };
+  }
+  for (const attachment of bAttachments) {
+    nextAttachments[attachment.id] = { ...attachment, order: (attachment.order ?? 0) + bDelta };
+  }
+
+  return { ...scene, attachments: nextAttachments };
 }
 
 export function getTargetLabel(scene: SceneSpec, target: TargetRef): string {
