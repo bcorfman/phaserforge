@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .eventHdr{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .actionRow{fill:rgba(124,240,199,0.08); stroke:rgba(124,240,199,0.65); stroke-width:1;}
+      .untilRow{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.85); stroke-width:1;}
+      .queryRow{fill:rgba(255,106,122,0.08); stroke:rgba(255,106,122,0.7); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+      .shadow{filter:url(#shadow);}
+    </style>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Approach 2 — No-code “Until” from Scene Queries + Vars (still simple)</text>
+
+  <!-- Left: Vars panel -->
+  <rect x="24" y="90" width="360" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">State (Vars)</text>
+  <line x1="24" y1="140" x2="384" y2="140" class="divider"/>
+
+  <rect x="46" y="156" width="316" height="30" rx="10" class="chipAccent"/>
+  <text x="58" y="176" class="nodeText">+ Add Var</text>
+  <rect x="46" y="198" width="316" height="30" rx="10" class="chip"/>
+  <text x="58" y="218" class="nodeTextMuted">Var: gates_opened (number) = 0</text>
+  <rect x="46" y="232" width="316" height="30" rx="10" class="chip"/>
+  <text x="58" y="252" class="nodeTextMuted">Var: has_keycard (bool) = false</text>
+
+  <text x="46" y="296" class="small">Queries (no-code)</text>
+  <rect x="46" y="312" width="316" height="30" rx="10" class="queryRow"/>
+  <text x="58" y="332" class="nodeText">Query: count(tag="Laser", enabled=true)</text>
+  <rect x="46" y="346" width="316" height="30" rx="10" class="queryRow"/>
+  <text x="58" y="366" class="nodeText">Query: any(tag="Gate", state="Open")</text>
+
+  <rect x="46" y="560" width="316" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">Why this helps</text>
+  <text x="66" y="610" class="tiny">Vars are optional; queries cover many “no-variable” games.</text>
+  <text x="66" y="630" class="tiny">“Until …” can reference Var or Query results.</text>
+  <text x="66" y="650" class="tiny">Keeps conditions structured (no code, no expressions).</text>
+
+  <!-- Right: Events editor -->
+  <rect x="408" y="90" width="768" height="606" rx="12" class="panel"/>
+  <text x="432" y="122" class="label">Events — LaserGateGroup</text>
+  <line x1="408" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <rect x="432" y="156" width="720" height="44" rx="12" class="panel2"/>
+  <rect x="454" y="166" width="170" height="24" rx="8" class="chipAccent"/>
+  <text x="468" y="184" class="nodeText">+ Add Event</text>
+  <rect x="632" y="166" width="240" height="24" rx="8" class="chip"/>
+  <text x="644" y="184" class="nodeTextMuted">Add Action…</text>
+  <rect x="880" y="166" width="272" height="24" rx="8" class="chip"/>
+  <text x="892" y="184" class="nodeTextMuted">Insert Snippet…</text>
+
+  <!-- Event: On Spawn -->
+  <rect x="432" y="214" width="720" height="34" rx="10" class="eventHdr"/>
+  <text x="452" y="236" class="nodeText">Event: On Spawn</text>
+  <rect x="452" y="256" width="700" height="30" rx="10" class="actionRow"/>
+  <text x="472" y="276" class="nodeText">Action: Glow (intensity 0.0)</text>
+  <rect x="472" y="290" width="680" height="30" rx="10" class="untilRow"/>
+  <text x="492" y="310" class="nodeText">Until: Instant</text>
+
+  <!-- Event: On Update -->
+  <rect x="432" y="342" width="720" height="34" rx="10" class="eventHdr"/>
+  <text x="452" y="364" class="nodeText">Event: On Update</text>
+  <rect x="452" y="384" width="700" height="30" rx="10" class="actionRow"/>
+  <text x="472" y="404" class="nodeText">Action: Open Gate</text>
+  <rect x="472" y="418" width="680" height="30" rx="10" class="untilRow"/>
+  <text x="492" y="438" class="nodeText">Until: Query (count(tag="Laser", enabled=true) == 0)</text>
+
+  <!-- Floating query builder -->
+  <rect x="560" y="440" width="560" height="230" rx="14" class="panel shadow"/>
+  <text x="584" y="474" class="nodeText">Build Query (for Until…)</text>
+  <rect x="584" y="488" width="512" height="30" rx="10" class="chip"/>
+  <text x="596" y="508" class="nodeTextMuted">Tag: Laser</text>
+  <rect x="584" y="524" width="512" height="30" rx="10" class="chip"/>
+  <text x="596" y="544" class="nodeTextMuted">Filter: enabled == true</text>
+  <rect x="584" y="560" width="250" height="30" rx="10" class="chip"/>
+  <text x="596" y="580" class="nodeTextMuted">Aggregate: count</text>
+  <rect x="844" y="560" width="252" height="30" rx="10" class="chip"/>
+  <text x="856" y="580" class="nodeTextMuted">Compare: == 0</text>
+  <rect x="584" y="606" width="512" height="38" rx="12" class="chipAccent"/>
+  <text x="604" y="630" class="nodeText">Use as “Until”</text>
+</svg>
+

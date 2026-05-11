@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .node{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .nodeComp{fill:rgba(106,167,255,0.12); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .nodePar{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.95); stroke-width:1;}
+      .nodeLeaf{fill:rgba(124,240,199,0.09); stroke:rgba(124,240,199,0.85); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .edge{stroke:rgba(170,180,230,0.4); stroke-width:2; fill:none;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Pattern A — Behavior Tree editor (composites + Parallel)</text>
+
+  <!-- Left: Palette -->
+  <rect x="24" y="90" width="300" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Palette</text>
+  <line x1="24" y1="140" x2="324" y2="140" class="divider"/>
+  <rect x="46" y="156" width="256" height="30" rx="10" class="node"/>
+  <text x="58" y="176" class="nodeTextMuted">Search nodes…</text>
+
+  <text x="46" y="220" class="small">Composites</text>
+  <rect x="46" y="236" width="256" height="28" rx="10" class="nodeComp"/>
+  <text x="58" y="255" class="nodeText">Sequence</text>
+  <rect x="46" y="270" width="256" height="28" rx="10" class="nodeComp"/>
+  <text x="58" y="289" class="nodeText">Selector</text>
+  <rect x="46" y="304" width="256" height="28" rx="10" class="nodePar"/>
+  <text x="58" y="323" class="nodeText">Parallel</text>
+  <rect x="46" y="338" width="256" height="28" rx="10" class="nodeComp"/>
+  <text x="58" y="357" class="nodeText">Repeat</text>
+
+  <text x="46" y="402" class="small">Leaves (Actions)</text>
+  <rect x="46" y="418" width="256" height="28" rx="10" class="nodeLeaf"/>
+  <text x="58" y="437" class="nodeText">Play Sound</text>
+  <rect x="46" y="452" width="256" height="28" rx="10" class="nodeLeaf"/>
+  <text x="58" y="471" class="nodeText">Tween</text>
+  <rect x="46" y="486" width="256" height="28" rx="10" class="nodeLeaf"/>
+  <text x="58" y="505" class="nodeText">Wait</text>
+
+  <rect x="46" y="560" width="256" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">Why it helps</text>
+  <text x="66" y="610" class="tiny">• Catalog growth solved by search/palette.</text>
+  <text x="66" y="630" class="tiny">• Composite actions are first-class nodes.</text>
+  <text x="66" y="650" class="tiny">• Parallel has explicit semantics + UI.</text>
+
+  <!-- Center: Behavior tree canvas -->
+  <rect x="348" y="90" width="600" height="606" rx="12" class="panel"/>
+  <text x="370" y="122" class="label">Canvas — Player / On Input: Space</text>
+  <line x1="348" y1="140" x2="948" y2="140" class="divider"/>
+
+  <!-- Nodes -->
+  <rect x="568" y="172" width="160" height="36" rx="12" class="nodeComp"/>
+  <text x="604" y="195" class="nodeText">Sequence</text>
+
+  <rect x="430" y="260" width="180" height="36" rx="12" class="nodePar"/>
+  <text x="482" y="283" class="nodeText">Parallel</text>
+
+  <rect x="686" y="260" width="200" height="36" rx="12" class="nodeLeaf"/>
+  <text x="714" y="283" class="nodeText">Set Flag: canJump</text>
+
+  <rect x="382" y="352" width="220" height="36" rx="12" class="nodeLeaf"/>
+  <text x="408" y="375" class="nodeText">Play Sound (jump)</text>
+
+  <rect x="614" y="352" width="240" height="36" rx="12" class="nodeComp"/>
+  <text x="650" y="375" class="nodeText">Repeat ×2</text>
+
+  <rect x="614" y="412" width="240" height="36" rx="12" class="nodeLeaf"/>
+  <text x="646" y="435" class="nodeText">Tween Y (-40)</text>
+
+  <rect x="614" y="464" width="240" height="36" rx="12" class="nodeLeaf"/>
+  <text x="698" y="487" class="nodeText">Wait (0.08s)</text>
+
+  <!-- Edges -->
+  <path d="M 648 208 C 630 236, 566 242, 520 260" class="edge"/>
+  <path d="M 648 208 C 668 236, 748 240, 786 260" class="edge"/>
+  <path d="M 520 296 C 506 324, 498 332, 492 352" class="edge"/>
+  <path d="M 520 296 C 560 334, 672 330, 734 352" class="edge"/>
+  <path d="M 734 388 C 734 400, 734 402, 734 412" class="edge"/>
+  <path d="M 734 448 C 734 458, 734 456, 734 464" class="edge"/>
+
+  <!-- Right: Inspector -->
+  <rect x="972" y="90" width="204" height="606" rx="12" class="panel"/>
+  <text x="992" y="122" class="label">Inspector</text>
+  <line x1="972" y1="140" x2="1176" y2="140" class="divider"/>
+  <text x="992" y="176" class="nodeText">Selected:</text>
+  <rect x="992" y="190" width="164" height="28" rx="10" class="nodeLeaf"/>
+  <text x="1004" y="210" class="nodeText">Tween Y (-40)</text>
+  <text x="992" y="250" class="small">Properties</text>
+  <rect x="992" y="264" width="164" height="30" rx="10" class="node"/>
+  <text x="1004" y="284" class="nodeTextMuted">Duration: 120ms</text>
+  <rect x="992" y="302" width="164" height="30" rx="10" class="node"/>
+  <text x="1004" y="322" class="nodeTextMuted">Easing: OutQuad</text>
+  <rect x="992" y="340" width="164" height="30" rx="10" class="node"/>
+  <text x="1004" y="360" class="nodeTextMuted">Target: Player</text>
+</svg>
+

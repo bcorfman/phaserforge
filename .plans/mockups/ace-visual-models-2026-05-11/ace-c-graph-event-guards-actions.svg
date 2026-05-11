@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+
+      .nodeEvent{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .nodeGuard{fill:rgba(255,106,122,0.10); stroke:rgba(255,106,122,0.9); stroke-width:1;}
+      .nodeAction{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .nodeFlow{fill:rgba(255,184,106,0.12); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .pin{fill:rgba(170,180,230,0.9);}
+      .wire{stroke:rgba(124,240,199,0.75); stroke-width:2; fill:none;}
+      .wire2{stroke:rgba(255,184,106,0.85); stroke-width:2; fill:none;}
+      .wire3{stroke:rgba(255,106,122,0.85); stroke-width:2; fill:none;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">ACE Recast C — Graph: Event entry → Until nodes → Actions (Parallel via Split/Join)</text>
+
+  <!-- Left: Node library -->
+  <rect x="24" y="90" width="320" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">ACE Node Library</text>
+  <line x1="24" y1="140" x2="344" y2="140" class="divider"/>
+  <rect x="46" y="156" width="276" height="30" rx="10" class="panel2"/>
+  <text x="58" y="176" class="nodeTextMuted">Search nodes…</text>
+  <rect x="46" y="220" width="276" height="30" rx="10" class="nodeEvent"/>
+  <text x="58" y="240" class="nodeText">Event</text>
+  <rect x="46" y="254" width="276" height="30" rx="10" class="nodeGuard"/>
+  <text x="58" y="274" class="nodeText">Condition (Until…)</text>
+  <rect x="46" y="288" width="276" height="30" rx="10" class="nodeAction"/>
+  <text x="58" y="308" class="nodeText">Action</text>
+  <rect x="46" y="322" width="276" height="30" rx="10" class="nodeFlow"/>
+  <text x="58" y="342" class="nodeText">Flow (Split/Join/Repeat)</text>
+
+  <rect x="46" y="560" width="276" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">ACE clarity</text>
+  <text x="66" y="610" class="tiny">Guards are explicit nodes (not badges).</text>
+  <text x="66" y="630" class="tiny">Parallel modeled by Split → branches → Join.</text>
+  <text x="66" y="650" class="tiny">Strong for complex logic; less “list-like”.</text>
+
+  <!-- Center: Graph canvas -->
+  <rect x="368" y="90" width="808" height="606" rx="12" class="panel"/>
+  <text x="392" y="122" class="label">Graph — Player</text>
+  <line x1="368" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <!-- Event -->
+  <rect x="404" y="180" width="220" height="64" rx="12" class="nodeEvent"/>
+  <text x="420" y="206" class="nodeText">Event: On Input</text>
+  <text x="420" y="228" class="tiny">Key: Space</text>
+  <circle cx="624" cy="212" r="5" class="pin"/>
+
+  <!-- Guard -->
+  <rect x="684" y="184" width="260" height="60" rx="12" class="nodeGuard"/>
+  <text x="700" y="210" class="nodeText">Until: NOT isGrounded</text>
+  <text x="700" y="232" class="tiny">when true: stop branch</text>
+  <circle cx="684" cy="212" r="5" class="pin"/>
+  <circle cx="944" cy="212" r="5" class="pin"/>
+
+  <!-- Split (parallel) -->
+  <rect x="984" y="176" width="160" height="76" rx="12" class="nodeFlow"/>
+  <text x="960" y="204" class="nodeText">Split (Parallel)</text>
+  <text x="960" y="226" class="tiny">2 branches</text>
+  <circle cx="984" cy="212" r="5" class="pin"/>
+  <circle cx="1144" cy="200" r="5" class="pin"/>
+  <circle cx="1144" cy="232" r="5" class="pin"/>
+
+  <!-- Branch A action -->
+  <rect x="860" y="310" width="240" height="60" rx="12" class="nodeAction"/>
+  <text x="876" y="336" class="nodeText">Action: Play Sound</text>
+  <text x="876" y="358" class="tiny">jump</text>
+  <circle cx="860" cy="340" r="5" class="pin"/>
+  <circle cx="1100" cy="340" r="5" class="pin"/>
+
+  <!-- Branch B guard + actions -->
+  <rect x="560" y="304" width="260" height="60" rx="12" class="nodeGuard"/>
+  <text x="576" y="330" class="nodeText">Until: stamina == 0</text>
+  <text x="576" y="352" class="tiny">when true: stop branch</text>
+  <circle cx="560" cy="334" r="5" class="pin"/>
+  <circle cx="820" cy="334" r="5" class="pin"/>
+
+  <rect x="404" y="414" width="240" height="60" rx="12" class="nodeAction"/>
+  <text x="420" y="440" class="nodeText">Action: Tween Y</text>
+  <text x="420" y="462" class="tiny">-40, 120ms</text>
+  <circle cx="644" cy="444" r="5" class="pin"/>
+
+  <rect x="404" y="488" width="240" height="60" rx="12" class="nodeAction"/>
+  <text x="420" y="514" class="nodeText">Action: Tween Y</text>
+  <text x="420" y="536" class="tiny">back, 120ms</text>
+
+  <!-- Join -->
+  <rect x="860" y="420" width="240" height="56" rx="12" class="nodeFlow"/>
+  <text x="876" y="446" class="nodeText">Join</text>
+  <text x="876" y="466" class="tiny">wait for all branches</text>
+  <circle cx="860" cy="448" r="5" class="pin"/>
+
+  <!-- Wires -->
+  <path d="M 624 212 C 652 212, 660 212, 684 212" class="wire2"/>
+  <path d="M 944 212 C 964 212, 970 212, 984 212" class="wire3"/>
+  <path d="M 1144 200 C 1180 200, 1180 340, 1100 340" class="wire"/>
+  <path d="M 1144 232 C 1180 232, 1180 334, 820 334" class="wire"/>
+  <path d="M 560 334 C 520 334, 500 380, 644 444" class="wire"/>
+  <path d="M 644 444 C 720 444, 780 448, 860 448" class="wire2"/>
+  <path d="M 1100 340 C 1120 360, 1120 430, 1100 448" class="wire2"/>
+</svg>

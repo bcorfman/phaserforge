@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .chipGreen{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .chipWarn{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:700;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:700;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+      .arrow{stroke:rgba(124,240,199,0.85); stroke-width:2; fill:none; marker-end:url(#arrowHead);}
+      .treeLine{stroke:rgba(170,180,230,0.35); stroke-width:1;}
+    </style>
+    <marker id="arrowHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(124,240,199,0.9)"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Idea 1 — Actions as a subtree under each Sprite / Sprite Group (Scene Tree)</text>
+  <rect x="940" y="30" width="220" height="30" rx="8" class="chip"/>
+  <text x="952" y="50" class="nodeTextMuted">Search (actions, sprites…)</text>
+
+  <!-- Left: Scene Tree -->
+  <rect x="24" y="90" width="420" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Project</text>
+  <line x1="24" y1="140" x2="444" y2="140" class="divider"/>
+
+  <!-- Tree nodes -->
+  <text x="56" y="170" class="nodeText">▾ Scene: Level01</text>
+  <text x="76" y="198" class="nodeText">▾ Sprites</text>
+  <text x="96" y="226" class="nodeText">▾ Player</text>
+
+  <line x1="88" y1="232" x2="88" y2="380" class="treeLine"/>
+  <line x1="88" y1="252" x2="104" y2="252" class="treeLine"/>
+  <line x1="88" y1="280" x2="104" y2="280" class="treeLine"/>
+  <line x1="88" y1="310" x2="104" y2="310" class="treeLine"/>
+  <line x1="88" y1="340" x2="104" y2="340" class="treeLine"/>
+  <line x1="88" y1="370" x2="104" y2="370" class="treeLine"/>
+
+  <text x="108" y="256" class="nodeTextMuted">Properties</text>
+  <text x="108" y="284" class="nodeText">▾ Actions</text>
+
+  <!-- Actions subtree (under Player) -->
+  <text x="128" y="314" class="nodeText">▾ On Spawn</text>
+  <rect x="140" y="324" width="268" height="24" rx="8" class="chip"/>
+  <text x="152" y="341" class="nodeText">Set Position (x: 120, y: 280)</text>
+
+  <text x="128" y="372" class="nodeText">▾ On Input: Space</text>
+  <rect x="140" y="382" width="268" height="24" rx="8" class="chipWarn"/>
+  <text x="152" y="399" class="nodeText">Parallel</text>
+
+  <!-- Parallel lanes as children -->
+  <rect x="160" y="414" width="248" height="24" rx="8" class="chipAccent"/>
+  <text x="172" y="431" class="nodeText">Lane A: Play Sound (jump)</text>
+  <rect x="160" y="444" width="248" height="24" rx="8" class="chipAccent"/>
+  <text x="172" y="461" class="nodeText">Lane B: Tween Y (to -40)</text>
+
+  <!-- Composite action -->
+  <rect x="140" y="486" width="268" height="24" rx="8" class="chipGreen"/>
+  <text x="152" y="503" class="nodeText">Repeat ×3</text>
+  <rect x="160" y="516" width="248" height="24" rx="8" class="chip"/>
+  <text x="172" y="533" class="nodeText">Flash Tint (white)</text>
+  <rect x="160" y="546" width="248" height="24" rx="8" class="chip"/>
+  <text x="172" y="563" class="nodeText">Wait (0.12s)</text>
+
+  <text x="96" y="610" class="nodeText">▸ EnemyGroup</text>
+
+  <!-- Right: Inspector -->
+  <rect x="468" y="90" width="708" height="606" rx="12" class="panel"/>
+  <text x="492" y="122" class="label">Inspector — Player</text>
+  <line x1="468" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <rect x="492" y="158" width="660" height="112" rx="12" class="panel2"/>
+  <text x="514" y="188" class="nodeText">Selected node:</text>
+  <rect x="620" y="172" width="240" height="30" rx="9" class="chipGreen"/>
+  <text x="632" y="192" class="nodeText">Repeat ×3</text>
+  <text x="514" y="222" class="small">Properties live here. Tree manipulation happens in the Scene Tree (left).</text>
+  <text x="514" y="246" class="small">Right-click / ⌘K opens Add Action for the selected node.</text>
+
+  <rect x="492" y="292" width="660" height="380" rx="12" class="panel2"/>
+  <text x="514" y="322" class="nodeText">Add / Reuse</text>
+  <rect x="514" y="336" width="300" height="30" rx="9" class="chip"/>
+  <text x="526" y="356" class="nodeTextMuted">Add Action… (type to search)</text>
+  <rect x="828" y="336" width="324" height="30" rx="9" class="chip"/>
+  <text x="840" y="356" class="nodeTextMuted">Save selection as Snippet</text>
+
+  <text x="514" y="392" class="small">Benefits</text>
+  <text x="536" y="416" class="tiny">• Actions are always “contained in a tree” (no separate list).</text>
+  <text x="536" y="436" class="tiny">• Parallelism is represented by a “Parallel” node with child lanes.</text>
+  <text x="536" y="456" class="tiny">• Composite actions (Repeat, If, Sequence) are naturally nested.</text>
+  <text x="536" y="476" class="tiny">• Reuse via Snippets (drag from library onto target node).</text>
+
+  <rect x="840" y="404" width="312" height="164" rx="12" class="callout"/>
+  <text x="860" y="430" class="calloutText">Parallel visualization idea</text>
+  <text x="860" y="454" class="tiny">In the tree: “Parallel” is just a parent.</text>
+  <text x="860" y="474" class="tiny">Lanes are labeled children (Lane A/B/C…).</text>
+  <text x="860" y="494" class="tiny">Optionally render lane children as columns</text>
+  <text x="860" y="514" class="tiny">when the node is selected.</text>
+
+  <!-- callout arrow to Parallel node -->
+  <path d="M 820 486 C 770 450, 690 420, 510 410" class="arrow"/>
+</svg>
+
