@@ -61,10 +61,16 @@
       <text class="link" x="44" y="26">05-asset-relink.svg</text>
     </g>
 
-    <g transform="translate(28,470)">
+    <g transform="translate(28,458)">
+      <rect class="pill" x="0" y="-18" width="28" height="28" rx="8"/>
+      <text class="num" x="9" y="2">6</text>
+      <text class="t" x="44" y="0">Parallelize actions: multi-select steps → Make Parallel / Ungroup</text>
+      <text class="link" x="44" y="26">06-parallel-actions.svg</text>
+    </g>
+
+    <g transform="translate(28,540)">
       <rect class="badge" x="0" y="-18" width="12" height="12" rx="3"/>
       <text class="sub" x="20" y="-7">Note: These are wireframe-style SVGs to evaluate workflows, not final visuals.</text>
     </g>
   </g>
 </svg>
-

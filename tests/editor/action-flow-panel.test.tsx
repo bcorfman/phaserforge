@@ -26,6 +26,9 @@ describe('AttachedActionsPanel', () => {
         onSelectAttachment={() => {}}
         onMoveAttachment={() => {}}
         onRemoveAttachment={() => {}}
+        onMakeParallel={() => {}}
+        onUngroupParallel={() => {}}
+        onMoveParallelGroup={() => {}}
       />
     );
 
@@ -47,6 +50,9 @@ describe('AttachedActionsPanel', () => {
         onSelectAttachment={() => {}}
         onMoveAttachment={() => {}}
         onRemoveAttachment={() => {}}
+        onMakeParallel={() => {}}
+        onUngroupParallel={() => {}}
+        onMoveParallelGroup={() => {}}
       />
     );
 
