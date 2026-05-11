@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dropAssetAtClientPoint, getEntitySpriteWorldRect, getState, hitTestAtClientPoint, openSceneScope, seedProject, triggerUndo, worldToClient } from './helpers';
+import { dismissViewHint, dragDropByTestIdAtClientPoint, getEntitySpriteWorldRect, getState, hitTestAtClientPoint, openSceneScope, seedProject, triggerUndo, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test('imports an image and drags to canvas to create an entity with asset ref', async ({ page }) => {
@@ -61,6 +61,11 @@ test.describe('Assets dock', () => {
     await page.getByTestId('assets-dock-import-button').click();
     await page.getByTestId('assets-dock-file-input').setInputFiles('res/images/enemy_A.png');
     await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
+    // Ensure the image exists in state before dragging (some engines render the list row before state settles).
+    await expect.poll(async () => {
+      const state = await getState<any>(page);
+      return Boolean(state?.project?.assets?.images?.['enemy-a']);
+    }).toBe(true);
 
     const beforeEntityIds = await page.evaluate(() => {
       const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
@@ -69,7 +74,10 @@ test.describe('Assets dock', () => {
 
     const enemyAsset = page.getByTestId('assets-dock-item-image-enemy-a');
     const canvas = page.locator('#game-container canvas');
-    await enemyAsset.dragTo(canvas, { targetPosition: { x: 220, y: 160 } });
+    await expect(canvas).toBeVisible();
+    const canvasBox = await canvas.boundingBox();
+    if (!canvasBox) throw new Error('Canvas bounding box unavailable');
+    await enemyAsset.dragTo(canvas, { targetPosition: { x: canvasBox.width * 0.5, y: canvasBox.height * 0.5 } });
 
     await expect.poll(async () => {
       const state = await getState<any>(page);
@@ -85,6 +93,9 @@ test.describe('Assets dock', () => {
       return added[0] ?? null;
     }, beforeEntityIds);
     if (typeof createdEntityId !== 'string') throw new Error('Failed to create entity from asset');
+
+    // Fit view so the sprite is guaranteed to be visible/hit-testable in all engines.
+    await page.getByTestId('fit-view-button').click();
 
     await page.getByTestId('assets-dock-import-button').click();
     await page.getByTestId('assets-dock-file-input').setInputFiles('res/images/meteor_large.png');
@@ -104,21 +115,34 @@ test.describe('Assets dock', () => {
     const rect = await getEntitySpriteWorldRect(page, createdEntityId);
     if (!rect || typeof rect.centerX !== 'number' || typeof rect.centerY !== 'number') throw new Error('Missing sprite world rect');
 
-    const candidateWorldPoints = [
-      { x: rect.centerX, y: rect.centerY },
-      { x: (rect.minX + rect.centerX) / 2, y: (rect.minY + rect.centerY) / 2 },
-      { x: (rect.maxX + rect.centerX) / 2, y: (rect.minY + rect.centerY) / 2 },
-      { x: (rect.minX + rect.centerX) / 2, y: (rect.maxY + rect.centerY) / 2 },
-      { x: (rect.maxX + rect.centerX) / 2, y: (rect.maxY + rect.centerY) / 2 },
+    // Convert the sprite's world center to a client point. Poll until hit-testing confirms the sprite is
+    // actually on-screen (fit view is async relative to rendering in headless engines).
+    let hitClientPoint: { x: number; y: number } | null = null;
+    await expect
+      .poll(async () => {
+        const p = await worldToClient(page, { x: rect.centerX, y: rect.centerY });
+        hitClientPoint = p;
+        const hit = await hitTestAtClientPoint(page, p);
+        return hit?.id ?? '';
+      }, { timeout: 15000 })
+      .toBe(createdEntityId);
+    if (!hitClientPoint) throw new Error('Failed to locate entity on canvas for asset replacement drop');
+
+    // Try a few nearby drop points in case the first one lands on a handle/overlay edge in some engines.
+    const jitter = [
+      { dx: 0, dy: 0 },
+      { dx: 8, dy: 0 },
+      { dx: -8, dy: 0 },
+      { dx: 0, dy: 8 },
+      { dx: 0, dy: -8 },
+      { dx: 12, dy: 12 },
+      { dx: -12, dy: -12 },
     ];
 
-    let dropPoint: { x: number; y: number } | null = null;
-    for (const worldPoint of candidateWorldPoints) {
-      const clientPoint = await worldToClient(page, worldPoint);
-      const hit = await hitTestAtClientPoint(page, clientPoint);
-      if (hit?.kind !== 'entity' || hit.id !== createdEntityId) continue;
-
-      await dropAssetAtClientPoint(page, { assetKind: 'image', assetId: 'meteor-large' }, 'game-container', clientPoint);
+    let replaced = false;
+    for (const { dx, dy } of jitter) {
+      const clientPoint = { x: hitClientPoint.x + dx, y: hitClientPoint.y + dy };
+      await dragDropByTestIdAtClientPoint(page, 'assets-dock-item-image-meteor-large', 'game-container', clientPoint);
 
       try {
         await expect
@@ -132,7 +156,7 @@ test.describe('Assets dock', () => {
             };
           }, { timeout: 2500 })
           .toEqual({ assetId: 'meteor-large', entityCount: entityCountBeforeReplace });
-        dropPoint = clientPoint;
+        replaced = true;
         break;
       } catch {
         // If the drop created a new entity instead of replacing, undo and try a different point.
@@ -140,11 +164,13 @@ test.describe('Assets dock', () => {
         const count = Object.keys(state?.scene?.entities ?? {}).length;
         if (count > entityCountBeforeReplace) {
           await triggerUndo(page);
-          await expect.poll(async () => Object.keys((await getState<any>(page))?.scene?.entities ?? {}).length).toBe(entityCountBeforeReplace);
+          await expect
+            .poll(async () => Object.keys((await getState<any>(page))?.scene?.entities ?? {}).length)
+            .toBe(entityCountBeforeReplace);
         }
       }
     }
-    if (!dropPoint) throw new Error('Failed to replace sprite asset via drop');
+    if (!replaced) throw new Error('Failed to replace sprite asset via drop');
 
     await expect
       .poll(async () => {
