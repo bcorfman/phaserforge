@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dragDropByTestIdAtClientPoint, getEntitySpriteWorldRect, getState, openSceneScope, seedProject, triggerUndo, worldToClient } from './helpers';
+import { dismissViewHint, dropAssetAtClientPoint, getEntitySpriteWorldRect, getState, hitTestAtClientPoint, openSceneScope, seedProject, triggerUndo, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test('imports an image and drags to canvas to create an entity with asset ref', async ({ page }) => {
@@ -102,55 +102,49 @@ test.describe('Assets dock', () => {
     });
 
     const rect = await getEntitySpriteWorldRect(page, createdEntityId);
-    const centerWorld = { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 };
-    const candidatesWorld = [
-      centerWorld,
-      { x: rect.minX + (rect.maxX - rect.minX) * 0.25, y: rect.minY + (rect.maxY - rect.minY) * 0.25 },
-      { x: rect.minX + (rect.maxX - rect.minX) * 0.75, y: rect.minY + (rect.maxY - rect.minY) * 0.25 },
-      { x: rect.minX + (rect.maxX - rect.minX) * 0.25, y: rect.minY + (rect.maxY - rect.minY) * 0.75 },
-      { x: rect.minX + (rect.maxX - rect.minX) * 0.75, y: rect.minY + (rect.maxY - rect.minY) * 0.75 },
+    if (!rect || typeof rect.centerX !== 'number' || typeof rect.centerY !== 'number') throw new Error('Missing sprite world rect');
+
+    const candidateWorldPoints = [
+      { x: rect.centerX, y: rect.centerY },
+      { x: (rect.minX + rect.centerX) / 2, y: (rect.minY + rect.centerY) / 2 },
+      { x: (rect.maxX + rect.centerX) / 2, y: (rect.minY + rect.centerY) / 2 },
+      { x: (rect.minX + rect.centerX) / 2, y: (rect.maxY + rect.centerY) / 2 },
+      { x: (rect.maxX + rect.centerX) / 2, y: (rect.maxY + rect.centerY) / 2 },
     ];
-    const candidatesClient = await Promise.all(candidatesWorld.map((p) => worldToClient(page, p)));
 
-    const readSnapshot = async () => {
-      const state = await getState<any>(page);
-      const entities = state?.scene?.entities ?? {};
-      const entity = entities?.[createdEntityId];
-      return {
-        assetId: entity?.asset?.source?.assetId ?? '',
-        entityCount: Object.keys(entities).length,
-      };
-    };
+    let dropPoint: { x: number; y: number } | null = null;
+    for (const worldPoint of candidateWorldPoints) {
+      const clientPoint = await worldToClient(page, worldPoint);
+      const hit = await hitTestAtClientPoint(page, clientPoint);
+      if (hit?.kind !== 'entity' || hit.id !== createdEntityId) continue;
 
-    const waitForOutcome = async (timeoutMs: number) => {
-      const deadline = Date.now() + timeoutMs;
-      let last = await readSnapshot();
-      while (Date.now() < deadline) {
-        last = await readSnapshot();
-        if (last.assetId === 'meteor-large') return last;
-        if (last.entityCount > entityCountBeforeReplace) return last;
-        await page.waitForTimeout(100);
+      await dropAssetAtClientPoint(page, { assetKind: 'image', assetId: 'meteor-large' }, 'game-container', clientPoint);
+
+      try {
+        await expect
+          .poll(async () => {
+            const state = await getState<any>(page);
+            const entities = state?.scene?.entities ?? {};
+            const entity = entities?.[createdEntityId];
+            return {
+              assetId: entity?.asset?.source?.assetId ?? '',
+              entityCount: Object.keys(entities).length,
+            };
+          }, { timeout: 2500 })
+          .toEqual({ assetId: 'meteor-large', entityCount: entityCountBeforeReplace });
+        dropPoint = clientPoint;
+        break;
+      } catch {
+        // If the drop created a new entity instead of replacing, undo and try a different point.
+        const state = await getState<any>(page);
+        const count = Object.keys(state?.scene?.entities ?? {}).length;
+        if (count > entityCountBeforeReplace) {
+          await triggerUndo(page);
+          await expect.poll(async () => Object.keys((await getState<any>(page))?.scene?.entities ?? {}).length).toBe(entityCountBeforeReplace);
+        }
       }
-      return last;
-    };
-
-    // Some browsers/CI runs are sensitive to the exact drop point. Try a few points within the sprite rect.
-    // If a drop accidentally creates a new entity, undo and retry until we get a clean replace.
-    for (const point of candidatesClient) {
-      await dragDropByTestIdAtClientPoint(page, 'assets-dock-item-image-meteor-large', 'game-container', point);
-      const snapshot = await waitForOutcome(1500);
-
-      if (snapshot.entityCount > entityCountBeforeReplace) {
-        await triggerUndo(page);
-        await expect.poll(async () => {
-          const state = await getState<any>(page);
-          return Object.keys(state?.scene?.entities ?? {}).length;
-        }).toBe(entityCountBeforeReplace);
-        continue;
-      }
-
-      if (snapshot.assetId === 'meteor-large') break;
     }
+    if (!dropPoint) throw new Error('Failed to replace sprite asset via drop');
 
     await expect
       .poll(async () => {

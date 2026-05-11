@@ -24,6 +24,7 @@ interface PhaserActionsStudioTestBridge {
   getGroupLabelVisible(id: string): boolean | null;
   getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
   getEditableBoundsRect(): PhaserActionsStudioRect | null;
+  hitTestAtClientPoint(clientX: number, clientY: number): { kind: 'none' | 'entity' | 'group'; id?: string };
   worldToClient(point: PhaserActionsStudioPoint): PhaserActionsStudioPoint | null;
   setPointerWorld(point: PhaserActionsStudioPoint): void;
   pointerDownEntity(entityId: string): void;

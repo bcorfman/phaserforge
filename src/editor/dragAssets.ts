@@ -6,22 +6,34 @@ export const ASSET_DRAG_MIME = 'application/x-phaseractions-studio-asset';
 export function hasDraggedAsset(dataTransfer: DataTransfer | null): boolean {
   if (!dataTransfer) return false;
   const types = Array.from(dataTransfer.types ?? []);
-  return types.includes(ASSET_DRAG_MIME);
+  if (types.includes(ASSET_DRAG_MIME)) return true;
+  // Fallback for browsers/contexts that don't preserve custom MIME types in HTML5 drag/drop.
+  const text = dataTransfer.getData?.('text/plain');
+  return typeof text === 'string' && /^(image|spritesheet|audio|font):.+$/.test(text);
 }
 
 export function readDraggedAsset(dataTransfer: DataTransfer | null): { assetKind: AssetKind; assetId: Id } | null {
   if (!dataTransfer) return null;
-  const raw = dataTransfer.getData(ASSET_DRAG_MIME);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as any;
-    const assetKind = parsed?.assetKind;
-    const assetId = parsed?.assetId;
+  const parse = (assetKind: unknown, assetId: unknown) => {
     if ((assetKind === 'image' || assetKind === 'spritesheet' || assetKind === 'audio' || assetKind === 'font') && typeof assetId === 'string' && assetId.length > 0) {
       return { assetKind, assetId };
     }
     return null;
-  } catch {
-    return null;
+  };
+
+  const raw = dataTransfer.getData?.(ASSET_DRAG_MIME);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as any;
+      return parse(parsed?.assetKind, parsed?.assetId);
+    } catch {
+      // ignore; fall back to text/plain parsing below
+    }
   }
+
+  const text = dataTransfer.getData?.('text/plain');
+  if (!text) return null;
+  const match = String(text).match(/^(image|spritesheet|audio|font):(.+)$/);
+  if (!match) return null;
+  return parse(match[1], match[2]);
 }

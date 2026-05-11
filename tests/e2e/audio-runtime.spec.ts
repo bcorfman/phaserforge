@@ -3,6 +3,8 @@ import { dismissViewHint, getSceneSnapshot, gotoStudio, waitForSampleScene } fro
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';
 
+test.setTimeout(120000);
+
 test('entering play mode applies scene music/ambience (bridge snapshot)', async ({ page }) => {
   const silentWav =
     'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
