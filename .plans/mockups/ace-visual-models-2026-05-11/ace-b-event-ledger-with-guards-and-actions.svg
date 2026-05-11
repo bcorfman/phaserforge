@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+
+      .eventHdr{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .condRow{fill:rgba(255,106,122,0.08); stroke:rgba(255,106,122,0.75); stroke-width:1;}
+      .actionRow{fill:rgba(124,240,199,0.08); stroke:rgba(124,240,199,0.55); stroke-width:1;}
+      .groupRow{fill:rgba(255,184,106,0.08); stroke:rgba(255,184,106,0.65); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">ACE Recast B — Event “Ledger” (not a timeline): Event blocks + Until rows + Action stacks</text>
+
+  <!-- Left: Sprite selector -->
+  <rect x="24" y="90" width="320" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Targets</text>
+  <line x1="24" y1="140" x2="344" y2="140" class="divider"/>
+  <rect x="46" y="156" width="276" height="30" rx="10" class="chip"/>
+  <text x="58" y="176" class="nodeTextMuted">Search…</text>
+  <rect x="46" y="210" width="276" height="30" rx="10" class="chipAccent"/>
+  <text x="58" y="230" class="nodeText">Player</text>
+  <rect x="46" y="244" width="276" height="30" rx="10" class="chip"/>
+  <text x="58" y="264" class="nodeTextMuted">EnemyGroup</text>
+
+  <rect x="46" y="560" width="276" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">Why “ledger”?</text>
+  <text x="66" y="610" class="tiny">Keeps Actions non-time-based by default.</text>
+  <text x="66" y="630" class="tiny">Conditions are first-class “guards” rows.</text>
+  <text x="66" y="650" class="tiny">Parallel is “branches” inside an event block.</text>
+
+  <!-- Right: Ledger -->
+  <rect x="368" y="90" width="808" height="606" rx="12" class="panel"/>
+  <text x="392" y="122" class="label">ACE Ledger — Player</text>
+  <line x1="368" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <!-- Controls -->
+  <rect x="392" y="156" width="760" height="44" rx="12" class="panel2"/>
+  <rect x="414" y="166" width="190" height="24" rx="8" class="chipAccent"/>
+  <text x="428" y="184" class="nodeText">+ Add Event</text>
+  <rect x="610" y="166" width="240" height="24" rx="8" class="chip"/>
+  <text x="622" y="184" class="nodeTextMuted">Add Condition/Action…</text>
+  <rect x="858" y="166" width="294" height="24" rx="8" class="chip"/>
+  <text x="870" y="184" class="nodeTextMuted">Save selection → Snippet</text>
+
+  <!-- Event Block 1 -->
+  <rect x="392" y="214" width="760" height="34" rx="10" class="eventHdr"/>
+  <text x="412" y="236" class="nodeText">Event: On Spawn</text>
+  <rect x="412" y="256" width="740" height="30" rx="10" class="actionRow"/>
+  <text x="432" y="276" class="nodeText">Action: Set Position (120, 280)</text>
+
+  <!-- Event Block 2 -->
+  <rect x="392" y="308" width="760" height="34" rx="10" class="eventHdr"/>
+  <text x="412" y="330" class="nodeText">Event: On Input (Space)</text>
+
+  <rect x="412" y="350" width="740" height="30" rx="10" class="condRow"/>
+  <text x="432" y="370" class="nodeText">Run until: NOT isGrounded</text>
+  <rect x="412" y="384" width="740" height="30" rx="10" class="condRow"/>
+  <text x="432" y="404" class="nodeText">Run until: stamina == 0 (Branch B only)</text>
+
+  <rect x="412" y="428" width="740" height="30" rx="10" class="groupRow"/>
+  <text x="432" y="448" class="nodeText">Parallel Branches</text>
+
+  <rect x="432" y="464" width="350" height="30" rx="10" class="actionRow"/>
+  <text x="452" y="484" class="nodeText">Branch A — Action: Play Sound (jump)</text>
+  <rect x="802" y="464" width="350" height="30" rx="10" class="actionRow"/>
+  <text x="822" y="484" class="nodeText">Branch B — Action: Tween Y (-40)</text>
+  <rect x="802" y="498" width="350" height="30" rx="10" class="actionRow"/>
+  <text x="822" y="518" class="nodeText">Branch B — Action: Tween Y (back)</text>
+
+  <rect x="412" y="548" width="740" height="30" rx="10" class="groupRow"/>
+  <text x="432" y="568" class="nodeText">Composite: Repeat ×3</text>
+  <rect x="432" y="582" width="720" height="30" rx="10" class="actionRow"/>
+  <text x="452" y="602" class="nodeText">Action: Flash Tint (white)</text>
+  <rect x="432" y="616" width="720" height="30" rx="10" class="actionRow"/>
+  <text x="452" y="636" class="nodeText">Action: Wait (0.12s)</text>
+</svg>

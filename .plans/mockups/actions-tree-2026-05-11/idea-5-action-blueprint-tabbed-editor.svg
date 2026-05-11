@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .chipGreen{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .chipWarn{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:800;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Idea 5 — Actions as first-class “Blueprint” documents (Inspector = properties only)</text>
+
+  <!-- Left: Scene tree -->
+  <rect x="24" y="90" width="320" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Scene Tree</text>
+  <line x1="24" y1="140" x2="344" y2="140" class="divider"/>
+  <text x="52" y="172" class="nodeText">▾ Level01</text>
+  <text x="72" y="200" class="nodeText">▾ Player</text>
+  <rect x="58" y="214" width="266" height="30" rx="10" class="chipAccent"/>
+  <text x="70" y="235" class="nodeText">Open Actions Blueprint</text>
+  <text x="72" y="276" class="nodeTextMuted">EnemyGroup</text>
+  <text x="72" y="304" class="nodeTextMuted">Music</text>
+
+  <!-- Center: Editor area with tabs -->
+  <rect x="368" y="90" width="600" height="606" rx="12" class="panel"/>
+  <text x="392" y="122" class="label">Editor</text>
+  <line x1="368" y1="140" x2="968" y2="140" class="divider"/>
+
+  <!-- Tabs -->
+  <rect x="392" y="154" width="120" height="30" rx="10" class="chip"/>
+  <text x="424" y="174" class="nodeTextMuted">Scene</text>
+  <rect x="520" y="154" width="160" height="30" rx="10" class="chipAccent"/>
+  <text x="540" y="174" class="nodeText">Player • Actions</text>
+  <rect x="688" y="154" width="120" height="30" rx="10" class="chip"/>
+  <text x="718" y="174" class="nodeTextMuted">Sprite</text>
+
+  <!-- Blueprint canvas: tree + lanes -->
+  <rect x="392" y="198" width="560" height="476" rx="12" class="panel2"/>
+  <text x="414" y="228" class="nodeText">Actions Blueprint</text>
+  <rect x="414" y="242" width="300" height="30" rx="10" class="chip"/>
+  <text x="426" y="262" class="nodeTextMuted">Add Action… (palette)</text>
+  <rect x="722" y="242" width="210" height="30" rx="10" class="chipGreen"/>
+  <text x="736" y="262" class="nodeText">Save as Reusable</text>
+
+  <rect x="414" y="286" width="250" height="372" rx="12" class="chip"/>
+  <text x="430" y="312" class="nodeText">Tree</text>
+  <text x="430" y="340" class="nodeText">▾ On Spawn</text>
+  <text x="450" y="366" class="nodeTextMuted">Set Position…</text>
+  <text x="430" y="404" class="nodeText">▾ On Input: Space</text>
+  <rect x="444" y="414" width="200" height="24" rx="8" class="chipWarn"/>
+  <text x="456" y="431" class="nodeText">Parallel</text>
+  <text x="430" y="468" class="nodeText">▾ On Hit</text>
+  <text x="450" y="494" class="nodeTextMuted">Repeat ×3…</text>
+
+  <rect x="676" y="286" width="256" height="372" rx="12" class="chipAccent"/>
+  <text x="694" y="312" class="nodeText">Parallel Lanes (selected)</text>
+  <rect x="694" y="330" width="220" height="28" rx="10" class="chip"/>
+  <text x="706" y="350" class="nodeText">Lane A: Audio</text>
+  <rect x="706" y="362" width="208" height="24" rx="8" class="chipGreen"/>
+  <text x="718" y="379" class="nodeText">Play Sound (jump)</text>
+
+  <rect x="694" y="408" width="220" height="28" rx="10" class="chip"/>
+  <text x="706" y="428" class="nodeText">Lane B: Motion</text>
+  <rect x="706" y="440" width="208" height="24" rx="8" class="chipGreen"/>
+  <text x="718" y="457" class="nodeText">Tween Y (to -40)</text>
+  <rect x="706" y="468" width="208" height="24" rx="8" class="chipGreen"/>
+  <text x="718" y="485" class="nodeText">Tween Y (back)</text>
+
+  <rect x="694" y="520" width="220" height="28" rx="10" class="chip"/>
+  <text x="706" y="540" class="nodeTextMuted">+ add lane</text>
+
+  <!-- Right: Inspector stays properties -->
+  <rect x="992" y="90" width="184" height="606" rx="12" class="panel"/>
+  <text x="1012" y="122" class="label">Inspector</text>
+  <line x1="992" y1="140" x2="1176" y2="140" class="divider"/>
+  <text x="1012" y="176" class="nodeText">Selected:</text>
+  <rect x="1012" y="190" width="144" height="28" rx="10" class="chipGreen"/>
+  <text x="1024" y="210" class="nodeText">Tween Y</text>
+  <text x="1012" y="250" class="small">Properties</text>
+  <rect x="1012" y="264" width="144" height="30" rx="10" class="chip"/>
+  <text x="1024" y="284" class="nodeTextMuted">Duration: 120ms</text>
+  <rect x="1012" y="302" width="144" height="30" rx="10" class="chip"/>
+  <text x="1024" y="322" class="nodeTextMuted">Easing: OutQuad</text>
+  <rect x="1012" y="340" width="144" height="30" rx="10" class="chip"/>
+  <text x="1024" y="360" class="nodeTextMuted">Offset: -40</text>
+
+  <rect x="1004" y="546" width="168" height="138" rx="12" class="callout"/>
+  <text x="1020" y="572" class="calloutText">Tradeoff</text>
+  <text x="1020" y="594" class="tiny">Best for large action graphs.</text>
+  <text x="1020" y="614" class="tiny">Slightly more “app-like”</text>
+  <text x="1020" y="634" class="tiny">than staying in Inspector.</text>
+  <text x="1020" y="654" class="tiny">But reuse + drag/drop becomes</text>
+  <text x="1020" y="674" class="tiny">much easier.</text>
+</svg>
+

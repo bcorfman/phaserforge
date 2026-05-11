@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .chipGreen{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .chipWarn{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:800;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .kbd{fill:#0a1124; stroke:#3b4a7a; stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+      .shadow{filter:url(#shadow);}
+    </style>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Idea 2 — Inspector Action Tree + Command Palette + Snippets Library (drag &amp; reuse)</text>
+
+  <!-- Left: Scene Tree (minimal) -->
+  <rect x="24" y="90" width="320" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Scene Tree</text>
+  <line x1="24" y1="140" x2="344" y2="140" class="divider"/>
+  <text x="52" y="172" class="nodeText">▾ Level01</text>
+  <text x="72" y="200" class="nodeText">▾ Player</text>
+  <rect x="58" y="214" width="266" height="28" rx="10" class="chipAccent"/>
+  <text x="70" y="233" class="nodeText">Actions (open)</text>
+  <text x="72" y="270" class="nodeTextMuted">EnemyGroup</text>
+  <text x="72" y="298" class="nodeTextMuted">Music</text>
+
+  <!-- Right: Inspector with tabs -->
+  <rect x="368" y="90" width="808" height="606" rx="12" class="panel"/>
+  <text x="392" y="122" class="label">Inspector — Player</text>
+  <line x1="368" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <!-- Tabs -->
+  <rect x="392" y="156" width="120" height="30" rx="10" class="chip"/>
+  <text x="414" y="176" class="nodeTextMuted">Properties</text>
+  <rect x="520" y="156" width="120" height="30" rx="10" class="chipAccent"/>
+  <text x="554" y="176" class="nodeText">Actions</text>
+  <rect x="648" y="156" width="120" height="30" rx="10" class="chip"/>
+  <text x="680" y="176" class="nodeTextMuted">Events</text>
+
+  <!-- Actions panel -->
+  <rect x="392" y="198" width="512" height="498" rx="12" class="panel2"/>
+  <text x="414" y="228" class="nodeText">Action Tree</text>
+
+  <!-- Compact header row -->
+  <rect x="414" y="244" width="260" height="30" rx="10" class="chip"/>
+  <text x="426" y="264" class="nodeTextMuted">Add Action…</text>
+  <rect x="682" y="244" width="90" height="30" rx="10" class="chipGreen"/>
+  <text x="700" y="264" class="nodeText">Save</text>
+  <rect x="780" y="244" width="104" height="30" rx="10" class="chip"/>
+  <text x="794" y="264" class="nodeTextMuted">Collapse</text>
+
+  <rect x="414" y="286" width="468" height="1" class="divider"/>
+
+  <!-- Tree with inline parallel lanes -->
+  <text x="420" y="316" class="nodeText">▾ On Spawn</text>
+  <rect x="432" y="326" width="440" height="24" rx="8" class="chip"/>
+  <text x="444" y="343" class="nodeText">Set Position (120, 280)</text>
+
+  <text x="420" y="382" class="nodeText">▾ On Input: Space</text>
+  <rect x="432" y="392" width="440" height="26" rx="9" class="chipWarn"/>
+  <text x="444" y="411" class="nodeText">Parallel (2 lanes)</text>
+
+  <!-- Inline lanes rendered as columns to solve visualization -->
+  <rect x="432" y="428" width="214" height="88" rx="12" class="chipAccent"/>
+  <text x="446" y="450" class="nodeText">Lane A</text>
+  <rect x="446" y="460" width="186" height="24" rx="8" class="chip"/>
+  <text x="456" y="477" class="nodeText">Play Sound (jump)</text>
+  <rect x="446" y="488" width="186" height="24" rx="8" class="chip"/>
+  <text x="456" y="505" class="nodeTextMuted">+ drop action here</text>
+
+  <rect x="658" y="428" width="214" height="88" rx="12" class="chipAccent"/>
+  <text x="672" y="450" class="nodeText">Lane B</text>
+  <rect x="672" y="460" width="186" height="24" rx="8" class="chip"/>
+  <text x="682" y="477" class="nodeText">Tween Y (to -40)</text>
+  <rect x="672" y="488" width="186" height="24" rx="8" class="chip"/>
+  <text x="682" y="505" class="nodeTextMuted">+ drop action here</text>
+
+  <text x="420" y="560" class="nodeText">▾ On Hit</text>
+  <rect x="432" y="570" width="440" height="24" rx="8" class="chipGreen"/>
+  <text x="444" y="587" class="nodeText">Repeat ×3</text>
+  <rect x="452" y="600" width="420" height="24" rx="8" class="chip"/>
+  <text x="464" y="617" class="nodeText">Flash Tint (white)</text>
+  <rect x="452" y="628" width="420" height="24" rx="8" class="chip"/>
+  <text x="464" y="645" class="nodeText">Wait (0.12s)</text>
+
+  <!-- Snippets library -->
+  <rect x="916" y="198" width="260" height="498" rx="12" class="panel2"/>
+  <text x="938" y="228" class="nodeText">Snippets</text>
+  <rect x="938" y="244" width="216" height="30" rx="10" class="chip"/>
+  <text x="950" y="264" class="nodeTextMuted">Search snippets…</text>
+
+  <rect x="938" y="292" width="216" height="34" rx="10" class="chipGreen"/>
+  <text x="950" y="314" class="nodeText">Jump (sound + tween)</text>
+  <rect x="938" y="334" width="216" height="34" rx="10" class="chipGreen"/>
+  <text x="950" y="356" class="nodeText">Damage Flash (repeat)</text>
+  <rect x="938" y="376" width="216" height="34" rx="10" class="chipGreen"/>
+  <text x="950" y="398" class="nodeText">Spawn Intro</text>
+
+  <text x="938" y="442" class="small">Drag a snippet onto:</text>
+  <text x="956" y="462" class="tiny">• any Event node (On Spawn)</text>
+  <text x="956" y="482" class="tiny">• a Parallel Lane</text>
+  <text x="956" y="502" class="tiny">• inside a Composite (Repeat)</text>
+
+  <!-- Floating command palette overlay -->
+  <rect x="460" y="110" width="520" height="260" rx="14" class="panel shadow"/>
+  <text x="486" y="146" class="nodeText">Add Action (⌘K)</text>
+  <rect x="486" y="160" width="468" height="34" rx="12" class="chip"/>
+  <text x="500" y="182" class="nodeTextMuted">Type: “repeat”, “tween”, “play sound”…</text>
+
+  <rect x="486" y="208" width="468" height="34" rx="12" class="chip"/>
+  <text x="500" y="230" class="nodeText">Repeat (Composite)</text>
+  <rect x="486" y="246" width="468" height="34" rx="12" class="chip"/>
+  <text x="500" y="268" class="nodeText">Parallel (Composite)</text>
+  <rect x="486" y="284" width="468" height="34" rx="12" class="chip"/>
+  <text x="500" y="306" class="nodeText">Tween (Move / Rotate / Scale)</text>
+
+  <rect x="486" y="328" width="88" height="24" rx="8" class="kbd"/>
+  <text x="504" y="345" class="tiny">Enter</text>
+  <text x="580" y="345" class="tiny">to insert under the selected node</text>
+
+  <!-- Callout -->
+  <rect x="928" y="546" width="236" height="134" rx="12" class="callout"/>
+  <text x="946" y="572" class="calloutText">Solves growth + reuse</text>
+  <text x="946" y="594" class="tiny">Palette replaces action button grid.</text>
+  <text x="946" y="614" class="tiny">Snippets enable copy/drag across sprites.</text>
+  <text x="946" y="634" class="tiny">Parallel lanes can render as columns</text>
+  <text x="946" y="654" class="tiny">only when expanded/selected.</text>
+</svg>
+

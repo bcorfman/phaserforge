@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .chipGreen{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:800;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .track{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.35); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Idea 4 — “Tracks” represent parallelism (each track is sequential tree)</text>
+
+  <!-- Left: Scene Tree -->
+  <rect x="24" y="90" width="420" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Scene Tree</text>
+  <line x1="24" y1="140" x2="444" y2="140" class="divider"/>
+
+  <text x="56" y="176" class="nodeText">▾ Scene: Level01</text>
+  <text x="76" y="206" class="nodeText">▾ Player</text>
+  <text x="96" y="236" class="nodeText">▾ Actions</text>
+  <text x="116" y="266" class="nodeText">▾ On Input: Space</text>
+  <rect x="132" y="278" width="290" height="26" rx="9" class="chipAccent"/>
+  <text x="144" y="297" class="nodeText">▾ Tracks (parallel)</text>
+  <text x="156" y="332" class="nodeText">Track 1</text>
+  <text x="156" y="362" class="nodeText">Track 2</text>
+
+  <rect x="46" y="414" width="376" height="126" rx="12" class="callout"/>
+  <text x="66" y="442" class="calloutText">Why tracks?</text>
+  <text x="66" y="464" class="tiny">Parallelism becomes “multiple sequences running together”.</text>
+  <text x="66" y="484" class="tiny">Each track remains a simple, readable tree (Sequence/Repeat/etc.).</text>
+  <text x="66" y="504" class="tiny">Great for reuse: copy Track 1 to another sprite.</text>
+  <text x="66" y="524" class="tiny">Composite actions still nest within a track.</text>
+
+  <!-- Right: Inspector shows tracks UI -->
+  <rect x="468" y="90" width="708" height="606" rx="12" class="panel"/>
+  <text x="492" y="122" class="label">Inspector — Player / On Input: Space</text>
+  <line x1="468" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <!-- Tracks header -->
+  <rect x="492" y="156" width="660" height="54" rx="12" class="panel2"/>
+  <text x="514" y="188" class="nodeText">Tracks</text>
+  <rect x="590" y="172" width="92" height="26" rx="9" class="chip"/>
+  <text x="606" y="190" class="nodeTextMuted">+ Track</text>
+  <rect x="688" y="172" width="130" height="26" rx="9" class="chipGreen"/>
+  <text x="704" y="190" class="nodeText">Save as Snippet</text>
+  <rect x="826" y="172" width="150" height="26" rx="9" class="chip"/>
+  <text x="840" y="190" class="nodeTextMuted">Merge Tracks…</text>
+
+  <!-- Track 1 -->
+  <rect x="492" y="224" width="322" height="448" rx="12" class="track"/>
+  <text x="514" y="252" class="nodeText">Track 1 (Audio)</text>
+  <rect x="514" y="266" width="278" height="26" rx="9" class="chip"/>
+  <text x="526" y="285" class="nodeText">Play Sound (jump)</text>
+  <rect x="514" y="300" width="278" height="26" rx="9" class="chip"/>
+  <text x="526" y="319" class="nodeText">Play Sound (whoosh)</text>
+
+  <!-- Track 2 -->
+  <rect x="830" y="224" width="322" height="448" rx="12" class="track"/>
+  <text x="852" y="252" class="nodeText">Track 2 (Motion)</text>
+  <rect x="852" y="266" width="278" height="26" rx="9" class="chip"/>
+  <text x="864" y="285" class="nodeText">Tween Y (to -40)</text>
+  <rect x="852" y="300" width="278" height="26" rx="9" class="chipGreen"/>
+  <text x="864" y="319" class="nodeText">Repeat ×2</text>
+  <rect x="872" y="334" width="258" height="26" rx="9" class="chip"/>
+  <text x="884" y="353" class="nodeText">Wait (0.08s)</text>
+  <rect x="872" y="368" width="258" height="26" rx="9" class="chip"/>
+  <text x="884" y="387" class="nodeText">Tween Y (back)</text>
+</svg>
+

@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .chipWarn{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:800;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .lane{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.35); stroke-width:1;}
+      .laneTitle{fill:var(--text); font-size:12px; font-weight:900;}
+      .bar{fill:rgba(124,240,199,0.14); stroke:rgba(124,240,199,0.85); stroke-width:1;}
+      .bar2{fill:rgba(255,184,106,0.14); stroke:rgba(255,184,106,0.85); stroke-width:1;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <!-- Top toolbar -->
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Idea 3 — Tree for structure + “Parallel Lanes” view for clarity (selected node)</text>
+
+  <!-- Left: Structure tree -->
+  <rect x="24" y="90" width="420" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Action Structure (Tree)</text>
+  <line x1="24" y1="140" x2="444" y2="140" class="divider"/>
+
+  <rect x="46" y="156" width="376" height="30" rx="10" class="chip"/>
+  <text x="58" y="176" class="nodeTextMuted">Find in actions…</text>
+
+  <text x="56" y="220" class="nodeText">▾ On Input: Space</text>
+  <rect x="70" y="232" width="352" height="26" rx="9" class="chipWarn"/>
+  <text x="82" y="251" class="nodeText">Parallel (selected)</text>
+
+  <rect x="90" y="270" width="332" height="24" rx="8" class="chipAccent"/>
+  <text x="102" y="287" class="nodeText">Lane A</text>
+  <rect x="110" y="300" width="312" height="24" rx="8" class="chip"/>
+  <text x="122" y="317" class="nodeText">Play Sound (jump)</text>
+
+  <rect x="90" y="344" width="332" height="24" rx="8" class="chipAccent"/>
+  <text x="102" y="361" class="nodeText">Lane B</text>
+  <rect x="110" y="374" width="312" height="24" rx="8" class="chip"/>
+  <text x="122" y="391" class="nodeText">Tween Y (to -40)</text>
+  <rect x="110" y="402" width="312" height="24" rx="8" class="chip"/>
+  <text x="122" y="419" class="nodeText">Wait (0.08s)</text>
+  <rect x="110" y="430" width="312" height="24" rx="8" class="chip"/>
+  <text x="122" y="447" class="nodeText">Tween Y (back)</text>
+
+  <text x="56" y="502" class="nodeTextMuted">▸ On Spawn</text>
+  <text x="56" y="534" class="nodeTextMuted">▸ On Hit</text>
+
+  <rect x="46" y="584" width="376" height="92" rx="12" class="callout"/>
+  <text x="66" y="612" class="calloutText">Key idea</text>
+  <text x="66" y="634" class="tiny">Tree is the source of truth (containment, nesting).</text>
+  <text x="66" y="654" class="tiny">Parallel is visualized in a dedicated “lanes” canvas</text>
+  <text x="66" y="674" class="tiny">only when the Parallel node is selected.</text>
+
+  <!-- Right: Lanes visualization for selected Parallel -->
+  <rect x="468" y="90" width="708" height="606" rx="12" class="panel"/>
+  <text x="492" y="122" class="label">Parallel Lanes — On Input: Space</text>
+  <line x1="468" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <rect x="492" y="156" width="660" height="44" rx="12" class="panel2"/>
+  <text x="514" y="184" class="nodeText">Controls:</text>
+  <rect x="610" y="166" width="110" height="24" rx="8" class="chip"/>
+  <text x="626" y="184" class="nodeTextMuted">+ Lane</text>
+  <rect x="726" y="166" width="160" height="24" rx="8" class="chip"/>
+  <text x="740" y="184" class="nodeTextMuted">Auto-align start</text>
+  <rect x="892" y="166" width="180" height="24" rx="8" class="chip"/>
+  <text x="906" y="184" class="nodeTextMuted">Convert to Snippet</text>
+
+  <!-- Lanes -->
+  <rect x="492" y="214" width="320" height="458" rx="12" class="lane"/>
+  <text x="512" y="242" class="laneTitle">Lane A</text>
+  <rect x="512" y="260" width="280" height="36" rx="10" class="bar"/>
+  <text x="526" y="283" class="nodeText">Play Sound (jump)</text>
+
+  <rect x="832" y="214" width="320" height="458" rx="12" class="lane"/>
+  <text x="852" y="242" class="laneTitle">Lane B</text>
+  <rect x="852" y="260" width="280" height="36" rx="10" class="bar2"/>
+  <text x="866" y="283" class="nodeText">Tween Y (to -40)</text>
+  <rect x="852" y="308" width="160" height="30" rx="10" class="chip"/>
+  <text x="866" y="328" class="nodeText">Wait (0.08s)</text>
+  <rect x="852" y="348" width="280" height="36" rx="10" class="bar2"/>
+  <text x="866" y="371" class="nodeText">Tween Y (back)</text>
+
+  <!-- Timeline baseline -->
+  <line x1="512" y1="420" x2="1132" y2="420" class="divider"/>
+  <text x="512" y="444" class="tiny">Optional: show durations + alignment guides without turning the whole editor into a timeline.</text>
+</svg>
+

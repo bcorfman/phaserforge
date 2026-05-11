@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .row{fill:#0c1430; stroke:rgba(170,180,230,0.25); stroke-width:1;}
+      .rowEvent{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .rowAction{fill:rgba(124,240,199,0.08); stroke:rgba(124,240,199,0.55); stroke-width:1;}
+      .rowGroup{fill:rgba(255,184,106,0.08); stroke:rgba(255,184,106,0.65); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Pattern D — Event Sheets (grouped, nested lists; search-to-add replaces button grids)</text>
+
+  <!-- Left: Objects -->
+  <rect x="24" y="90" width="300" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Objects</text>
+  <line x1="24" y1="140" x2="324" y2="140" class="divider"/>
+  <rect x="46" y="156" width="256" height="30" rx="10" class="row"/>
+  <text x="58" y="176" class="nodeTextMuted">Search…</text>
+  <rect x="46" y="210" width="256" height="30" rx="10" class="row"/>
+  <text x="58" y="230" class="nodeText">Player</text>
+  <rect x="46" y="244" width="256" height="30" rx="10" class="row"/>
+  <text x="58" y="264" class="nodeText">EnemyGroup</text>
+
+  <!-- Center: Event sheet -->
+  <rect x="348" y="90" width="828" height="606" rx="12" class="panel"/>
+  <text x="372" y="122" class="label">Event Sheet — Player</text>
+  <line x1="348" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <!-- Controls -->
+  <rect x="372" y="156" width="780" height="44" rx="12" class="panel2"/>
+  <text x="394" y="184" class="nodeText">+ Add Event</text>
+  <rect x="500" y="166" width="240" height="24" rx="8" class="row"/>
+  <text x="512" y="184" class="nodeTextMuted">Add Action… (type to search)</text>
+  <rect x="748" y="166" width="200" height="24" rx="8" class="rowGroup"/>
+  <text x="762" y="184" class="nodeText">Save selected → Snippet</text>
+
+  <!-- Event rows -->
+  <rect x="372" y="214" width="780" height="34" rx="10" class="rowEvent"/>
+  <text x="392" y="236" class="nodeText">When: On Input (Space)</text>
+  <text x="1002" y="236" class="nodeTextMuted">▾</text>
+
+  <rect x="392" y="256" width="760" height="30" rx="10" class="rowAction"/>
+  <text x="412" y="276" class="nodeText">Do: Parallel group</text>
+  <text x="1020" y="276" class="nodeTextMuted">2 branches</text>
+
+  <!-- parallel branches as indented groups -->
+  <rect x="412" y="292" width="360" height="30" rx="10" class="row"/>
+  <text x="432" y="312" class="nodeText">Branch A: Play Sound (jump)</text>
+  <rect x="790" y="292" width="342" height="30" rx="10" class="row"/>
+  <text x="810" y="312" class="nodeText">Branch B: Tween Y (-40)</text>
+
+  <rect x="412" y="328" width="360" height="30" rx="10" class="row"/>
+  <text x="432" y="348" class="nodeTextMuted">+ add action…</text>
+  <rect x="790" y="328" width="342" height="30" rx="10" class="row"/>
+  <text x="810" y="348" class="nodeText">Wait (0.08s)</text>
+
+  <!-- Composite -->
+  <rect x="392" y="378" width="760" height="30" rx="10" class="rowGroup"/>
+  <text x="412" y="398" class="nodeText">Repeat ×3</text>
+  <rect x="412" y="414" width="740" height="30" rx="10" class="rowAction"/>
+  <text x="432" y="434" class="nodeText">Do: Flash Tint (white)</text>
+  <rect x="412" y="448" width="740" height="30" rx="10" class="rowAction"/>
+  <text x="432" y="468" class="nodeText">Do: Wait (0.12s)</text>
+
+  <rect x="372" y="522" width="780" height="154" rx="12" class="callout"/>
+  <text x="392" y="548" class="calloutText">Why it’s relevant</text>
+  <text x="392" y="570" class="tiny">This stays list-based, but uses grouping + indentation to model nesting (Repeat/Parallel).</text>
+  <text x="392" y="590" class="tiny">Catalog growth is handled by search-to-add, not a giant button grid.</text>
+  <text x="392" y="610" class="tiny">Reuse typically comes from “snippet/function include” style assets.</text>
+  <text x="392" y="630" class="tiny">Downside: parallel still feels like “two columns in a list” unless a lanes view exists.</text>
+</svg>
+
