@@ -48,6 +48,7 @@ export interface SceneBridge {
   testDuplicateEntities(entityIds: string[], delta: Point): void;
   testDragBoundsHandle(handle: string, delta: Point): void;
   testPanByScreenDelta(delta: Point): void;
+  hitTestAtClientPoint?(clientX: number, clientY: number): { kind: 'none' | 'entity' | 'group'; id?: string };
 }
 
 function isBridgeEnabled(): boolean {
@@ -167,6 +168,10 @@ function ensureBridge(): void {
       const scene = getSceneBridge();
       return scene ? clone(scene.getHitboxOverlayInfo()) : null;
     },
+    hitTestAtClientPoint(clientX: number, clientY: number) {
+      const scene = getSceneBridge();
+      return scene ? clone((scene as any)?.hitTestAtClientPoint?.(clientX, clientY) ?? { kind: 'none' }) : { kind: 'none' };
+    },
     worldToClient(point: Point) {
       const scene = getSceneBridge();
       return scene ? clone(scene.worldToClient(point)) : null;
@@ -213,6 +218,10 @@ function ensureBridge(): void {
     },
   };
 }
+
+// Make the test bridge flag available as early as possible in DEV so E2E boot waits don't depend on
+// React effects firing. The individual handlers/getters are still registered later.
+ensureBridge();
 
 export function registerAppStateGetter(getter: () => AppStateSnapshot): void {
   appStateGetter = getter;

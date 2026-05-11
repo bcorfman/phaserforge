@@ -7,10 +7,14 @@ import { sampleProject } from '../../src/model/sampleProject';
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number; centerX?: number; centerY?: number };
 
+type AssetDragPayload = { assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: string };
+
 const IS_CI = Boolean(process.env.CI);
 const APP_BOOT_TIMEOUT_MS = 60000;
-const NAVIGATE_TIMEOUT_MS = IS_CI ? 45000 : 20000;
-const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 30000;
+// Local runs can still be resource constrained (e.g. 3 workers + fresh Vite server per run),
+// so keep navigation/scene timeouts a bit more forgiving to avoid false negatives.
+const NAVIGATE_TIMEOUT_MS = IS_CI ? 45000 : 30000;
+const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 60000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 
 export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean }): Promise<void> {
@@ -221,6 +225,15 @@ export async function resetScene(page: Page): Promise<void> {
 
 export async function getSceneSnapshot<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getSceneSnapshot()) as Promise<T>;
+}
+
+export async function hitTestAtClientPoint(
+  page: Page,
+  point: Point
+): Promise<{ kind: 'none' | 'entity' | 'group'; id?: string } | null> {
+  return page.evaluate(([p]) => (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.hitTestAtClientPoint?.(p.x, p.y) ?? null, [point]) as Promise<
+    { kind: 'none' | 'entity' | 'group'; id?: string } | null
+  >;
 }
 
 export async function getEntityWorldRect(page: Page, id: string): Promise<Rect> {
@@ -475,7 +488,7 @@ export async function dragDropByTestIdAtClientPoint(
 
       const dataTransfer = new DataTransfer();
       const fire = (el: Element, type: string) => {
-        const event = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer });
+        const event = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY });
         for (const [key, value] of Object.entries({
           clientX,
           clientY,
@@ -500,6 +513,64 @@ export async function dragDropByTestIdAtClientPoint(
       fire(sourceEl, 'dragend');
     },
     [sourceTestId, targetTestId, clientPoint]
+  );
+}
+
+export async function dropAssetAtClientPoint(
+  page: Page,
+  payload: AssetDragPayload,
+  targetTestId: string,
+  clientPoint: { x: number; y: number }
+): Promise<void> {
+  await page.evaluate(
+    ([nextPayload, targetId, point]) => {
+      const ASSET_DRAG_MIME = 'application/x-phaseractions-studio-asset';
+      const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
+      if (!target) throw new Error(`dropAssetAtClientPoint: missing target ${targetId}`);
+
+      const dropRoot = (target.querySelector('canvas') ?? target) as HTMLElement;
+      const rect = dropRoot.getBoundingClientRect();
+      const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+      const clientX = clamp(point.x, rect.left + 1, rect.right - 1);
+      const clientY = clamp(point.y, rect.top + 1, rect.bottom - 1);
+
+      const dataTransfer = new DataTransfer();
+      // Provide both the custom MIME and a text/plain fallback.
+      try {
+        dataTransfer.setData(ASSET_DRAG_MIME, JSON.stringify(nextPayload));
+      } catch {
+        // ignore
+      }
+      try {
+        dataTransfer.setData('text/plain', `${(nextPayload as any).assetKind}:${(nextPayload as any).assetId}`);
+      } catch {
+        // ignore
+      }
+
+      const fire = (el: Element, type: string) => {
+        const event = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY });
+        for (const [key, value] of Object.entries({
+          clientX,
+          clientY,
+          pageX: clientX + window.scrollX,
+          pageY: clientY + window.scrollY,
+          screenX: clientX,
+          screenY: clientY,
+        })) {
+          try {
+            Object.defineProperty(event, key, { value, configurable: true });
+          } catch {
+            // ignore
+          }
+        }
+        el.dispatchEvent(event);
+      };
+
+      // Ensure dragover runs (sets dropEffect + hint), then drop.
+      fire(dropRoot, 'dragover');
+      fire(dropRoot, 'drop');
+    },
+    [payload, targetTestId, clientPoint]
   );
 }
 

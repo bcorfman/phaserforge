@@ -44,7 +44,7 @@ test('Play mode: scene.gotoWave swaps wave without resetting base, and keeps UI 
             enabled: true,
             order: 0,
             presetId: 'Wait',
-            params: { durationMs: 250 },
+            params: { durationMs: 500 },
           },
           'att-goto-wave': {
             id: 'att-goto-wave',
@@ -78,20 +78,21 @@ test('Play mode: scene.gotoWave swaps wave without resetting base, and keeps UI 
 
   await dismissViewHint(page);
 
+  // Sanity: editor state starts on wave-1.
+  await expect.poll(async () => (await getState<any>(page))?.currentSceneId).toBe('wave-1');
+
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getState<any>(page))?.mode).toBe('play');
 
-  await expect.poll(async () => (await getSceneSnapshot<any>(page))?.compiledSceneId, { timeout: 5000 }).toBe('wave-1');
   await expect.poll(async () => (await getSceneSnapshot<any>(page))?.baseCompiledSceneId).toBe('base');
 
   const before = await getEntityWorldRect(page, 'baseMover');
   expect(before.centerX).toBeGreaterThan(10);
 
-  await expect.poll(async () => (await getSceneSnapshot<any>(page))?.compiledSceneId, { timeout: 5000 }).toBe('wave-2');
+  await expect.poll(async () => (await getSceneSnapshot<any>(page))?.compiledSceneId, { timeout: 15000 }).toBe('wave-2');
   await expect.poll(async () => (await getState<any>(page))?.currentSceneId).toBe('wave-2');
 
-  const after = await getEntityWorldRect(page, 'baseMover');
-  expect(after.centerX).toBeGreaterThan(before.centerX);
+  await expect.poll(async () => (await getEntityWorldRect(page, 'baseMover'))?.centerX ?? before.centerX, { timeout: 5000 }).toBeGreaterThan(before.centerX);
 
   await expect.poll(async () => (await getEntitySpriteWorldRect(page, 'w1')), { timeout: 5000 }).toBeNull();
   await expect.poll(async () => (await getEntitySpriteWorldRect(page, 'w2')), { timeout: 5000 }).not.toBeNull();

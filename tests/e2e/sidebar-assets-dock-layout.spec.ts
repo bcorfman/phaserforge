@@ -63,6 +63,9 @@ test.describe('Sidebar layout', () => {
 
     const splitter = page.getByTestId('left-pane-splitter');
     const pane = page.getByTestId('entity-list-pane');
+    // WebKit can report an unstyled full-width sidebar very briefly after boot; wait for stable layout bounds.
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 10000 }).toBeGreaterThan(240);
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 10000 }).toBeLessThan(800);
     const before = await pane.boundingBox();
     if (!before) throw new Error('Left pane bounding box unavailable');
 
@@ -81,6 +84,8 @@ test.describe('Sidebar layout', () => {
     await page.reload();
     await dismissViewHint(page);
     await openSceneScope(page);
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 10000 }).toBeGreaterThan(240);
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 10000 }).toBeLessThan(800);
     const persisted = await pane.boundingBox();
     if (!persisted) throw new Error('Left pane bounding box unavailable after reload');
     expect(persisted.width).toBeGreaterThan(before.width + 40);
