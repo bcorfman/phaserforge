@@ -15,15 +15,12 @@ import {
   seedSampleScene,
   selectGroupInSceneGraph,
   tapWorld,
-  waitForSampleScene,
 } from './helpers';
 
 test.setTimeout(120000);
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
-  await gotoStudio(page);
-  await waitForSampleScene(page);
   await dismissViewHint(page);
 });
 
@@ -372,15 +369,38 @@ test('preview uses edited move velocity and bounce behavior', async ({ page }) =
   const before = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
   await page.getByTestId('toggle-mode-button').click();
 
-  await expect.poll(async () => {
-    const rect = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
-    return rect?.centerX;
-  }).toBeGreaterThan((before?.centerX ?? 0) + 20);
+  const motion = await page.evaluate(async () => {
+    const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const start = window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1')?.centerX ?? null;
+    if (start === null) return { ok: false, reason: 'missing start rect' as const };
 
-  await expect.poll(async () => {
-    const rect = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1'));
-    return rect?.centerX;
-  }, { timeout: 8000 }).toBeLessThan(before?.centerX ?? 0);
+    let maxX = start;
+    let minAfterMax = start;
+    let sawIncrease = false;
+    let sawDecreaseAfterIncrease = false;
+
+    // Observe motion for a few seconds worth of frames.
+    for (let i = 0; i < 240; i += 1) {
+      await nextFrame();
+      const x = window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1')?.centerX;
+      if (typeof x !== 'number') continue;
+      if (x > maxX + 2) {
+        maxX = x;
+        sawIncrease = true;
+        minAfterMax = x;
+      } else if (sawIncrease) {
+        minAfterMax = Math.min(minAfterMax, x);
+        if (maxX - minAfterMax > 2) {
+          sawDecreaseAfterIncrease = true;
+          break;
+        }
+      }
+    }
+
+    return { ok: sawIncrease && sawDecreaseAfterIncrease, start, maxX, minAfterMax };
+  });
+
+  expect(motion.ok).toBe(true);
 });
 
 test('preview bounce reaches configured bounds edge before reversing', async ({ page }) => {

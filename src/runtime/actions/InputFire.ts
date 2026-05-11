@@ -32,6 +32,7 @@ export class InputFire extends ActionBase {
   }
 
   update(dtMs: number): void {
+    if (this.complete || this.cancelled) return;
     this.cooldownRemainingMs = Math.max(0, this.cooldownRemainingMs - dtMs);
     const fire = this.input.getActionState(this.opts.fireActionId);
     if (!fire.pressed) return;

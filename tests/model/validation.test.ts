@@ -73,4 +73,19 @@ describe('model validation', () => {
     scene.entities.e1.hitbox = { x: 2, y: 2, width: 20, height: 20 };
     expect(() => validateSceneSpec(scene)).toThrow(/hitbox/i);
   });
+
+  it('A10 Parallel validates children references', () => {
+    const scene = baseScene();
+    scene.actions.p1 = { id: 'p1', type: 'Parallel' as any, children: ['missing'] };
+    scene.behaviors.b1.rootActionId = 'p1';
+    expect(() => validateSceneSpec(scene)).toThrow(/parallel/i);
+  });
+
+  it('A11 cycle detection walks Parallel children', () => {
+    const scene = baseScene();
+    scene.actions.a1 = { id: 'a1', type: 'Parallel' as any, children: ['a2'] };
+    scene.actions.a2 = { id: 'a2', type: 'Sequence', children: ['a1'] };
+    scene.behaviors.b1.rootActionId = 'a1';
+    expect(() => validateSceneSpec(scene)).toThrow(/cycle/i);
+  });
 });

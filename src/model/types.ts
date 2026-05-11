@@ -318,6 +318,7 @@ export interface BehaviorSpec {
 
 export type ActionSpec =
   | SequenceActionSpec
+  | ParallelActionSpec
   | MoveUntilActionSpec
   | WaitActionSpec
   | CallActionSpec
@@ -326,6 +327,13 @@ export type ActionSpec =
 export interface SequenceActionSpec {
   id: Id;
   type: 'Sequence';
+  name?: string;
+  children: Id[]; // action ids
+}
+
+export interface ParallelActionSpec {
+  id: Id;
+  type: 'Parallel';
   name?: string;
   children: Id[]; // action ids
 }
@@ -363,7 +371,7 @@ export interface RepeatActionSpec {
   count?: number; // undefined = infinite
 }
 
-export type ConditionSpec = BoundsHitConditionSpec | ElapsedTimeConditionSpec;
+export type ConditionSpec = BoundsHitConditionSpec | ElapsedTimeConditionSpec | NeverConditionSpec;
 
 export interface BoundsHitConditionSpec {
   id: Id;
@@ -378,6 +386,11 @@ export interface ElapsedTimeConditionSpec {
   id: Id;
   type: 'ElapsedTime';
   durationMs: number;
+}
+
+export interface NeverConditionSpec {
+  id: Id;
+  type: 'Never';
 }
 
 export interface EditorConfig {

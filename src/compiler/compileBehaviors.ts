@@ -6,12 +6,14 @@ import {
 } from '../model/types';
 import { Action } from '../runtime/Action';
 import { Sequence } from '../runtime/actions/Sequence';
+import { Parallel } from '../runtime/actions/Parallel';
 import { MoveUntil } from '../runtime/actions/MoveUntil';
 import { Wait } from '../runtime/actions/Wait';
 import { Call } from '../runtime/actions/Call';
 import { Repeat } from '../runtime/actions/Repeat';
 import { BoundsHit } from '../runtime/conditions/BoundsHit';
 import { ElapsedTime } from '../runtime/conditions/ElapsedTime';
+import { Never } from '../runtime/conditions/Never';
 import { Condition } from '../runtime/conditions/Condition';
 import { resolveTarget, TargetContext } from '../runtime/targets/resolveTarget';
 import { CallActionSpec } from '../model/types';
@@ -79,6 +81,10 @@ function instantiateAction(
       const children = action.children.map((childId) => buildAction(childId));
       return new Sequence(children);
     }
+    case 'Parallel': {
+      const children = action.children.map((childId) => buildAction(childId));
+      return new Parallel(children);
+    }
     case 'Wait':
       return new Wait(action.durationMs);
     case 'Call': {
@@ -118,6 +124,8 @@ function instantiateCondition(condition: ConditionSpec): Condition {
       });
     case 'ElapsedTime':
       return new ElapsedTime(condition.durationMs);
+    case 'Never':
+      return new Never();
     default:
       throw new Error(`Unknown condition type: ${(condition as ConditionSpec).type}`);
   }

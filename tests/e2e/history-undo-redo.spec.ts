@@ -1,10 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { dragDropByTestId, getState, gotoStudio, seedSampleScene, triggerRedo, triggerUndo, waitForSampleScene } from './helpers';
+import { dragDropByTestId, getState, seedSampleScene, triggerRedo, triggerUndo } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
-  await gotoStudio(page);
-  await waitForSampleScene(page);
 });
 
 test('Undo restores a deleted sprite', async ({ page }) => {

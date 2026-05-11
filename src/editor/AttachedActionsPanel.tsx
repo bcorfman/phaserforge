@@ -2,7 +2,17 @@ import { useMemo } from 'react';
 import type { EditorRegistryConfig, Id, SceneSpec, TargetRef } from '../model/types';
 import { getAttachmentsForTarget } from './attachmentCommands';
 
-const SUPPORTED_PRESETS = new Set(['MoveUntil', 'Wait', 'Call', 'Repeat']);
+const SUPPORTED_PRESETS = new Set([
+  'MoveUntil',
+  'MoveXUntil',
+  'MoveYUntil',
+  'Wait',
+  'Call',
+  'Repeat',
+  'BlinkUntil',
+  'CallbackUntil',
+  'CycleFramesUntil',
+]);
 
 export function AttachedActionsPanel({
   scene,
@@ -92,4 +102,3 @@ export function AttachedActionsPanel({
     </div>
   );
 }
-

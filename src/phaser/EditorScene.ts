@@ -516,7 +516,18 @@ export class EditorScene extends Phaser.Scene {
     const scaleY = this.scale.height / rect.height;
     const pointerX = (clientX - rect.left) * scaleX;
     const pointerY = (clientY - rect.top) * scaleY;
-    const worldPoint = this.cameras.main.getWorldPoint(pointerX, pointerY);
+    // Avoid camera.getWorldPoint here: it relies on internal matrices that have historically been a
+    // source of headless cross-browser flakiness. Match the inverse of `worldToClient` (no rotation)
+    // including origin offsets.
+    const camera = this.cameras.main;
+    const originX = camera.width * camera.originX;
+    const originY = camera.height * camera.originY;
+    const zoomX = camera.zoomX || 1;
+    const zoomY = camera.zoomY || 1;
+    const worldPoint = {
+      x: (pointerX - camera.x - originX) / zoomX + camera.scrollX + originX,
+      y: (pointerY - camera.y - originY) / zoomY + camera.scrollY + originY,
+    };
 
     const hitResult = hitTestCanvas(
       worldPoint,
@@ -1290,7 +1301,8 @@ export class EditorScene extends Phaser.Scene {
       sprite.setFlipX(entity.flipX ?? false);
       sprite.setFlipY(entity.flipY ?? false);
       if (asset?.imageType === 'spritesheet' && sprite instanceof Phaser.GameObjects.Sprite) {
-        const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+        const runtimeFrame = entity.frame;
+        const frame = runtimeFrame !== undefined ? runtimeFrame : (asset.frame?.frameKey ?? asset.frame?.frameIndex);
         if (frame !== undefined) {
           sprite.setFrame(frame);
         }

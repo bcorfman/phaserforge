@@ -19,6 +19,7 @@ export class InputDrive extends ActionBase {
   }
 
   update(_dtMs: number): void {
+    if (this.complete || this.cancelled) return;
     const left = this.opts.leftActionId ? this.input.getActionState(this.opts.leftActionId).held : false;
     const right = this.opts.rightActionId ? this.input.getActionState(this.opts.rightActionId).held : false;
     const up = this.opts.upActionId ? this.input.getActionState(this.opts.upActionId).held : false;
@@ -31,4 +32,3 @@ export class InputDrive extends ActionBase {
     this.entity.vy = yDir * this.opts.speedY;
   }
 }
-

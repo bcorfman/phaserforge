@@ -211,9 +211,19 @@ export function AssetsDock({
   };
 
   const beginDrag = (assetKind: AssetKind, assetId: string, event: React.DragEvent) => {
+    // Be resilient: some browsers/contexts can throw for custom MIME types.
+    // Ensure we still provide a usable payload via text/plain in that case.
     try {
       event.dataTransfer.setData(ASSET_DRAG_MIME, JSON.stringify({ assetKind, assetId }));
+    } catch {
+      // ignore
+    }
+    try {
       event.dataTransfer.setData('text/plain', `${assetKind}:${assetId}`);
+    } catch {
+      // ignore
+    }
+    try {
       event.dataTransfer.effectAllowed = 'copy';
     } catch {
       // ignore

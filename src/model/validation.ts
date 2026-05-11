@@ -4,6 +4,7 @@ import {
   SceneSpec,
   ActionSpec,
   SequenceActionSpec,
+  ParallelActionSpec,
   MoveUntilActionSpec,
   CallActionSpec,
   RepeatActionSpec,
@@ -198,6 +199,15 @@ function validateActions(scene: SceneSpec): void {
         }
         break;
       }
+      case 'Parallel': {
+        const par = action as ParallelActionSpec;
+        for (const childId of par.children) {
+          if (!scene.actions[childId]) {
+            throw new Error(`Parallel ${id} references unknown action ${childId}`);
+          }
+        }
+        break;
+      }
       case 'MoveUntil': {
         const move = action as MoveUntilActionSpec;
         validateTarget(scene, move.target, `MoveUntil ${id} target`);
@@ -255,10 +265,8 @@ function detectCycles(scene: SceneSpec): void {
     if (!action) {
       throw new Error(`Unknown action ${actionId} during cycle check`);
     }
-    if (action.type === 'Sequence') {
-      for (const childId of action.children) {
-        visit(childId);
-      }
+    if (action.type === 'Sequence' || action.type === 'Parallel') {
+      for (const childId of action.children) visit(childId);
     }
     visiting.delete(actionId);
     visited.add(actionId);

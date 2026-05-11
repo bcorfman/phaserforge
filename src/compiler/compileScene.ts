@@ -6,7 +6,7 @@ import type { Action } from '../runtime/Action';
 import { RuntimeEntity, RuntimeGroup } from '../runtime/targets/types';
 import { createFormationGroup } from '../runtime/targets/createFormationGroup';
 import { CompileOptions } from './compileBehaviors';
-import { compileAttachments } from './compileAttachments';
+import { compileAttachments, type CompiledAttachmentScript } from './compileAttachments';
 import { migrateSceneSpec } from '../model/migrateScene';
 
 export interface CompiledScene {
@@ -14,6 +14,7 @@ export interface CompiledScene {
   entities: Record<string, RuntimeEntity>;
   groups: Record<string, RuntimeGroup>;
   behaviors: Record<string, Action>;
+  scripts: CompiledAttachmentScript[];
   actionManager: ActionManager;
   startAll(): void;
   reset(): void;
@@ -60,11 +61,12 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
   }
 
   const actionManager = new ActionManager();
-  const behaviors = compileAttachments(migrated, { targets: { entities, groups }, options });
+  const scripts = compileAttachments(migrated, { targets: { entities, groups }, options });
+  const behaviors: Record<string, Action> = Object.fromEntries(scripts.map((s) => [s.key, s.action]));
 
   const startAll = (): void => {
-    for (const action of Object.values(behaviors)) {
-      actionManager.add(action);
+    for (const script of scripts) {
+      actionManager.add(script.action, { targetKey: script.targetKey, tag: script.tag });
     }
   };
 
@@ -75,5 +77,5 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
     }
   };
 
-  return { scene: migrated, entities, groups, behaviors, actionManager, startAll, reset };
+  return { scene: migrated, entities, groups, behaviors, scripts, actionManager, startAll, reset };
 }

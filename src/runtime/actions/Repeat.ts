@@ -32,6 +32,12 @@ export class Repeat extends ActionBase {
     this.child.start();
   }
 
+  stop(): void {
+    this.child.stop?.();
+    this.child.cancel?.();
+    super.stop();
+  }
+
   reset(): void {
     super.reset();
     this.iterations = 0;

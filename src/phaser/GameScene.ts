@@ -913,7 +913,8 @@ export class GameScene extends Phaser.Scene {
       sprite.setFlipX(entity.flipX ?? false);
       sprite.setFlipY(entity.flipY ?? false);
       if (asset?.imageType === 'spritesheet' && sprite instanceof Phaser.GameObjects.Sprite) {
-        const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+        const runtimeFrame = entity.frame;
+        const frame = runtimeFrame !== undefined ? runtimeFrame : (asset.frame?.frameKey ?? asset.frame?.frameIndex);
         if (frame !== undefined) {
           sprite.setFrame(frame);
         }
