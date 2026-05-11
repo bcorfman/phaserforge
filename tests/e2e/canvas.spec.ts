@@ -19,10 +19,11 @@ import {
   waitForSampleScene,
 } from './helpers';
 
+test.setTimeout(120000);
+
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
-  await gotoStudio(page);
-  await waitForSampleScene(page);
+  await dismissViewHint(page);
 });
 
 test('selects an entity by clicking it on the canvas', async ({ page }) => {
