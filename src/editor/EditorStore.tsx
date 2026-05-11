@@ -25,7 +25,15 @@ import { loadEditorConfig, loadEditorRegistry, coerceStartupMode, EMPTY_EDITOR_R
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { createGroupIdFromName, createGroupSpec, getNextFormationName } from './behaviorCommands';
 import { removeSceneGraphItem } from './sceneGraphCommands';
-import { createAttachment, moveAttachmentWithinTarget, removeAttachment, updateAttachment } from './attachmentCommands';
+import {
+  createAttachment,
+  makeAttachmentsParallel,
+  moveAttachmentWithinTarget,
+  moveParallelGroupWithinTarget,
+  removeAttachment,
+  ungroupParallelAttachments,
+  updateAttachment,
+} from './attachmentCommands';
 import type { AttachmentSpec, TargetRef } from '../model/types';
 import { getSceneWorld } from './sceneWorld';
 import { getAssetReferences } from './assetReferences';
@@ -174,6 +182,9 @@ export type EditorAction =
   | { type: 'update-attachment'; id: Id; next: AttachmentSpec }
   | { type: 'remove-attachment'; id: Id }
   | { type: 'move-attachment'; id: Id; direction: 'up' | 'down' }
+  | { type: 'make-attachments-parallel'; target: TargetRef; ids: Id[] }
+  | { type: 'ungroup-parallel-attachments'; target: TargetRef; groupId: string }
+  | { type: 'move-parallel-attachment-group'; target: TargetRef; groupId: string; direction: 'up' | 'down' }
   | { type: 'toggle-group-expanded'; id: Id }
   | { type: 'move-entity'; id: Id; dx: number; dy: number }
   | { type: 'move-group'; id: Id; dx: number; dy: number }
@@ -2032,6 +2043,24 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     case 'move-attachment': {
       const scene = getActiveScene(state);
       const nextScene = moveAttachmentWithinTarget(scene, action.id, action.direction);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
+    }
+    case 'make-attachments-parallel': {
+      const scene = getActiveScene(state);
+      const { scene: nextScene } = makeAttachmentsParallel(scene, action.target, action.ids);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
+    }
+    case 'ungroup-parallel-attachments': {
+      const scene = getActiveScene(state);
+      const nextScene = ungroupParallelAttachments(scene, action.target, action.groupId);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
+    }
+    case 'move-parallel-attachment-group': {
+      const scene = getActiveScene(state);
+      const nextScene = moveParallelGroupWithinTarget(scene, action.target, action.groupId, action.direction);
       if (nextScene === scene) return state;
       return withScene(state, nextScene as GameSceneSpec, true);
     }
