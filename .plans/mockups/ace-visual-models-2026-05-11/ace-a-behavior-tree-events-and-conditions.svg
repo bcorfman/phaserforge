@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+
+      .nodeEvent{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .nodeComp{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+      .nodeAction{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .nodeParallel{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+      .decorator{fill:rgba(255,106,122,0.08); stroke:rgba(255,106,122,0.85); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .edge{stroke:rgba(170,180,230,0.4); stroke-width:2; fill:none;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">ACE Recast A — Behavior Tree with Event sections + Condition decorators (Until)</text>
+
+  <!-- Left: Legend / Palette -->
+  <rect x="24" y="90" width="320" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">ACE Legend</text>
+  <line x1="24" y1="140" x2="344" y2="140" class="divider"/>
+
+  <rect x="46" y="156" width="276" height="30" rx="10" class="nodeEvent"/>
+  <text x="58" y="176" class="nodeText">Event</text>
+  <rect x="46" y="194" width="276" height="30" rx="10" class="decorator"/>
+  <text x="58" y="214" class="nodeText">Condition (Until…)</text>
+  <rect x="46" y="232" width="276" height="30" rx="10" class="nodeAction"/>
+  <text x="58" y="252" class="nodeText">Action</text>
+  <rect x="46" y="270" width="276" height="30" rx="10" class="nodeComp"/>
+  <text x="58" y="290" class="nodeText">Composite (Sequence/Repeat)</text>
+  <rect x="46" y="308" width="276" height="30" rx="10" class="nodeParallel"/>
+  <text x="58" y="328" class="nodeText">Parallel</text>
+
+  <rect x="46" y="380" width="276" height="180" rx="12" class="callout"/>
+  <text x="66" y="408" class="calloutText">How it maps</text>
+  <text x="66" y="430" class="tiny">Event = root section.</text>
+  <text x="66" y="450" class="tiny">Condition = “run until …” badge attached to node/branch.</text>
+  <text x="66" y="470" class="tiny">Action = leaf effect (tween/sound/etc.).</text>
+  <text x="66" y="490" class="tiny">Parallel = a composite with multiple children.</text>
+  <text x="66" y="510" class="tiny">Repeat/If = composite; Conditions often decorate them.</text>
+
+  <!-- Center: Canvas with multiple Event sections -->
+  <rect x="368" y="90" width="600" height="606" rx="12" class="panel"/>
+  <text x="392" y="122" class="label">Canvas — Player</text>
+  <line x1="368" y1="140" x2="968" y2="140" class="divider"/>
+
+  <!-- Event 1 -->
+  <rect x="392" y="160" width="220" height="34" rx="12" class="nodeEvent"/>
+  <text x="408" y="182" class="nodeText">Event: On Spawn</text>
+  <rect x="420" y="212" width="180" height="28" rx="10" class="nodeAction"/>
+  <text x="432" y="231" class="nodeText">Set Position</text>
+  <path d="M 502 194 C 492 202, 474 206, 454 212" class="edge"/>
+
+  <!-- Event 2 -->
+  <rect x="392" y="286" width="260" height="34" rx="12" class="nodeEvent"/>
+  <text x="408" y="308" class="nodeText">Event: On Input (Space)</text>
+
+  <!-- Under event: Sequence -->
+  <rect x="428" y="336" width="180" height="34" rx="12" class="nodeComp"/>
+  <text x="466" y="358" class="nodeText">Sequence</text>
+  <path d="M 522 320 C 516 330, 506 332, 498 336" class="edge"/>
+
+  <!-- Decorator (condition) attached to Sequence -->
+  <rect x="624" y="334" width="210" height="22" rx="10" class="decorator"/>
+  <text x="636" y="350" class="tiny">Until: NOT isGrounded</text>
+  <path d="M 608 352 C 616 350, 620 346, 624 346" class="edge"/>
+
+  <!-- Parallel branch -->
+  <rect x="404" y="394" width="210" height="34" rx="12" class="nodeParallel"/>
+  <text x="454" y="416" class="nodeText">Parallel</text>
+  <path d="M 518 370 C 504 382, 490 386, 470 394" class="edge"/>
+
+  <!-- Child actions -->
+  <rect x="392" y="456" width="240" height="30" rx="10" class="nodeAction"/>
+  <text x="404" y="476" class="nodeText">Play Sound (jump)</text>
+  <rect x="660" y="456" width="240" height="30" rx="10" class="nodeAction"/>
+  <text x="672" y="476" class="nodeText">Tween Y (to -40)</text>
+
+  <!-- Condition decorator on one branch -->
+  <rect x="672" y="430" width="190" height="22" rx="10" class="decorator"/>
+  <text x="684" y="446" class="tiny">Until: stamina == 0</text>
+
+  <!-- Edges to children -->
+  <path d="M 508 428 C 492 440, 470 444, 452 456" class="edge"/>
+  <path d="M 508 428 C 560 444, 690 442, 780 456" class="edge"/>
+
+  <!-- Composite: Repeat -->
+  <rect x="428" y="520" width="200" height="34" rx="12" class="nodeComp"/>
+  <text x="476" y="542" class="nodeText">Repeat ×3</text>
+  <path d="M 518 370 C 540 404, 560 470, 528 520" class="edge"/>
+
+  <rect x="420" y="574" width="220" height="30" rx="10" class="nodeAction"/>
+  <text x="432" y="594" class="nodeText">Flash Tint (white)</text>
+  <path d="M 528 554 C 522 560, 510 566, 494 574" class="edge"/>
+
+  <!-- Right: Inspector -->
+  <rect x="992" y="90" width="184" height="606" rx="12" class="panel"/>
+  <text x="1012" y="122" class="label">Inspector</text>
+  <line x1="992" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <text x="1012" y="176" class="nodeText">Selected:</text>
+  <rect x="1012" y="190" width="144" height="28" rx="10" class="decorator"/>
+  <text x="1024" y="210" class="nodeText">Until: NOT grounded</text>
+  <text x="1012" y="248" class="small">Until condition</text>
+  <rect x="1012" y="262" width="144" height="30" rx="10" class="panel2"/>
+  <text x="1024" y="282" class="nodeTextMuted">Meaning: stop when true</text>
+  <rect x="1012" y="300" width="144" height="30" rx="10" class="panel2"/>
+  <text x="1024" y="320" class="nodeTextMuted">Default: keep running</text>
+  <rect x="1012" y="338" width="144" height="30" rx="10" class="panel2"/>
+  <text x="1024" y="358" class="nodeTextMuted">Debug: show reason</text>
+</svg>

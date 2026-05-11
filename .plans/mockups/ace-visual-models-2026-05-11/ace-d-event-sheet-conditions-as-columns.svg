@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+
+      .hdrEvent{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .hdrCond{fill:rgba(255,106,122,0.10); stroke:rgba(255,106,122,0.85); stroke-width:1;}
+      .rowAction{fill:rgba(124,240,199,0.08); stroke:rgba(124,240,199,0.55); stroke-width:1;}
+      .rowGroup{fill:rgba(255,184,106,0.08); stroke:rgba(255,184,106,0.65); stroke-width:1;}
+      .cell{fill:#0c1430; stroke:rgba(170,180,230,0.20); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">ACE Recast D — Event Sheet: Events as groups, Until as columns, Actions as rows</text>
+
+  <!-- Left: selector -->
+  <rect x="24" y="90" width="300" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Scope</text>
+  <line x1="24" y1="140" x2="324" y2="140" class="divider"/>
+  <rect x="46" y="156" width="256" height="30" rx="10" class="panel2"/>
+  <text x="58" y="176" class="nodeTextMuted">Player</text>
+  <rect x="46" y="196" width="256" height="30" rx="10" class="panel2"/>
+  <text x="58" y="216" class="nodeTextMuted">Event Sheet: Input</text>
+
+  <rect x="46" y="560" width="256" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">ACE mapping</text>
+  <text x="66" y="610" class="tiny">Event group header defines context.</text>
+  <text x="66" y="630" class="tiny">Conditions are columns (AND/OR via column groups).</text>
+  <text x="66" y="650" class="tiny">Actions are rows; parallel = action groups/branches.</text>
+
+  <!-- Right: sheet -->
+  <rect x="348" y="90" width="828" height="606" rx="12" class="panel"/>
+  <text x="372" y="122" class="label">Event Sheet — Player</text>
+  <line x1="348" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <!-- Event group header -->
+  <rect x="372" y="156" width="780" height="34" rx="10" class="hdrEvent"/>
+  <text x="392" y="178" class="nodeText">Event: On Input (Space)</text>
+
+  <!-- Until columns header (no Else/While in ACE) -->
+  <rect x="372" y="198" width="380" height="30" rx="10" class="hdrCond"/>
+  <text x="392" y="218" class="nodeText">Until: NOT isGrounded</text>
+  <rect x="772" y="198" width="380" height="30" rx="10" class="hdrCond"/>
+  <text x="792" y="218" class="nodeText">Until: stamina == 0</text>
+
+  <!-- Rows -->
+  <rect x="372" y="240" width="380" height="34" rx="10" class="cell"/>
+  <text x="392" y="262" class="nodeTextMuted">Applies to branch A</text>
+  <rect x="772" y="240" width="380" height="34" rx="10" class="cell"/>
+  <text x="792" y="262" class="nodeTextMuted">Applies to branch B</text>
+
+  <rect x="372" y="284" width="780" height="30" rx="10" class="rowGroup"/>
+  <text x="392" y="304" class="nodeText">Parallel Group</text>
+
+  <!-- Branch A under While -->
+  <rect x="372" y="320" width="380" height="30" rx="10" class="rowAction"/>
+  <text x="392" y="340" class="nodeText">Play Sound (jump)</text>
+  <rect x="372" y="354" width="380" height="30" rx="10" class="rowAction"/>
+  <text x="392" y="374" class="nodeText">Flash Tint (optional)</text>
+
+  <!-- Branch B under Until -->
+  <rect x="772" y="320" width="380" height="30" rx="10" class="rowAction"/>
+  <text x="792" y="340" class="nodeText">Tween Y (-40)</text>
+  <rect x="772" y="354" width="380" height="30" rx="10" class="rowAction"/>
+  <text x="792" y="374" class="nodeText">Tween Y (back)</text>
+
+  <!-- Composite group (repeat) -->
+  <rect x="372" y="420" width="780" height="30" rx="10" class="rowGroup"/>
+  <text x="392" y="440" class="nodeText">Composite: Repeat ×3</text>
+  <rect x="372" y="454" width="780" height="30" rx="10" class="rowAction"/>
+  <text x="392" y="474" class="nodeText">Action: Flash Tint (white)</text>
+  <rect x="372" y="488" width="780" height="30" rx="10" class="rowAction"/>
+  <text x="392" y="508" class="nodeText">Action: Wait (0.12s)</text>
+
+  <text x="372" y="560" class="tiny">Columns make “what constrains what” explicit, but can get wide fast; consider collapsible columns or guard groups.</text>
+</svg>

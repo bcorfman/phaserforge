@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:700;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .clip{fill:rgba(124,240,199,0.14); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .clip2{fill:rgba(255,184,106,0.14); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+      .clip3{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .grid{stroke:rgba(170,180,230,0.12); stroke-width:1;}
+      .playhead{stroke:rgba(255,255,255,0.55); stroke-width:2;}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Pattern B — Timeline / Tracks editor (parallel is visual by default)</text>
+
+  <!-- Left: Scene -->
+  <rect x="24" y="90" width="320" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Scene Tree</text>
+  <line x1="24" y1="140" x2="344" y2="140" class="divider"/>
+  <text x="52" y="172" class="nodeText">▾ Level01</text>
+  <text x="72" y="200" class="nodeText">▾ Player</text>
+  <rect x="58" y="214" width="266" height="30" rx="10" class="chipAccent"/>
+  <text x="70" y="235" class="nodeText">Actions Timeline</text>
+  <text x="72" y="280" class="nodeTextMuted">EnemyGroup</text>
+
+  <rect x="46" y="560" width="276" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">What it solves</text>
+  <text x="66" y="610" class="tiny">• Parallel is obvious (stacked tracks).</text>
+  <text x="66" y="630" class="tiny">• Reuse by copying clips/tracks.</text>
+  <text x="66" y="650" class="tiny">• Large catalogs via “Add clip…” search.</text>
+
+  <!-- Right: Timeline -->
+  <rect x="368" y="90" width="808" height="606" rx="12" class="panel"/>
+  <text x="392" y="122" class="label">Actions Timeline — Player / On Input: Space</text>
+  <line x1="368" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <!-- Controls -->
+  <rect x="392" y="156" width="784" height="44" rx="12" class="panel2"/>
+  <text x="414" y="184" class="nodeText">Controls:</text>
+  <rect x="500" y="166" width="130" height="24" rx="8" class="chip"/>
+  <text x="514" y="184" class="nodeTextMuted">+ Track</text>
+  <rect x="636" y="166" width="170" height="24" rx="8" class="chip"/>
+  <text x="650" y="184" class="nodeTextMuted">Add Clip… (search)</text>
+  <rect x="812" y="166" width="160" height="24" rx="8" class="chipAccent"/>
+  <text x="826" y="184" class="nodeText">Convert selection → Snippet</text>
+
+  <!-- Grid area -->
+  <rect x="392" y="214" width="784" height="458" rx="12" class="panel2"/>
+  <!-- vertical grid -->
+  <line x1="452" y1="214" x2="452" y2="672" class="grid"/>
+  <line x1="512" y1="214" x2="512" y2="672" class="grid"/>
+  <line x1="572" y1="214" x2="572" y2="672" class="grid"/>
+  <line x1="632" y1="214" x2="632" y2="672" class="grid"/>
+  <line x1="692" y1="214" x2="692" y2="672" class="grid"/>
+  <line x1="752" y1="214" x2="752" y2="672" class="grid"/>
+  <line x1="812" y1="214" x2="812" y2="672" class="grid"/>
+  <line x1="872" y1="214" x2="872" y2="672" class="grid"/>
+  <line x1="932" y1="214" x2="932" y2="672" class="grid"/>
+  <line x1="992" y1="214" x2="992" y2="672" class="grid"/>
+  <line x1="1052" y1="214" x2="1052" y2="672" class="grid"/>
+  <line x1="1112" y1="214" x2="1112" y2="672" class="grid"/>
+
+  <!-- playhead -->
+  <line x1="632" y1="214" x2="632" y2="672" class="playhead"/>
+
+  <!-- Track labels -->
+  <rect x="404" y="232" width="120" height="26" rx="9" class="chip"/>
+  <text x="416" y="251" class="nodeTextMuted">Track: Audio</text>
+  <rect x="404" y="312" width="120" height="26" rx="9" class="chip"/>
+  <text x="416" y="331" class="nodeTextMuted">Track: Motion</text>
+  <rect x="404" y="392" width="120" height="26" rx="9" class="chip"/>
+  <text x="416" y="411" class="nodeTextMuted">Track: FX</text>
+
+  <!-- Clips -->
+  <rect x="548" y="232" width="220" height="26" rx="9" class="clip"/>
+  <text x="560" y="251" class="nodeText">Play Sound (jump)</text>
+  <rect x="548" y="312" width="300" height="26" rx="9" class="clip2"/>
+  <text x="560" y="331" class="nodeText">Tween Y (to -40)</text>
+  <rect x="856" y="312" width="160" height="26" rx="9" class="clip2"/>
+  <text x="868" y="331" class="nodeText">Tween Y (back)</text>
+  <rect x="604" y="392" width="180" height="26" rx="9" class="clip3"/>
+  <text x="616" y="411" class="nodeText">Flash Tint</text>
+
+  <rect x="548" y="430" width="468" height="86" rx="12" class="callout"/>
+  <text x="568" y="456" class="calloutText">Composites in a timeline world</text>
+  <text x="568" y="478" class="tiny">Repeat/If can be modeled as a “clip” that expands to a nested editor,</text>
+  <text x="568" y="498" class="tiny">or as a “sub-timeline” asset referenced by a clip.</text>
+</svg>
+
