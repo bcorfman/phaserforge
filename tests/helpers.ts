@@ -13,6 +13,7 @@ export function baseScene(): SceneSpec {
       g1: { id: 'g1', members: ['e1', 'e2', 'e3'] },
     },
     attachments: {},
+    eventBlocks: {},
     behaviors: {
       b1: {
         id: 'b1',

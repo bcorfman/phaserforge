@@ -11,6 +11,7 @@ import { OpRegistry } from '../compiler/opRegistry';
 import { BasicAudioService } from '../runtime/services/BasicAudioService';
 import { BasicInputService } from '../runtime/services/BasicInputService';
 import { BasicCollisionService } from '../runtime/services/BasicCollisionService';
+import { BasicVarsService } from '../runtime/services/BasicVarsService';
 import type { InputActionMapSpec } from '../model/types';
 import { createTriggerCompileContext, executeTriggerScripts } from '../runtime/triggers/triggerScripts';
 import { executeCollisionScripts } from '../runtime/collisions/collisionScripts';
@@ -48,6 +49,7 @@ export class GameScene extends Phaser.Scene {
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private audioService?: BasicAudioService;
   private inputService?: BasicInputService;
+  private varsService: BasicVarsService = new BasicVarsService();
   private testPointerOverride?: { x: number; y: number; worldX: number; worldY: number };
   private baseCollisionService?: BasicCollisionService;
   private collisionService?: BasicCollisionService;
@@ -159,6 +161,7 @@ export class GameScene extends Phaser.Scene {
   public loadSceneSpec(projectOrScene: ProjectSpec | SceneSpec, maybeScene?: SceneSpec): void {
     const project = maybeScene ? (projectOrScene as ProjectSpec) : undefined;
     this.project = project;
+    this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
     const sceneSpec = (maybeScene ?? projectOrScene) as GameSceneSpec;
     const currentLoadVersion = ++this.loadVersion;
     const baseId = project?.baseSceneId;
@@ -204,7 +207,7 @@ export class GameScene extends Phaser.Scene {
           opts,
         });
       };
-      this.baseCompiled = compileScene(baseSceneSpec!, { opRegistry: this.opRegistry, input: this.inputService, runtime: { spawnEntity: spawnBase } });
+      this.baseCompiled = compileScene(baseSceneSpec!, { opRegistry: this.opRegistry, input: this.inputService, vars: this.varsService, runtime: { spawnEntity: spawnBase } });
       baseCompiledRef = this.baseCompiled;
       this.configureCompiledLayer(this.baseCompiled, baseSceneSpec!, {
         collision: this.baseCollisionService,
@@ -245,7 +248,7 @@ export class GameScene extends Phaser.Scene {
         opts,
       });
     };
-    this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry, input: this.inputService, runtime: { spawnEntity: spawnActive } });
+    this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry, input: this.inputService, vars: this.varsService, runtime: { spawnEntity: spawnActive } });
     compiledRef = this.compiled;
     this.configureCompiledLayer(this.compiled, sceneSpec, {
       collision: this.collisionService,
@@ -605,6 +608,8 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (!this.compiled && !this.baseCompiled) return;
     this.inputService?.update();
+    if (this.baseCompiled) this.baseCompiled.updateTriggers(delta);
+    if (this.compiled) this.compiled.updateTriggers(delta);
     if (this.baseCompiled) this.baseCompiled.actionManager.update(delta);
     if (this.compiled) this.compiled.actionManager.update(delta);
 

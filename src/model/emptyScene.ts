@@ -10,6 +10,7 @@ export function createEmptyScene(): SceneSpec {
     entities: {},
     groups: {},
     attachments: {},
+    eventBlocks: {},
     behaviors: {},
     actions: {},
     conditions: {},

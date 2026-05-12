@@ -111,6 +111,7 @@ export function migrateSceneSpec(raw: unknown): SceneSpec {
     entities: coerceRecord(parsed.entities),
     groups: coerceRecord(parsed.groups),
     attachments: coerceRecord(parsed.attachments),
+    ...(parsed.eventBlocks !== undefined ? { eventBlocks: coerceRecord(parsed.eventBlocks) } : {}),
     behaviors: coerceRecord(parsed.behaviors),
     actions: coerceRecord(parsed.actions),
     conditions: coerceRecord(parsed.conditions),

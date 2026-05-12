@@ -10,6 +10,8 @@ import {
   SceneSpec,
   StartupMode,
   TriggerZoneSpec,
+  type CollectionSpec,
+  type CounterSpec,
   type AssetFileSource,
   type EntitySpec,
   type InputBindingSpec,
@@ -34,7 +36,7 @@ import {
   ungroupParallelAttachments,
   updateAttachment,
 } from './attachmentCommands';
-import type { AttachmentSpec, TargetRef } from '../model/types';
+import type { AttachmentSpec, EventBlockSpec, TargetRef } from '../model/types';
 import { getSceneWorld } from './sceneWorld';
 import { getAssetReferences } from './assetReferences';
 import { buildDefaultDraftParams, type FormationDraftSpec, type FormationTemplateSource } from './formationDraft';
@@ -178,13 +180,22 @@ export type EditorAction =
   | { type: 'update-entity'; id: Id; next: EntitySpec }
   | { type: 'import-entities'; drafts: ImportedEntityDraft[] }
   | { type: 'update-group'; id: Id; next: GroupSpec }
-  | { type: 'create-attachment'; target: TargetRef; presetId: string }
+  | { type: 'create-attachment'; target: TargetRef; presetId: string; init?: Partial<AttachmentSpec> }
   | { type: 'update-attachment'; id: Id; next: AttachmentSpec }
   | { type: 'remove-attachment'; id: Id }
   | { type: 'move-attachment'; id: Id; direction: 'up' | 'down' }
   | { type: 'make-attachments-parallel'; target: TargetRef; ids: Id[] }
-  | { type: 'ungroup-parallel-attachments'; target: TargetRef; groupId: string }
-  | { type: 'move-parallel-attachment-group'; target: TargetRef; groupId: string; direction: 'up' | 'down' }
+  | { type: 'ungroup-parallel-attachments'; target: TargetRef; groupId: string; eventId?: Id }
+  | { type: 'move-parallel-attachment-group'; target: TargetRef; groupId: string; direction: 'up' | 'down'; eventId?: Id }
+  | { type: 'create-event-block'; target: TargetRef; name?: string }
+  | { type: 'update-event-block'; id: Id; next: EventBlockSpec }
+  | { type: 'remove-event-block'; id: Id }
+  | { type: 'create-counter'; scope: 'global' | 'scene'; id?: Id }
+  | { type: 'update-counter'; id: Id; next: CounterSpec }
+  | { type: 'remove-counter'; id: Id }
+  | { type: 'create-collection'; id?: Id }
+  | { type: 'update-collection'; id: Id; next: CollectionSpec }
+  | { type: 'remove-collection'; id: Id }
   | { type: 'toggle-group-expanded'; id: Id }
   | { type: 'move-entity'; id: Id; dx: number; dy: number }
   | { type: 'move-group'; id: Id; dx: number; dy: number }
@@ -2020,6 +2031,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const scene = getActiveScene(state);
       const { scene: nextScene, attachmentId } = createAttachment(scene, action.target, action.presetId, {
         applyTo: action.target.type === 'group' ? 'group' : undefined,
+        ...(action.init ?? {}),
       });
       return withScene(
         { ...state, selection: { kind: 'attachment', id: attachmentId } },
@@ -2054,15 +2066,107 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     }
     case 'ungroup-parallel-attachments': {
       const scene = getActiveScene(state);
-      const nextScene = ungroupParallelAttachments(scene, action.target, action.groupId);
+      const nextScene = ungroupParallelAttachments(scene, action.target, action.groupId, action.eventId);
       if (nextScene === scene) return state;
       return withScene(state, nextScene as GameSceneSpec, true);
     }
     case 'move-parallel-attachment-group': {
       const scene = getActiveScene(state);
-      const nextScene = moveParallelGroupWithinTarget(scene, action.target, action.groupId, action.direction);
+      const nextScene = moveParallelGroupWithinTarget(scene, action.target, action.groupId, action.direction, action.eventId);
       if (nextScene === scene) return state;
       return withScene(state, nextScene as GameSceneSpec, true);
+    }
+    case 'create-event-block': {
+      const scene = getActiveScene(state);
+      const id: Id = `ev-${Date.now()}`;
+      const nextScene: GameSceneSpec = {
+        ...scene,
+        eventBlocks: {
+          ...(scene.eventBlocks ?? {}),
+          [id]: { id, name: action.name, target: action.target, trigger: { type: 'start' } },
+        },
+      } as any;
+      return withScene(state, nextScene, true);
+    }
+    case 'update-event-block': {
+      const scene = getActiveScene(state);
+      const existing = (scene.eventBlocks ?? {})[action.id];
+      if (!existing) return state;
+      const nextScene: GameSceneSpec = {
+        ...scene,
+        eventBlocks: {
+          ...(scene.eventBlocks ?? {}),
+          [action.id]: action.next as any,
+        },
+      } as any;
+      return withScene(state, nextScene, true);
+    }
+    case 'remove-event-block': {
+      const scene = getActiveScene(state);
+      const existing = (scene.eventBlocks ?? {})[action.id];
+      if (!existing) return state;
+      const { [action.id]: _removed, ...remainingBlocks } = (scene.eventBlocks ?? {}) as any;
+      const remainingAttachments: Record<Id, AttachmentSpec> = {};
+      for (const [attId, att] of Object.entries(scene.attachments ?? {})) {
+        if ((att as any).eventId === action.id) continue;
+        remainingAttachments[attId] = att as any;
+      }
+      const nextScene: GameSceneSpec = {
+        ...scene,
+        eventBlocks: remainingBlocks,
+        attachments: remainingAttachments,
+      } as any;
+      return withScene(state, nextScene, true);
+    }
+    case 'create-counter': {
+      const id: Id = action.id ?? `counter-${Date.now()}`;
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        counters: {
+          ...(state.project.counters ?? {}),
+          [id]: { id, scope: action.scope, value: 0 },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'update-counter': {
+      if (!(state.project.counters ?? {})[action.id]) return state;
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        counters: { ...(state.project.counters ?? {}), [action.id]: action.next },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'remove-counter': {
+      if (!(state.project.counters ?? {})[action.id]) return state;
+      const { [action.id]: _removed, ...remaining } = (state.project.counters ?? {}) as any;
+      const nextProject: ProjectSpec = { ...state.project, counters: remaining };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'create-collection': {
+      const id: Id = action.id ?? `collection-${Date.now()}`;
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        collections: {
+          ...(state.project.collections ?? {}),
+          [id]: { id, members: [] },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'update-collection': {
+      if (!(state.project.collections ?? {})[action.id]) return state;
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        collections: { ...(state.project.collections ?? {}), [action.id]: action.next },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'remove-collection': {
+      if (!(state.project.collections ?? {})[action.id]) return state;
+      const { [action.id]: _removed, ...remaining } = (state.project.collections ?? {}) as any;
+      const nextProject: ProjectSpec = { ...state.project, collections: remaining };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
     }
     case 'toggle-group-expanded':
       return {

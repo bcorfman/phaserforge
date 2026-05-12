@@ -27,7 +27,17 @@ export interface InputService {
   getSnapshot(): unknown;
 }
 export interface CollisionService {}
-export interface VarsService {}
+export interface VarsService {
+  getCounter(id: string): number;
+  setCounter(id: string, value: number): void;
+  addToCounter(id: string, delta: number): number;
+  clampCounter(id: string, clamp: { min?: number; max?: number }): number;
+
+  getCollectionMembers(id: string): Array<{ type: 'entity' | 'group'; entityId?: string; groupId?: string }>;
+  setCollectionMembers(id: string, members: Array<{ type: 'entity' | 'group'; entityId?: string; groupId?: string }>): void;
+  addToCollection(id: string, member: { type: 'entity' | 'group'; entityId?: string; groupId?: string }): void;
+  removeFromCollection(id: string, member: { type: 'entity' | 'group'; entityId?: string; groupId?: string }): void;
+}
 
 export interface RuntimeServices {
   scene: SceneService;
@@ -63,7 +73,16 @@ export function createStubRuntimeServices(overrides: Partial<RuntimeServices> = 
       getSnapshot: () => ({}),
     },
     collisions: {},
-    vars: {},
+    vars: {
+      getCounter: () => 0,
+      setCounter: () => {},
+      addToCounter: () => 0,
+      clampCounter: () => 0,
+      getCollectionMembers: () => [],
+      setCollectionMembers: () => {},
+      addToCollection: () => {},
+      removeFromCollection: () => {},
+    },
   };
   return { ...stub, ...overrides };
 }

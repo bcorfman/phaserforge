@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { EventBus, getActiveScene, setActiveScene } from './EventBus';
 import { compileScene, CompiledScene } from '../compiler/compileScene';
 import { OpRegistry } from '../compiler/opRegistry';
+import { BasicVarsService } from '../runtime/services/BasicVarsService';
 import { AssetFileSource, GameSceneSpec, ProjectSpec, SceneSpec, SpriteAssetSpec, SpriteSheetGridSpec, type HitboxSpec } from '../model/types';
 import { Selection } from '../editor/EditorStore';
 import { getGroupFrameDisplay } from '../editor/groupFrameDisplay';
@@ -41,6 +42,7 @@ type PhysicsObject =
 export class EditorScene extends Phaser.Scene {
   private compiled?: CompiledScene;
   private referenceCompiled?: CompiledScene;
+  private varsService: BasicVarsService = new BasicVarsService();
   private project?: ProjectSpec;
   private opRegistry: OpRegistry = new OpRegistry();
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
@@ -631,6 +633,7 @@ export class EditorScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (!this.compiled) return;
+    this.compiled.updateTriggers(delta);
     this.compiled.actionManager.update(delta);
     for (const entity of Object.values(this.compiled.entities)) {
       const sprite = this.sprites.get(entity.id);
@@ -688,8 +691,9 @@ export class EditorScene extends Phaser.Scene {
     this.clearScene();
     this.project = project;
     this.mode = mode;
-    this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry });
-    this.referenceCompiled = referenceSceneSpec ? compileScene(referenceSceneSpec, { opRegistry: this.opRegistry }) : undefined;
+    this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
+    this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry, vars: this.varsService });
+    this.referenceCompiled = referenceSceneSpec ? compileScene(referenceSceneSpec, { opRegistry: this.opRegistry, vars: this.varsService }) : undefined;
 
     void this.ensureAssetTextures(project, referenceSceneSpec ? [sceneSpec, referenceSceneSpec] : [sceneSpec]).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
