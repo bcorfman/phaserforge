@@ -44,7 +44,7 @@
         "test:all": "npm run test:unit && npm run test:e2e"
     },
     "dependencies": {
-        "@prisma/client": "^6.16.0",
+        "@prisma/client": "^7.8.0",
         "argon2": "^0.44.0",
         "better-sqlite3": "^12.4.1",
         "cookie-parser": "^1.4.7",
@@ -74,7 +74,7 @@
         "eslint-plugin-react-refresh": "^0.5.2",
         "globals": "^17.6.0",
         "jsdom": "^29.1.1",
-        "prisma": "^6.16.0",
+        "prisma": "^7.8.0",
         "supertest": "^7.1.4",
         "terser": "^5.47.1",
         "typescript": "~6.0.3",
