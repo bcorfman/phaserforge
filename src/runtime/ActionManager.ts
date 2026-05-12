@@ -2,7 +2,7 @@ import { Action } from './Action';
 
 export interface ActionMetadata {
   targetKey?: string;
-  tag?: string;
+  eventId?: string;
 }
 
 interface ManagedAction {
@@ -39,14 +39,14 @@ export class ActionManager {
 
   getActionsForTarget(targetKey: string, tag?: string): Action[] {
     return this.actions
-      .filter(({ meta }) => meta.targetKey === targetKey && (tag === undefined || meta.tag === tag))
+      .filter(({ meta }) => meta.targetKey === targetKey && (tag === undefined || meta.eventId === tag))
       .map(({ action }) => action);
   }
 
   stopActionsForTarget(targetKey: string, tag?: string): void {
     for (const { action, meta } of this.actions) {
       if (meta.targetKey !== targetKey) continue;
-      if (tag !== undefined && meta.tag !== tag) continue;
+      if (tag !== undefined && meta.eventId !== tag) continue;
       action.stop?.();
       action.cancel?.();
     }

@@ -17,6 +17,7 @@ export interface CompiledScene {
   scripts: CompiledAttachmentScript[];
   actionManager: ActionManager;
   startAll(): void;
+  updateTriggers(dtMs: number): void;
   reset(): void;
 }
 
@@ -66,7 +67,74 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
 
   const startAll = (): void => {
     for (const script of scripts) {
-      actionManager.add(script.action, { targetKey: script.targetKey, tag: script.tag });
+      const triggerType = script.trigger?.type ?? 'start';
+      if (triggerType !== 'start') continue;
+      script.action.reset?.();
+      actionManager.add(script.action, { targetKey: script.targetKey, eventId: script.eventId });
+    }
+  };
+
+  const lastVisibleByTargetKey = new Map<string, boolean>();
+  const computeVisibleForTargetKey = (targetKey: string): boolean => {
+    if (targetKey.startsWith('entity:')) {
+      const id = targetKey.slice('entity:'.length);
+      return entities[id]?.visible !== false;
+    }
+    if (targetKey.startsWith('group:')) {
+      const id = targetKey.slice('group:'.length);
+      const group = groups[id];
+      if (!group) return true;
+      const members = group.members ?? [];
+      return members.some((m) => m.visible !== false);
+    }
+    return true;
+  };
+
+  for (const script of scripts) {
+    if (!lastVisibleByTargetKey.has(script.targetKey)) {
+      lastVisibleByTargetKey.set(script.targetKey, computeVisibleForTargetKey(script.targetKey));
+    }
+  }
+
+  const updateTriggers = (_dtMs: number): void => {
+    // Visibility edges
+    for (const [targetKey, prev] of Array.from(lastVisibleByTargetKey.entries())) {
+      const cur = computeVisibleForTargetKey(targetKey);
+      lastVisibleByTargetKey.set(targetKey, cur);
+      if (cur === prev) continue;
+      const edge: 'shown' | 'hidden' = cur ? 'shown' : 'hidden';
+      for (const script of scripts) {
+        if (script.targetKey !== targetKey) continue;
+        if (script.trigger?.type !== 'visible') continue;
+        if (script.trigger.edge !== edge) continue;
+        if (actionManager.getActionsForTarget(script.targetKey, script.eventId).length > 0) continue;
+        script.action.reset?.();
+        actionManager.add(script.action, { targetKey: script.targetKey, eventId: script.eventId });
+      }
+    }
+
+    // Input action edges
+    const input = options?.input;
+    if (input) {
+      for (const script of scripts) {
+        if (script.trigger?.type !== 'input_action') continue;
+        const actionId = script.trigger.actionId ?? '';
+        const edge = script.trigger.edge === 'released' ? 'released' : 'pressed';
+        const state = input.getActionState(actionId);
+        const fired = edge === 'pressed' ? state.pressed : state.released;
+        if (!fired) continue;
+        if (actionManager.getActionsForTarget(script.targetKey, script.eventId).length > 0) continue;
+        script.action.reset?.();
+        actionManager.add(script.action, { targetKey: script.targetKey, eventId: script.eventId });
+      }
+    }
+
+    // Update tick trigger (start when idle)
+    for (const script of scripts) {
+      if (script.trigger?.type !== 'update') continue;
+      if (actionManager.getActionsForTarget(script.targetKey, script.eventId).length > 0) continue;
+      script.action.reset?.();
+      actionManager.add(script.action, { targetKey: script.targetKey, eventId: script.eventId });
     }
   };
 
@@ -77,5 +145,5 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
     }
   };
 
-  return { scene: migrated, entities, groups, behaviors, scripts, actionManager, startAll, reset };
+  return { scene: migrated, entities, groups, behaviors, scripts, actionManager, startAll, updateTriggers, reset };
 }

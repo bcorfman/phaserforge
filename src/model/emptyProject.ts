@@ -19,6 +19,8 @@ export function createEmptyProject(): ProjectSpec {
     assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
+    collections: {},
+    counters: {},
     scenes: { [scene.id]: scene },
     initialSceneId: scene.id,
   };

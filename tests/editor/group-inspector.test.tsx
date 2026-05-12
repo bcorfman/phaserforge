@@ -3,6 +3,17 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { renderGroupInspector } from '../../src/editor/Inspector';
 import { sampleScene } from '../../src/model/sampleScene';
 
+const project = {
+  id: 'project-1',
+  assets: { images: {}, spriteSheets: {}, fonts: {} },
+  audio: { sounds: {} },
+  inputMaps: {},
+  scenes: { [sampleScene.id]: sampleScene as any },
+  initialSceneId: sampleScene.id,
+  collections: {},
+  counters: {},
+} as any;
+
 const registry = {
   arrange: [
     {
@@ -34,22 +45,28 @@ describe('Group inspector', () => {
   it('renders editable formation-level controls without member management panel', () => {
     const group = sampleScene.groups['g-enemies'];
     const markup = renderToStaticMarkup(
-      renderGroupInspector(group, sampleScene, {
+      renderGroupInspector(group, project, sampleScene, {
         onSelectMember: () => {},
         onRemoveMember: () => {},
         onUpdateGroup: () => {},
         onUngroup: () => {},
         onDeleteGroup: () => {},
+        onCreateEventBlock: () => {},
+        onUpdateEventBlock: () => {},
+        onRemoveEventBlock: () => {},
         onAddAttachment: () => {},
         onSelectAttachment: () => {},
         onMoveAttachment: () => {},
         onRemoveAttachment: () => {},
+        onUngroupParallelAttachments: () => {},
+        onMoveParallelAttachmentGroup: () => {},
+        onMakeParallelAttachments: () => {},
         foldouts: { isOpen: () => true, toggle: () => {} },
         registry,
       })
     );
 
-    expect(markup).toContain('Actions');
+    expect(markup).toContain('Events');
     expect(markup).toContain('Grouping');
     expect(markup).toContain('Formation Name');
     expect(markup).toContain('Ungroup');
@@ -60,17 +77,35 @@ describe('Group inspector', () => {
 
   it('passes the selected attachment marker through the attached actions panel', () => {
     const group = sampleScene.groups['g-enemies'];
+    const scene = {
+      ...sampleScene,
+      eventBlocks: {
+        ev1: { id: 'ev1', target: { type: 'group', groupId: group.id }, trigger: { type: 'start' } },
+      },
+      attachments: Object.fromEntries(
+        Object.entries(sampleScene.attachments).map(([id, att]) => [
+          id,
+          id === 'att-move-left' ? { ...att, eventId: 'ev1' } : { ...att, eventId: 'ev1' },
+        ])
+      ),
+    } as any;
     const markup = renderToStaticMarkup(
-      renderGroupInspector(group, sampleScene, {
+      renderGroupInspector(group, project, scene, {
         onSelectMember: () => {},
         onRemoveMember: () => {},
         onUpdateGroup: () => {},
         onUngroup: () => {},
         onDeleteGroup: () => {},
+        onCreateEventBlock: () => {},
+        onUpdateEventBlock: () => {},
+        onRemoveEventBlock: () => {},
         onAddAttachment: () => {},
         onSelectAttachment: () => {},
         onMoveAttachment: () => {},
         onRemoveAttachment: () => {},
+        onUngroupParallelAttachments: () => {},
+        onMoveParallelAttachmentGroup: () => {},
+        onMakeParallelAttachments: () => {},
         selectedAttachmentId: 'att-move-left',
         foldouts: { isOpen: () => true, toggle: () => {} },
         registry,
@@ -83,17 +118,23 @@ describe('Group inspector', () => {
   it('renders paired layout parameters on the same row in the layout inspector', () => {
     const group = sampleScene.groups['g-enemies'];
     const markup = renderToStaticMarkup(
-      renderGroupInspector(group, sampleScene, {
+      renderGroupInspector(group, project, sampleScene, {
         onSelectMember: () => {},
         onRemoveMember: () => {},
         onUpdateGroup: () => {},
         onUngroup: () => {},
         onDeleteGroup: () => {},
         onDissolve: () => {},
+        onCreateEventBlock: () => {},
+        onUpdateEventBlock: () => {},
+        onRemoveEventBlock: () => {},
         onAddAttachment: () => {},
         onSelectAttachment: () => {},
         onMoveAttachment: () => {},
         onRemoveAttachment: () => {},
+        onUngroupParallelAttachments: () => {},
+        onMoveParallelAttachmentGroup: () => {},
+        onMakeParallelAttachments: () => {},
         foldouts: { isOpen: () => true, toggle: () => {} },
         registry,
         layoutPreset: 'grid',

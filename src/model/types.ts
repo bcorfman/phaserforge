@@ -6,6 +6,13 @@ export type TargetRef =
   | { type: 'entity'; entityId: Id }
   | { type: 'group'; groupId: Id };
 
+export interface EventBlockSpec {
+  id: Id;
+  name?: string;
+  target: TargetRef;
+  trigger?: AttachmentTriggerSpec;
+}
+
 export interface SceneSpec {
   id: Id;
   world?: WorldSpec;
@@ -16,6 +23,10 @@ export interface SceneSpec {
    * This is the primary authoring model moving forward.
    */
   attachments: Record<Id, AttachmentSpec>;
+  /**
+   * Event Block metadata. Attachments may reference an event block via `eventId`.
+   */
+  eventBlocks?: Record<Id, EventBlockSpec>;
   /**
    * Legacy behavior/action graph authoring model (kept for backward-compatible
    * YAML migration only; new scenes should not rely on it).
@@ -170,6 +181,8 @@ export interface ProjectSpec {
   sceneMeta?: Record<Id, { name?: string; role?: 'base' | 'wave' | 'stage' }>;
   scenes: Record<Id, GameSceneSpec>;
   initialSceneId: Id;
+  collections?: Record<Id, CollectionSpec>;
+  counters?: Record<Id, CounterSpec>;
 }
 
 export interface WorldSpec {
@@ -268,7 +281,29 @@ export interface GroupSpec {
   layout?: GroupLayoutSpec;
 }
 
-export type InlineConditionSpec = InlineBoundsHitConditionSpec | InlineElapsedTimeConditionSpec;
+export interface InlineInstantConditionSpec {
+  type: 'Instant';
+}
+
+export interface InlineCounterCompareConditionSpec {
+  type: 'CounterCompare';
+  counterId: Id;
+  op: '==' | '>=' | '<=';
+  value: number;
+}
+
+export interface InlineInputActionEdgeConditionSpec {
+  type: 'InputActionEdge';
+  actionId: string;
+  edge: 'pressed' | 'released';
+}
+
+export type InlineConditionSpec =
+  | InlineBoundsHitConditionSpec
+  | InlineElapsedTimeConditionSpec
+  | InlineInstantConditionSpec
+  | InlineCounterCompareConditionSpec
+  | InlineInputActionEdgeConditionSpec;
 
 export interface InlineBoundsHitConditionSpec {
   type: 'BoundsHit';
@@ -281,6 +316,12 @@ export interface InlineBoundsHitConditionSpec {
 export interface InlineElapsedTimeConditionSpec {
   type: 'ElapsedTime';
   durationMs: number;
+}
+
+export interface AttachmentTriggerSpec {
+  type: 'start' | 'update' | 'input_action' | 'visible';
+  actionId?: string;
+  edge?: 'pressed' | 'released' | 'shown' | 'hidden';
 }
 
 export interface AttachmentSpec {
@@ -300,6 +341,18 @@ export interface AttachmentSpec {
   applyTo?: 'group' | 'members';
   enabled?: boolean;
   /**
+   * Optional logical event grouping key for authoring "Event Blocks" in the editor.
+   * Multiple attachments with the same (target,eventId) belong to the same Event Block.
+   */
+  eventId?: Id;
+  /**
+   * Optional trigger that gates execution of the Event Block this attachment belongs to.
+   * When omitted, the attachment runs on scene start (current default behavior).
+   *
+   * NOTE: trigger should be consistent across all attachments in the same (target,eventId).
+   */
+  trigger?: AttachmentTriggerSpec;
+  /**
    * Identifier of the preset/action entry in the editor registry.
    * For v1, this will typically match an action `type` like "MoveUntil".
    */
@@ -307,6 +360,27 @@ export interface AttachmentSpec {
   params?: Record<string, number | string | boolean | null>;
   condition?: InlineConditionSpec;
   tag?: string;
+}
+
+export interface CollectionMemberRef {
+  type: 'entity' | 'group';
+  entityId?: Id;
+  groupId?: Id;
+}
+
+export interface CollectionSpec {
+  id: Id;
+  name?: string;
+  members: CollectionMemberRef[];
+}
+
+export interface CounterSpec {
+  id: Id;
+  name?: string;
+  scope: 'global' | 'scene';
+  value: number;
+  clamp?: { min?: number; max?: number };
+  derivedFromCollectionId?: Id;
 }
 
 export interface BehaviorSpec {

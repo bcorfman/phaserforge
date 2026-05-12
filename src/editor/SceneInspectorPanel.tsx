@@ -6,6 +6,7 @@ import { SceneAudioBody } from './SceneAudioPanel';
 import { SceneCollisionsBody } from './SceneCollisionsPanel';
 import { SceneInputBody } from './SceneInputPanel';
 import { readSceneMapSelection } from './sceneInputMaps';
+import { SceneStateBody } from './SceneStatePanel';
 
 function summarizeCount(label: string, count: number): string {
   if (count === 1) return `1 ${label}`;
@@ -59,12 +60,14 @@ export function SceneInspectorPanel({
 
   const backgroundSummary = summarizeCount('layer', backgroundLayers.length);
   const collisionsSummary = summarizeCount('rule', rules.length);
+  const stateSummary = `${Object.keys(project.counters ?? {}).length} counters · ${Object.keys(project.collections ?? {}).length} collections`;
 
   const expandAll = () => {
     foldouts.setOpen('scene.backgroundLayers', true);
     foldouts.setOpen('scene.audio', true);
     foldouts.setOpen('scene.input', true);
     foldouts.setOpen('scene.collisions', true);
+    foldouts.setOpen('scene.state', true);
   };
 
   const collapseAll = () => {
@@ -72,6 +75,7 @@ export function SceneInspectorPanel({
     foldouts.setOpen('scene.audio', false);
     foldouts.setOpen('scene.input', false);
     foldouts.setOpen('scene.collisions', false);
+    foldouts.setOpen('scene.state', false);
   };
 
   return (
@@ -129,6 +133,15 @@ export function SceneInspectorPanel({
         onToggle={() => foldouts.toggle('scene.collisions', false)}
       >
         <SceneCollisionsBody scene={scene} dispatch={dispatch} disabled={disabled} />
+      </InspectorFoldout>
+
+      <InspectorFoldout
+        title="State"
+        summary={stateSummary}
+        open={foldouts.isOpen('scene.state', false)}
+        onToggle={() => foldouts.toggle('scene.state', false)}
+      >
+        <SceneStateBody project={project} scene={scene} dispatch={dispatch} disabled={disabled} />
       </InspectorFoldout>
     </div>
   );

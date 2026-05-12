@@ -18,11 +18,12 @@ import { Condition } from '../runtime/conditions/Condition';
 import { resolveTarget, TargetContext } from '../runtime/targets/resolveTarget';
 import { CallActionSpec } from '../model/types';
 import type { OpRegistry } from './opRegistry';
-import type { InputService } from '../runtime/services/RuntimeServices';
+import type { InputService, VarsService } from '../runtime/services/RuntimeServices';
 
 export interface CompileOptions {
   opRegistry?: OpRegistry;
   input?: InputService;
+  vars?: VarsService;
   runtime?: {
     spawnEntity?: (opts: {
       templateEntityId: string;

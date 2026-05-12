@@ -170,6 +170,31 @@ actions:
     category: visual
     targetKinds: [entity, group]
     implemented: true
+  - type: AddToCounter
+    displayName: Add To Counter
+    category: state
+    targetKinds: [entity, group]
+    implemented: true
+  - type: SetCounter
+    displayName: Set Counter
+    category: state
+    targetKinds: [entity, group]
+    implemented: true
+  - type: ClampCounter
+    displayName: Clamp Counter
+    category: state
+    targetKinds: [entity, group]
+    implemented: true
+  - type: AddSelfToCollection
+    displayName: Add Self To Collection
+    category: state
+    targetKinds: [entity, group]
+    implemented: true
+  - type: RemoveSelfFromCollection
+    displayName: Remove Self From Collection
+    category: state
+    targetKinds: [entity, group]
+    implemented: true
   - type: RotateUntil
     displayName: Rotate Until
     category: movement

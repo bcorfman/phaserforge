@@ -42,14 +42,14 @@ describe('stop semantics', () => {
     expect(manager.size()).toBe(0);
   });
 
-  it('S3 stopActionsForTarget stops only matching target/tag', () => {
+  it('S3 stopActionsForTarget stops only matching target/eventId', () => {
     const manager = new ActionManager();
     const a = new CountingAction();
     const b = new CountingAction();
     const c = new CountingAction();
-    manager.add(a, { targetKey: 'entity:e1', tag: 'a' });
-    manager.add(b, { targetKey: 'entity:e1', tag: 'b' });
-    manager.add(c, { targetKey: 'entity:e2', tag: 'a' });
+    manager.add(a, { targetKey: 'entity:e1', eventId: 'a' });
+    manager.add(b, { targetKey: 'entity:e1', eventId: 'b' });
+    manager.add(c, { targetKey: 'entity:e2', eventId: 'a' });
     manager.stopActionsForTarget('entity:e1', 'a');
     expect(a.removed).toBe(1);
     expect(b.removed).toBe(0);

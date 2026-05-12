@@ -88,4 +88,53 @@ describe('model validation', () => {
     scene.behaviors.b1.rootActionId = 'a1';
     expect(() => validateSceneSpec(scene)).toThrow(/cycle/i);
   });
+
+  it('A12 attachments validate target references', () => {
+    const scene = baseScene();
+    scene.attachments = {
+      att1: {
+        id: 'att1',
+        target: { type: 'group', groupId: 'missing' },
+        presetId: 'Wait',
+        enabled: true,
+        order: 0,
+        params: { durationMs: 10 },
+      } as any,
+    };
+    expect(() => validateSceneSpec(scene)).toThrow(/unknown group/i);
+  });
+
+  it('A13 attachments validate inline condition types', () => {
+    const scene = baseScene();
+    scene.attachments = {
+      att1: {
+        id: 'att1',
+        target: { type: 'entity', entityId: 'e1' },
+        presetId: 'MoveUntil',
+        enabled: true,
+        order: 0,
+        condition: { type: 'Mystery' } as any,
+      } as any,
+    };
+    expect(() => validateSceneSpec(scene)).toThrow(/unknown type/i);
+  });
+
+  it('A14 attachments validate event block references', () => {
+    const scene = baseScene();
+    scene.eventBlocks = {
+      ev1: { id: 'ev1', target: { type: 'entity', entityId: 'e1' }, trigger: { type: 'start' } } as any,
+    };
+    scene.attachments = {
+      att1: {
+        id: 'att1',
+        target: { type: 'entity', entityId: 'e1' },
+        eventId: 'missing',
+        presetId: 'Wait',
+        enabled: true,
+        order: 0,
+        params: { durationMs: 10 },
+      } as any,
+    };
+    expect(() => validateSceneSpec(scene)).toThrow(/unknown eventBlock/i);
+  });
 });

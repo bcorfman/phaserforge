@@ -10,6 +10,9 @@ import {
   RepeatActionSpec,
   TargetRef,
   TriggerZoneSpec,
+  type AttachmentSpec,
+  type AttachmentTriggerSpec,
+  type InlineConditionSpec,
 } from './types';
 import { resolveEntityDefaults } from './entityDefaults';
 
@@ -17,6 +20,7 @@ export function validateSceneSpec(scene: SceneSpec): void {
   validateEntities(scene);
   validateGroups(scene);
   validateCollisionsAndTriggers(scene);
+  validateAttachments(scene);
   validateActions(scene);
   validateBehaviors(scene);
   detectCycles(scene);
@@ -180,6 +184,97 @@ function validateTarget(scene: SceneSpec, target: TargetRef, context: string): v
   }
   if (!scene.groups[target.groupId]) {
     throw new Error(`${context} references unknown group ${target.groupId}`);
+  }
+}
+
+function validateInlineCondition(condition: InlineConditionSpec, context: string): void {
+  switch (condition.type) {
+    case 'BoundsHit': {
+      const b = (condition as any).bounds;
+      if (!b || typeof b !== 'object') throw new Error(`${context} bounds must be an object`);
+      for (const key of ['minX', 'maxX', 'minY', 'maxY'] as const) {
+        if (!Number.isFinite(Number((b as any)[key]))) throw new Error(`${context} bounds.${key} must be numeric`);
+      }
+      return;
+    }
+    case 'ElapsedTime': {
+      const ms = Number((condition as any).durationMs);
+      if (!Number.isFinite(ms) || ms < 0) throw new Error(`${context} durationMs must be >= 0`);
+      return;
+    }
+    case 'Instant':
+      return;
+    case 'CounterCompare': {
+      if (typeof (condition as any).counterId !== 'string' || (condition as any).counterId.length === 0) {
+        throw new Error(`${context} counterId must be a non-empty string`);
+      }
+      const value = Number((condition as any).value);
+      if (!Number.isFinite(value)) throw new Error(`${context} value must be numeric`);
+      const op = String((condition as any).op);
+      if (op !== '==' && op !== '>=' && op !== '<=') throw new Error(`${context} op must be one of ==, >=, <=`);
+      return;
+    }
+    case 'InputActionEdge': {
+      if (typeof (condition as any).actionId !== 'string' || (condition as any).actionId.length === 0) {
+        throw new Error(`${context} actionId must be a non-empty string`);
+      }
+      const edge = String((condition as any).edge);
+      if (edge !== 'pressed' && edge !== 'released') throw new Error(`${context} edge must be pressed|released`);
+      return;
+    }
+    default:
+      throw new Error(`${context} has unknown type ${(condition as any).type}`);
+  }
+}
+
+function validateAttachmentTrigger(trigger: AttachmentTriggerSpec, context: string): void {
+  const type = String((trigger as any).type);
+  if (type !== 'start' && type !== 'update' && type !== 'input_action' && type !== 'visible') {
+    throw new Error(`${context} type must be start|update|input_action|visible`);
+  }
+  if (type === 'input_action') {
+    if (typeof (trigger as any).actionId !== 'string' || (trigger as any).actionId.length === 0) {
+      throw new Error(`${context} actionId must be a non-empty string`);
+    }
+    const edge = String((trigger as any).edge);
+    if (edge !== 'pressed' && edge !== 'released') throw new Error(`${context} edge must be pressed|released`);
+  }
+  if (type === 'visible') {
+    const edge = String((trigger as any).edge);
+    if (edge !== 'shown' && edge !== 'hidden') throw new Error(`${context} edge must be shown|hidden`);
+  }
+}
+
+function validateAttachments(scene: SceneSpec): void {
+  const eventBlocks = (scene as any).eventBlocks ?? {};
+  if (eventBlocks && typeof eventBlocks !== 'object') throw new Error('Scene eventBlocks must be an object');
+  for (const [id, block] of Object.entries(eventBlocks)) {
+    if (!block || typeof block !== 'object') throw new Error(`EventBlock ${id} must be an object`);
+    if (String((block as any).id) !== id) throw new Error(`EventBlock id mismatch: key=${id} value=${(block as any).id}`);
+    validateTarget(scene, (block as any).target, `EventBlock ${id} target`);
+    if ((block as any).trigger) validateAttachmentTrigger((block as any).trigger, `EventBlock ${id} trigger`);
+  }
+
+  for (const [id, attachment] of Object.entries(scene.attachments ?? {})) {
+    if (!attachment || typeof attachment !== 'object') throw new Error(`Attachment ${id} must be an object`);
+    const a = attachment as AttachmentSpec;
+    if (a.id !== id) throw new Error(`Attachment id mismatch: key=${id} value=${(a as any).id}`);
+    validateTarget(scene, a.target, `Attachment ${id} target`);
+    if (typeof (a as any).presetId !== 'string' || (a as any).presetId.length === 0) {
+      throw new Error(`Attachment ${id} presetId must be a non-empty string`);
+    }
+    if (a.applyTo && a.applyTo !== 'group' && a.applyTo !== 'members') {
+      throw new Error(`Attachment ${id} applyTo must be group|members`);
+    }
+    if (a.eventId) {
+      const block = (eventBlocks as any)[a.eventId];
+      if (!block) throw new Error(`Attachment ${id} references unknown eventBlock ${a.eventId}`);
+      const targetA = JSON.stringify(a.target);
+      const targetB = JSON.stringify((block as any).target);
+      if (targetA !== targetB) throw new Error(`Attachment ${id} target must match eventBlock ${a.eventId} target`);
+    }
+    if (a.trigger) validateAttachmentTrigger(a.trigger, `Attachment ${id} trigger`);
+    if (a.condition) validateInlineCondition(a.condition, `Attachment ${id} condition`);
   }
 }
 

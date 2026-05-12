@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
 import { inferGroupGridLayout } from './formationLayout';
-import { AttachedActionsPanel } from './AttachedActionsPanel';
+import { EventsPanel } from './EventsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { AttachmentSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
@@ -132,16 +132,20 @@ export function Inspector() {
       content = group ? (
         <GroupInspector
           group={group}
+          project={state.project}
           scene={scene}
           registry={state.registry}
           selectedAttachmentId={undefined}
-          onAddAttachment={(presetId) => dispatch({ type: 'create-attachment', target: { type: 'group', groupId: group.id }, presetId })}
+          onCreateEventBlock={() => dispatch({ type: 'create-event-block', target: { type: 'group', groupId: group.id } })}
+          onUpdateEventBlock={(id, next) => dispatch({ type: 'update-event-block', id, next })}
+          onRemoveEventBlock={(id) => dispatch({ type: 'remove-event-block', id })}
+          onAddAttachment={(presetId, init) => dispatch({ type: 'create-attachment', target: { type: 'group', groupId: group.id }, presetId, init })}
           onSelectAttachment={(id) => dispatch({ type: 'select', selection: { kind: 'attachment', id } })}
           onMoveAttachment={(id, direction) => dispatch({ type: 'move-attachment', id, direction })}
           onRemoveAttachment={(id) => dispatch({ type: 'remove-attachment', id })}
           onMakeParallelAttachments={(ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'group', groupId: group.id }, ids })}
-          onUngroupParallelAttachments={(groupId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'group', groupId: group.id }, groupId })}
-          onMoveParallelAttachmentGroup={(groupId, direction) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'group', groupId: group.id }, groupId, direction })}
+          onUngroupParallelAttachments={(groupId, eventId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'group', groupId: group.id }, groupId, ...(eventId ? { eventId } : {}) })}
+          onMoveParallelAttachmentGroup={(groupId, direction, eventId) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'group', groupId: group.id }, groupId, direction, ...(eventId ? { eventId } : {}) })}
           onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
           onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
           onUpdateGroup={updateGroup}
@@ -161,16 +165,20 @@ export function Inspector() {
       const entity = scene.entities[selection.id];
       content = entity ? (
         renderEntityInspector(entity, updateEntity, {
+          project: state.project,
           scene,
           registry: state.registry,
           selectedAttachmentId: undefined,
-          onAddAttachment: (presetId) => dispatch({ type: 'create-attachment', target: { type: 'entity', entityId: entity.id }, presetId }),
+          onCreateEventBlock: () => dispatch({ type: 'create-event-block', target: { type: 'entity', entityId: entity.id } }),
+          onUpdateEventBlock: (id, next) => dispatch({ type: 'update-event-block', id, next }),
+          onRemoveEventBlock: (id) => dispatch({ type: 'remove-event-block', id }),
+          onAddAttachment: (presetId, init) => dispatch({ type: 'create-attachment', target: { type: 'entity', entityId: entity.id }, presetId, init }),
           onSelectAttachment: (id) => dispatch({ type: 'select', selection: { kind: 'attachment', id } }),
           onMoveAttachment: (id, direction) => dispatch({ type: 'move-attachment', id, direction }),
           onRemoveAttachment: (id) => dispatch({ type: 'remove-attachment', id }),
           onMakeParallelAttachments: (ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'entity', entityId: entity.id }, ids }),
-          onUngroupParallelAttachments: (groupId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'entity', entityId: entity.id }, groupId }),
-          onMoveParallelAttachmentGroup: (groupId, direction) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'entity', entityId: entity.id }, groupId, direction }),
+          onUngroupParallelAttachments: (groupId, eventId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'entity', entityId: entity.id }, groupId, ...(eventId ? { eventId } : {}) }),
+          onMoveParallelAttachmentGroup: (groupId, direction, eventId) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'entity', entityId: entity.id }, groupId, direction, ...(eventId ? { eventId } : {}) }),
           onSetEntitiesAsset: (entityIds, asset) => dispatch({ type: 'set-entities-asset', entityIds, asset }),
         })
       ) : (
@@ -247,16 +255,20 @@ export function renderEntityInspector(
   entity: EntitySpec,
   onUpdate: (next: EntitySpec) => void,
   actionProps?: {
+    project: ProjectSpec;
     scene: SceneSpec;
     registry: EditorRegistryConfig;
     selectedAttachmentId?: string;
-    onAddAttachment: (presetId: string) => void;
+    onCreateEventBlock: () => void;
+    onUpdateEventBlock: (id: Id, next: any) => void;
+    onRemoveEventBlock: (id: Id) => void;
+    onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
     onRemoveAttachment: (id: string) => void;
     onMakeParallelAttachments: (ids: Id[]) => void;
-    onUngroupParallelAttachments: (groupId: string) => void;
-    onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down') => void;
+    onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
+    onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   }
 ) {
@@ -271,16 +283,20 @@ function EntityInspector({
   entity: EntitySpec;
   onUpdate: (next: EntitySpec) => void;
   actionProps?: {
+    project: ProjectSpec;
     scene: SceneSpec;
     registry: EditorRegistryConfig;
     selectedAttachmentId?: string;
-    onAddAttachment: (presetId: string) => void;
+    onCreateEventBlock: () => void;
+    onUpdateEventBlock: (id: Id, next: any) => void;
+    onRemoveEventBlock: (id: Id) => void;
+    onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
     onRemoveAttachment: (id: string) => void;
     onMakeParallelAttachments: (ids: Id[]) => void;
-    onUngroupParallelAttachments: (groupId: string) => void;
-    onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down') => void;
+    onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
+    onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   };
 }) {
@@ -363,15 +379,19 @@ function EntityInspector({
       <div className="inspector-row">Authored values update the selected sprite immediately on the canvas.</div>
       {actionProps && (
         <InspectorFoldout
-          title="Actions"
+          title="Events"
           open={foldouts.isOpen('entity.actions', true)}
           onToggle={() => foldouts.toggle('entity.actions', true)}
         >
-          <AttachedActionsPanel
+          <EventsPanel
+            project={actionProps.project}
             scene={actionProps.scene}
             target={{ type: 'entity', entityId: entity.id }}
             registry={actionProps.registry}
-            onAddAttachment={actionProps.onAddAttachment}
+            onCreateEventBlock={actionProps.onCreateEventBlock}
+            onUpdateEventBlock={(next) => actionProps.onUpdateEventBlock(next.id, next)}
+            onRemoveEventBlock={actionProps.onRemoveEventBlock}
+            onAddAttachment={(presetId, init) => actionProps.onAddAttachment(presetId, init)}
             onSelectAttachment={actionProps.onSelectAttachment}
             onMoveAttachment={actionProps.onMoveAttachment}
             onRemoveAttachment={actionProps.onRemoveAttachment}
@@ -970,6 +990,7 @@ function EntityInspector({
 
 function GroupInspector({
   group,
+  project,
   scene,
   registry,
   selectedAttachmentId,
@@ -977,6 +998,9 @@ function GroupInspector({
   onSelectAttachment,
   onMoveAttachment,
   onRemoveAttachment,
+  onCreateEventBlock,
+  onUpdateEventBlock,
+  onRemoveEventBlock,
   onSelectMember,
   onRemoveMember,
   onUpdateGroup,
@@ -990,13 +1014,17 @@ function GroupInspector({
   onDeleteGroup,
 }: {
   group: GroupSpec;
+  project: ProjectSpec;
   scene: SceneSpec;
   registry: EditorRegistryConfig;
   selectedAttachmentId?: string;
-  onAddAttachment: (presetId: string) => void;
+  onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
   onSelectAttachment: (id: string) => void;
   onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
   onRemoveAttachment: (id: string) => void;
+  onCreateEventBlock: () => void;
+  onUpdateEventBlock: (id: Id, next: any) => void;
+  onRemoveEventBlock: (id: Id) => void;
   onSelectMember: (id: string) => void;
   onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
@@ -1135,13 +1163,16 @@ function GroupInspector({
   };
 
   return (
-    renderGroupInspector(group, scene, {
+    renderGroupInspector(group, project, scene, {
       registry,
       selectedAttachmentId,
       onAddAttachment,
       onSelectAttachment,
       onMoveAttachment,
       onRemoveAttachment,
+      onCreateEventBlock,
+      onUpdateEventBlock,
+      onRemoveEventBlock,
       onSelectMember,
       onRemoveMember,
       onUpdateGroup,
@@ -1169,17 +1200,21 @@ function GroupInspector({
 
 export function renderGroupInspector(
   group: GroupSpec,
+  project: ProjectSpec,
   scene: SceneSpec,
   handlers: {
     registry: EditorRegistryConfig;
     selectedAttachmentId?: string;
-    onAddAttachment: (presetId: string) => void;
+    onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
     onRemoveAttachment: (id: string) => void;
     onMakeParallelAttachments: (ids: Id[]) => void;
-    onUngroupParallelAttachments: (groupId: string) => void;
-    onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down') => void;
+    onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
+    onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
+    onCreateEventBlock: () => void;
+    onUpdateEventBlock: (id: Id, next: any) => void;
+    onRemoveEventBlock: (id: Id) => void;
     onSelectMember: (id: string) => void;
     onRemoveMember: (id: string) => void;
     onUpdateGroup: (next: GroupSpec) => void;
@@ -1210,15 +1245,19 @@ export function renderGroupInspector(
     <div className="inspector-block">
       <div className="inspector-title" data-testid="inspector-title">{group.name ?? group.id}</div>
       <InspectorFoldout
-        title="Actions"
+        title="Events"
         open={handlers.foldouts.isOpen('group.actions', true)}
         onToggle={() => handlers.foldouts.toggle('group.actions', true)}
       >
-        <AttachedActionsPanel
+        <EventsPanel
+          project={project}
           scene={scene}
           target={{ type: 'group', groupId: group.id }}
           registry={handlers.registry}
-          onAddAttachment={handlers.onAddAttachment}
+          onCreateEventBlock={handlers.onCreateEventBlock}
+          onUpdateEventBlock={(next) => handlers.onUpdateEventBlock(next.id, next)}
+          onRemoveEventBlock={handlers.onRemoveEventBlock}
+          onAddAttachment={(presetId, init) => handlers.onAddAttachment(presetId, init)}
           onSelectAttachment={handlers.onSelectAttachment}
           onMoveAttachment={handlers.onMoveAttachment}
           onRemoveAttachment={handlers.onRemoveAttachment}
@@ -1522,6 +1561,11 @@ function AttachmentInspector({
     'BlinkUntil',
     'CallbackUntil',
     'CycleFramesUntil',
+    'AddToCounter',
+    'SetCounter',
+    'ClampCounter',
+    'AddSelfToCollection',
+    'RemoveSelfFromCollection',
   ]);
   const supportedPresets = registry.actions.filter((entry) => entry.implemented && supportedPresetIds.has(entry.type));
   const params = attachment.params ?? {};
@@ -1559,6 +1603,20 @@ function AttachmentInspector({
   const ensureElapsedTimeCondition = (): { type: 'ElapsedTime'; durationMs: number } => {
     if (attachment.condition?.type === 'ElapsedTime') return attachment.condition;
     return { type: 'ElapsedTime', durationMs: 1000 };
+  };
+
+  const ensureInstantCondition = (): { type: 'Instant' } => ({ type: 'Instant' });
+
+  const ensureCounterCompareCondition = (): { type: 'CounterCompare'; counterId: string; op: '==' | '>=' | '<='; value: number } => {
+    if (attachment.condition?.type === 'CounterCompare') return attachment.condition as any;
+    const first = Object.keys(project.counters ?? {})[0] ?? 'counter';
+    return { type: 'CounterCompare', counterId: first, op: '==', value: 0 };
+  };
+
+  const ensureInputActionEdgeCondition = (): { type: 'InputActionEdge'; actionId: string; edge: 'pressed' | 'released' } => {
+    if (attachment.condition?.type === 'InputActionEdge') return attachment.condition as any;
+    const actionId = Object.values(project.inputMaps ?? {}).flatMap((m) => Object.keys(m.actions ?? {}))[0] ?? 'action';
+    return { type: 'InputActionEdge', actionId, edge: 'released' };
   };
 
   const boundsCondition = attachment.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
@@ -1652,6 +1710,31 @@ function AttachmentInspector({
                 onUpdate({ ...base, params: { fps: 6, startFrame: 0, endFrame: 3, direction: 1 }, condition: ensureElapsedTimeCondition() as any });
                 return;
               }
+              if (nextType === 'AddToCounter') {
+                const first = Object.keys(project.counters ?? {})[0] ?? 'counter';
+                onUpdate({ ...base, params: { counterId: first, delta: 1 }, condition: ensureInstantCondition() as any });
+                return;
+              }
+              if (nextType === 'SetCounter') {
+                const first = Object.keys(project.counters ?? {})[0] ?? 'counter';
+                onUpdate({ ...base, params: { counterId: first, value: 0 }, condition: ensureInstantCondition() as any });
+                return;
+              }
+              if (nextType === 'ClampCounter') {
+                const first = Object.keys(project.counters ?? {})[0] ?? 'counter';
+                onUpdate({ ...base, params: { counterId: first, min: 0, max: 10 }, condition: ensureInstantCondition() as any });
+                return;
+              }
+              if (nextType === 'AddSelfToCollection') {
+                const first = Object.keys(project.collections ?? {})[0] ?? 'collection';
+                onUpdate({ ...base, params: { collectionId: first }, condition: ensureInstantCondition() as any });
+                return;
+              }
+              if (nextType === 'RemoveSelfFromCollection') {
+                const first = Object.keys(project.collections ?? {})[0] ?? 'collection';
+                onUpdate({ ...base, params: { collectionId: first }, condition: ensureInstantCondition() as any });
+                return;
+              }
               onUpdate(base);
             }}
           >
@@ -1661,6 +1744,201 @@ function AttachmentInspector({
           </select>
         </label>
       </InspectorFoldout>
+
+      <InspectorFoldout
+        title="Until"
+        open={foldouts.isOpen('attachment.until', true)}
+        onToggle={() => foldouts.toggle('attachment.until', true)}
+      >
+        <label className="field">
+          <span>Condition</span>
+          <select
+            aria-label="Until Type"
+            data-testid="attachment-until-type-select"
+            value={attachment.condition?.type ?? 'None'}
+            onChange={(e) => {
+              const type = e.target.value;
+              if (type === 'None') onUpdate({ ...attachment, condition: undefined });
+              else if (type === 'Instant') onUpdate({ ...attachment, condition: ensureInstantCondition() as any });
+              else if (type === 'ElapsedTime') onUpdate({ ...attachment, condition: ensureElapsedTimeCondition() as any });
+              else if (type === 'BoundsHit') onUpdate({ ...attachment, condition: ensureBoundsCondition() as any });
+              else if (type === 'CounterCompare') onUpdate({ ...attachment, condition: ensureCounterCompareCondition() as any });
+              else onUpdate({ ...attachment, condition: ensureInputActionEdgeCondition() as any });
+            }}
+          >
+            <option value="None">None</option>
+            <option value="Instant">Instant</option>
+            <option value="ElapsedTime">Time Elapsed</option>
+            <option value="BoundsHit">Bounds Hit</option>
+            <option value="CounterCompare">Counter Compare</option>
+            <option value="InputActionEdge">Input Edge</option>
+          </select>
+        </label>
+
+        {attachment.condition?.type === 'ElapsedTime' && (
+          <label className="field">
+            <span>Duration (ms)</span>
+            <ValidatedNumberInput
+              aria-label="Until Duration Ms"
+              value={Number(attachment.condition.durationMs ?? 0)}
+              onCommit={(next) => onUpdate({ ...attachment, condition: { type: 'ElapsedTime', durationMs: Math.max(0, next) } as any })}
+            />
+          </label>
+        )}
+
+        {attachment.condition?.type === 'CounterCompare' && (
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Counter</span>
+              <select
+                aria-label="Until Counter"
+                value={String((attachment.condition as any).counterId ?? '')}
+                onChange={(e) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), counterId: e.target.value } })}
+              >
+                {Object.keys(project.counters ?? {}).length === 0 && <option value="">(no counters)</option>}
+                {Object.keys(project.counters ?? {}).map((id) => (
+                  <option key={id} value={id}>{id}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Op</span>
+              <select
+                aria-label="Until Counter Op"
+                value={String((attachment.condition as any).op ?? '==')}
+                onChange={(e) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), op: e.target.value } })}
+              >
+                <option value="==">==</option>
+                <option value=">=">&gt;=</option>
+                <option value="<=">&lt;=</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Value</span>
+              <ValidatedNumberInput
+                aria-label="Until Counter Value"
+                value={Number((attachment.condition as any).value ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), value: next } })}
+              />
+            </label>
+          </div>
+        )}
+
+        {attachment.condition?.type === 'InputActionEdge' && (
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Action</span>
+              <select
+                aria-label="Until Input Action"
+                value={String((attachment.condition as any).actionId ?? '')}
+                onChange={(e) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), actionId: e.target.value } })}
+              >
+                {Object.values(project.inputMaps ?? {}).flatMap((m) => Object.keys(m.actions ?? {})).length === 0 && <option value="">(no input actions)</option>}
+                {Array.from(new Set(Object.values(project.inputMaps ?? {}).flatMap((m) => Object.keys(m.actions ?? {}))))
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((id) => (
+                    <option key={id} value={id}>{id}</option>
+                  ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Edge</span>
+              <select
+                aria-label="Until Input Edge"
+                value={String((attachment.condition as any).edge ?? 'released')}
+                onChange={(e) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), edge: e.target.value } })}
+              >
+                <option value="pressed">Pressed</option>
+                <option value="released">Released</option>
+              </select>
+            </label>
+          </div>
+        )}
+      </InspectorFoldout>
+
+      {(attachment.presetId === 'AddToCounter' || attachment.presetId === 'SetCounter' || attachment.presetId === 'ClampCounter') && (
+        <InspectorFoldout
+          title="Counter"
+          open={foldouts.isOpen('attachment.counter', true)}
+          onToggle={() => foldouts.toggle('attachment.counter', true)}
+        >
+          <label className="field">
+            <span>Counter</span>
+            <select
+              aria-label="Counter Id"
+              value={String(params.counterId ?? '')}
+              onChange={(e) => onUpdate({ ...attachment, params: { ...params, counterId: e.target.value } })}
+            >
+              {Object.keys(project.counters ?? {}).length === 0 && <option value="">(no counters)</option>}
+              {Object.keys(project.counters ?? {}).map((id) => (
+                <option key={id} value={id}>{id}</option>
+              ))}
+            </select>
+          </label>
+          {attachment.presetId === 'AddToCounter' && (
+            <label className="field">
+              <span>Delta</span>
+              <ValidatedNumberInput
+                aria-label="Counter Delta"
+                value={Number(params.delta ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, delta: next } })}
+              />
+            </label>
+          )}
+          {attachment.presetId === 'SetCounter' && (
+            <label className="field">
+              <span>Value</span>
+              <ValidatedNumberInput
+                aria-label="Counter Value"
+                value={Number(params.value ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, value: next } })}
+              />
+            </label>
+          )}
+          {attachment.presetId === 'ClampCounter' && (
+            <div className="inspector-grid-2">
+              <label className="field">
+                <span>Min</span>
+                <ValidatedOptionalNumberInput
+                  aria-label="Counter Clamp Min"
+                  value={typeof params.min === 'number' ? params.min : undefined}
+                  onCommit={(next) => onUpdate({ ...attachment, params: { ...params, min: next ?? null } })}
+                />
+              </label>
+              <label className="field">
+                <span>Max</span>
+                <ValidatedOptionalNumberInput
+                  aria-label="Counter Clamp Max"
+                  value={typeof params.max === 'number' ? params.max : undefined}
+                  onCommit={(next) => onUpdate({ ...attachment, params: { ...params, max: next ?? null } })}
+                />
+              </label>
+            </div>
+          )}
+        </InspectorFoldout>
+      )}
+
+      {(attachment.presetId === 'AddSelfToCollection' || attachment.presetId === 'RemoveSelfFromCollection') && (
+        <InspectorFoldout
+          title="Collection"
+          open={foldouts.isOpen('attachment.collection', true)}
+          onToggle={() => foldouts.toggle('attachment.collection', true)}
+        >
+          <label className="field">
+            <span>Collection</span>
+            <select
+              aria-label="Collection Id"
+              value={String(params.collectionId ?? '')}
+              onChange={(e) => onUpdate({ ...attachment, params: { ...params, collectionId: e.target.value } })}
+            >
+              {Object.keys(project.collections ?? {}).length === 0 && <option value="">(no collections)</option>}
+              {Object.keys(project.collections ?? {}).map((id) => (
+                <option key={id} value={id}>{id}</option>
+              ))}
+            </select>
+          </label>
+        </InspectorFoldout>
+      )}
 
       {attachment.presetId === 'MoveUntil' && (
         <InspectorFoldout
