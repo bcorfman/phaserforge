@@ -148,6 +148,11 @@ actions:
     category: flow
     targetKinds: [entity, group]
     implemented: true
+  - type: EmitEvent
+    displayName: Emit Event
+    category: flow
+    targetKinds: [entity, group]
+    implemented: true
   - type: Repeat
     displayName: Repeat
     category: flow

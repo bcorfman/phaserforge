@@ -36,7 +36,9 @@ import {
   ungroupParallelAttachments,
   updateAttachment,
 } from './attachmentCommands';
-import type { AttachmentSpec, EventBlockSpec, TargetRef } from '../model/types';
+import type { AttachmentSpec, AttachmentTriggerSpec, EventBlockSpec, TargetRef } from '../model/types';
+import { applySnippetToTargetAndEvent, createSnippetFromAttachments } from './snippetCommands';
+import { applyMacroToTargetAndEvent, createMacroFromAttachments } from './macroCommands';
 import { getSceneWorld } from './sceneWorld';
 import { getAssetReferences } from './assetReferences';
 import { buildDefaultDraftParams, type FormationDraftSpec, type FormationTemplateSource } from './formationDraft';
@@ -187,9 +189,13 @@ export type EditorAction =
   | { type: 'make-attachments-parallel'; target: TargetRef; ids: Id[] }
   | { type: 'ungroup-parallel-attachments'; target: TargetRef; groupId: string; eventId?: Id }
   | { type: 'move-parallel-attachment-group'; target: TargetRef; groupId: string; direction: 'up' | 'down'; eventId?: Id }
-  | { type: 'create-event-block'; target: TargetRef; name?: string }
+  | { type: 'create-event-block'; target: TargetRef; name?: string; trigger?: AttachmentTriggerSpec }
   | { type: 'update-event-block'; id: Id; next: EventBlockSpec }
   | { type: 'remove-event-block'; id: Id }
+  | { type: 'create-snippet-from-attachments'; attachmentIds: Id[]; name?: string }
+  | { type: 'apply-snippet'; snippetId: Id; target: TargetRef; eventId?: Id }
+  | { type: 'create-macro-from-attachments'; attachmentIds: Id[]; name?: string }
+  | { type: 'apply-macro'; macroId: Id; target: TargetRef; eventId?: Id }
   | { type: 'create-counter'; scope: 'global' | 'scene'; id?: Id }
   | { type: 'update-counter'; id: Id; next: CounterSpec }
   | { type: 'remove-counter'; id: Id }
@@ -2083,7 +2089,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         ...scene,
         eventBlocks: {
           ...(scene.eventBlocks ?? {}),
-          [id]: { id, name: action.name, target: action.target, trigger: { type: 'start' } },
+          [id]: { id, name: action.name, target: action.target, trigger: action.trigger ?? { type: 'start' } },
         },
       } as any;
       return withScene(state, nextScene, true);
@@ -2117,6 +2123,32 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         attachments: remainingAttachments,
       } as any;
       return withScene(state, nextScene, true);
+    }
+    case 'create-snippet-from-attachments': {
+      const scene = getActiveScene(state);
+      const { project: nextProject } = createSnippetFromAttachments(state.project, scene, action.attachmentIds, { name: action.name });
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'apply-snippet': {
+      const snippet = state.project.snippets?.[action.snippetId];
+      if (!snippet) return state;
+      const scene = getActiveScene(state);
+      const nextScene = applySnippetToTargetAndEvent(scene, action.target, action.eventId, snippet);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
+    }
+    case 'create-macro-from-attachments': {
+      const scene = getActiveScene(state);
+      const { project: nextProject } = createMacroFromAttachments(state.project, scene, action.attachmentIds, { name: action.name });
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'apply-macro': {
+      const macro = state.project.macros?.[action.macroId];
+      if (!macro) return state;
+      const scene = getActiveScene(state);
+      const nextScene = applyMacroToTargetAndEvent(scene, action.target, action.eventId, macro);
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
     }
     case 'create-counter': {
       const id: Id = action.id ?? `counter-${Date.now()}`;

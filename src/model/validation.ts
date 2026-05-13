@@ -229,8 +229,8 @@ function validateInlineCondition(condition: InlineConditionSpec, context: string
 
 function validateAttachmentTrigger(trigger: AttachmentTriggerSpec, context: string): void {
   const type = String((trigger as any).type);
-  if (type !== 'start' && type !== 'update' && type !== 'input_action' && type !== 'visible') {
-    throw new Error(`${context} type must be start|update|input_action|visible`);
+  if (type !== 'start' && type !== 'update' && type !== 'input_action' && type !== 'visible' && type !== 'event') {
+    throw new Error(`${context} type must be start|update|input_action|visible|event`);
   }
   if (type === 'input_action') {
     if (typeof (trigger as any).actionId !== 'string' || (trigger as any).actionId.length === 0) {
@@ -242,6 +242,11 @@ function validateAttachmentTrigger(trigger: AttachmentTriggerSpec, context: stri
   if (type === 'visible') {
     const edge = String((trigger as any).edge);
     if (edge !== 'shown' && edge !== 'hidden') throw new Error(`${context} edge must be shown|hidden`);
+  }
+  if (type === 'event') {
+    if (typeof (trigger as any).eventName !== 'string' || (trigger as any).eventName.length === 0) {
+      throw new Error(`${context} eventName must be a non-empty string`);
+    }
   }
 }
 
@@ -276,6 +281,65 @@ function validateAttachments(scene: SceneSpec): void {
     if (a.trigger) validateAttachmentTrigger(a.trigger, `Attachment ${id} trigger`);
     if (a.condition) validateInlineCondition(a.condition, `Attachment ${id} condition`);
   }
+
+  const attachments = scene.attachments ?? {};
+  const getAttachmentBucketKey = (a: AttachmentSpec): string => {
+    const targetKey = JSON.stringify(a.target);
+    const eventId = a.eventId ?? '';
+    const trigger = a.trigger ?? (scene.eventBlocks?.[a.eventId ?? ''] as any)?.trigger;
+    return `${targetKey}::${eventId}::${JSON.stringify(trigger ?? { type: 'start' })}`;
+  };
+
+  // Composite nesting validation (Repeat only for v1).
+  for (const [id, attachment] of Object.entries(attachments)) {
+    const a = attachment as AttachmentSpec;
+    if (a.parentAttachmentId) {
+      const parent = attachments[a.parentAttachmentId];
+      if (!parent) throw new Error(`Attachment ${id} references unknown parentAttachmentId ${a.parentAttachmentId}`);
+      if ((parent as any).presetId !== 'Repeat') throw new Error(`Attachment ${id} parent ${a.parentAttachmentId} must be a Repeat composite`);
+      const parentChildren = (parent as any).children;
+      if (!Array.isArray(parentChildren) || !parentChildren.includes(id)) {
+        throw new Error(`Attachment ${id} parent ${a.parentAttachmentId} children must include ${id}`);
+      }
+      if (getAttachmentBucketKey(a) !== getAttachmentBucketKey(parent as any)) {
+        throw new Error(`Attachment ${id} must share target/event/trigger bucket with parent ${a.parentAttachmentId}`);
+      }
+    }
+
+    if (a.children) {
+      if ((a as any).presetId !== 'Repeat') throw new Error(`Attachment ${id} children are only supported for Repeat composites`);
+      if (!Array.isArray(a.children)) throw new Error(`Attachment ${id} children must be an array`);
+      const seen = new Set<string>();
+      for (const childId of a.children) {
+        if (typeof childId !== 'string' || childId.length === 0) throw new Error(`Attachment ${id} children must contain ids`);
+        if (seen.has(childId)) throw new Error(`Attachment ${id} children must not contain duplicates (${childId})`);
+        seen.add(childId);
+        const child = attachments[childId];
+        if (!child) throw new Error(`Attachment ${id} references unknown child ${childId}`);
+        if ((child as any).parentAttachmentId !== id) throw new Error(`Attachment ${childId} parentAttachmentId must equal ${id}`);
+        if (getAttachmentBucketKey(child as any) !== getAttachmentBucketKey(a)) {
+          throw new Error(`Attachment ${childId} must share target/event/trigger bucket with parent ${id}`);
+        }
+      }
+    }
+  }
+
+  // Cycle detection across attachment nesting.
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const visitAttachment = (id: string): void => {
+    if (visited.has(id)) return;
+    if (visiting.has(id)) throw new Error(`Attachment nesting cycle detected at ${id}`);
+    visiting.add(id);
+    const a = attachments[id];
+    const children = (a as any)?.children;
+    if (Array.isArray(children)) {
+      for (const childId of children) visitAttachment(String(childId));
+    }
+    visiting.delete(id);
+    visited.add(id);
+  };
+  for (const id of Object.keys(attachments)) visitAttachment(id);
 }
 
 function validateActions(scene: SceneSpec): void {

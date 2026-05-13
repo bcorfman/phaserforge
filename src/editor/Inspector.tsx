@@ -4,7 +4,7 @@ import { summarizeGridLayout } from './grouping';
 import { inferGroupGridLayout } from './formationLayout';
 import { EventsPanel } from './EventsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
-import { AttachmentSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
+import { AttachmentSpec, AttachmentTriggerSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
@@ -136,7 +136,7 @@ export function Inspector() {
           scene={scene}
           registry={state.registry}
           selectedAttachmentId={undefined}
-          onCreateEventBlock={() => dispatch({ type: 'create-event-block', target: { type: 'group', groupId: group.id } })}
+          onCreateEventBlock={(opts) => dispatch({ type: 'create-event-block', target: { type: 'group', groupId: group.id }, ...(opts ?? {}) })}
           onUpdateEventBlock={(id, next) => dispatch({ type: 'update-event-block', id, next })}
           onRemoveEventBlock={(id) => dispatch({ type: 'remove-event-block', id })}
           onAddAttachment={(presetId, init) => dispatch({ type: 'create-attachment', target: { type: 'group', groupId: group.id }, presetId, init })}
@@ -146,6 +146,10 @@ export function Inspector() {
           onMakeParallelAttachments={(ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'group', groupId: group.id }, ids })}
           onUngroupParallelAttachments={(groupId, eventId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'group', groupId: group.id }, groupId, ...(eventId ? { eventId } : {}) })}
           onMoveParallelAttachmentGroup={(groupId, direction, eventId) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'group', groupId: group.id }, groupId, direction, ...(eventId ? { eventId } : {}) })}
+          onCreateSnippetFromAttachments={(attachmentIds, name) => dispatch({ type: 'create-snippet-from-attachments', attachmentIds, ...(name ? { name } : {}) })}
+          onApplySnippet={(snippetId, eventId) => dispatch({ type: 'apply-snippet', snippetId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}) })}
+          onCreateMacroFromAttachments={(attachmentIds, name) => dispatch({ type: 'create-macro-from-attachments', attachmentIds, ...(name ? { name } : {}) })}
+          onApplyMacro={(macroId, eventId) => dispatch({ type: 'apply-macro', macroId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}) })}
           onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
           onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
           onUpdateGroup={updateGroup}
@@ -169,7 +173,7 @@ export function Inspector() {
           scene,
           registry: state.registry,
           selectedAttachmentId: undefined,
-          onCreateEventBlock: () => dispatch({ type: 'create-event-block', target: { type: 'entity', entityId: entity.id } }),
+          onCreateEventBlock: (opts) => dispatch({ type: 'create-event-block', target: { type: 'entity', entityId: entity.id }, ...(opts ?? {}) }),
           onUpdateEventBlock: (id, next) => dispatch({ type: 'update-event-block', id, next }),
           onRemoveEventBlock: (id) => dispatch({ type: 'remove-event-block', id }),
           onAddAttachment: (presetId, init) => dispatch({ type: 'create-attachment', target: { type: 'entity', entityId: entity.id }, presetId, init }),
@@ -179,6 +183,10 @@ export function Inspector() {
           onMakeParallelAttachments: (ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'entity', entityId: entity.id }, ids }),
           onUngroupParallelAttachments: (groupId, eventId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'entity', entityId: entity.id }, groupId, ...(eventId ? { eventId } : {}) }),
           onMoveParallelAttachmentGroup: (groupId, direction, eventId) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'entity', entityId: entity.id }, groupId, direction, ...(eventId ? { eventId } : {}) }),
+          onCreateSnippetFromAttachments: (attachmentIds, name) => dispatch({ type: 'create-snippet-from-attachments', attachmentIds, ...(name ? { name } : {}) }),
+          onApplySnippet: (snippetId, eventId) => dispatch({ type: 'apply-snippet', snippetId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}) }),
+          onCreateMacroFromAttachments: (attachmentIds, name) => dispatch({ type: 'create-macro-from-attachments', attachmentIds, ...(name ? { name } : {}) }),
+          onApplyMacro: (macroId, eventId) => dispatch({ type: 'apply-macro', macroId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}) }),
           onSetEntitiesAsset: (entityIds, asset) => dispatch({ type: 'set-entities-asset', entityIds, asset }),
         })
       ) : (
@@ -259,7 +267,7 @@ export function renderEntityInspector(
     scene: SceneSpec;
     registry: EditorRegistryConfig;
     selectedAttachmentId?: string;
-    onCreateEventBlock: () => void;
+    onCreateEventBlock: (opts?: { name?: string; trigger?: AttachmentTriggerSpec }) => void;
     onUpdateEventBlock: (id: Id, next: any) => void;
     onRemoveEventBlock: (id: Id) => void;
     onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
@@ -269,6 +277,10 @@ export function renderEntityInspector(
     onMakeParallelAttachments: (ids: Id[]) => void;
     onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
+    onCreateSnippetFromAttachments: (attachmentIds: Id[], name?: string) => void;
+    onApplySnippet: (snippetId: Id, eventId?: Id) => void;
+    onCreateMacroFromAttachments: (attachmentIds: Id[], name?: string) => void;
+    onApplyMacro: (macroId: Id, eventId?: Id) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   }
 ) {
@@ -287,7 +299,7 @@ function EntityInspector({
     scene: SceneSpec;
     registry: EditorRegistryConfig;
     selectedAttachmentId?: string;
-    onCreateEventBlock: () => void;
+    onCreateEventBlock: (opts?: { name?: string; trigger?: AttachmentTriggerSpec }) => void;
     onUpdateEventBlock: (id: Id, next: any) => void;
     onRemoveEventBlock: (id: Id) => void;
     onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
@@ -297,6 +309,10 @@ function EntityInspector({
     onMakeParallelAttachments: (ids: Id[]) => void;
     onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
+    onCreateSnippetFromAttachments: (attachmentIds: Id[], name?: string) => void;
+    onApplySnippet: (snippetId: Id, eventId?: Id) => void;
+    onCreateMacroFromAttachments: (attachmentIds: Id[], name?: string) => void;
+    onApplyMacro: (macroId: Id, eventId?: Id) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   };
 }) {
@@ -398,6 +414,10 @@ function EntityInspector({
             onMakeParallel={actionProps.onMakeParallelAttachments}
             onUngroupParallel={actionProps.onUngroupParallelAttachments}
             onMoveParallelGroup={actionProps.onMoveParallelAttachmentGroup}
+            onCreateSnippetFromAttachments={actionProps.onCreateSnippetFromAttachments}
+            onApplySnippet={actionProps.onApplySnippet}
+            onCreateMacroFromAttachments={actionProps.onCreateMacroFromAttachments}
+            onApplyMacro={actionProps.onApplyMacro}
             selectedAttachmentId={actionProps.selectedAttachmentId}
           />
         </InspectorFoldout>
@@ -998,9 +1018,16 @@ function GroupInspector({
   onSelectAttachment,
   onMoveAttachment,
   onRemoveAttachment,
+  onMakeParallelAttachments,
+  onUngroupParallelAttachments,
+  onMoveParallelAttachmentGroup,
   onCreateEventBlock,
   onUpdateEventBlock,
   onRemoveEventBlock,
+  onCreateSnippetFromAttachments,
+  onApplySnippet,
+  onCreateMacroFromAttachments,
+  onApplyMacro,
   onSelectMember,
   onRemoveMember,
   onUpdateGroup,
@@ -1022,9 +1049,16 @@ function GroupInspector({
   onSelectAttachment: (id: string) => void;
   onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
   onRemoveAttachment: (id: string) => void;
-  onCreateEventBlock: () => void;
+  onMakeParallelAttachments: (ids: Id[]) => void;
+  onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
+  onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
+  onCreateEventBlock: (opts?: { name?: string; trigger?: AttachmentTriggerSpec }) => void;
   onUpdateEventBlock: (id: Id, next: any) => void;
   onRemoveEventBlock: (id: Id) => void;
+  onCreateSnippetFromAttachments: (attachmentIds: Id[], name?: string) => void;
+  onApplySnippet: (snippetId: Id, eventId?: Id) => void;
+  onCreateMacroFromAttachments: (attachmentIds: Id[], name?: string) => void;
+  onApplyMacro: (macroId: Id, eventId?: Id) => void;
   onSelectMember: (id: string) => void;
   onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
@@ -1170,9 +1204,16 @@ function GroupInspector({
       onSelectAttachment,
       onMoveAttachment,
       onRemoveAttachment,
+      onMakeParallelAttachments,
+      onUngroupParallelAttachments,
+      onMoveParallelAttachmentGroup,
       onCreateEventBlock,
       onUpdateEventBlock,
       onRemoveEventBlock,
+      onCreateSnippetFromAttachments,
+      onApplySnippet,
+      onCreateMacroFromAttachments,
+      onApplyMacro,
       onSelectMember,
       onRemoveMember,
       onUpdateGroup,
@@ -1212,9 +1253,13 @@ export function renderGroupInspector(
     onMakeParallelAttachments: (ids: Id[]) => void;
     onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
-    onCreateEventBlock: () => void;
+    onCreateEventBlock: (opts?: { name?: string; trigger?: AttachmentTriggerSpec }) => void;
     onUpdateEventBlock: (id: Id, next: any) => void;
     onRemoveEventBlock: (id: Id) => void;
+    onCreateSnippetFromAttachments: (attachmentIds: Id[], name?: string) => void;
+    onApplySnippet: (snippetId: Id, eventId?: Id) => void;
+    onCreateMacroFromAttachments: (attachmentIds: Id[], name?: string) => void;
+    onApplyMacro: (macroId: Id, eventId?: Id) => void;
     onSelectMember: (id: string) => void;
     onRemoveMember: (id: string) => void;
     onUpdateGroup: (next: GroupSpec) => void;
@@ -1264,6 +1309,10 @@ export function renderGroupInspector(
           onMakeParallel={handlers.onMakeParallelAttachments}
           onUngroupParallel={handlers.onUngroupParallelAttachments}
           onMoveParallelGroup={handlers.onMoveParallelAttachmentGroup}
+          onCreateSnippetFromAttachments={handlers.onCreateSnippetFromAttachments}
+          onApplySnippet={handlers.onApplySnippet}
+          onCreateMacroFromAttachments={handlers.onCreateMacroFromAttachments}
+          onApplyMacro={handlers.onApplyMacro}
           selectedAttachmentId={handlers.selectedAttachmentId}
         />
       </InspectorFoldout>

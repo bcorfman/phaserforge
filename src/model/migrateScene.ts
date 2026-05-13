@@ -117,8 +117,45 @@ export function migrateSceneSpec(raw: unknown): SceneSpec {
     conditions: coerceRecord(parsed.conditions),
   };
 
+  const migrateRepeatWrappers = (scene: SceneSpec): SceneSpec => {
+    const attachments = scene.attachments ?? {};
+    const buckets = new Map<string, AttachmentSpec[]>();
+    for (const attachment of Object.values(attachments)) {
+      const eventId = attachment.eventId ?? '';
+      const trigger = eventId ? (scene.eventBlocks?.[eventId]?.trigger ?? { type: 'start' }) : (attachment.trigger ?? { type: 'start' });
+      const key = `${JSON.stringify(attachment.target)}::${eventId}::${JSON.stringify(trigger)}`;
+      const list = buckets.get(key) ?? [];
+      list.push(attachment);
+      buckets.set(key, list);
+    }
+
+    for (const list of buckets.values()) {
+      const repeats = list.filter((a) => a.presetId === 'Repeat');
+      if (repeats.length !== 1) continue;
+      const repeat = repeats[0];
+      if (Array.isArray(repeat.children) && repeat.children.length > 0) continue;
+      if (repeat.parentAttachmentId) continue;
+      const others = list.filter((a) => a.id !== repeat.id);
+      if (others.length === 0) continue;
+      if (others.some((a) => a.parentAttachmentId)) continue;
+      if (others.some((a) => Array.isArray(a.children) && a.children.length > 0)) continue;
+      const sorted = [...others].sort((a, b) => {
+        const ao = a.order ?? 0;
+        const bo = b.order ?? 0;
+        if (ao !== bo) return ao - bo;
+        return a.id.localeCompare(b.id);
+      });
+      repeat.children = sorted.map((a) => a.id);
+      for (const child of sorted) {
+        child.parentAttachmentId = repeat.id;
+      }
+    }
+
+    return scene;
+  };
+
   if (Object.keys(base.attachments).length > 0) {
-    return base;
+    return migrateRepeatWrappers(base);
   }
 
   if (Object.keys(base.behaviors).length === 0) {
@@ -132,11 +169,11 @@ export function migrateSceneSpec(raw: unknown): SceneSpec {
   }
 
   const attachments = buildAttachmentsFromLegacy(base);
-  return {
+  return migrateRepeatWrappers({
     ...base,
     attachments,
     behaviors: {},
     actions: {},
     conditions: {},
-  };
+  });
 }

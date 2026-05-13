@@ -361,6 +361,13 @@ export class GameScene extends Phaser.Scene {
     sceneKey: string;
     compiledSceneId?: string;
     baseCompiledSceneId?: string;
+    runtimeOps?: {
+      hasDrop: boolean;
+      lastInvocations: string[];
+      lastErrors: Array<{ opId: string; message: string }>;
+      lastCalls: Array<{ opId: string; target?: unknown; args?: unknown }>;
+    };
+    runtimeEvents?: { pendingEvents: number; lastDrainedEventNames: string[] };
     zoom: number;
     scrollX: number;
     scrollY: number;
@@ -398,6 +405,11 @@ export class GameScene extends Phaser.Scene {
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
       ...(this.baseCompiled ? { baseCompiledSceneId: this.baseCompiled.scene.id } : {}),
+      runtimeOps: {
+        hasDrop: this.opRegistry?.has('drop') ?? false,
+        ...this.opRegistry?.getDebugSnapshot(),
+      },
+      ...(this.compiled?.debug ? { runtimeEvents: { ...this.compiled.debug } } : {}),
       zoom: this.cameras.main.zoom,
       scrollX: this.cameras.main.scrollX,
       scrollY: this.cameras.main.scrollY,

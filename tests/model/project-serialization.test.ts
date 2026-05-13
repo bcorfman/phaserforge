@@ -39,6 +39,22 @@ describe('project YAML serialization', () => {
         },
       },
       initialSceneId: 'scene-1',
+      snippets: {
+        s1: {
+          id: 's1',
+          name: 'Snippet 1',
+          kind: 'attachments',
+          attachmentsTemplate: [{ presetId: 'Wait', params: { durationMs: 10 } }],
+        },
+      },
+      macros: {
+        m1: {
+          id: 'm1',
+          name: 'Macro 1',
+          params: [{ id: 'p1', name: 'durationMs', type: 'number', default: 10 }],
+          body: [{ presetId: 'Wait', params: { durationMs: 10 } }],
+        },
+      },
     };
 
     const yaml = serializeProjectToYaml(project);
