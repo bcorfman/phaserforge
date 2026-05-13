@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:800;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .card{fill:#0c1430; stroke:rgba(170,180,230,0.25); stroke-width:1;}
+      .cardEvent{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.75); stroke-width:1;}
+      .cardAction{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.75); stroke-width:1;}
+      .cardUntil{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.85); stroke-width:1;}
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+      .wire{stroke:rgba(106,167,255,0.70); stroke-width:2; fill:none; marker-end:url(#arrowHead);}
+      .wire2{stroke:rgba(124,240,199,0.75); stroke-width:2; fill:none; marker-end:url(#arrowHead2);}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+    <marker id="arrowHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(106,167,255,0.8)"/>
+    </marker>
+    <marker id="arrowHead2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(124,240,199,0.85)"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Approach 1e — Event Wiring Map (scene-level): see emitters, stop-conditions, and handlers</text>
+
+  <!-- Top controls -->
+  <rect x="24" y="90" width="1152" height="56" rx="12" class="panel"/>
+  <text x="46" y="124" class="label">Filters:</text>
+  <rect x="120" y="104" width="220" height="30" rx="10" class="card"/>
+  <text x="132" y="124" class="nodeTextMuted">Scope: Level01</text>
+  <rect x="348" y="104" width="240" height="30" rx="10" class="card"/>
+  <text x="360" y="124" class="nodeTextMuted">Show: Player, Lasers, Gate</text>
+  <rect x="596" y="104" width="220" height="30" rx="10" class="card"/>
+  <text x="608" y="124" class="nodeTextMuted">Search: “Collected”</text>
+  <rect x="824" y="104" width="352" height="30" rx="10" class="cardEvent"/>
+  <text x="836" y="124" class="nodeText">Create wiring from selection…</text>
+
+  <!-- Graph canvas -->
+  <rect x="24" y="162" width="1152" height="534" rx="12" class="panel2"/>
+
+  <!-- Column: Emitters -->
+  <text x="50" y="198" class="label">Emitters</text>
+  <rect x="50" y="214" width="320" height="44" rx="12" class="cardAction"/>
+  <text x="66" y="240" class="nodeText">Coin • Action: CollectUntil</text>
+  <rect x="70" y="260" width="280" height="34" rx="10" class="cardUntil"/>
+  <text x="82" y="282" class="nodeText">Until: Player overlaps</text>
+  <rect x="70" y="298" width="280" height="34" rx="10" class="cardEvent"/>
+  <text x="82" y="320" class="nodeText">Emits: Coin.Collected(points)</text>
+
+  <rect x="50" y="360" width="320" height="44" rx="12" class="cardAction"/>
+  <text x="66" y="386" class="nodeText">LaserA • Action: ToggleUntil</text>
+  <rect x="70" y="406" width="280" height="34" rx="10" class="cardEvent"/>
+  <text x="82" y="428" class="nodeText">Emits: LaserA.EnabledChanged</text>
+
+  <!-- Column: Event Bus -->
+  <text x="440" y="198" class="label">Events</text>
+  <rect x="420" y="230" width="360" height="44" rx="12" class="cardEvent"/>
+  <text x="436" y="256" class="nodeText">Coin.Collected(points)</text>
+  <rect x="420" y="308" width="360" height="44" rx="12" class="cardEvent"/>
+  <text x="436" y="334" class="nodeText">LasersEnabledCount.Changed</text>
+  <rect x="420" y="386" width="360" height="44" rx="12" class="cardEvent"/>
+  <text x="436" y="412" class="nodeText">Player.MoveUntil.Stopped(reason)</text>
+
+  <!-- Column: Handlers -->
+  <text x="860" y="198" class="label">Handlers</text>
+  <rect x="840" y="220" width="310" height="54" rx="12" class="cardAction"/>
+  <text x="856" y="246" class="nodeText">Player: On Coin.Collected</text>
+  <text x="856" y="266" class="tiny">Action: Add to Counter(score, +points)</text>
+
+  <rect x="840" y="300" width="310" height="54" rx="12" class="cardAction"/>
+  <text x="856" y="326" class="nodeText">Gate: On LasersEnabledCount.Changed</text>
+  <text x="856" y="346" class="tiny">Action: Open Gate until counter == 0</text>
+
+  <rect x="840" y="380" width="310" height="54" rx="12" class="cardAction"/>
+  <text x="856" y="406" class="nodeText">SFX: On Player.MoveUntil.Stopped</text>
+  <text x="856" y="426" class="tiny">Action: Play Sound (jump)</text>
+
+  <!-- Wires -->
+  <path d="M 350 316 C 390 316, 400 252, 420 252" class="wire"/>
+  <path d="M 350 424 C 390 424, 400 330, 420 330" class="wire"/>
+  <path d="M 780 252 C 810 252, 820 246, 840 246" class="wire2"/>
+  <path d="M 780 330 C 810 330, 820 326, 840 326" class="wire2"/>
+  <path d="M 780 408 C 810 408, 820 406, 840 406" class="wire2"/>
+
+  <!-- Callout -->
+  <rect x="50" y="520" width="520" height="150" rx="12" class="callout"/>
+  <text x="70" y="548" class="calloutText">10x iteration advantage</text>
+  <text x="70" y="570" class="tiny">This view answers “what causes this?” and “what happens next?” instantly.</text>
+  <text x="70" y="590" class="tiny">Click any node to jump to its editor location; drag to create wiring.</text>
+  <text x="70" y="610" class="tiny">Great for non-coders because it’s concrete: emitters → events → handlers.</text>
+</svg>
+
