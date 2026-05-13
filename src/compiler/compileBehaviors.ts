@@ -24,6 +24,9 @@ export interface CompileOptions {
   opRegistry?: OpRegistry;
   input?: InputService;
   vars?: VarsService;
+  events?: {
+    emit: (eventName: string, payload: Record<string, number | string | boolean | null>, source: { targetKey: string; eventId?: string }) => void;
+  };
   runtime?: {
     spawnEntity?: (opts: {
       templateEntityId: string;

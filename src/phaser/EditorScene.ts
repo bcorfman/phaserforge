@@ -285,6 +285,7 @@ export class EditorScene extends Phaser.Scene {
     isActive: boolean;
     sceneKey: string;
     compiledSceneId?: string;
+    runtimeEvents?: { pendingEvents: number; lastDrainedEventNames: string[] };
     referenceSpriteCount: number;
     zoom: number;
     scrollX: number;
@@ -298,6 +299,7 @@ export class EditorScene extends Phaser.Scene {
       isActive: this.scene.isActive(),
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
+      ...(this.compiled?.debug ? { runtimeEvents: { ...this.compiled.debug } } : {}),
       referenceSpriteCount: this.referenceSprites.size,
       zoom: this.currentZoom,
       scrollX: this.cameras.main.scrollX,

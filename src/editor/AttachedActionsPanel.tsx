@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { EditorRegistryConfig, Id, SceneSpec, TargetRef } from '../model/types';
 import { type AttachedActionRow, buildAttachedActionRowsForTarget } from './attachmentCommands';
 
@@ -39,7 +39,7 @@ export function AttachedActionsPanel({
   onUngroupParallel: (groupId: string) => void;
   onMoveParallelGroup: (groupId: string, direction: 'up' | 'down') => void;
 }) {
-  const rows = buildAttachedActionRowsForTarget(scene, target);
+  const rootRows = buildAttachedActionRowsForTarget(scene, target);
   const supportedPresetEntries = useMemo(
     () => registry.actions.filter((entry) => entry.implemented && SUPPORTED_PRESETS.has(entry.type)),
     [registry.actions]
@@ -47,6 +47,7 @@ export function AttachedActionsPanel({
   const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<Set<Id>>(() => new Set());
   const [selectedParallelGroupId, setSelectedParallelGroupId] = useState<string | null>(null);
   const [expandedParallelGroups, setExpandedParallelGroups] = useState<Set<string>>(() => new Set());
+  const [collapsedRepeats, setCollapsedRepeats] = useState<Set<string>>(() => new Set());
 
   const selectedCount = selectedParallelGroupId ? 1 : selectedAttachmentIds.size;
   const clearSelection = () => {
@@ -70,10 +71,18 @@ export function AttachedActionsPanel({
       return next;
     });
   };
+  const toggleRepeatCollapsed = (attachmentId: string) => {
+    setCollapsedRepeats((prev) => {
+      const next = new Set(prev);
+      if (next.has(attachmentId)) next.delete(attachmentId);
+      else next.add(attachmentId);
+      return next;
+    });
+  };
 
   const removeSelected = () => {
     if (selectedParallelGroupId) {
-      const group = rows.find((r) => r.kind === 'parallel-group' && r.groupId === selectedParallelGroupId);
+      const group = rootRows.find((r) => r.kind === 'parallel-group' && r.groupId === selectedParallelGroupId);
       if (group && group.kind === 'parallel-group') {
         for (const attachment of group.attachments) onRemoveAttachment(attachment.id);
       }
@@ -152,7 +161,7 @@ export function AttachedActionsPanel({
       </div>
 
       <div className="panel-heading">List</div>
-      {rows.length === 0 && <div className="muted">No attached actions yet.</div>}
+      {rootRows.length === 0 && <div className="muted">No attached actions yet.</div>}
       {selectedCount > 0 && (
         <div className="inspector-row" data-testid="attached-actions-selection-bar">
           <span>{selectedCount} selected</span>{' '}
@@ -180,66 +189,85 @@ export function AttachedActionsPanel({
         </div>
       )}
       <div className="member-list">
-        {rows.map((row: AttachedActionRow, rowIndex: number) => {
-          if (row.kind === 'attachment') {
-            const indexLabel = `Step ${rowIndex + 1}`;
-            return renderAttachmentRow(row.attachment, indexLabel, {
-              disableUp: rowIndex === 0,
-              disableDown: rowIndex === rows.length - 1,
-            });
-          }
+        {(() => {
+          const renderRows = (parentAttachmentId: Id | undefined, depth: number): ReactNode[] => {
+            const rows = buildAttachedActionRowsForTarget(scene, target, parentAttachmentId);
+            return rows.flatMap((row, rowIndex) => {
+              if (row.kind === 'attachment') {
+                const attachment = row.attachment as any;
+                const isRepeat = attachment.presetId === 'Repeat' && Array.isArray(attachment.children) && attachment.children.length > 0;
+                const indexLabel = `Step ${rowIndex + 1}`;
+                const base = (
+                  <div key={attachment.id} style={{ paddingLeft: depth * 18 }}>
+                    {isRepeat ? (
+                      <div className="member-row">
+                        <button className="tag-button" type="button" onClick={() => toggleRepeatCollapsed(attachment.id)}>
+                          {collapsedRepeats.has(attachment.id) ? '▸' : '▾'} Repeat
+                        </button>
+                      </div>
+                    ) : null}
+                    {renderAttachmentRow(attachment, indexLabel, {
+                      disableUp: rowIndex === 0,
+                      disableDown: rowIndex === rows.length - 1,
+                    })}
+                  </div>
+                );
+                if (!isRepeat || collapsedRepeats.has(attachment.id)) return [base];
+                return [base, ...renderRows(attachment.id, depth + 1)];
+              }
 
-          const isExpanded = expandedParallelGroups.has(row.groupId);
-          return (
-            <div key={`parallel-${row.groupId}`}>
-              <div className="member-row">
-                <input
-                  aria-label={`Select parallel group ${row.groupId}`}
-                  checked={selectedParallelGroupId === row.groupId}
-                  onChange={() => {
-                    setSelectedAttachmentIds(new Set());
-                    setSelectedParallelGroupId((prev) => (prev === row.groupId ? null : row.groupId));
-                  }}
-                  type="checkbox"
-                />
-                <button className="tag-button" type="button" onClick={() => toggleExpanded(row.groupId)}>
-                  {isExpanded ? '▾' : '▸'} Parallel Group · {row.attachments.length} actions
-                </button>
-                <button className="tag-button" type="button" onClick={() => onUngroupParallel(row.groupId)}>
-                  Ungroup
-                </button>
-                <button
-                  className="tag-button"
-                  disabled={rowIndex === 0}
-                  type="button"
-                  onClick={() => onMoveParallelGroup(row.groupId, 'up')}
-                >
-                  Up
-                </button>
-                <button
-                  className="tag-button"
-                  disabled={rowIndex === rows.length - 1}
-                  type="button"
-                  onClick={() => onMoveParallelGroup(row.groupId, 'down')}
-                >
-                  Down
-                </button>
-              </div>
-              {isExpanded &&
-                row.attachments.map((attachment) => (
-                  <div key={attachment.id} className="member-row" style={{ paddingLeft: 18 }}>
+              const isExpanded = expandedParallelGroups.has(row.groupId);
+              const header = (
+                <div key={`parallel-${row.groupId}`} style={{ paddingLeft: depth * 18 }}>
+                  <div className="member-row">
+                    <input
+                      aria-label={`Select parallel group ${row.groupId}`}
+                      checked={selectedParallelGroupId === row.groupId}
+                      onChange={() => {
+                        setSelectedAttachmentIds(new Set());
+                        setSelectedParallelGroupId((prev) => (prev === row.groupId ? null : row.groupId));
+                      }}
+                      type="checkbox"
+                    />
+                    <button className="tag-button" type="button" onClick={() => toggleExpanded(row.groupId)}>
+                      {isExpanded ? '▾' : '▸'} Parallel Group · {row.attachments.length} actions
+                    </button>
+                    <button className="tag-button" type="button" onClick={() => onUngroupParallel(row.groupId)}>
+                      Ungroup
+                    </button>
                     <button
                       className="tag-button"
+                      disabled={rowIndex === 0}
                       type="button"
-                      onClick={() => onSelectAttachment(attachment.id)}
+                      onClick={() => onMoveParallelGroup(row.groupId, 'up')}
                     >
-                      • {attachment.name ?? attachment.id} · {attachment.presetId}
+                      Up
+                    </button>
+                    <button
+                      className="tag-button"
+                      disabled={rowIndex === rows.length - 1}
+                      type="button"
+                      onClick={() => onMoveParallelGroup(row.groupId, 'down')}
+                    >
+                      Down
                     </button>
                   </div>
-                ))}
-            </div>
-          );
-        })}
+                  {isExpanded &&
+                    row.attachments.map((attachment) => (
+                      <div key={attachment.id} className="member-row" style={{ paddingLeft: 18 }}>
+                        <button className="tag-button" type="button" onClick={() => onSelectAttachment(attachment.id)}>
+                          • {attachment.name ?? attachment.id} · {attachment.presetId}
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              );
+              return [header];
+            });
+          };
+
+          return renderRows(undefined, 0);
+        })()}
       </div>
     </div>
   );

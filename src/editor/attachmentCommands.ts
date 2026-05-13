@@ -47,8 +47,8 @@ function buildParallelGroupTag(groupId: string, slot: string): string {
   return `${PARALLEL_GROUP_TAG_PREFIX}${groupId}:${slot}`;
 }
 
-export function buildAttachedActionRowsForTarget(scene: SceneSpec, target: TargetRef): AttachedActionRow[] {
-  const attachments = getAttachmentsForTarget(scene, target);
+export function buildAttachedActionRowsForTarget(scene: SceneSpec, target: TargetRef, parentAttachmentId?: Id): AttachedActionRow[] {
+  const attachments = getAttachmentsForTarget(scene, target).filter((a) => (a.parentAttachmentId ?? undefined) === (parentAttachmentId ?? undefined));
   const byGroupId = new Map<string, AttachmentSpec[]>();
   const ungrouped: AttachmentSpec[] = [];
 
@@ -101,8 +101,10 @@ export function buildAttachedActionRowsForTarget(scene: SceneSpec, target: Targe
     .map((r) => r.row);
 }
 
-export function buildAttachedActionRowsForTargetAndEvent(scene: SceneSpec, target: TargetRef, eventId?: Id): AttachedActionRow[] {
-  const attachments = getAttachmentsForTargetAndEvent(scene, target, eventId);
+export function buildAttachedActionRowsForTargetAndEvent(scene: SceneSpec, target: TargetRef, eventId?: Id, parentAttachmentId?: Id): AttachedActionRow[] {
+  const attachments = getAttachmentsForTargetAndEvent(scene, target, eventId).filter(
+    (a) => (a.parentAttachmentId ?? undefined) === (parentAttachmentId ?? undefined)
+  );
   const byGroupId = new Map<string, AttachmentSpec[]>();
   const ungrouped: AttachmentSpec[] = [];
 
@@ -165,7 +167,9 @@ export function createAttachment(
   init: Partial<AttachmentSpec> = {}
 ): { scene: SceneSpec; attachmentId: Id } {
   const id: Id = `att-${Date.now()}`;
-  const existing = getAttachmentsForTargetAndEvent(scene, target, init.eventId);
+  const existing = getAttachmentsForTargetAndEvent(scene, target, init.eventId).filter(
+    (a) => (a.parentAttachmentId ?? undefined) === (init.parentAttachmentId ?? undefined)
+  );
   const order = init.order ?? (existing.length === 0 ? 0 : (existing[existing.length - 1].order ?? existing.length - 1) + 1);
 
   const world = scene.world ?? { width: 1024, height: 768 };
@@ -185,6 +189,8 @@ export function createAttachment(
     baseDefaults.params = { durationMs: 100 };
   } else if (presetId === 'Call') {
     baseDefaults.params = { callId: 'callback' };
+  } else if (presetId === 'EmitEvent') {
+    baseDefaults.params = { eventName: 'Event.Name' };
   } else if (presetId === 'Repeat') {
     baseDefaults.params = {};
   }
@@ -198,14 +204,25 @@ export function createAttachment(
     ...baseDefaults,
     ...init,
   };
+  const nextAttachments: Record<Id, AttachmentSpec> = {
+    ...scene.attachments,
+    [id]: attachment,
+  };
+
+  if (attachment.parentAttachmentId) {
+    const parent = nextAttachments[attachment.parentAttachmentId];
+    if (parent && parent.presetId === 'Repeat') {
+      const children = Array.isArray((parent as any).children) ? (parent as any).children : [];
+      if (!children.includes(id)) {
+        nextAttachments[parent.id] = { ...(parent as any), children: [...children, id] };
+      }
+    }
+  }
   return {
     attachmentId: id,
     scene: {
       ...scene,
-      attachments: {
-        ...scene.attachments,
-        [id]: attachment,
-      },
+      attachments: nextAttachments,
     },
   };
 }
@@ -235,6 +252,8 @@ export function makeAttachmentsParallel(
   if (!attachments.every((a) => targetsEqual(a.target, target))) return { scene, groupId: opts.groupId ?? 'pg-empty' };
   const eventId = typeof attachments[0]?.eventId === 'string' ? attachments[0].eventId : undefined;
   if (!attachments.every((a) => (typeof a.eventId === 'string' ? a.eventId : undefined) === eventId)) return { scene, groupId: opts.groupId ?? 'pg-empty' };
+  const parentAttachmentId = attachments[0]?.parentAttachmentId;
+  if (!attachments.every((a) => (a.parentAttachmentId ?? undefined) === (parentAttachmentId ?? undefined))) return { scene, groupId: opts.groupId ?? 'pg-empty' };
 
   const groupId = opts.groupId ?? `pg-${Date.now()}`;
   const minOrder = Math.min(...attachments.map((a) => a.order ?? 0));
@@ -262,6 +281,14 @@ export function makeAttachmentsParallel(
 
 export function ungroupParallelAttachments(scene: SceneSpec, target: TargetRef, groupId: string, eventId?: Id): SceneSpec {
   if (!groupId) return scene;
+  const parentAttachmentId = Object.values(scene.attachments).find((a) => {
+    if (!targetsEqual(a.target, target)) return false;
+    const aEventId = typeof a.eventId === 'string' && a.eventId.length > 0 ? a.eventId : undefined;
+    const want = typeof eventId === 'string' && eventId.length > 0 ? eventId : undefined;
+    if (aEventId !== want) return false;
+    const parsed = parseParallelGroupTag(a.tag);
+    return parsed?.groupId === groupId;
+  })?.parentAttachmentId;
   const nextAttachments: Record<Id, AttachmentSpec> = { ...scene.attachments };
   let changed = false;
   for (const attachment of Object.values(scene.attachments)) {
@@ -269,6 +296,7 @@ export function ungroupParallelAttachments(scene: SceneSpec, target: TargetRef, 
     const aEventId = typeof attachment.eventId === 'string' && attachment.eventId.length > 0 ? attachment.eventId : undefined;
     const want = typeof eventId === 'string' && eventId.length > 0 ? eventId : undefined;
     if (aEventId !== want) continue;
+    if ((attachment.parentAttachmentId ?? undefined) !== (parentAttachmentId ?? undefined)) continue;
     const parsed = parseParallelGroupTag(attachment.tag);
     if (!parsed || parsed.groupId !== groupId) continue;
     const { tag: _tag, ...rest } = attachment as any;
@@ -279,15 +307,40 @@ export function ungroupParallelAttachments(scene: SceneSpec, target: TargetRef, 
 }
 
 export function removeAttachment(scene: SceneSpec, id: Id): SceneSpec {
-  if (!scene.attachments[id]) return scene;
-  const { [id]: _removed, ...remaining } = scene.attachments;
+  const removed = scene.attachments[id];
+  if (!removed) return scene;
+
+  const toRemove = new Set<string>();
+  const visit = (attachmentId: string): void => {
+    if (toRemove.has(attachmentId)) return;
+    const a = scene.attachments[attachmentId];
+    if (!a) return;
+    toRemove.add(attachmentId);
+    if (Array.isArray((a as any).children)) {
+      for (const childId of (a as any).children) visit(String(childId));
+    }
+  };
+  visit(id);
+
+  const remaining: Record<Id, AttachmentSpec> = { ...scene.attachments };
+  for (const removeId of toRemove) delete remaining[removeId];
+
+  for (const attachment of Object.values(remaining)) {
+    if (!Array.isArray((attachment as any).children)) continue;
+    const nextChildren = (attachment as any).children.filter((childId: string) => !toRemove.has(String(childId)));
+    if (nextChildren.length === (attachment as any).children.length) continue;
+    remaining[attachment.id] = { ...(attachment as any), children: nextChildren };
+  }
+
   return { ...scene, attachments: remaining };
 }
 
 export function moveAttachmentWithinTarget(scene: SceneSpec, id: Id, direction: 'up' | 'down'): SceneSpec {
   const current = scene.attachments[id];
   if (!current) return scene;
-  const list = getAttachmentsForTargetAndEvent(scene, current.target, current.eventId);
+  const list = getAttachmentsForTargetAndEvent(scene, current.target, current.eventId).filter(
+    (a) => (a.parentAttachmentId ?? undefined) === (current.parentAttachmentId ?? undefined)
+  );
   const index = list.findIndex((a) => a.id === id);
   if (index < 0) return scene;
   const swapIndex = direction === 'up' ? index - 1 : index + 1;

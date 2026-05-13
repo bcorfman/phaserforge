@@ -137,4 +137,36 @@ describe('model validation', () => {
     };
     expect(() => validateSceneSpec(scene)).toThrow(/unknown eventBlock/i);
   });
+
+  it('A15 attachments validate event triggers', () => {
+    const scene = baseScene();
+    scene.eventBlocks = {
+      ev1: { id: 'ev1', target: { type: 'entity', entityId: 'e1' }, trigger: { type: 'event', eventName: 'Coin.Collected' } } as any,
+    };
+    scene.attachments = {
+      a1: { id: 'a1', target: { type: 'entity', entityId: 'e1' }, eventId: 'ev1', presetId: 'Wait', params: { durationMs: 10 } } as any,
+    };
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+
+    (scene.eventBlocks.ev1 as any).trigger = { type: 'event' };
+    expect(() => validateSceneSpec(scene)).toThrow(/eventName/i);
+  });
+
+  it('A16 attachments validate Repeat composite nesting', () => {
+    const scene = baseScene();
+    scene.behaviors = {};
+    scene.actions = {};
+    scene.conditions = {};
+    scene.eventBlocks = {
+      ev1: { id: 'ev1', target: { type: 'entity', entityId: 'e1' }, trigger: { type: 'start' } } as any,
+    };
+    scene.attachments = {
+      r1: { id: 'r1', target: { type: 'entity', entityId: 'e1' }, eventId: 'ev1', presetId: 'Repeat', children: ['a1'] } as any,
+      a1: { id: 'a1', target: { type: 'entity', entityId: 'e1' }, eventId: 'ev1', presetId: 'Wait', params: { durationMs: 1 }, parentAttachmentId: 'r1' } as any,
+    };
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+
+    (scene.attachments.r1 as any).children = ['missing'];
+    expect(() => validateSceneSpec(scene)).toThrow(/unknown child/i);
+  });
 });

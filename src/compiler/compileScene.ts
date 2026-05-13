@@ -16,6 +16,11 @@ export interface CompiledScene {
   behaviors: Record<string, Action>;
   scripts: CompiledAttachmentScript[];
   actionManager: ActionManager;
+  debug?: {
+    pendingEvents: number;
+    lastDrainedEventNames: string[];
+    lastStartedEventScriptKeys: string[];
+  };
   startAll(): void;
   updateTriggers(dtMs: number): void;
   reset(): void;
@@ -62,7 +67,26 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
   }
 
   const actionManager = new ActionManager();
-  const scripts = compileAttachments(migrated, { targets: { entities, groups }, options });
+
+  type RuntimeEvent = {
+    name: string;
+    payload: Record<string, number | string | boolean | null>;
+    source: { targetKey: string; eventId?: string };
+  };
+  const eventQueue: RuntimeEvent[] = [];
+  const lastDrainedEventNames: string[] = [];
+  const lastStartedEventScriptKeys: string[] = [];
+  const debug = { pendingEvents: 0, lastDrainedEventNames, lastStartedEventScriptKeys } satisfies NonNullable<CompiledScene['debug']>;
+  const mergedOptions: CompileOptions = {
+    ...(options ?? {}),
+    events: {
+      emit: (eventName, payload, source) => {
+        eventQueue.push({ name: eventName, payload, source });
+      },
+    },
+  };
+
+  const scripts = compileAttachments(migrated, { targets: { entities, groups }, options: mergedOptions });
   const behaviors: Record<string, Action> = Object.fromEntries(scripts.map((s) => [s.key, s.action]));
 
   const startAll = (): void => {
@@ -97,6 +121,24 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
   }
 
   const updateTriggers = (_dtMs: number): void => {
+    // Runtime event queue
+    if (eventQueue.length > 0) {
+      const drained = eventQueue.splice(0, eventQueue.length);
+      lastDrainedEventNames.splice(0, lastDrainedEventNames.length, ...drained.map((e) => e.name));
+      lastStartedEventScriptKeys.splice(0, lastStartedEventScriptKeys.length);
+      for (const evt of drained) {
+        for (const script of scripts) {
+          if (script.trigger?.type !== 'event') continue;
+          if ((script.trigger as any).eventName !== evt.name) continue;
+          if (actionManager.getActionsForTarget(script.targetKey, script.eventId).length > 0) continue;
+          script.action.reset?.();
+          actionManager.add(script.action, { targetKey: script.targetKey, eventId: script.eventId });
+          lastStartedEventScriptKeys.push(script.key);
+        }
+      }
+    }
+    debug.pendingEvents = eventQueue.length;
+
     // Visibility edges
     for (const [targetKey, prev] of Array.from(lastVisibleByTargetKey.entries())) {
       const cur = computeVisibleForTargetKey(targetKey);
@@ -143,7 +185,10 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
     for (const action of Object.values(behaviors)) {
       if (action.reset) action.reset();
     }
+    eventQueue.splice(0, eventQueue.length);
+    lastDrainedEventNames.splice(0, lastDrainedEventNames.length);
+    debug.pendingEvents = 0;
   };
 
-  return { scene: migrated, entities, groups, behaviors, scripts, actionManager, startAll, updateTriggers, reset };
+  return { scene: migrated, entities, groups, behaviors, scripts, actionManager, debug, startAll, updateTriggers, reset };
 }

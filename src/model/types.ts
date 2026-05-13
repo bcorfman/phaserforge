@@ -183,6 +183,8 @@ export interface ProjectSpec {
   initialSceneId: Id;
   collections?: Record<Id, CollectionSpec>;
   counters?: Record<Id, CounterSpec>;
+  snippets?: Record<Id, SnippetSpec>;
+  macros?: Record<Id, MacroSpec>;
 }
 
 export interface WorldSpec {
@@ -319,9 +321,10 @@ export interface InlineElapsedTimeConditionSpec {
 }
 
 export interface AttachmentTriggerSpec {
-  type: 'start' | 'update' | 'input_action' | 'visible';
+  type: 'start' | 'update' | 'input_action' | 'visible' | 'event';
   actionId?: string;
   edge?: 'pressed' | 'released' | 'shown' | 'hidden';
+  eventName?: string;
 }
 
 export interface AttachmentSpec {
@@ -345,6 +348,8 @@ export interface AttachmentSpec {
    * Multiple attachments with the same (target,eventId) belong to the same Event Block.
    */
   eventId?: Id;
+  parentAttachmentId?: Id;
+  children?: Id[];
   /**
    * Optional trigger that gates execution of the Event Block this attachment belongs to.
    * When omitted, the attachment runs on scene start (current default behavior).
@@ -490,4 +495,40 @@ export interface EditorRegistryConfig {
   arrange: EditorRegistryEntry[];
   actions: EditorRegistryEntry[];
   conditions: EditorRegistryEntry[];
+}
+
+export interface ParamSpec {
+  id: Id;
+  name: string;
+  type: 'number' | 'string' | 'boolean' | 'target';
+  default?: number | string | boolean;
+}
+
+export type TemplatePrimitive = number | string | boolean | null;
+
+export interface AttachmentTemplate {
+  name?: string;
+  order?: number;
+  enabled?: boolean;
+  presetId: string;
+  applyTo?: 'group' | 'members';
+  params?: Record<string, TemplatePrimitive>;
+  condition?: InlineConditionSpec;
+  tag?: string;
+  parentIndex?: number;
+}
+
+export interface SnippetSpec {
+  id: Id;
+  name: string;
+  kind: 'attachments';
+  source?: { sceneId?: Id; targetKind?: 'entity' | 'group' };
+  attachmentsTemplate: AttachmentTemplate[];
+}
+
+export interface MacroSpec {
+  id: Id;
+  name: string;
+  params: ParamSpec[];
+  body: AttachmentTemplate[];
 }

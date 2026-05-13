@@ -6,6 +6,7 @@ import { Repeat } from '../runtime/actions/Repeat';
 import { Sequence } from '../runtime/actions/Sequence';
 import { Wait } from '../runtime/actions/Wait';
 import { Parallel } from '../runtime/actions/Parallel';
+import { EmitEvent } from '../runtime/actions/EmitEvent';
 import { InputDrive } from '../runtime/actions/InputDrive';
 import { InputFire } from '../runtime/actions/InputFire';
 import { MoveXUntil } from '../runtime/actions/MoveXUntil';
@@ -62,6 +63,7 @@ function stableTriggerKey(trigger: AttachmentSpec['trigger'] | undefined): strin
   if (trigger.type === 'update') return 'update';
   if (trigger.type === 'visible') return `visible:${trigger.edge ?? ''}`;
   if (trigger.type === 'input_action') return `input_action:${trigger.actionId ?? ''}:${trigger.edge ?? ''}`;
+  if (trigger.type === 'event') return `event:${trigger.eventName ?? ''}`;
   return 'start';
 }
 
@@ -270,9 +272,15 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
 
     return new CycleFramesUntil(target, { frames, fps, direction, condition });
   }
-  if (presetId === 'Repeat') {
-    // Repeat is handled at the script level (wrapper). If it appears here, treat as no-op.
-    return new Sequence([]);
+  if (presetId === 'EmitEvent') {
+    const events = ctx.options?.events;
+    const eventName = typeof attachment.params?.eventName === 'string' ? String(attachment.params.eventName) : '';
+    if (!events || !eventName) return new Sequence([]);
+    const payload = Object.fromEntries(
+      Object.entries(attachment.params ?? {}).filter(([key, value]) => key !== 'eventName' && isCallArgPrimitive(value))
+    ) as Record<string, number | string | boolean | null>;
+    const source = { targetKey: stableTargetKey(targetOverride ?? attachment.target), eventId: attachment.eventId };
+    return new EmitEvent(eventName, payload, (name, data) => events.emit(name, data, source));
   }
   if (presetId === 'InputDrive') {
     const input = ctx.options?.input;
@@ -295,6 +303,10 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
       upActionId: typeof attachment.params?.upActionId === 'string' ? String(attachment.params.upActionId) : undefined,
       downActionId: typeof attachment.params?.downActionId === 'string' ? String(attachment.params.downActionId) : undefined,
     });
+  }
+  if (presetId === 'Repeat') {
+    // Repeat is handled as a composite container at the script level.
+    return new Sequence([]);
   }
   if (presetId === 'InputFire') {
     const input = ctx.options?.input;
@@ -352,94 +364,97 @@ export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetConte
 
   const scripts: CompiledAttachmentScript[] = [];
   for (const bucket of byTargetEventAndTrigger.values()) {
-    const sorted = [...bucket.attachments].sort((a, b) => {
-      const ao = a.order ?? 0;
-      const bo = b.order ?? 0;
-      if (ao !== bo) return ao - bo;
-      return a.id.localeCompare(b.id);
-    });
+    const byId = new Map<string, AttachmentSpec>(bucket.attachments.map((a) => [a.id, a]));
 
-    const repeat = sorted.find((a) => a.presetId === 'Repeat');
-    const steps = sorted.filter((a) => a.presetId !== 'Repeat');
-
-    const byParallelGroupId = new Map<string, AttachmentSpec[]>();
-    const ungrouped: AttachmentSpec[] = [];
-    for (const step of steps) {
-      const parsed = parseParallelGroupTag(step.tag);
-      if (!parsed) {
-        ungrouped.push(step);
-        continue;
+    const compileNode = (attachment: AttachmentSpec): Action => {
+      if (attachment.presetId === 'Repeat' && Array.isArray(attachment.children) && attachment.children.length > 0) {
+        const countRaw = attachment.params?.count;
+        const count = typeof countRaw === 'number' ? countRaw : undefined;
+        const children = attachment.children
+          .map((id) => byId.get(id))
+          .filter((a): a is AttachmentSpec => Boolean(a))
+          .sort((a, b) => {
+            const ao = a.order ?? 0;
+            const bo = b.order ?? 0;
+            if (ao !== bo) return ao - bo;
+            return a.id.localeCompare(b.id);
+          });
+        return new Repeat(new Sequence(compileSiblings(children)), count);
       }
-      const list = byParallelGroupId.get(parsed.groupId) ?? [];
-      list.push(step);
-      byParallelGroupId.set(parsed.groupId, list);
+      if (attachment.target.type === 'group' && attachment.applyTo === 'members') {
+        const group = scene.groups[attachment.target.groupId];
+        const members = group?.members ?? [];
+        const perMember = members.map((entityId) => compileAtomicAttachment(attachment, compileCtx, { type: 'entity', entityId }));
+        return new Parallel(perMember);
+      }
+      return compileAtomicAttachment(attachment, compileCtx);
+    };
+
+    function compileSiblings(siblings: AttachmentSpec[]): Action[] {
+      const byParallelGroupId = new Map<string, AttachmentSpec[]>();
+      const ungrouped: AttachmentSpec[] = [];
+      for (const step of siblings) {
+        const parsed = parseParallelGroupTag(step.tag);
+        if (!parsed) {
+          ungrouped.push(step);
+          continue;
+        }
+        const list = byParallelGroupId.get(parsed.groupId) ?? [];
+        list.push(step);
+        byParallelGroupId.set(parsed.groupId, list);
+      }
+
+      const rows: Array<{ sortKey: { order: number; id: string }; row: { kind: 'attachment'; attachment: AttachmentSpec } | { kind: 'parallel'; groupId: string; attachments: AttachmentSpec[] } }> = [];
+      for (const step of ungrouped) {
+        rows.push({ sortKey: { order: step.order ?? 0, id: step.id }, row: { kind: 'attachment', attachment: step } });
+      }
+      for (const [groupId, groupSteps] of byParallelGroupId.entries()) {
+        if (groupSteps.length < 2) {
+          const only = groupSteps[0];
+          rows.push({ sortKey: { order: only.order ?? 0, id: only.id }, row: { kind: 'attachment', attachment: only } });
+          continue;
+        }
+        const sortedGroup = [...groupSteps].sort((a, b) => {
+          const pa = parseParallelGroupTag(a.tag);
+          const pb = parseParallelGroupTag(b.tag);
+          const sa = pa?.slot ?? '';
+          const sb = pb?.slot ?? '';
+          if (sa !== sb) return sa.localeCompare(sb, undefined, { numeric: true });
+          const ao = a.order ?? 0;
+          const bo = b.order ?? 0;
+          if (ao !== bo) return ao - bo;
+          return a.id.localeCompare(b.id);
+        });
+        const minOrder = Math.min(...sortedGroup.map((a) => a.order ?? 0));
+        const minId = sortedGroup[0]?.id ?? groupId;
+        rows.push({ sortKey: { order: minOrder, id: minId }, row: { kind: 'parallel', groupId, attachments: sortedGroup } });
+      }
+
+      const compiledRows = rows
+        .sort((a, b) => (a.sortKey.order !== b.sortKey.order ? a.sortKey.order - b.sortKey.order : a.sortKey.id.localeCompare(b.sortKey.id)))
+        .map((r) => r.row);
+
+      const compiled: Action[] = [];
+      for (const row of compiledRows) {
+        if (row.kind === 'attachment') {
+          compiled.push(compileNode(row.attachment));
+          continue;
+        }
+        compiled.push(new Parallel(row.attachments.map((a) => compileNode(a))));
+      }
+      return compiled;
     }
 
-    const rows: Array<{ sortKey: { order: number; id: string }; row: { kind: 'attachment'; attachment: AttachmentSpec } | { kind: 'parallel'; groupId: string; attachments: AttachmentSpec[] } }> = [];
-    for (const step of ungrouped) {
-      rows.push({ sortKey: { order: step.order ?? 0, id: step.id }, row: { kind: 'attachment', attachment: step } });
-    }
-    for (const [groupId, groupSteps] of byParallelGroupId.entries()) {
-      if (groupSteps.length < 2) {
-        const only = groupSteps[0];
-        rows.push({ sortKey: { order: only.order ?? 0, id: only.id }, row: { kind: 'attachment', attachment: only } });
-        continue;
-      }
-      const sortedGroup = [...groupSteps].sort((a, b) => {
-        const pa = parseParallelGroupTag(a.tag);
-        const pb = parseParallelGroupTag(b.tag);
-        const sa = pa?.slot ?? '';
-        const sb = pb?.slot ?? '';
-        if (sa !== sb) return sa.localeCompare(sb, undefined, { numeric: true });
+    const roots = bucket.attachments
+      .filter((a) => !a.parentAttachmentId)
+      .sort((a, b) => {
         const ao = a.order ?? 0;
         const bo = b.order ?? 0;
         if (ao !== bo) return ao - bo;
         return a.id.localeCompare(b.id);
       });
-      const minOrder = Math.min(...sortedGroup.map((a) => a.order ?? 0));
-      const minId = sortedGroup[0]?.id ?? groupId;
-      rows.push({ sortKey: { order: minOrder, id: minId }, row: { kind: 'parallel', groupId, attachments: sortedGroup } });
-    }
 
-    const compiledRows = rows
-      .sort((a, b) => (a.sortKey.order !== b.sortKey.order ? a.sortKey.order - b.sortKey.order : a.sortKey.id.localeCompare(b.sortKey.id)))
-      .map((r) => r.row);
-
-    const compiledSteps: Action[] = [];
-    for (const row of compiledRows) {
-      if (row.kind === 'attachment') {
-        const step = row.attachment;
-        if (step.target.type === 'group' && step.applyTo === 'members') {
-          const group = scene.groups[step.target.groupId];
-          const members = group?.members ?? [];
-          const perMember = members.map((entityId) => compileAtomicAttachment(step, compileCtx, { type: 'entity', entityId }));
-          compiledSteps.push(new Parallel(perMember));
-        } else {
-          compiledSteps.push(compileAtomicAttachment(step, compileCtx));
-        }
-        continue;
-      }
-
-      const branchActions: Action[] = [];
-      for (const step of row.attachments) {
-        if (step.target.type === 'group' && step.applyTo === 'members') {
-          const group = scene.groups[step.target.groupId];
-          const members = group?.members ?? [];
-          const perMember = members.map((entityId) => compileAtomicAttachment(step, compileCtx, { type: 'entity', entityId }));
-          branchActions.push(new Parallel(perMember));
-        } else {
-          branchActions.push(compileAtomicAttachment(step, compileCtx));
-        }
-      }
-      compiledSteps.push(new Parallel(branchActions));
-    }
-
-    let script: Action = new Sequence(compiledSteps);
-    if (repeat) {
-      const countRaw = repeat.params?.count;
-      const count = typeof countRaw === 'number' ? countRaw : undefined;
-      script = new Repeat(script, count);
-    }
+    const script: Action = new Sequence(compileSiblings(roots));
 
     const isDefaultKey = !bucket.eventId && bucket.triggerKey === 'start';
     const key = isDefaultKey ? bucket.targetKey : `${bucket.targetKey}#${bucket.eventId ?? 'event'}#${bucket.triggerKey}`;

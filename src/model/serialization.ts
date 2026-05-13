@@ -203,5 +203,7 @@ export function parseProjectYaml(text: string): ProjectSpec {
     ...(sceneMeta ? { sceneMeta } : {}),
     scenes,
     initialSceneId,
+    ...(raw.snippets !== undefined ? { snippets: coerceRecord(raw.snippets) } : {}),
+    ...(raw.macros !== undefined ? { macros: coerceRecord(raw.macros) } : {}),
   };
 }

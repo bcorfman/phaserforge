@@ -37,6 +37,7 @@ describe('OpRegistry', () => {
     expect(called).toHaveLength(1);
     expect(called[0].callId).toBe('onCall');
     expect(called[0].args).toEqual({ foo: 'bar' });
+    expect(opRegistry.getDebugSnapshot().lastInvocations).toContain('onCall');
   });
 
   it('warns (and does not throw) on missing op', () => {
@@ -51,4 +52,3 @@ describe('OpRegistry', () => {
     warn.mockRestore();
   });
 });
-
