@@ -7,7 +7,7 @@ const port = Number(process.env.PORT ?? 8787);
 const settings = loadSettingsFromEnv(process.env);
 
 const databaseUrl = process.env.DATABASE_URL;
-const prisma = databaseUrl ? new PrismaClient({ datasources: { db: { url: databaseUrl } } }) : null;
+const prisma = databaseUrl ? new PrismaClient() : null;
 const repositories = prisma ? createPrismaRepositories(prisma) : undefined;
 
 const app = createApp({ settings, ...(repositories ? { repositories } : {}) });
