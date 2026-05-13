@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:800;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.75); stroke-width:1;}
+      .chipGreen{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .chipWarn{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+
+      .eventHdr{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .actionRow{fill:rgba(124,240,199,0.08); stroke:rgba(124,240,199,0.65); stroke-width:1;}
+      .untilRow{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.85); stroke-width:1;}
+      .compositeRow{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.65); stroke-width:1;}
+
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Approach 1f — Named Composite Action asset (“Routine/Macro”) with parameters + multi-target binding</text>
+
+  <!-- Left: Asset Library -->
+  <rect x="24" y="90" width="320" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Action Assets</text>
+  <line x1="24" y1="140" x2="344" y2="140" class="divider"/>
+  <rect x="46" y="156" width="276" height="30" rx="10" class="chip"/>
+  <text x="58" y="176" class="nodeTextMuted">Search assets…</text>
+
+  <text x="46" y="216" class="small">Named composites</text>
+  <rect x="46" y="232" width="276" height="34" rx="10" class="chipGreen"/>
+  <text x="58" y="254" class="nodeText">Routine: OpenGate</text>
+  <rect x="46" y="272" width="276" height="34" rx="10" class="chipGreen"/>
+  <text x="58" y="294" class="nodeText">Routine: DoorSlide</text>
+  <rect x="46" y="312" width="276" height="34" rx="10" class="chipGreen"/>
+  <text x="58" y="334" class="nodeText">Routine: DamageFlash</text>
+
+  <text x="46" y="382" class="small">Built-in composites</text>
+  <rect x="46" y="398" width="276" height="30" rx="10" class="chipAccent"/>
+  <text x="58" y="418" class="nodeText">Repeat</text>
+  <rect x="46" y="432" width="276" height="30" rx="10" class="chipAccent"/>
+  <text x="58" y="452" class="nodeText">Parallel</text>
+  <rect x="46" y="466" width="276" height="30" rx="10" class="chipAccent"/>
+  <text x="58" y="486" class="nodeText">Sequence</text>
+
+  <rect x="46" y="560" width="276" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">Why “asset”?</text>
+  <text x="66" y="610" class="tiny">Reusable + named + versioned.</text>
+  <text x="66" y="630" class="tiny">Parameters avoid per-scene editing.</text>
+  <text x="66" y="650" class="tiny">Binds to targets when applied.</text>
+
+  <!-- Middle: Routine editor -->
+  <rect x="368" y="90" width="452" height="606" rx="12" class="panel"/>
+  <text x="390" y="122" class="label">Routine Editor — OpenGate</text>
+  <line x1="368" y1="140" x2="820" y2="140" class="divider"/>
+
+  <!-- Params -->
+  <rect x="390" y="156" width="408" height="128" rx="12" class="panel2"/>
+  <text x="412" y="186" class="nodeText">Parameters</text>
+  <rect x="412" y="200" width="186" height="28" rx="10" class="chip"/>
+  <text x="424" y="219" class="nodeTextMuted">leftDoor: Sprite</text>
+  <rect x="612" y="200" width="186" height="28" rx="10" class="chip"/>
+  <text x="624" y="219" class="nodeTextMuted">rightDoor: Sprite</text>
+  <rect x="412" y="234" width="386" height="28" rx="10" class="chip"/>
+  <text x="424" y="253" class="nodeTextMuted">distance: number = 64</text>
+  <rect x="412" y="268" width="386" height="28" rx="10" class="chip"/>
+  <text x="424" y="287" class="nodeTextMuted">durationMs: number = 200</text>
+
+  <!-- Body -->
+  <rect x="390" y="304" width="408" height="372" rx="12" class="panel2"/>
+  <text x="412" y="334" class="nodeText">Body (composite)</text>
+  <rect x="412" y="348" width="386" height="30" rx="10" class="compositeRow"/>
+  <text x="432" y="368" class="nodeText">Parallel</text>
+
+  <rect x="432" y="386" width="170" height="30" rx="10" class="actionRow"/>
+  <text x="444" y="406" class="nodeText">MoveUntil(target=leftDoor)</text>
+  <rect x="444" y="420" width="158" height="30" rx="10" class="untilRow"/>
+  <text x="456" y="440" class="nodeText">Until: time (durationMs)</text>
+
+  <rect x="628" y="386" width="170" height="30" rx="10" class="actionRow"/>
+  <text x="640" y="406" class="nodeText">MoveUntil(target=rightDoor)</text>
+  <rect x="640" y="420" width="158" height="30" rx="10" class="untilRow"/>
+  <text x="652" y="440" class="nodeText">Until: time (durationMs)</text>
+
+  <rect x="432" y="468" width="366" height="30" rx="10" class="actionRow"/>
+  <text x="444" y="488" class="nodeText">Play Sound (gate_open)</text>
+  <rect x="444" y="502" width="354" height="30" rx="10" class="untilRow"/>
+  <text x="456" y="522" class="nodeText">Until: instant</text>
+
+  <rect x="412" y="554" width="386" height="30" rx="10" class="compositeRow"/>
+  <text x="432" y="574" class="nodeText">Repeat ×3 (example built-in composite)</text>
+  <rect x="432" y="588" width="366" height="30" rx="10" class="actionRow"/>
+  <text x="444" y="608" class="nodeText">Flash Tint (white)</text>
+  <rect x="444" y="622" width="354" height="30" rx="10" class="untilRow"/>
+  <text x="456" y="642" class="nodeText">Until: time (80ms)</text>
+
+  <!-- Right: Applying routine inside Event Blocks -->
+  <rect x="844" y="90" width="332" height="606" rx="12" class="panel"/>
+  <text x="866" y="122" class="label">Use in Events</text>
+  <line x1="844" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <rect x="866" y="156" width="288" height="34" rx="10" class="eventHdr"/>
+  <text x="886" y="178" class="nodeText">Event: ButtonPressed</text>
+
+  <rect x="886" y="198" width="268" height="30" rx="10" class="chipGreen"/>
+  <text x="900" y="218" class="nodeText">Call Routine: OpenGate</text>
+  <rect x="904" y="232" width="250" height="30" rx="10" class="chip"/>
+  <text x="916" y="252" class="nodeTextMuted">Bind leftDoor → GateLeft</text>
+  <rect x="904" y="266" width="250" height="30" rx="10" class="chip"/>
+  <text x="916" y="286" class="nodeTextMuted">Bind rightDoor → GateRight</text>
+  <rect x="904" y="300" width="250" height="30" rx="10" class="chip"/>
+  <text x="916" y="320" class="nodeTextMuted">distance = 64</text>
+  <rect x="904" y="334" width="250" height="30" rx="10" class="chip"/>
+  <text x="916" y="354" class="nodeTextMuted">durationMs = 200</text>
+
+  <rect x="886" y="394" width="268" height="30" rx="10" class="chipAccent"/>
+  <text x="900" y="414" class="nodeText">Then: (optional) Next Actions…</text>
+
+  <rect x="866" y="520" width="288" height="156" rx="12" class="callout"/>
+  <text x="886" y="548" class="calloutText">Key UX choice</text>
+  <text x="886" y="570" class="tiny">Routine call is a single row in Event Blocks.</text>
+  <text x="886" y="590" class="tiny">Binding UI makes multi-sprite logic approachable.</text>
+  <text x="886" y="610" class="tiny">Repeat stays a composite container in the same UI.</text>
+  <text x="886" y="630" class="tiny">(Common composites are “built-in”; routines are “user-defined”.)</text>
+</svg>
+

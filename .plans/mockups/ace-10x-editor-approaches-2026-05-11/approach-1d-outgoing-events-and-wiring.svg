@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:800;}
+      .label{fill:var(--muted); font-size:13px; font-weight:800;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.75); stroke-width:1;}
+      .chipGreen{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .chipWarn{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+      .chipDanger{fill:rgba(255,106,122,0.10); stroke:rgba(255,106,122,0.9); stroke-width:1;}
+
+      .eventHdr{fill:rgba(106,167,255,0.14); stroke:rgba(106,167,255,0.9); stroke-width:1;}
+      .actionRow{fill:rgba(124,240,199,0.08); stroke:rgba(124,240,199,0.65); stroke-width:1;}
+      .untilRow{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.85); stroke-width:1;}
+      .emitRow{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.55); stroke-width:1;}
+
+      .nodeText{fill:var(--text); font-size:12px; font-weight:900;}
+      .nodeTextMuted{fill:var(--muted); font-size:12px; font-weight:800;}
+
+      .wire{stroke:rgba(124,240,199,0.75); stroke-width:2; fill:none; marker-end:url(#arrowHead);}
+      .wire2{stroke:rgba(106,167,255,0.75); stroke-width:2; fill:none; marker-end:url(#arrowHead2);}
+      .callout{fill:rgba(124,240,199,0.10); stroke:var(--accent2); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+    <marker id="arrowHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(124,240,199,0.85)"/>
+    </marker>
+    <marker id="arrowHead2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(106,167,255,0.85)"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="720" rx="16" fill="var(--bg)"/>
+  <rect x="24" y="18" width="1152" height="54" rx="10" class="panel"/>
+  <text x="46" y="50" class="title">Approach 1d — Make ACE explicit: Actions emit events; Wiring connects emitted → incoming</text>
+
+  <!-- Left: Outgoing events (emitted) -->
+  <rect x="24" y="90" width="360" height="606" rx="12" class="panel"/>
+  <text x="46" y="122" class="label">Emitted Events (from Actions)</text>
+  <line x1="24" y1="140" x2="384" y2="140" class="divider"/>
+
+  <rect x="46" y="156" width="316" height="30" rx="10" class="chip"/>
+  <text x="58" y="176" class="nodeTextMuted">Search emitted events…</text>
+
+  <rect x="46" y="214" width="316" height="34" rx="10" class="chipAccent"/>
+  <text x="58" y="236" class="nodeText">Player.MoveUntil.Stopped</text>
+  <rect x="46" y="252" width="316" height="34" rx="10" class="chipAccent"/>
+  <text x="58" y="274" class="nodeText">LaserA.EnabledChanged</text>
+  <rect x="46" y="290" width="316" height="34" rx="10" class="chipAccent"/>
+  <text x="58" y="312" class="nodeText">Coin.Collected</text>
+
+  <text x="46" y="360" class="small">Stop reasons (typed)</text>
+  <rect x="46" y="376" width="316" height="30" rx="10" class="chipWarn"/>
+  <text x="58" y="396" class="nodeText">reason: time_elapsed</text>
+  <rect x="46" y="410" width="316" height="30" rx="10" class="chipWarn"/>
+  <text x="58" y="430" class="nodeText">reason: collision</text>
+  <rect x="46" y="444" width="316" height="30" rx="10" class="chipWarn"/>
+  <text x="58" y="464" class="nodeText">reason: counter_reached</text>
+
+  <rect x="46" y="560" width="316" height="116" rx="12" class="callout"/>
+  <text x="66" y="588" class="calloutText">Intuition win</text>
+  <text x="66" y="610" class="tiny">Non-coders can “see the signal” an action produces.</text>
+  <text x="66" y="630" class="tiny">Then connect it to “what should happen next”.</text>
+  <text x="66" y="650" class="tiny">Stops feeling like E→A→C; it’s A→Until→Emit.</text>
+
+  <!-- Middle: Action definition shows Emits -->
+  <rect x="408" y="90" width="444" height="606" rx="12" class="panel"/>
+  <text x="430" y="122" class="label">Action Definition (selected)</text>
+  <line x1="408" y1="140" x2="852" y2="140" class="divider"/>
+
+  <rect x="430" y="156" width="400" height="34" rx="10" class="actionRow"/>
+  <text x="450" y="178" class="nodeText">Action: MoveUntil (dx: 0, dy: -40)</text>
+  <rect x="450" y="196" width="380" height="30" rx="10" class="untilRow"/>
+  <text x="470" y="216" class="nodeText">Until: Time Elapsed (120ms)</text>
+  <rect x="450" y="232" width="380" height="30" rx="10" class="emitRow"/>
+  <text x="470" y="252" class="nodeText">Emits: Player.MoveUntil.Stopped</text>
+
+  <rect x="430" y="294" width="400" height="152" rx="12" class="panel2"/>
+  <text x="452" y="324" class="nodeText">Emit payload (auto)</text>
+  <rect x="452" y="338" width="356" height="28" rx="10" class="chip"/>
+  <text x="464" y="357" class="nodeTextMuted">targetId: Player</text>
+  <rect x="452" y="370" width="356" height="28" rx="10" class="chip"/>
+  <text x="464" y="389" class="nodeTextMuted">reason: time_elapsed</text>
+  <rect x="452" y="402" width="356" height="28" rx="10" class="chip"/>
+  <text x="464" y="421" class="nodeTextMuted">durationMs: 120</text>
+
+  <rect x="430" y="476" width="400" height="200" rx="12" class="panel2"/>
+  <text x="452" y="506" class="nodeText">Quick wiring</text>
+  <rect x="452" y="520" width="356" height="30" rx="10" class="chipAccent"/>
+  <text x="464" y="540" class="nodeText">Connect emitted event…</text>
+  <rect x="452" y="556" width="356" height="30" rx="10" class="chip"/>
+  <text x="464" y="576" class="nodeTextMuted">Suggested: Next action on Player</text>
+  <rect x="452" y="592" width="356" height="30" rx="10" class="chip"/>
+  <text x="464" y="612" class="nodeTextMuted">Suggested: Update counter</text>
+  <rect x="452" y="628" width="356" height="30" rx="10" class="chip"/>
+  <text x="464" y="648" class="nodeTextMuted">Suggested: Trigger Goal check</text>
+
+  <!-- Right: Incoming events (listeners) -->
+  <rect x="876" y="90" width="300" height="606" rx="12" class="panel"/>
+  <text x="898" y="122" class="label">Incoming Events (Listeners)</text>
+  <line x1="876" y1="140" x2="1176" y2="140" class="divider"/>
+
+  <rect x="898" y="156" width="256" height="30" rx="10" class="chip"/>
+  <text x="910" y="176" class="nodeTextMuted">Search listeners…</text>
+
+  <rect x="898" y="214" width="256" height="34" rx="10" class="eventHdr"/>
+  <text x="910" y="236" class="nodeText">On Event: Player.MoveUntil.Stopped</text>
+  <rect x="918" y="252" width="236" height="30" rx="10" class="actionRow"/>
+  <text x="930" y="272" class="nodeText">Action: Play Sound</text>
+
+  <rect x="898" y="310" width="256" height="34" rx="10" class="eventHdr"/>
+  <text x="910" y="332" class="nodeText">On Event: Coin.Collected</text>
+  <rect x="918" y="348" width="236" height="30" rx="10" class="actionRow"/>
+  <text x="930" y="368" class="nodeText">Action: Add to Counter(score, +points)</text>
+
+  <rect x="898" y="406" width="256" height="34" rx="10" class="eventHdr"/>
+  <text x="910" y="428" class="nodeText">On Event: LasersEnabledCount.Changed</text>
+  <rect x="918" y="444" width="236" height="30" rx="10" class="actionRow"/>
+  <text x="930" y="464" class="nodeText">Action: Open Gate</text>
+
+  <!-- Wiring arrows -->
+  <path d="M 362 232 C 520 232, 740 232, 900 232" class="wire2"/>
+  <path d="M 810 546 C 880 520, 910 500, 918 470" class="wire"/>
+</svg>
+
