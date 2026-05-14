@@ -55,11 +55,18 @@ export async function seedSampleScene(page: Page, options: { once?: boolean } = 
   await page.addInitScript(
     ([sceneYaml, seedOnce]) => {
       const sentinelKey = 'phaseractions.testSeeded.v1';
+      const uiResetKey = 'phaseractions.testUiReset.v1';
       if (seedOnce && window.localStorage.getItem(sentinelKey)) return;
       if (seedOnce) window.localStorage.setItem(sentinelKey, '1');
 
       // Tests must be isolated by default: reset the persisted authored project before boot.
       window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
+      if (!window.localStorage.getItem(uiResetKey)) {
+        window.localStorage.setItem(uiResetKey, '1');
+        window.localStorage.removeItem('phaseractions.leftPaneWidth.v1');
+        window.localStorage.removeItem('phaseractions.assetsDockHeight.v1');
+        window.localStorage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
+      }
       window.localStorage.setItem('phaseractions.showHitboxOverlay.v1', '1');
       window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
       window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
@@ -73,8 +80,15 @@ export async function seedSampleScene(page: Page, options: { once?: boolean } = 
 export async function seedProject(page: Page, project: any): Promise<void> {
   const yaml = serializeProjectToYaml(project);
   await page.addInitScript((sceneYaml) => {
+    const uiResetKey = 'phaseractions.testUiReset.v1';
     // Keep tests deterministic by clearing persisted UI state tied to previous runs.
     window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
+    if (!window.localStorage.getItem(uiResetKey)) {
+      window.localStorage.setItem(uiResetKey, '1');
+      window.localStorage.removeItem('phaseractions.leftPaneWidth.v1');
+      window.localStorage.removeItem('phaseractions.assetsDockHeight.v1');
+      window.localStorage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
+    }
     window.localStorage.setItem('phaseractions.showHitboxOverlay.v1', '1');
     window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
     window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
