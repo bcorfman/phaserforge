@@ -1,13 +1,13 @@
 import { createApp } from './server/app';
 import { loadSettingsFromEnv } from './settings';
 import { createPrismaRepositories } from './server/repositories/prisma';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from './db/prismaClient';
 
 const port = Number(process.env.PORT ?? 8787);
 const settings = loadSettingsFromEnv(process.env);
 
 const databaseUrl = process.env.DATABASE_URL;
-const prisma = databaseUrl ? new PrismaClient() : null;
+const prisma = createPrismaClient(databaseUrl);
 const repositories = prisma ? createPrismaRepositories(prisma) : undefined;
 
 const app = createApp({ settings, ...(repositories ? { repositories } : {}) });
