@@ -28,6 +28,6 @@ test('Preview/play mode builds Arcade Physics groups for formations', async ({ p
     return state?.mode;
   }).toBe('edit');
 
-  const after = await getFormationPhysicsGroupInfo(page, 'g-enemies');
-  expect(after).toBeNull();
+  // Mode can flip back to `edit` before the scene swap / teardown fully completes in some engines.
+  await expect.poll(async () => getFormationPhysicsGroupInfo(page, 'g-enemies'), { timeout: 20000 }).toBeNull();
 });
