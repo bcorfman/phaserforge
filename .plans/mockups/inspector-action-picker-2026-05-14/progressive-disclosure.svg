@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780">
+  <defs>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --panel:#111a33;
+        --panel2:#0f1730;
+        --stroke:#33406a;
+        --text:#e7ecff;
+        --muted:#aab4e6;
+        --accent:#6aa7ff;
+        --accent2:#7cf0c7;
+        --warn:#ffb86a;
+        --danger:#ff6a7a;
+      }
+      text{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+      .title{fill:var(--text); font-size:18px; font-weight:900;}
+      .subtitle{fill:var(--muted); font-size:12px; font-weight:700;}
+      .label{fill:var(--muted); font-size:13px; font-weight:800;}
+      .small{fill:var(--muted); font-size:12px;}
+      .tiny{fill:var(--muted); font-size:11px;}
+      .panel{fill:var(--panel); stroke:var(--stroke); stroke-width:1;}
+      .panel2{fill:var(--panel2); stroke:var(--stroke); stroke-width:1;}
+      .divider{stroke:rgba(106,167,255,0.18); stroke-width:1;}
+      .chip{fill:#0c1430; stroke:var(--stroke); stroke-width:1;}
+      .chipAccent{fill:rgba(106,167,255,0.18); stroke:rgba(106,167,255,0.7); stroke-width:1;}
+      .chipGreen{fill:rgba(124,240,199,0.10); stroke:rgba(124,240,199,0.9); stroke-width:1;}
+      .chipWarn{fill:rgba(255,184,106,0.10); stroke:rgba(255,184,106,0.9); stroke-width:1;}
+      .chipDanger{fill:rgba(255,106,122,0.10); stroke:rgba(255,106,122,0.9); stroke-width:1;}
+      .textStrong{fill:var(--text); font-size:12px; font-weight:900;}
+      .textMutedStrong{fill:var(--muted); font-size:12px; font-weight:900;}
+      .callout{fill:rgba(106,167,255,0.10); stroke:rgba(106,167,255,0.8); stroke-width:1; stroke-dasharray:6 6;}
+      .calloutText{fill:var(--text); font-size:12px; font-weight:900;}
+    </style>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="780" rx="18" fill="var(--bg)"/>
+
+  <!-- Header -->
+  <rect x="24" y="18" width="1152" height="60" rx="12" class="panel"/>
+  <text x="48" y="46" class="title">Progressive Disclosure — Common vs Less Common “Add Action” picker</text>
+  <text x="48" y="66" class="subtitle">Default: show Common actions (Motion + Color). Optional: reveal Less Common actions (everything else) behind a simple toggle.</text>
+
+  <!-- Two states side-by-side -->
+  <rect x="24" y="96" width="564" height="660" rx="14" class="panel"/>
+  <rect x="612" y="96" width="564" height="660" rx="14" class="panel"/>
+
+  <text x="48" y="128" class="label">State 1 — Default (Less Common hidden)</text>
+  <text x="636" y="128" class="label">State 2 — Less Common shown</text>
+
+  <!-- =============== -->
+  <!-- LEFT: DEFAULT    -->
+  <!-- =============== -->
+
+  <!-- Inspector shell -->
+  <rect x="48" y="150" width="524" height="300" rx="12" class="panel2"/>
+  <text x="68" y="178" class="textMutedStrong">Inspector — Player</text>
+  <line x1="48" y1="192" x2="572" y2="192" class="divider"/>
+  <text x="68" y="220" class="textStrong">Actions</text>
+
+  <!-- Compact add control -->
+  <rect x="68" y="236" width="332" height="32" rx="12" class="chipGreen"/>
+  <text x="82" y="257" class="textStrong">Add Action…</text>
+  <text x="320" y="257" class="textMutedStrong">Ctrl+K</text>
+  <rect x="406" y="236" width="166" height="32" rx="12" class="chip"/>
+  <text x="418" y="257" class="textMutedStrong">Less Common: Off</text>
+
+  <!-- Picker dropdown -->
+  <rect x="68" y="280" width="504" height="394" rx="14" class="panel" filter="url(#shadow)"/>
+  <rect x="84" y="298" width="472" height="30" rx="12" class="chipAccent"/>
+  <text x="96" y="318" class="textStrong">Search actions…</text>
+
+  <text x="84" y="352" class="tiny">Common (Motion + Color)</text>
+  <rect x="84" y="366" width="472" height="28" rx="10" class="chipAccent"/>
+  <text x="96" y="385" class="textStrong">Move Until</text>
+  <rect x="84" y="398" width="472" height="28" rx="10" class="chip"/>
+  <text x="96" y="417" class="textMutedStrong">Move X Until</text>
+  <rect x="84" y="430" width="472" height="28" rx="10" class="chip"/>
+  <text x="96" y="449" class="textMutedStrong">Move Y Until</text>
+  <rect x="84" y="462" width="472" height="28" rx="10" class="chip"/>
+  <text x="96" y="481" class="textMutedStrong">Blink Until</text>
+  <rect x="84" y="494" width="472" height="28" rx="10" class="chip"/>
+  <text x="96" y="513" class="textMutedStrong">Cycle Frames Until</text>
+
+  <text x="84" y="586" class="tiny">Shortcuts</text>
+  <rect x="84" y="600" width="228" height="26" rx="10" class="chip"/>
+  <text x="96" y="617" class="textMutedStrong">Movement</text>
+  <rect x="320" y="600" width="236" height="26" rx="10" class="chip"/>
+  <text x="332" y="617" class="textMutedStrong">Visual (Color)</text>
+
+  <text x="84" y="650" class="tiny">Less Common actions are hidden</text>
+  <rect x="84" y="662" width="472" height="44" rx="12" class="chip"/>
+  <text x="96" y="688" class="textMutedStrong">Turn on “Less Common” to show everything besides Motion + Color</text>
+
+  <!-- Callout left -->
+  <rect x="48" y="468" width="524" height="288" rx="12" class="callout"/>
+  <text x="68" y="496" class="calloutText">Behavior</text>
+  <text x="68" y="520" class="small">- Primary picker stays small and stable as the catalog grows</text>
+  <text x="68" y="540" class="small">- Common actions are Motion + Color (fast path)</text>
+  <text x="68" y="560" class="small">- Less Common stays discoverable but not always visible</text>
+  <text x="68" y="588" class="calloutText">Rule</text>
+  <text x="68" y="612" class="small">- Common: direct motion + direct color changing actions</text>
+  <text x="68" y="632" class="small">- Less Common: everything else (sound, spawns, logic, data, etc.)</text>
+
+  <!-- =============== -->
+  <!-- RIGHT: ADVANCED  -->
+  <!-- =============== -->
+
+  <!-- Inspector shell -->
+  <rect x="636" y="150" width="524" height="300" rx="12" class="panel2"/>
+  <text x="656" y="178" class="textMutedStrong">Inspector — Player</text>
+  <line x1="636" y1="192" x2="1160" y2="192" class="divider"/>
+  <text x="656" y="220" class="textStrong">Actions</text>
+
+  <!-- Compact add control -->
+  <rect x="656" y="236" width="332" height="32" rx="12" class="chipGreen"/>
+  <text x="670" y="257" class="textStrong">Add Action…</text>
+  <text x="908" y="257" class="textMutedStrong">Ctrl+K</text>
+  <rect x="994" y="236" width="166" height="32" rx="12" class="chipAccent"/>
+  <text x="1006" y="257" class="textStrong">Less Common: On</text>
+
+  <!-- Picker dropdown -->
+  <rect x="656" y="280" width="504" height="394" rx="14" class="panel" filter="url(#shadow)"/>
+  <rect x="672" y="298" width="472" height="30" rx="12" class="chipAccent"/>
+  <text x="684" y="318" class="textStrong">Search actions…</text>
+
+  <!-- Less common filters row -->
+  <text x="672" y="352" class="tiny">Less Common groups</text>
+  <rect x="672" y="366" width="130" height="24" rx="10" class="chipAccent"/>
+  <text x="684" y="382" class="textStrong">All</text>
+  <rect x="808" y="366" width="118" height="24" rx="10" class="chip"/>
+  <text x="820" y="382" class="textMutedStrong">Flow</text>
+  <rect x="930" y="366" width="118" height="24" rx="10" class="chip"/>
+  <text x="942" y="382" class="textMutedStrong">State</text>
+  <rect x="1050" y="366" width="94" height="24" rx="10" class="chip"/>
+  <text x="1062" y="382" class="textMutedStrong">Visual</text>
+
+  <text x="672" y="420" class="tiny">Less Common</text>
+  <rect x="672" y="434" width="472" height="28" rx="10" class="chipAccent"/>
+  <text x="684" y="453" class="textStrong">Wait</text>
+  <rect x="672" y="466" width="472" height="28" rx="10" class="chip"/>
+  <text x="684" y="485" class="textMutedStrong">Emit Event</text>
+  <rect x="672" y="498" width="472" height="28" rx="10" class="chip"/>
+  <text x="684" y="517" class="textMutedStrong">Set Counter</text>
+  <rect x="672" y="530" width="472" height="28" rx="10" class="chip"/>
+  <text x="684" y="549" class="textMutedStrong">Add To Counter</text>
+  <rect x="672" y="562" width="472" height="28" rx="10" class="chip"/>
+  <text x="684" y="581" class="textMutedStrong">Repeat</text>
+
+  <!-- Footer hint -->
+  <rect x="672" y="616" width="472" height="44" rx="12" class="chip"/>
+  <text x="684" y="642" class="textMutedStrong">Tip: keep “Less Common” off for day-to-day speed</text>
+
+  <!-- Callout right -->
+  <rect x="612" y="468" width="564" height="288" rx="12" class="callout"/>
+  <text x="636" y="496" class="calloutText">Notes</text>
+  <text x="636" y="520" class="small">- Less Common toggle is sticky per-user (preference)</text>
+  <text x="636" y="540" class="small">- Common bucket stays laser-focused: Motion + Color only</text>
+  <text x="636" y="560" class="small">- You can still find Less Common items via search when hidden (optional)</text>
+  <text x="636" y="588" class="calloutText">Inspector space impact</text>
+  <text x="636" y="612" class="small">- Replaces large action button group with a single Add control + toggle</text>
+  <text x="636" y="632" class="small">- Scales indefinitely (new actions don’t add persistent UI)</text>
+
+</svg>
