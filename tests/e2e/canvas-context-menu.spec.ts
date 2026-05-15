@@ -1,10 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, gotoStudio, seedSampleScene, selectGroupInSceneGraph, worldToClient, waitForSampleScene } from './helpers';
+import { dismissViewHint, seedSampleScene, selectGroupInSceneGraph, worldToClient } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
-  await gotoStudio(page);
-  await waitForSampleScene(page);
 });
 
 test('right-click does not open a canvas context menu (selection actions are on the selection bar)', async ({ page }) => {
