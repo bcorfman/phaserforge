@@ -7,6 +7,75 @@ function coerceRecord<T>(value: unknown): Record<string, T> {
   return value as Record<string, T>;
 }
 
+function migrateLegacySnippetsAndMacrosToPatterns(raw: any): NonNullable<ProjectSpec['patterns']> | undefined {
+  const patternsRaw = raw?.patterns;
+  if (patternsRaw !== undefined) {
+    const patterns = coerceRecord<any>(patternsRaw);
+    return Object.keys(patterns).length > 0 ? patterns : {};
+  }
+
+  const snippets = raw?.snippets !== undefined ? coerceRecord<any>(raw.snippets) : undefined;
+  const macros = raw?.macros !== undefined ? coerceRecord<any>(raw.macros) : undefined;
+  if (!snippets && !macros) return undefined;
+
+  const next: NonNullable<ProjectSpec['patterns']> = {};
+  const takenIds = new Set<string>();
+  const takenNames = new Set<string>();
+
+  if (macros) {
+    for (const [id, macro] of Object.entries(macros)) {
+      const name = typeof (macro as any)?.name === 'string' && (macro as any).name.length > 0 ? (macro as any).name : id;
+      next[id] = {
+        id,
+        name,
+        params: Array.isArray((macro as any)?.params) ? (macro as any).params : [],
+        body: Array.isArray((macro as any)?.body) ? (macro as any).body : [],
+      };
+      takenIds.add(id);
+      takenNames.add(name);
+    }
+  }
+
+  const allocImportedId = (baseId: string): string => {
+    if (!takenIds.has(baseId)) return baseId;
+    for (let i = 2; i < 1000; i += 1) {
+      const candidate = `${baseId}-imported${i}`;
+      if (!takenIds.has(candidate)) return candidate;
+    }
+    return `${baseId}-imported${Date.now()}`;
+  };
+
+  const allocImportedName = (baseName: string): string => {
+    if (!takenNames.has(baseName)) return baseName;
+    const imported = `${baseName} (Imported)`;
+    if (!takenNames.has(imported)) return imported;
+    for (let i = 2; i < 1000; i += 1) {
+      const candidate = `${baseName} (Imported ${i})`;
+      if (!takenNames.has(candidate)) return candidate;
+    }
+    return `${baseName} (Imported ${Date.now()})`;
+  };
+
+  if (snippets) {
+    for (const [id, snippet] of Object.entries(snippets)) {
+      const rawName = typeof (snippet as any)?.name === 'string' && (snippet as any).name.length > 0 ? (snippet as any).name : id;
+      const chosenId = takenIds.has(id) ? allocImportedId(id) : id;
+      const chosenName = takenNames.has(rawName) ? allocImportedName(rawName) : rawName;
+      next[chosenId] = {
+        id: chosenId,
+        name: chosenName,
+        params: [],
+        body: Array.isArray((snippet as any)?.attachmentsTemplate) ? (snippet as any).attachmentsTemplate : [],
+        ...(typeof (snippet as any)?.source === 'object' && (snippet as any).source ? { source: (snippet as any).source } : {}),
+      };
+      takenIds.add(chosenId);
+      takenNames.add(chosenName);
+    }
+  }
+
+  return Object.keys(next).length > 0 ? next : {};
+}
+
 function coerceSceneMeta(
   value: unknown,
   scenes: Record<string, GameSceneSpec>
@@ -134,7 +203,9 @@ function coerceTriggerZones(value: unknown): TriggerZoneSpec[] | undefined {
 }
 
 export function serializeProjectToYaml(project: ProjectSpec): string {
-  return stringify(project, {
+  // Canonicalize to patterns-only write; legacy keys are read-only during migration window.
+  const { snippets: _snippets, macros: _macros, ...rest } = project as any;
+  return stringify(rest, {
     indent: 2,
     lineWidth: 0,
     minContentWidth: 0,
@@ -186,6 +257,7 @@ export function parseProjectYaml(text: string): ProjectSpec {
     throw new Error(`Project baseSceneId references unknown scene ${baseSceneId}`);
   }
   const sceneMeta = coerceSceneMeta(raw.sceneMeta, scenes);
+  const patterns = migrateLegacySnippetsAndMacrosToPatterns(raw);
 
   return {
     id: typeof raw.id === 'string' ? raw.id : 'project-1',
@@ -203,7 +275,6 @@ export function parseProjectYaml(text: string): ProjectSpec {
     ...(sceneMeta ? { sceneMeta } : {}),
     scenes,
     initialSceneId,
-    ...(raw.snippets !== undefined ? { snippets: coerceRecord(raw.snippets) } : {}),
-    ...(raw.macros !== undefined ? { macros: coerceRecord(raw.macros) } : {}),
+    ...(patterns !== undefined ? { patterns } : {}),
   };
 }

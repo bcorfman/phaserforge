@@ -183,7 +183,16 @@ export interface ProjectSpec {
   initialSceneId: Id;
   collections?: Record<Id, CollectionSpec>;
   counters?: Record<Id, CounterSpec>;
+  patterns?: Record<Id, PatternSpec>;
+  /**
+   * Legacy (read-only via YAML migration). Do not serialize.
+   * TODO: remove after migration window.
+   */
   snippets?: Record<Id, SnippetSpec>;
+  /**
+   * Legacy (read-only via YAML migration). Do not serialize.
+   * TODO: remove after migration window.
+   */
   macros?: Record<Id, MacroSpec>;
 }
 
@@ -531,4 +540,12 @@ export interface MacroSpec {
   name: string;
   params: ParamSpec[];
   body: AttachmentTemplate[];
+}
+
+export interface PatternSpec {
+  id: Id;
+  name: string;
+  params: ParamSpec[];
+  body: AttachmentTemplate[];
+  source?: { sceneId?: Id; targetKind?: 'entity' | 'group' };
 }
