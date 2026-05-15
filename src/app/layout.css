@@ -635,6 +635,31 @@ html[data-theme='dark'] .phaser-frame {
   gap: 0.85rem;
 }
 
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  padding: 1rem;
+}
+
+.drawer-card {
+  width: min(34rem, 96vw);
+  height: min(88vh, 56rem);
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid var(--stroke);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
 .canvas-overlay {
   position: absolute;
   inset: 0;

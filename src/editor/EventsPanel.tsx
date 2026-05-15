@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AttachmentSpec, AttachmentTriggerSpec, EditorRegistryConfig, EventBlockSpec, Id, ProjectSpec, SceneSpec, TargetRef } from '../model/types';
 import { type AttachedActionRow, buildAttachedActionRowsForTargetAndEvent } from './attachmentCommands';
 import { getTargetLabel } from './attachmentCommands';
+import { ActionLibraryDrawer } from './ActionLibraryDrawer';
+import { loadPinnedActionTypes, togglePinnedActionType } from './actionPins';
 
 const SUPPORTED_PRESETS = new Set([
   'MoveUntil',
@@ -320,7 +322,7 @@ function EventBlockCard({
   project: ProjectSpec;
   scene: SceneSpec;
   target: TargetRef;
-  supportedPresetEntries: Array<{ type: string; displayName: string }>;
+  supportedPresetEntries: Array<{ type: string; displayName: string; category?: string }>;
   selectedAttachmentId?: Id;
   inputActionIds: string[];
   onUpdateEventBlock: (next: EventBlockSpec) => void;
@@ -345,12 +347,20 @@ function EventBlockCard({
   const [selectedParallelGroupId, setSelectedParallelGroupId] = useState<string | null>(null);
   const [expandedParallelGroups, setExpandedParallelGroups] = useState<Set<string>>(() => new Set());
   const [collapsedRepeats, setCollapsedRepeats] = useState<Set<string>>(() => new Set());
+  const [filterText, setFilterText] = useState<string>('');
+  const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
+  const [drawerCategory, setDrawerCategory] = useState<string>('All');
+  const [pinnedTypes, setPinnedTypes] = useState<Set<string>>(() => new Set(loadPinnedActionTypes()));
 
   const selectedCount = selectedParallelGroupId ? 1 : selectedAttachmentIds.size;
   const clearSelection = () => {
     setSelectedAttachmentIds(new Set());
     setSelectedParallelGroupId(null);
   };
+  useEffect(() => {
+    clearSelection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterText]);
   const toggleSelected = (id: Id) => {
     setSelectedParallelGroupId(null);
     setSelectedAttachmentIds((prev) => {
@@ -521,6 +531,29 @@ function EventBlockCard({
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [scene.attachments, scene.eventBlocks]);
 
+  const displayNameByType = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const entry of supportedPresetEntries) map.set(entry.type, entry.displayName);
+    return map;
+  }, [supportedPresetEntries]);
+
+  const normalizedFilter = filterText.trim().toLowerCase();
+  const attachmentMatchesFilter = (attachment: any): boolean => {
+    if (!normalizedFilter) return true;
+    const presetId = String(attachment.presetId ?? '');
+    const name = typeof attachment.name === 'string' ? attachment.name : '';
+    const displayName = displayNameByType.get(presetId) ?? '';
+    const haystack = `${name} ${presetId} ${displayName}`.toLowerCase();
+    return haystack.includes(normalizedFilter);
+  };
+
+  const pickPreset = (presetId: string) => {
+    const init: Partial<AttachmentSpec> = { eventId: block.id };
+    if (presetId === 'Call') init.condition = { type: 'Instant' } as any;
+    onAddAttachment(presetId, init);
+    setDrawerOpen(false);
+  };
+
   return (
     <div className="inspector-block" style={{ marginTop: 10 }} data-testid={`event-block-${block.id}`}>
       <div className="member-row" style={{ justifyContent: 'space-between' }}>
@@ -614,24 +647,45 @@ function EventBlockCard({
         ) : <div />}
       </div>
 
-      <div className="panel-heading">Add Action</div>
-      <div className="member-tags">
-        {supportedPresetEntries.map((entry) => (
+      <div className="panel-heading-row">
+        <div className="panel-heading">Add Action</div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1 }}>
+          <input
+            className="text-input"
+            aria-label="Action Filter"
+            data-testid={hideEventControls ? 'event-action-filter' : `event-action-filter-${block.id}`}
+            type="text"
+            value={filterText}
+            placeholder="Filter…"
+            onChange={(e) => setFilterText(e.target.value)}
+          />
           <button
-            key={entry.type}
             className="tag-button"
             type="button"
-            data-testid={hideEventControls ? `add-attachment-${entry.type}` : `add-event-attachment-${block.id}-${entry.type}`}
+            data-testid={hideEventControls ? 'action-library-open' : `action-library-open-${block.id}`}
             onClick={() => {
-              const init: Partial<AttachmentSpec> = { eventId: block.id };
-              if (entry.type === 'Call') init.condition = { type: 'Instant' } as any;
-              onAddAttachment(entry.type, init);
+              setPinnedTypes(new Set(loadPinnedActionTypes()));
+              setDrawerOpen(true);
             }}
           >
-            {entry.displayName}
+            + Add
           </button>
-        ))}
+        </div>
       </div>
+
+      <ActionLibraryDrawer
+        open={drawerOpen}
+        title="Action Library"
+        search={filterText}
+        onSearchChange={setFilterText}
+        actions={supportedPresetEntries}
+        pinnedTypes={pinnedTypes}
+        onTogglePin={(type) => setPinnedTypes(new Set(togglePinnedActionType(type)))}
+        selectedCategory={drawerCategory}
+        onSelectCategory={setDrawerCategory}
+        onPick={pickPreset}
+        onClose={() => setDrawerOpen(false)}
+      />
 
       <div className="panel-heading">Steps</div>
       {rootRows.length === 0 && <div className="muted">No actions yet.</div>}
@@ -710,6 +764,7 @@ function EventBlockCard({
 
       <div className="member-list">
         {(() => {
+          const forceExpandForFilter = normalizedFilter.length > 0;
           const renderRows = (parentAttachmentId: Id | undefined, depth: number): JSX.Element[] => {
             const rows = buildAttachedActionRowsForTargetAndEvent(scene, target, eventIdForRows, parentAttachmentId);
             return rows.flatMap((row, rowIndex) => {
@@ -717,12 +772,16 @@ function EventBlockCard({
                 const attachment: any = row.attachment;
                 const isRepeat = attachment.presetId === 'Repeat' && Array.isArray(attachment.children) && attachment.children.length > 0;
                 const indexLabel = `Step ${rowIndex + 1}`;
+                const childRows = isRepeat ? renderRows(attachment.id, depth + 1) : [];
+                const showSelf = attachmentMatchesFilter(attachment);
+                const showBecauseChild = childRows.length > 0;
+                if (!showSelf && !showBecauseChild) return [];
                 const base = (
                   <div key={attachment.id} style={{ paddingLeft: depth * 18 }}>
                     {isRepeat ? (
                       <div className="member-row">
                         <button className="tag-button" type="button" onClick={() => toggleRepeatCollapsed(attachment.id)}>
-                          {collapsedRepeats.has(attachment.id) ? '▸' : '▾'} Repeat
+                          {(collapsedRepeats.has(attachment.id) && !forceExpandForFilter) ? '▸' : '▾'} Repeat
                         </button>
                         <span className="muted" style={{ marginLeft: 8 }}>Add child:</span>
                         {supportedPresetEntries
@@ -746,11 +805,13 @@ function EventBlockCard({
                     })}
                   </div>
                 );
-                if (!isRepeat || collapsedRepeats.has(attachment.id)) return [base];
-                return [base, ...renderRows(attachment.id, depth + 1)];
+                if (!isRepeat) return [base];
+                if (!forceExpandForFilter && collapsedRepeats.has(attachment.id)) return [base];
+                return [base, ...childRows];
               }
 
               const isExpanded = expandedParallelGroups.has(row.groupId);
+              if (normalizedFilter.length > 0 && !row.attachments.some((a: any) => attachmentMatchesFilter(a))) return [];
               const header = (
                 <div key={`parallel-${row.groupId}`} style={{ paddingLeft: depth * 18 }}>
                   <div className="member-row">
@@ -764,7 +825,7 @@ function EventBlockCard({
                       type="checkbox"
                     />
                     <button className="tag-button" type="button" onClick={() => toggleExpanded(row.groupId)}>
-                      {isExpanded ? '▾' : '▸'} Parallel · {row.attachments.length} actions
+                      {(isExpanded || forceExpandForFilter) ? '▾' : '▸'} Parallel · {row.attachments.length} actions
                     </button>
                     <button className="tag-button" type="button" onClick={() => onUngroupParallel(row.groupId, block.id)}>
                       Ungroup
@@ -786,7 +847,7 @@ function EventBlockCard({
                       Down
                     </button>
                   </div>
-                  {isExpanded &&
+                  {(isExpanded || forceExpandForFilter) &&
                     row.attachments.map((attachment) => (
                       <div key={attachment.id} className="member-row" style={{ paddingLeft: 18 }}>
                         <button className="tag-button" type="button" onClick={() => onSelectAttachment(attachment.id)}>
