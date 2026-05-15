@@ -142,14 +142,17 @@ export function Inspector() {
           onAddAttachment={(presetId, init) => dispatch({ type: 'create-attachment', target: { type: 'group', groupId: group.id }, presetId, init })}
           onSelectAttachment={(id) => dispatch({ type: 'select', selection: { kind: 'attachment', id } })}
           onMoveAttachment={(id, direction) => dispatch({ type: 'move-attachment', id, direction })}
+          onReorderAttachments={({ eventId, parentAttachmentId, orderedAttachmentIds }) =>
+            dispatch({ type: 'reorder-attachments', target: { type: 'group', groupId: group.id }, eventId, parentAttachmentId, orderedAttachmentIds })
+          }
           onRemoveAttachment={(id) => dispatch({ type: 'remove-attachment', id })}
           onMakeParallelAttachments={(ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'group', groupId: group.id }, ids })}
           onUngroupParallelAttachments={(groupId, eventId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'group', groupId: group.id }, groupId, ...(eventId ? { eventId } : {}) })}
           onMoveParallelAttachmentGroup={(groupId, direction, eventId) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'group', groupId: group.id }, groupId, direction, ...(eventId ? { eventId } : {}) })}
-          onCreateSnippetFromAttachments={(attachmentIds, name) => dispatch({ type: 'create-snippet-from-attachments', attachmentIds, ...(name ? { name } : {}) })}
-          onApplySnippet={(snippetId, eventId) => dispatch({ type: 'apply-snippet', snippetId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}) })}
-          onCreateMacroFromAttachments={(attachmentIds, name) => dispatch({ type: 'create-macro-from-attachments', attachmentIds, ...(name ? { name } : {}) })}
-          onApplyMacro={(macroId, eventId) => dispatch({ type: 'apply-macro', macroId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}) })}
+          onCreatePatternFromAttachments={(attachmentIds, name) => dispatch({ type: 'create-pattern-from-attachments', attachmentIds, ...(name ? { name } : {}) })}
+          onApplyPattern={(patternId, eventId, bindings) =>
+            dispatch({ type: 'apply-pattern', patternId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}), bindings })
+          }
           onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
           onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
           onUpdateGroup={updateGroup}
@@ -179,14 +182,14 @@ export function Inspector() {
           onAddAttachment: (presetId, init) => dispatch({ type: 'create-attachment', target: { type: 'entity', entityId: entity.id }, presetId, init }),
           onSelectAttachment: (id) => dispatch({ type: 'select', selection: { kind: 'attachment', id } }),
           onMoveAttachment: (id, direction) => dispatch({ type: 'move-attachment', id, direction }),
+          onReorderAttachments: ({ eventId, parentAttachmentId, orderedAttachmentIds }) =>
+            dispatch({ type: 'reorder-attachments', target: { type: 'entity', entityId: entity.id }, eventId, parentAttachmentId, orderedAttachmentIds }),
           onRemoveAttachment: (id) => dispatch({ type: 'remove-attachment', id }),
           onMakeParallelAttachments: (ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'entity', entityId: entity.id }, ids }),
           onUngroupParallelAttachments: (groupId, eventId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'entity', entityId: entity.id }, groupId, ...(eventId ? { eventId } : {}) }),
           onMoveParallelAttachmentGroup: (groupId, direction, eventId) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'entity', entityId: entity.id }, groupId, direction, ...(eventId ? { eventId } : {}) }),
-          onCreateSnippetFromAttachments: (attachmentIds, name) => dispatch({ type: 'create-snippet-from-attachments', attachmentIds, ...(name ? { name } : {}) }),
-          onApplySnippet: (snippetId, eventId) => dispatch({ type: 'apply-snippet', snippetId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}) }),
-          onCreateMacroFromAttachments: (attachmentIds, name) => dispatch({ type: 'create-macro-from-attachments', attachmentIds, ...(name ? { name } : {}) }),
-          onApplyMacro: (macroId, eventId) => dispatch({ type: 'apply-macro', macroId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}) }),
+          onCreatePatternFromAttachments: (attachmentIds, name) => dispatch({ type: 'create-pattern-from-attachments', attachmentIds, ...(name ? { name } : {}) }),
+          onApplyPattern: (patternId, eventId, bindings) => dispatch({ type: 'apply-pattern', patternId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}), bindings }),
           onSetEntitiesAsset: (entityIds, asset) => dispatch({ type: 'set-entities-asset', entityIds, asset }),
         })
       ) : (
@@ -273,14 +276,13 @@ export function renderEntityInspector(
     onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
+    onReorderAttachments: (opts: { eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
     onRemoveAttachment: (id: string) => void;
     onMakeParallelAttachments: (ids: Id[]) => void;
     onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
-    onCreateSnippetFromAttachments: (attachmentIds: Id[], name?: string) => void;
-    onApplySnippet: (snippetId: Id, eventId?: Id) => void;
-    onCreateMacroFromAttachments: (attachmentIds: Id[], name?: string) => void;
-    onApplyMacro: (macroId: Id, eventId?: Id) => void;
+    onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
+    onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   }
 ) {
@@ -305,14 +307,13 @@ function EntityInspector({
     onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
+    onReorderAttachments: (opts: { eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
     onRemoveAttachment: (id: string) => void;
     onMakeParallelAttachments: (ids: Id[]) => void;
     onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
-    onCreateSnippetFromAttachments: (attachmentIds: Id[], name?: string) => void;
-    onApplySnippet: (snippetId: Id, eventId?: Id) => void;
-    onCreateMacroFromAttachments: (attachmentIds: Id[], name?: string) => void;
-    onApplyMacro: (macroId: Id, eventId?: Id) => void;
+    onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
+    onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
   };
 }) {
@@ -410,14 +411,13 @@ function EntityInspector({
             onAddAttachment={(presetId, init) => actionProps.onAddAttachment(presetId, init)}
             onSelectAttachment={actionProps.onSelectAttachment}
             onMoveAttachment={actionProps.onMoveAttachment}
+            onReorderAttachments={actionProps.onReorderAttachments}
             onRemoveAttachment={actionProps.onRemoveAttachment}
             onMakeParallel={actionProps.onMakeParallelAttachments}
             onUngroupParallel={actionProps.onUngroupParallelAttachments}
             onMoveParallelGroup={actionProps.onMoveParallelAttachmentGroup}
-            onCreateSnippetFromAttachments={actionProps.onCreateSnippetFromAttachments}
-            onApplySnippet={actionProps.onApplySnippet}
-            onCreateMacroFromAttachments={actionProps.onCreateMacroFromAttachments}
-            onApplyMacro={actionProps.onApplyMacro}
+            onCreatePatternFromAttachments={actionProps.onCreatePatternFromAttachments}
+            onApplyPattern={actionProps.onApplyPattern}
             selectedAttachmentId={actionProps.selectedAttachmentId}
           />
         </InspectorFoldout>
@@ -1024,10 +1024,8 @@ function GroupInspector({
   onCreateEventBlock,
   onUpdateEventBlock,
   onRemoveEventBlock,
-  onCreateSnippetFromAttachments,
-  onApplySnippet,
-  onCreateMacroFromAttachments,
-  onApplyMacro,
+  onCreatePatternFromAttachments,
+  onApplyPattern,
   onSelectMember,
   onRemoveMember,
   onUpdateGroup,
@@ -1055,10 +1053,8 @@ function GroupInspector({
   onCreateEventBlock: (opts?: { name?: string; trigger?: AttachmentTriggerSpec }) => void;
   onUpdateEventBlock: (id: Id, next: any) => void;
   onRemoveEventBlock: (id: Id) => void;
-  onCreateSnippetFromAttachments: (attachmentIds: Id[], name?: string) => void;
-  onApplySnippet: (snippetId: Id, eventId?: Id) => void;
-  onCreateMacroFromAttachments: (attachmentIds: Id[], name?: string) => void;
-  onApplyMacro: (macroId: Id, eventId?: Id) => void;
+  onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
+  onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
   onSelectMember: (id: string) => void;
   onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
@@ -1210,10 +1206,8 @@ function GroupInspector({
       onCreateEventBlock,
       onUpdateEventBlock,
       onRemoveEventBlock,
-      onCreateSnippetFromAttachments,
-      onApplySnippet,
-      onCreateMacroFromAttachments,
-      onApplyMacro,
+      onCreatePatternFromAttachments,
+      onApplyPattern,
       onSelectMember,
       onRemoveMember,
       onUpdateGroup,
@@ -1249,6 +1243,7 @@ export function renderGroupInspector(
     onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
+    onReorderAttachments: (opts: { eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
     onRemoveAttachment: (id: string) => void;
     onMakeParallelAttachments: (ids: Id[]) => void;
     onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
@@ -1256,10 +1251,8 @@ export function renderGroupInspector(
     onCreateEventBlock: (opts?: { name?: string; trigger?: AttachmentTriggerSpec }) => void;
     onUpdateEventBlock: (id: Id, next: any) => void;
     onRemoveEventBlock: (id: Id) => void;
-    onCreateSnippetFromAttachments: (attachmentIds: Id[], name?: string) => void;
-    onApplySnippet: (snippetId: Id, eventId?: Id) => void;
-    onCreateMacroFromAttachments: (attachmentIds: Id[], name?: string) => void;
-    onApplyMacro: (macroId: Id, eventId?: Id) => void;
+    onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
+    onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
     onSelectMember: (id: string) => void;
     onRemoveMember: (id: string) => void;
     onUpdateGroup: (next: GroupSpec) => void;
@@ -1305,14 +1298,13 @@ export function renderGroupInspector(
           onAddAttachment={(presetId, init) => handlers.onAddAttachment(presetId, init)}
           onSelectAttachment={handlers.onSelectAttachment}
           onMoveAttachment={handlers.onMoveAttachment}
+          onReorderAttachments={handlers.onReorderAttachments}
           onRemoveAttachment={handlers.onRemoveAttachment}
           onMakeParallel={handlers.onMakeParallelAttachments}
           onUngroupParallel={handlers.onUngroupParallelAttachments}
           onMoveParallelGroup={handlers.onMoveParallelAttachmentGroup}
-          onCreateSnippetFromAttachments={handlers.onCreateSnippetFromAttachments}
-          onApplySnippet={handlers.onApplySnippet}
-          onCreateMacroFromAttachments={handlers.onCreateMacroFromAttachments}
-          onApplyMacro={handlers.onApplyMacro}
+          onCreatePatternFromAttachments={handlers.onCreatePatternFromAttachments}
+          onApplyPattern={handlers.onApplyPattern}
           selectedAttachmentId={handlers.selectedAttachmentId}
         />
       </InspectorFoldout>

@@ -120,6 +120,13 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### A35 — Attach / Edit Action Flow
 - Attach action presets to an entity/group; reorder/remove; open behavior/action flow editor; add steps (MoveUntil/Wait/Call), reorder steps.
 
+### A36 — Apply Pattern to Event
+- In an Event card: click `+ Add…` → `Pattern` → select a Pattern.
+- If prompted, fill parameters → `Apply`.
+
+### A37 — Create Pattern from selected steps
+- Select 1+ steps in an Event card → `Convert → Pattern` → name it → confirm.
+
 ## Composite Workflows (built from atomic workflows)
 
 ### W1 — Basic Scene Layout (blocking + spacing)
