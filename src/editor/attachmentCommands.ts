@@ -393,6 +393,36 @@ export function moveParallelGroupWithinTarget(scene: SceneSpec, target: TargetRe
   return { ...scene, attachments: nextAttachments };
 }
 
+export function reorderAttachmentsWithinTargetAndEvent(
+  scene: SceneSpec,
+  target: TargetRef,
+  eventId: Id | undefined,
+  parentAttachmentId: Id | undefined,
+  orderedAttachmentIds: Id[]
+): SceneSpec {
+  if (orderedAttachmentIds.length <= 1) return scene;
+  const attachmentsById = scene.attachments ?? ({} as Record<Id, AttachmentSpec>);
+
+  for (const id of orderedAttachmentIds) {
+    const attachment = attachmentsById[id];
+    if (!attachment) return scene;
+    if (!targetsEqual(attachment.target, target)) return scene;
+    const aEventId = typeof attachment.eventId === 'string' && attachment.eventId.length > 0 ? attachment.eventId : undefined;
+    const wantEventId = typeof eventId === 'string' && eventId.length > 0 ? eventId : undefined;
+    if (aEventId !== wantEventId) return scene;
+    if ((attachment.parentAttachmentId ?? undefined) !== (parentAttachmentId ?? undefined)) return scene;
+  }
+
+  const nextAttachments: Record<Id, AttachmentSpec> = { ...attachmentsById };
+  for (let i = 0; i < orderedAttachmentIds.length; i += 1) {
+    const id = orderedAttachmentIds[i];
+    const attachment = attachmentsById[id];
+    nextAttachments[id] = { ...attachment, order: i };
+  }
+
+  return { ...scene, attachments: nextAttachments };
+}
+
 export function getTargetLabel(scene: SceneSpec, target: TargetRef): string {
   if (target.type === 'entity') {
     return scene.entities[target.entityId]?.name ?? target.entityId;

@@ -59,23 +59,29 @@ describe('EventsPanel Action Library drawer', () => {
           onAddAttachment={onAddAttachment}
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
           onMoveParallelGroup={() => {}}
-          onCreateSnippetFromAttachments={() => {}}
-          onApplySnippet={() => {}}
-          onCreateMacroFromAttachments={() => {}}
-          onApplyMacro={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
         />
       );
     });
 
-    const openButton = container.querySelector('[data-testid="action-library-open"]') as HTMLButtonElement | null;
+    const openButton = container.querySelector('[data-testid="event-add-open"]') as HTMLButtonElement | null;
     expect(openButton).not.toBeNull();
 
     await React.act(async () => {
       openButton!.click();
+    });
+
+    const newAction = container.querySelector('[data-testid="event-add-new-action"]') as HTMLButtonElement | null;
+    expect(newAction).not.toBeNull();
+
+    await React.act(async () => {
+      newAction!.click();
     });
 
     expect(container.querySelector('[data-testid="action-library"]')).not.toBeNull();
@@ -102,6 +108,42 @@ describe('EventsPanel Action Library drawer', () => {
     expect(onAddAttachment).toHaveBeenCalledWith('Wait', expect.objectContaining({ eventId: undefined }));
   });
 
+  it('uses OnSceneStart label for start-trigger blocks', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await React.act(async () => {
+      root.render(
+        <EventsPanel
+          project={sampleProject}
+          scene={sampleScene}
+          target={{ type: 'group', groupId: 'g-enemies' }}
+          selectedAttachmentId={undefined}
+          registry={registry as any}
+          onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={() => {}}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
+          onRemoveAttachment={() => {}}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain('OnSceneStart');
+  });
+
   it('filters step rendering from the Filter input', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     installMockLocalStorage();
@@ -124,14 +166,13 @@ describe('EventsPanel Action Library drawer', () => {
           onAddAttachment={() => {}}
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
           onMoveParallelGroup={() => {}}
-          onCreateSnippetFromAttachments={() => {}}
-          onApplySnippet={() => {}}
-          onCreateMacroFromAttachments={() => {}}
-          onApplyMacro={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
         />
       );
     });
@@ -151,5 +192,67 @@ describe('EventsPanel Action Library drawer', () => {
 
     // "Pause" rows should be hidden by the filter (Move matches Move Left/Right only).
     expect(container.querySelector('[data-testid="attachment-open-att-wait-right"]')).toBeNull();
+  });
+
+  it('drag-to-reorder calls onReorderAttachments with new order', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const onReorderAttachments = vi.fn();
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await React.act(async () => {
+      root.render(
+        <EventsPanel
+          project={sampleProject}
+          scene={sampleScene}
+          target={{ type: 'group', groupId: 'g-enemies' }}
+          selectedAttachmentId={undefined}
+          registry={registry as any}
+          onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={() => {}}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={onReorderAttachments}
+          onRemoveAttachment={() => {}}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+        />
+      );
+    });
+
+    const drag = container.querySelector('[data-testid="attachment-drag-att-wait-left"]') as HTMLButtonElement | null;
+    expect(drag).not.toBeNull();
+
+    const dropZone = container.querySelector('[data-testid="attachment-dropzone-att-move-right"]') as HTMLElement | null;
+    expect(dropZone).not.toBeNull();
+
+    const dragStart: any = new window.Event('dragstart', { bubbles: true });
+    dragStart.dataTransfer = { setData: () => {}, effectAllowed: 'move' };
+
+    const drop: any = new window.Event('drop', { bubbles: true });
+    drop.dataTransfer = { dropEffect: 'move' };
+
+    await React.act(async () => {
+      drag!.dispatchEvent(dragStart);
+    });
+    await React.act(async () => {
+      dropZone!.dispatchEvent(drop);
+    });
+
+    expect(onReorderAttachments).toHaveBeenCalled();
+    expect(onReorderAttachments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parentAttachmentId: 'att-loop',
+        orderedAttachmentIds: expect.arrayContaining(['att-wait-left', 'att-move-right']),
+      })
+    );
   });
 });

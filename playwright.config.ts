@@ -32,7 +32,7 @@ export default defineConfig({
   fullyParallel: false,
   // When running all browsers locally, the combined resource load can cause an occasional
   // "browser has been closed" startup flake. Allow a small retry budget in that mode.
-  retries: process.env.CI ? 2 : process.env.PW_ALL_BROWSERS === '1' ? 1 : 0,
+  retries: process.env.CI ? 2 : projectNames.length > 1 ? 1 : 0,
   // The editor boots a shared Vite dev server and uses localStorage-backed scene seeding.
   // Running multiple browser workers against that single server has proven flaky in practice.
   workers: process.env.PW_WORKERS ? parseInt(process.env.PW_WORKERS) : 3,
