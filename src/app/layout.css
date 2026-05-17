@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root {
   color-scheme: light;
@@ -301,7 +301,7 @@ textarea:focus-visible {
 }
 
 .toolbar-slider-value {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: inherit;
   font-size: 0.78rem;
   color: var(--muted);
   min-width: 3.5rem;
@@ -428,7 +428,7 @@ textarea:focus-visible {
 }
 
 .viewbar-field span {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: inherit;
   font-size: 0.75rem;
   color: var(--muted);
 }
@@ -562,7 +562,7 @@ textarea:focus-visible {
   border: 1px solid var(--stroke);
   background: var(--surface-muted);
   color: var(--muted);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: inherit;
   font-size: 0.74rem;
 }
 
@@ -644,6 +644,17 @@ html[data-theme='dark'] .phaser-frame {
   align-items: stretch;
   justify-content: flex-end;
   padding: 1rem;
+}
+
+.drawer-overlay-popover {
+  background: transparent;
+  display: block;
+  padding: 0;
+}
+
+.drawer-card-popover {
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: min(70vh, 44rem);
 }
 
 .drawer-card {
@@ -1561,6 +1572,24 @@ html[data-theme='dark'] .phaser-frame {
   gap: 0.8rem;
 }
 
+.inspector-grid-2.inspector-grid-counter-compare {
+  column-gap: 0.8rem;
+}
+
+.inspector-grid-counter-compare .field.field-tight-label > span {
+  flex: 0 0 auto;
+}
+
+.inspector-grid-counter-compare .field.field-tight-label select {
+  flex: 1 1 auto;
+}
+
+.inspector-grid-counter-compare .field.field-tight-label {
+  justify-self: end;
+  width: fit-content;
+  max-width: 100%;
+}
+
 .inspector-grid-3 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -1578,6 +1607,10 @@ html[data-theme='dark'] .phaser-frame {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.inspector-grid-2 .field.field-wide-label > span {
+  flex-basis: 7.5rem;
 }
 
 .sprite-size-aspect {
@@ -1712,7 +1745,7 @@ html[data-theme='dark'] .phaser-frame {
 .tag-button {
   min-height: 2.25rem;
   padding: 0.45rem 0.75rem;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: inherit;
   font-size: 0.75rem;
 }
 
@@ -1740,7 +1773,7 @@ html[data-theme='dark'] .phaser-frame {
   min-height: 14rem;
   resize: vertical;
   padding: 0.95rem;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: inherit;
   font-size: 0.83rem;
   line-height: 1.5;
 }

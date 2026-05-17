@@ -1596,6 +1596,13 @@ function AttachmentInspector({
     'MoveUntil',
     'MoveXUntil',
     'MoveYUntil',
+    'WavePattern',
+    'ZigzagPattern',
+    'FigureEightPattern',
+    'SpiralPattern',
+    'OrbitPattern',
+    'BouncePattern',
+    'PatrolPattern',
     'Wait',
     'Call',
     'Repeat',
@@ -1776,6 +1783,34 @@ function AttachmentInspector({
                 onUpdate({ ...base, params: { collectionId: first }, condition: ensureInstantCondition() as any });
                 return;
               }
+              if (nextType === 'WavePattern') {
+                onUpdate({ ...base, params: { amplitude: 30, length: 80, velocity: 80, startProgress: 0, endProgress: 1 } });
+                return;
+              }
+              if (nextType === 'ZigzagPattern') {
+                onUpdate({ ...base, params: { width: 30, height: 15, velocity: 100, segments: 5 } });
+                return;
+              }
+              if (nextType === 'FigureEightPattern') {
+                onUpdate({ ...base, params: { width: 80, height: 60, velocity: 100 } });
+                return;
+              }
+              if (nextType === 'SpiralPattern') {
+                onUpdate({ ...base, params: { maxRadius: 60, revolutions: 2, velocity: 80, direction: 'outward' } });
+                return;
+              }
+              if (nextType === 'OrbitPattern') {
+                onUpdate({ ...base, params: { radius: 50, velocity: 100, clockwise: true, centerMode: 'current' } });
+                return;
+              }
+              if (nextType === 'BouncePattern') {
+                onUpdate({ ...base, params: { axis: 'both', velocityX: 120, velocityY: 60 }, condition: { ...ensureBoundsCondition(), behavior: 'bounce' } as any });
+                return;
+              }
+              if (nextType === 'PatrolPattern') {
+                onUpdate({ ...base, params: { axis: 'x', velocityX: 120, velocityY: 0 }, condition: { ...ensureBoundsCondition(), behavior: 'bounce' } as any });
+                return;
+              }
               onUpdate(base);
             }}
           >
@@ -1828,41 +1863,48 @@ function AttachmentInspector({
         )}
 
         {attachment.condition?.type === 'CounterCompare' && (
-          <div className="inspector-grid-2">
-            <label className="field">
-              <span>Counter</span>
-              <select
-                aria-label="Until Counter"
-                value={String((attachment.condition as any).counterId ?? '')}
-                onChange={(e) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), counterId: e.target.value } })}
-              >
-                {Object.keys(project.counters ?? {}).length === 0 && <option value="">(no counters)</option>}
-                {Object.keys(project.counters ?? {}).map((id) => (
-                  <option key={id} value={id}>{id}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>Op</span>
-              <select
-                aria-label="Until Counter Op"
-                value={String((attachment.condition as any).op ?? '==')}
-                onChange={(e) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), op: e.target.value } })}
-              >
-                <option value="==">==</option>
-                <option value=">=">&gt;=</option>
-                <option value="<=">&lt;=</option>
-              </select>
-            </label>
-            <label className="field">
-              <span>Value</span>
-              <ValidatedNumberInput
-                aria-label="Until Counter Value"
-                value={Number((attachment.condition as any).value ?? 0)}
-                onCommit={(next) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), value: next } })}
-              />
-            </label>
-          </div>
+          <>
+            {Object.keys(project.counters ?? {}).length === 0 && (
+              <div className="inspector-row muted">
+                Add counters in <strong>Scene State</strong> → <strong>Counters</strong> (use “+ Add Global Counter” or “+ Add Scene Counter”).
+              </div>
+            )}
+            <div className="inspector-grid-2 inspector-grid-counter-compare">
+              <label className="field">
+                <span>Counter</span>
+                <select
+                  aria-label="Until Counter"
+                  value={String((attachment.condition as any).counterId ?? '')}
+                  onChange={(e) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), counterId: e.target.value } })}
+                >
+                  {Object.keys(project.counters ?? {}).length === 0 && <option value="">(no counters)</option>}
+                  {Object.keys(project.counters ?? {}).map((id) => (
+                    <option key={id} value={id}>{id}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field field-tight-label">
+                <span>Op</span>
+                <select
+                  aria-label="Until Counter Op"
+                  value={String((attachment.condition as any).op ?? '==')}
+                  onChange={(e) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), op: e.target.value } })}
+                >
+                  <option value="==">==</option>
+                  <option value=">=">&gt;=</option>
+                  <option value="<=">&lt;=</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Value</span>
+                <ValidatedNumberInput
+                  aria-label="Until Counter Value"
+                  value={Number((attachment.condition as any).value ?? 0)}
+                  onCommit={(next) => onUpdate({ ...attachment, condition: { ...(attachment.condition as any), value: next } })}
+                />
+              </label>
+            </div>
+          </>
         )}
 
         {attachment.condition?.type === 'InputActionEdge' && (
@@ -2288,6 +2330,338 @@ function AttachmentInspector({
                       value={boundsCondition.bounds.maxY}
                       onCommit={(next) =>
                         onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
+                      }
+                    />
+                  </label>
+                </div>
+              </>
+            )}
+          </InspectorFoldout>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'WavePattern' && (
+        <InspectorFoldout
+          title="Wave Pattern"
+          open={foldouts.isOpen('attachment.wavepattern', true)}
+          onToggle={() => foldouts.toggle('attachment.wavepattern', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Amplitude</span>
+              <ValidatedNumberInput
+                aria-label="Wave Amplitude"
+                value={Number(params.amplitude ?? 30)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, amplitude: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Length</span>
+              <ValidatedNumberInput
+                aria-label="Wave Length"
+                value={Number(params.length ?? 80)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, length: next } })}
+              />
+            </label>
+          </div>
+          <label className="field">
+            <span>Velocity</span>
+            <ValidatedNumberInput
+              aria-label="Wave Velocity"
+              value={Number(params.velocity ?? 80)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
+            />
+          </label>
+          <div className="inspector-grid-2">
+            <label className="field field-wide-label">
+              <span>Start Progress</span>
+              <ValidatedNumberInput
+                aria-label="Wave Start Progress"
+                value={Number(params.startProgress ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, startProgress: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>End Progress</span>
+              <ValidatedNumberInput
+                aria-label="Wave End Progress"
+                value={Number(params.endProgress ?? 1)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, endProgress: next } })}
+              />
+            </label>
+          </div>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'ZigzagPattern' && (
+        <InspectorFoldout
+          title="Zigzag Pattern"
+          open={foldouts.isOpen('attachment.zigzagpattern', true)}
+          onToggle={() => foldouts.toggle('attachment.zigzagpattern', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Width</span>
+              <ValidatedNumberInput
+                aria-label="Zigzag Width"
+                value={Number(params.width ?? 30)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, width: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Height</span>
+              <ValidatedNumberInput
+                aria-label="Zigzag Height"
+                value={Number(params.height ?? 15)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, height: next } })}
+              />
+            </label>
+          </div>
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Velocity</span>
+              <ValidatedNumberInput
+                aria-label="Zigzag Velocity"
+                value={Number(params.velocity ?? 100)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Segments</span>
+              <ValidatedNumberInput
+                aria-label="Zigzag Segments"
+                value={Number(params.segments ?? 5)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, segments: next } })}
+              />
+            </label>
+          </div>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'FigureEightPattern' && (
+        <InspectorFoldout
+          title="Figure-8 Pattern"
+          open={foldouts.isOpen('attachment.figureeightpattern', true)}
+          onToggle={() => foldouts.toggle('attachment.figureeightpattern', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Width</span>
+              <ValidatedNumberInput
+                aria-label="Figure-8 Width"
+                value={Number(params.width ?? 80)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, width: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Height</span>
+              <ValidatedNumberInput
+                aria-label="Figure-8 Height"
+                value={Number(params.height ?? 60)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, height: next } })}
+              />
+            </label>
+          </div>
+          <label className="field">
+            <span>Velocity</span>
+            <ValidatedNumberInput
+              aria-label="Figure-8 Velocity"
+              value={Number(params.velocity ?? 100)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
+            />
+          </label>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'SpiralPattern' && (
+        <InspectorFoldout
+          title="Spiral Pattern"
+          open={foldouts.isOpen('attachment.spiralpattern', true)}
+          onToggle={() => foldouts.toggle('attachment.spiralpattern', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Max Radius</span>
+              <ValidatedNumberInput
+                aria-label="Spiral Max Radius"
+                value={Number(params.maxRadius ?? 60)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, maxRadius: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Revolutions</span>
+              <ValidatedNumberInput
+                aria-label="Spiral Revolutions"
+                value={Number(params.revolutions ?? 2)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, revolutions: next } })}
+              />
+            </label>
+          </div>
+          <label className="field">
+            <span>Velocity</span>
+            <ValidatedNumberInput
+              aria-label="Spiral Velocity"
+              value={Number(params.velocity ?? 80)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
+            />
+          </label>
+          <label className="field">
+            <span>Direction</span>
+            <select
+              aria-label="Spiral Direction"
+              value={String(params.direction ?? 'outward')}
+              onChange={(e) => onUpdate({ ...attachment, params: { ...params, direction: e.target.value } })}
+            >
+              <option value="outward">Outward</option>
+              <option value="inward">Inward</option>
+            </select>
+          </label>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'OrbitPattern' && (
+        <InspectorFoldout
+          title="Orbit Pattern"
+          open={foldouts.isOpen('attachment.orbitpattern', true)}
+          onToggle={() => foldouts.toggle('attachment.orbitpattern', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Radius</span>
+              <ValidatedNumberInput
+                aria-label="Orbit Radius"
+                value={Number(params.radius ?? 50)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, radius: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Velocity</span>
+              <ValidatedNumberInput
+                aria-label="Orbit Velocity"
+                value={Number(params.velocity ?? 100)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
+              />
+            </label>
+          </div>
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Clockwise</span>
+              <input
+                aria-label="Orbit Clockwise"
+                type="checkbox"
+                checked={params.clockwise !== false}
+                onChange={(e) => onUpdate({ ...attachment, params: { ...params, clockwise: e.target.checked } })}
+              />
+            </label>
+            <label className="field">
+              <span>Center</span>
+              <select
+                aria-label="Orbit Center Mode"
+                value={String(params.centerMode ?? 'current')}
+                onChange={(e) => onUpdate({ ...attachment, params: { ...params, centerMode: e.target.value } })}
+              >
+                <option value="current">Current</option>
+                <option value="home">Home</option>
+              </select>
+            </label>
+          </div>
+        </InspectorFoldout>
+      )}
+
+      {(attachment.presetId === 'BouncePattern' || attachment.presetId === 'PatrolPattern') && (
+        <InspectorFoldout
+          title={attachment.presetId === 'BouncePattern' ? 'Bounce Pattern' : 'Patrol Pattern'}
+          open={foldouts.isOpen('attachment.bouncepattern', true)}
+          onToggle={() => foldouts.toggle('attachment.bouncepattern', true)}
+        >
+          <label className="field">
+            <span>Axis</span>
+            <select
+              aria-label="Bounce Axis"
+              value={String(params.axis ?? (attachment.presetId === 'PatrolPattern' ? 'x' : 'both'))}
+              onChange={(e) => onUpdate({ ...attachment, params: { ...params, axis: e.target.value } })}
+            >
+              <option value="both">Both</option>
+              <option value="x">X</option>
+              <option value="y">Y</option>
+            </select>
+          </label>
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Velocity X</span>
+              <ValidatedNumberInput
+                aria-label="Bounce Velocity X"
+                value={Number(params.velocityX ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocityX: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Velocity Y</span>
+              <ValidatedNumberInput
+                aria-label="Bounce Velocity Y"
+                value={Number(params.velocityY ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocityY: next } })}
+              />
+            </label>
+          </div>
+          <InspectorFoldout
+            title="Bounds"
+            open={foldouts.isOpen('attachment.bouncepattern.bounds', true)}
+            onToggle={() => foldouts.toggle('attachment.bouncepattern.bounds', true)}
+          >
+            <label className="field">
+              <span>Enabled</span>
+              <input
+                aria-label="Enabled"
+                type="checkbox"
+                checked={Boolean(boundsCondition)}
+                onChange={(e) =>
+                  onUpdate({ ...attachment, condition: e.target.checked ? { ...ensureBoundsCondition(), behavior: 'bounce' } as any : undefined })
+                }
+              />
+            </label>
+            {boundsCondition && (
+              <>
+                <div className="inspector-grid-2">
+                  <label className="field">
+                    <span>Min X</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Min X"
+                      value={boundsCondition.bounds.minX}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next }, behavior: 'bounce' } as any })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Max X</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Max X"
+                      value={boundsCondition.bounds.maxX}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next }, behavior: 'bounce' } as any })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="inspector-grid-2">
+                  <label className="field">
+                    <span>Min Y</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Min Y"
+                      value={boundsCondition.bounds.minY}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next }, behavior: 'bounce' } as any })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Max Y</span>
+                    <ValidatedNumberInput
+                      aria-label="Bounds Max Y"
+                      value={boundsCondition.bounds.maxY}
+                      onCommit={(next) =>
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next }, behavior: 'bounce' } as any })
                       }
                     />
                   </label>
