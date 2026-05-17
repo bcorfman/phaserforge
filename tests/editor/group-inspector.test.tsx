@@ -75,6 +75,41 @@ describe('Group inspector', () => {
     expect(markup).not.toContain('Member sprites are read-only here');
   });
 
+  it('renders Events after formation editing foldouts to avoid tab scope ambiguity', () => {
+    const group = sampleScene.groups['g-enemies'];
+    const markup = renderToStaticMarkup(
+      renderGroupInspector(group, project, sampleScene, {
+        onSelectMember: () => {},
+        onRemoveMember: () => {},
+        onUpdateGroup: () => {},
+        onUngroup: () => {},
+        onDeleteGroup: () => {},
+        onCreateEventBlock: () => {},
+        onUpdateEventBlock: () => {},
+        onRemoveEventBlock: () => {},
+        onAddAttachment: () => {},
+        onSelectAttachment: () => {},
+        onMoveAttachment: () => {},
+        onRemoveAttachment: () => {},
+        onUngroupParallelAttachments: () => {},
+        onMoveParallelAttachmentGroup: () => {},
+        onMakeParallelAttachments: () => {},
+        foldouts: { isOpen: () => true, toggle: () => {} },
+        registry,
+      })
+    );
+
+    const groupingIndex = markup.indexOf('<div class="inspector-foldout-title">Grouping</div>');
+    const formationIndex = markup.indexOf('<div class="inspector-foldout-title">Formation</div>');
+    const layoutIndex = markup.indexOf('<div class="inspector-foldout-title">Layout</div>');
+    const eventsIndex = markup.indexOf('<div class="inspector-foldout-title">Events</div>');
+
+    expect(groupingIndex).toBeGreaterThan(-1);
+    expect(formationIndex).toBeGreaterThan(groupingIndex);
+    expect(layoutIndex).toBeGreaterThan(formationIndex);
+    expect(eventsIndex).toBeGreaterThan(layoutIndex);
+  });
+
   it('passes the selected attachment marker through the attached actions panel', () => {
     const group = sampleScene.groups['g-enemies'];
     const scene = {
