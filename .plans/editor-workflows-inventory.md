@@ -95,9 +95,11 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 
 ### A27 — Edit Entity Properties (Inspector)
 - Position/size/rotation, hitbox, physics/collision layer, visual/asset selection & frame settings.
+- Events are shown after the core property foldouts so Handlers/Wiring tabs are visually scoped to only the Events panel.
 
 ### A28 — Edit Formation Layout / Properties (Inspector)
 - Convert layout (freeform/grid/arrange), tweak layout params.
+- Events are shown after formation editing foldouts so Handlers/Wiring tabs are visually scoped to only the Events panel.
 
 ### A29 — Manage Background Layers (Inspector)
 - Add/reorder/remove layers; assign image; edit layer layout/tint/parallax/etc.
