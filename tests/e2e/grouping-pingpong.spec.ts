@@ -8,13 +8,13 @@ test('Ungroup / Group ping-pongs between formation and member multi-select', asy
   await dismissViewHint(page);
 
   await selectGroupInSceneGraph(page, 'g-enemies');
-  await expect(page.getByTestId('ungroup-button')).toBeVisible();
+  await expect(page.getByTestId('canvas-edit-members-button')).toBeVisible();
 
   const before = await getState<{ scene: { groups: Record<string, unknown>; attachments: Record<string, unknown> } }>(page);
   expect(Boolean(before.scene.groups['g-enemies'])).toBe(true);
   expect(Object.keys(before.scene.attachments).length).toBeGreaterThan(0);
 
-  await page.getByTestId('ungroup-button').click();
+  await page.getByTestId('canvas-edit-members-button').click();
 
   await expect.poll(async () => {
     const state = await getState<{ selection: { kind: string }; scene: { groups: Record<string, unknown>; attachments: Record<string, unknown> } }>(page);
@@ -55,13 +55,13 @@ test('Dissolve Group removes the formation but preserves its actions by retarget
   await dismissViewHint(page);
 
   await selectGroupInSceneGraph(page, 'g-enemies');
-  await expect(page.getByTestId('dissolve-group-button')).toBeVisible();
+  await expect(page.getByTestId('canvas-dissolve-button')).toBeVisible();
 
   const before = await getState<{ scene: { groups: Record<string, unknown>; attachments: Record<string, unknown> } }>(page);
   expect(Boolean(before.scene.groups['g-enemies'])).toBe(true);
   expect(Object.keys(before.scene.attachments).length).toBeGreaterThan(0);
 
-  await page.getByTestId('dissolve-group-button').click();
+  await page.getByTestId('canvas-dissolve-button').click();
 
   await expect.poll(async () => {
     const state = await getState<{ selection: { kind: string; ids?: string[] }; scene: { groups: Record<string, unknown>; attachments: Record<string, any> } }>(page);

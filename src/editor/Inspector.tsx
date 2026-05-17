@@ -978,7 +978,7 @@ function EntityInspector({
       )}
       {actionProps && (
         <InspectorFoldout
-          title="Events"
+          title="Actions/Events"
           open={foldouts.isOpen('entity.actions', true)}
           onToggle={() => foldouts.toggle('entity.actions', true)}
         >
@@ -1287,33 +1287,8 @@ export function renderGroupInspector(
         open={handlers.foldouts.isOpen('group.grouping', true)}
         onToggle={() => handlers.foldouts.toggle('group.grouping', true)}
       >
-        <div className="inspector-row">Toggle between a single formation selection and its individual member sprites.</div>
-        <div className="inspector-row">
-          <button
-            className="button"
-            data-testid="ungroup-button"
-            type="button"
-            onClick={handlers.onUngroup}
-          >
-            Ungroup
-          </button>
-          <button
-            className="button"
-            data-testid="dissolve-group-button"
-            type="button"
-            onClick={handlers.onDissolve}
-          >
-            Dissolve Group
-          </button>
-          <button
-            className="button button-danger"
-            data-testid="delete-group-button"
-            type="button"
-            onClick={handlers.onDeleteGroup}
-          >
-            Delete Group
-          </button>
-        </div>
+        <div className="inspector-row">Grouping actions are available on the on-canvas selection bar (near-cursor) to keep pointer travel short.</div>
+        <div className="inspector-row">Use <strong>Edit members</strong> or <strong>Dissolve formation</strong> from the selection bar while the formation is selected.</div>
       </InspectorFoldout>
 
       <InspectorFoldout
@@ -1524,7 +1499,7 @@ export function renderGroupInspector(
       </InspectorFoldout>
 
       <InspectorFoldout
-        title="Events"
+        title="Actions/Events"
         open={handlers.foldouts.isOpen('group.actions', true)}
         onToggle={() => handlers.foldouts.toggle('group.actions', true)}
       >

@@ -54,7 +54,7 @@ describe('Entity inspector', () => {
     expect(markup).toContain('Authored values update the selected sprite immediately on the canvas.');
   });
 
-  it('renders Events after the core property foldouts to avoid tab scope ambiguity', () => {
+  it('renders Actions/Events after the core property foldouts to avoid tab scope ambiguity', () => {
     const markup = renderToStaticMarkup(
       renderEntityInspector(sampleScene.entities.e1, () => {}, actionProps)
     );
@@ -62,7 +62,7 @@ describe('Entity inspector', () => {
     const transformIndex = markup.indexOf('<div class="inspector-foldout-title">Transform</div>');
     const hitboxIndex = markup.indexOf('<div class="inspector-foldout-title">Hitbox (Bounds)</div>');
     const visualIndex = markup.indexOf('<div class="inspector-foldout-title">Visual</div>');
-    const eventsIndex = markup.indexOf('<div class="inspector-foldout-title">Events</div>');
+    const eventsIndex = markup.indexOf('<div class="inspector-foldout-title">Actions/Events</div>');
 
     expect(transformIndex).toBeGreaterThan(-1);
     expect(hitboxIndex).toBeGreaterThan(transformIndex);

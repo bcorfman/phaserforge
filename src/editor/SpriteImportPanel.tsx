@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { ImportedEntityDraft, useEditorStore, type Selection } from './EditorStore';
+import { ImportedEntityDraft, type Selection } from './EditorStore';
 import { EntitySpec, SpriteAssetSource } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getSceneWorld } from './sceneWorld';
@@ -43,12 +43,6 @@ function loadImageMetadata(src: string, name: string, mimeType: string | undefin
 
 function makeEntityId(index: number): string {
   return `e-import-${Date.now()}-${index}`;
-}
-
-export function SpriteImportPanel() {
-  const { state, dispatch } = useEditorStore();
-  const scene = state.project.scenes[state.currentSceneId];
-  return <SpriteImportPanelView scene={scene} selection={state.selection} dispatch={dispatch} />;
 }
 
 export function SpriteImportPanelView({
