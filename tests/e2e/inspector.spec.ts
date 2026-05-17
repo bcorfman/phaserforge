@@ -108,7 +108,8 @@ test('removes a formation member and keeps the group selected', async ({ page })
 
 test('removes an attached action from the scene graph', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
-  await page.getByTestId('attachment-remove-att-wait-right').click();
+  await page.getByTestId('attachment-menu-att-wait-right').click();
+  await page.getByTestId('attachment-menu-remove-att-wait-right').click();
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { attachments: Record<string, unknown> } }>(page);
@@ -290,7 +291,6 @@ test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
   await page.getByTestId('ungrouped-entity-e').click();
 
   await page.getByTestId('event-add-open').click();
-  await page.getByTestId('event-add-new-action').click();
   await page.getByTestId('action-library-add-MoveUntil').click();
   await page.getByTestId('attachment-velocity-x-input').fill('140');
   await page.getByTestId('attachment-bounds-min-x-input').fill('48');
@@ -343,7 +343,6 @@ test('assigns a group MoveUntil action to imported sprites and runs it in play m
   await page.getByTestId('group-prompt-confirm').click();
 
   await page.getByTestId('event-add-open').click();
-  await page.getByTestId('event-add-new-action').click();
   await page.getByTestId('action-library-add-MoveUntil').click();
   await page.getByTestId('attachment-velocity-x-input').fill('120');
 
@@ -414,7 +413,6 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
   await openSceneScope(page);
   await page.getByTestId('ungrouped-entity-e').click();
   await page.getByTestId('event-add-open').click();
-  await page.getByTestId('event-add-new-action').click();
   await page.getByTestId('action-library-add-MoveUntil').click();
   await page.getByTestId('attachment-velocity-x-input').fill('300');
   await page.getByTestId('attachment-bounds-behavior-select').selectOption('bounce');
@@ -468,7 +466,6 @@ test('preview applies wrap behavior for an imported sprite move action', async (
   await openSceneScope(page);
   await page.getByTestId('ungrouped-entity-e').click();
   await page.getByTestId('event-add-open').click();
-  await page.getByTestId('event-add-new-action').click();
   await page.getByTestId('action-library-add-MoveUntil').click();
 
   const entityId = 'e';

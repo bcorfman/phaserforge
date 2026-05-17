@@ -20,6 +20,8 @@ import { ClampCounter } from '../runtime/actions/ClampCounter';
 import { HoldUntil } from '../runtime/actions/HoldUntil';
 import { RemoveSelfFromCollection } from '../runtime/actions/RemoveSelfFromCollection';
 import { SetCounter } from '../runtime/actions/SetCounter';
+import { ParametricMotionUntil } from '../runtime/actions/ParametricMotionUntil';
+import { OrbitPattern } from '../runtime/actions/OrbitPattern';
 import { BoundsHit } from '../runtime/conditions/BoundsHit';
 import { CounterCompare } from '../runtime/conditions/CounterCompare';
 import { ElapsedTime } from '../runtime/conditions/ElapsedTime';
@@ -27,6 +29,17 @@ import { InputActionEdge } from '../runtime/conditions/InputActionEdge';
 import { Instant } from '../runtime/conditions/Instant';
 import { Never } from '../runtime/conditions/Never';
 import { flattenTarget, resolveTarget, type TargetContext } from '../runtime/targets/resolveTarget';
+import {
+  buildFigureEightOffset,
+  buildSpiralOffset,
+  buildWaveOffset,
+  buildZigzagOffset,
+  estimateFigureEightDurationMs,
+  estimateOrbitDurationMs,
+  estimateSpiralDurationMs,
+  estimateWaveDurationMs,
+  estimateZigzagDurationMs,
+} from '../runtime/patterns/movementPatterns';
 import type { CompileOptions, CompileContext } from './compileBehaviors';
 import type { CallActionSpec } from '../model/types';
 
@@ -207,6 +220,78 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
     const condition = instantiateInlineCondition(attachment.condition, ctx);
+    return new MoveUntil(target, { x: velocityX, y: velocityY }, condition);
+  }
+  if (presetId === 'WavePattern') {
+    const amplitude = Number(attachment.params?.amplitude ?? 30);
+    const length = Number(attachment.params?.length ?? 80);
+    const velocity = Number(attachment.params?.velocity ?? 80);
+    const startProgress = Number(attachment.params?.startProgress ?? 0);
+    const endProgress = Number(attachment.params?.endProgress ?? 1);
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const durationMs = estimateWaveDurationMs({ length, startProgress, endProgress, velocity });
+    const offsetFn = buildWaveOffset({ amplitude, length, startProgress, endProgress });
+    return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: false });
+  }
+  if (presetId === 'ZigzagPattern') {
+    const width = Number(attachment.params?.width ?? 30);
+    const height = Number(attachment.params?.height ?? 15);
+    const velocity = Number(attachment.params?.velocity ?? 100);
+    const segments = Number(attachment.params?.segments ?? 5);
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const durationMs = estimateZigzagDurationMs({ width, height, segments, velocity });
+    const offsetFn = buildZigzagOffset({ width, height, segments });
+    return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: false });
+  }
+  if (presetId === 'SpiralPattern') {
+    const maxRadius = Number(attachment.params?.maxRadius ?? 60);
+    const revolutions = Number(attachment.params?.revolutions ?? 2);
+    const velocity = Number(attachment.params?.velocity ?? 80);
+    const direction = attachment.params?.direction === 'inward' ? 'inward' : 'outward';
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const durationMs = estimateSpiralDurationMs({ maxRadius, revolutions, velocity });
+    const offsetFn = buildSpiralOffset({ maxRadius, revolutions, direction });
+    return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: true, rotationOffsetDeg: 0 });
+  }
+  if (presetId === 'FigureEightPattern') {
+    const width = Number(attachment.params?.width ?? 80);
+    const height = Number(attachment.params?.height ?? 60);
+    const velocity = Number(attachment.params?.velocity ?? 100);
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const durationMs = estimateFigureEightDurationMs({ width, height, velocity });
+    const offsetFn = buildFigureEightOffset({ width, height }).offsetFn;
+    return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: true, rotationOffsetDeg: 0 });
+  }
+  if (presetId === 'OrbitPattern') {
+    const radius = Number(attachment.params?.radius ?? 50);
+    const velocity = Number(attachment.params?.velocity ?? 100);
+    const clockwise = attachment.params?.clockwise !== false;
+    const centerMode = attachment.params?.centerMode === 'home' ? 'home' : 'current';
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    // Duration is still used by the inspector defaults / quick usage; runtime action completes after one full orbit.
+    const _durationMs = estimateOrbitDurationMs({ radius, velocity });
+    return new OrbitPattern(target, { radius, velocity, clockwise, condition, rotateWithPath: true, rotationOffsetDeg: 0, centerMode });
+  }
+  if (presetId === 'BouncePattern' || presetId === 'PatrolPattern') {
+    const axisRaw = String(attachment.params?.axis ?? (presetId === 'PatrolPattern' ? 'x' : 'both'));
+    const axis = axisRaw === 'y' ? 'y' : axisRaw === 'x' ? 'x' : 'both';
+    const velocityX = Number(attachment.params?.velocityX ?? attachment.params?.velocity ?? 0);
+    const velocityY = Number(attachment.params?.velocityY ?? 0);
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    if (axis === 'x') return new MoveXUntil(target, velocityX, condition);
+    if (axis === 'y') return new MoveYUntil(target, velocityY, condition);
     return new MoveUntil(target, { x: velocityX, y: velocityY }, condition);
   }
   if (presetId === 'MoveXUntil') {

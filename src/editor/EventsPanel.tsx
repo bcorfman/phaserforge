@@ -1,14 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AttachmentSpec, AttachmentTriggerSpec, EditorRegistryConfig, EventBlockSpec, Id, ParamSpec, PatternSpec, ProjectSpec, SceneSpec, TargetRef } from '../model/types';
 import { type AttachedActionRow, buildAttachedActionRowsForTargetAndEvent } from './attachmentCommands';
 import { getTargetLabel } from './attachmentCommands';
 import { ActionLibraryDrawer } from './ActionLibraryDrawer';
 import { loadPinnedActionTypes, togglePinnedActionType } from './actionPins';
+import { loadPinnedPatternIds, togglePinnedPatternId } from './patternPins';
 
 const SUPPORTED_PRESETS = new Set([
   'MoveUntil',
   'MoveXUntil',
   'MoveYUntil',
+  'WavePattern',
+  'ZigzagPattern',
+  'FigureEightPattern',
+  'SpiralPattern',
+  'OrbitPattern',
+  'BouncePattern',
+  'PatrolPattern',
   'Wait',
   'Call',
   'EmitEvent',
@@ -93,12 +101,12 @@ export function EventsPanel({
   if (tab === 'map') {
     return (
       <div data-testid="events-panel">
-        <div className="inspector-row">
-          <button className={tab === 'blocks' ? 'tag-button' : 'tag-button'} type="button" onClick={() => setTab('blocks')}>
-            Blocks
+        <div className="sidebar-scope-tabs" role="tablist" aria-label="Events Scope">
+          <button className={`button ${tab === 'blocks' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'blocks'} onClick={() => setTab('blocks')}>
+            Handlers
           </button>
-          <button className={tab === 'map' ? 'tag-button' : 'tag-button'} type="button" onClick={() => setTab('map')}>
-            Map
+          <button className={`button ${tab === 'map' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'map'} onClick={() => setTab('map')}>
+            Wiring
           </button>
         </div>
         <EventWiringMap
@@ -114,22 +122,22 @@ export function EventsPanel({
 
   return (
     <div data-testid="events-panel">
-      <div className="inspector-row">
-        <button className="tag-button" type="button" onClick={() => setTab('blocks')}>
-          Blocks
+      <div className="sidebar-scope-tabs" role="tablist" aria-label="Events Scope">
+        <button className={`button ${tab === 'blocks' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'blocks'} onClick={() => setTab('blocks')}>
+          Handlers
         </button>
-        <button className="tag-button" type="button" onClick={() => setTab('map')}>
-          Map
+        <button className={`button ${tab === 'map' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'map'} onClick={() => setTab('map')}>
+          Wiring
         </button>
       </div>
       <div className="inspector-row">
-        <button className="button" data-testid="add-event-block" type="button" onClick={() => onCreateEventBlock()}>
+        <button className="button button-compact" data-testid="add-event-block" type="button" onClick={() => onCreateEventBlock()}>
           + Add Event
         </button>
       </div>
       <EventBlockCard
         key="__legacy__"
-        block={{ id: '__legacy__', name: 'OnSceneStart (Legacy)', target, trigger: { type: 'start' } } as any}
+        block={{ id: '__legacy__', name: 'OnSceneStart', target, trigger: { type: 'start' } } as any}
         project={project}
         scene={scene}
         target={target}
@@ -339,26 +347,53 @@ function EventBlockCard({
   const [selectedParallelGroupId, setSelectedParallelGroupId] = useState<string | null>(null);
   const [expandedParallelGroups, setExpandedParallelGroups] = useState<Set<string>>(() => new Set());
   const [collapsedRepeats, setCollapsedRepeats] = useState<Set<string>>(() => new Set());
-  const [filterText, setFilterText] = useState<string>('');
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
   const [drawerCategory, setDrawerCategory] = useState<string>('All');
   const [pinnedTypes, setPinnedTypes] = useState<Set<string>>(() => new Set(loadPinnedActionTypes()));
+  const [pinnedPatternIds, setPinnedPatternIds] = useState<Set<string>>(() => new Set(loadPinnedPatternIds()));
+  const [drawerAnchorRect, setDrawerAnchorRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const [draggingRow, setDraggingRow] = useState<{ kind: 'attachment' | 'parallel-group'; id: string; parentAttachmentId: Id | undefined } | null>(null);
-  const [addMenuOpen, setAddMenuOpen] = useState<boolean>(false);
   const [applyPatternPrompt, setApplyPatternPrompt] = useState<{
     patternId: Id;
     bindings: Record<Id, string | boolean>;
   } | null>(null);
+  const [overflowMenu, setOverflowMenu] = useState<{ kind: 'attachment'; attachmentId: Id } | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const menuRootRef = useRef<HTMLDivElement | null>(null);
+  const addButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!overflowMenu) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const root = menuRootRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setOverflowMenu(null);
+    };
+    window.addEventListener('pointerdown', onPointerDown, true);
+    return () => window.removeEventListener('pointerdown', onPointerDown, true);
+  }, [overflowMenu]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const update = () => {
+      const rect = addButtonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setDrawerAnchorRect({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [drawerOpen]);
 
   const selectedCount = selectedParallelGroupId ? 1 : selectedAttachmentIds.size;
   const clearSelection = () => {
     setSelectedAttachmentIds(new Set());
     setSelectedParallelGroupId(null);
   };
-  useEffect(() => {
-    clearSelection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterText]);
   const toggleSelected = (id: Id) => {
     setSelectedParallelGroupId(null);
     setSelectedAttachmentIds((prev) => {
@@ -451,7 +486,7 @@ function EventBlockCard({
       />
       <button
         aria-label="Reorder step"
-        className="tag-button"
+        className="scene-graph-button"
         data-testid={`attachment-drag-${attachment.id}`}
         disabled={opts.disableDrag}
         draggable={!opts.disableDrag}
@@ -462,12 +497,12 @@ function EventBlockCard({
           e.dataTransfer.setData('text/plain', attachment.id);
         }}
         onDragEnd={() => setDraggingRow(null)}
-        title={opts.disableDrag ? 'Disable filter to reorder' : 'Drag to reorder'}
+        title={opts.disableDrag ? 'Drag disabled' : 'Drag to reorder'}
       >
-        ≡
+        ⋮⋮
       </button>
       <button
-        className="tag-button"
+        className="list-item"
         data-testid={`attachment-open-${attachment.id}`}
         type="button"
         onClick={() => onSelectAttachment(attachment.id)}
@@ -475,12 +510,19 @@ function EventBlockCard({
         {selectedAttachmentId === attachment.id ? 'Selected' : indexLabel} · {attachment.name ?? attachment.id} · {attachment.presetId}
       </button>
       <button
-        className="tag-button tag-button-danger"
-        data-testid={`attachment-remove-${attachment.id}`}
+        aria-label={`More options for step ${attachment.name ?? attachment.id}`}
+        className="scene-graph-button"
+        data-testid={`attachment-menu-${attachment.id}`}
         type="button"
-        onClick={() => onRemoveAttachment(attachment.id)}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+          setMenuPosition({ x: Math.min(rect.left, window.innerWidth - 220), y: rect.bottom + 6 });
+          setOverflowMenu({ kind: 'attachment', attachmentId: attachment.id });
+        }}
       >
-        Remove
+        ⋯
       </button>
     </div>
   );
@@ -503,21 +545,10 @@ function EventBlockCard({
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [scene.attachments, scene.eventBlocks]);
 
-  const displayNameByType = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const entry of supportedPresetEntries) map.set(entry.type, entry.displayName);
-    return map;
-  }, [supportedPresetEntries]);
-
-  const normalizedFilter = filterText.trim().toLowerCase();
-  const attachmentMatchesFilter = (attachment: any): boolean => {
-    if (!normalizedFilter) return true;
-    const presetId = String(attachment.presetId ?? '');
-    const name = typeof attachment.name === 'string' ? attachment.name : '';
-    const displayName = displayNameByType.get(presetId) ?? '';
-    const haystack = `${name} ${presetId} ${displayName}`.toLowerCase();
-    return haystack.includes(normalizedFilter);
-  };
+  const patternsSorted = useMemo(
+    () => Object.values(project.patterns ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
+    [project.patterns]
+  );
 
   const pickPreset = (presetId: string) => {
     const init: Partial<AttachmentSpec> = { eventId: block.id };
@@ -620,30 +651,27 @@ function EventBlockCard({
       </div>
 
       <div className="panel-heading-row">
-        <div className="panel-heading">Add Action</div>
+        <div className="panel-heading" />
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1 }}>
-          <input
-            className="text-input"
-            aria-label="Action Filter"
-            data-testid={hideEventControls ? 'event-action-filter' : `event-action-filter-${block.id}`}
-            type="text"
-            value={filterText}
-            placeholder="Filter…"
-            onChange={(e) => setFilterText(e.target.value)}
-          />
           <button
-            className={`tag-button ${addMenuOpen ? 'active' : ''}`}
+            ref={addButtonRef}
+            className={`button button-compact ${drawerOpen ? 'active' : ''}`}
             type="button"
             data-testid={hideEventControls ? 'event-add-open' : `event-add-open-${block.id}`}
-            onClick={() => setAddMenuOpen((prev) => !prev)}
+            onClick={() => {
+              setPinnedTypes(new Set(loadPinnedActionTypes()));
+              setPinnedPatternIds(new Set(loadPinnedPatternIds()));
+              const rect = addButtonRef.current?.getBoundingClientRect();
+              if (rect) setDrawerAnchorRect({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+              setDrawerOpen(true);
+            }}
           >
-            + Add…
+            + Add Action ▾
           </button>
         </div>
       </div>
 
       {(() => {
-        const patterns = Object.values(project.patterns ?? {}).sort((a, b) => a.name.localeCompare(b.name));
         const activePattern: PatternSpec | undefined = applyPatternPrompt ? (project.patterns ?? {})[applyPatternPrompt.patternId] : undefined;
         const validateParam = (param: ParamSpec, value: string | boolean | undefined): string | undefined => {
           const hasDefault = param.default !== undefined;
@@ -727,53 +755,7 @@ function EventBlockCard({
               </div>
             )}
 
-            {addMenuOpen && (
-              <div className="inspector-block" data-testid="event-add-menu" style={{ marginTop: 10 }}>
-                <button
-                  className="tag-button"
-                  type="button"
-                  data-testid={hideEventControls ? 'event-add-new-action' : `event-add-new-action-${block.id}`}
-                  onClick={() => {
-                    setPinnedTypes(new Set(loadPinnedActionTypes()));
-                    setDrawerOpen(true);
-                    setAddMenuOpen(false);
-                  }}
-                >
-                  New Action…
-                </button>
-                {patterns.length > 0 ? (
-                  <>
-                    <div className="panel-heading" style={{ marginTop: 10 }}>Patterns</div>
-                    <div className="member-tags">
-                      {patterns.map((pattern) => (
-                        <button
-                          key={pattern.id}
-                          className="tag-button"
-                          type="button"
-                          onClick={() => {
-                            if ((pattern.params ?? []).length > 0) {
-                              const initial: Record<Id, string | boolean> = {};
-                              for (const param of pattern.params ?? []) {
-                                if (param.type === 'boolean') initial[param.id] = Boolean(param.default);
-                                else if (param.default != null) initial[param.id] = String(param.default);
-                                else initial[param.id] = '';
-                              }
-                              setApplyPatternPrompt({ patternId: pattern.id, bindings: initial });
-                              setAddMenuOpen(false);
-                              return;
-                            }
-                            onApplyPattern(pattern.id, eventIdForRows, {});
-                            setAddMenuOpen(false);
-                          }}
-                        >
-                          {pattern.name}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            )}
+            {/* Patterns are now in the Action Library drawer as a Category. */}
           </>
         );
       })()}
@@ -781,14 +763,33 @@ function EventBlockCard({
       <ActionLibraryDrawer
         open={drawerOpen}
         title="Action Library"
-        search={filterText}
-        onSearchChange={setFilterText}
         actions={supportedPresetEntries}
+        patterns={patternsSorted.map((p) => ({ id: p.id, name: p.name }))}
         pinnedTypes={pinnedTypes}
         onTogglePin={(type) => setPinnedTypes(new Set(togglePinnedActionType(type)))}
+        pinnedPatternIds={pinnedPatternIds}
+        onTogglePinnedPattern={(id) => setPinnedPatternIds(new Set(togglePinnedPatternId(id)))}
         selectedCategory={drawerCategory}
         onSelectCategory={setDrawerCategory}
-        onPick={pickPreset}
+        onPickAction={(type) => pickPreset(type)}
+        onPickPattern={(patternId) => {
+          const pattern = (project.patterns ?? {})[patternId];
+          if (!pattern) return;
+          if ((pattern.params ?? []).length > 0) {
+            const initial: Record<Id, string | boolean> = {};
+            for (const param of pattern.params ?? []) {
+              if (param.type === 'boolean') initial[param.id] = Boolean(param.default);
+              else if (param.default != null) initial[param.id] = String(param.default);
+              else initial[param.id] = '';
+            }
+            setApplyPatternPrompt({ patternId: pattern.id, bindings: initial });
+            setDrawerOpen(false);
+            return;
+          }
+          onApplyPattern(pattern.id, eventIdForRows, {});
+          setDrawerOpen(false);
+        }}
+        anchorRect={drawerAnchorRect}
         onClose={() => setDrawerOpen(false)}
       />
 
@@ -826,7 +827,6 @@ function EventBlockCard({
 
       <div className="member-list">
         {(() => {
-          const forceExpandForFilter = normalizedFilter.length > 0;
           const renderRows = (parentAttachmentId: Id | undefined, depth: number): JSX.Element[] => {
             const rows = buildAttachedActionRowsForTargetAndEvent(scene, target, eventIdForRows, parentAttachmentId);
             return rows.flatMap((row, rowIndex) => {
@@ -835,15 +835,12 @@ function EventBlockCard({
                 const isRepeat = attachment.presetId === 'Repeat' && Array.isArray(attachment.children) && attachment.children.length > 0;
                 const indexLabel = `Step ${rowIndex + 1}`;
                 const childRows = isRepeat ? renderRows(attachment.id, depth + 1) : [];
-                const showSelf = attachmentMatchesFilter(attachment);
-                const showBecauseChild = childRows.length > 0;
-                if (!showSelf && !showBecauseChild) return [];
                 const base = (
                   <div key={attachment.id} style={{ paddingLeft: depth * 18 }}>
                     {isRepeat ? (
                       <div className="member-row">
                         <button className="tag-button" type="button" onClick={() => toggleRepeatCollapsed(attachment.id)}>
-                          {(collapsedRepeats.has(attachment.id) && !forceExpandForFilter) ? '▸' : '▾'} Repeat
+                          {collapsedRepeats.has(attachment.id) ? '▸' : '▾'} Repeat
                         </button>
                         <span className="muted" style={{ marginLeft: 8 }}>Add child:</span>
                         {supportedPresetEntries
@@ -888,19 +885,18 @@ function EventBlockCard({
                       }}
                     >
                       {renderAttachmentRow(attachment, indexLabel, {
-                        disableDrag: normalizedFilter.length > 0,
+                        disableDrag: false,
                         parentAttachmentId,
                       })}
                     </div>
                   </div>
                 );
                 if (!isRepeat) return [base];
-                if (!forceExpandForFilter && collapsedRepeats.has(attachment.id)) return [base];
+                if (collapsedRepeats.has(attachment.id)) return [base];
                 return [base, ...childRows];
               }
 
               const isExpanded = expandedParallelGroups.has(row.groupId);
-              if (normalizedFilter.length > 0 && !row.attachments.some((a: any) => attachmentMatchesFilter(a))) return [];
               const header = (
                 <div
                   key={`parallel-${row.groupId}`}
@@ -940,17 +936,17 @@ function EventBlockCard({
                       type="checkbox"
                     />
                     <button className="tag-button" type="button" onClick={() => toggleExpanded(row.groupId)}>
-                      {(isExpanded || forceExpandForFilter) ? '▾' : '▸'} Parallel · {row.attachments.length} actions
+                      {isExpanded ? '▾' : '▸'} Parallel · {row.attachments.length} actions
                     </button>
                     <button className="tag-button" type="button" onClick={() => onUngroupParallel(row.groupId, block.id)}>
                       Ungroup
                     </button>
                     <button
                       aria-label="Reorder parallel group"
-                      className="tag-button"
+                      className="scene-graph-button"
                       data-testid={`parallel-group-drag-${row.groupId}`}
-                      disabled={normalizedFilter.length > 0}
-                      draggable={normalizedFilter.length === 0}
+                      disabled={false}
+                      draggable
                       type="button"
                       onDragStart={(e) => {
                         setDraggingRow({ kind: 'parallel-group', id: row.groupId, parentAttachmentId });
@@ -958,12 +954,12 @@ function EventBlockCard({
                         e.dataTransfer.setData('text/plain', row.groupId);
                       }}
                       onDragEnd={() => setDraggingRow(null)}
-                      title={normalizedFilter.length > 0 ? 'Disable filter to reorder' : 'Drag to reorder'}
+                      title="Drag to reorder"
                     >
-                      ≡
+                      ⋮⋮
                     </button>
                   </div>
-                  {(isExpanded || forceExpandForFilter) &&
+                  {isExpanded &&
                     row.attachments.map((attachment) => (
                       <div key={attachment.id} className="member-row" style={{ paddingLeft: 18 }}>
                         <button className="tag-button" type="button" onClick={() => onSelectAttachment(attachment.id)}>
@@ -980,6 +976,45 @@ function EventBlockCard({
           return renderRows(undefined, 0);
         })()}
       </div>
+
+      {overflowMenu && menuPosition ? (
+        <div
+          ref={menuRootRef}
+          className="scene-graph-menu"
+          style={{ position: 'fixed', left: menuPosition.x, top: menuPosition.y, zIndex: 50, minWidth: 200 }}
+          role="menu"
+          data-testid="events-overflow-menu"
+        >
+          {overflowMenu.kind === 'attachment' ? (
+            <>
+              <div className="scene-graph-menu-hint">{overflowMenu.attachmentId}</div>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid={`attachment-menu-open-${overflowMenu.attachmentId}`}
+                onClick={() => {
+                  onSelectAttachment(overflowMenu.attachmentId);
+                  setOverflowMenu(null);
+                }}
+              >
+                Open
+              </button>
+              <div className="scene-graph-menu-divider" />
+              <button
+                type="button"
+                className="scene-graph-menu-item scene-graph-menu-danger"
+                data-testid={`attachment-menu-remove-${overflowMenu.attachmentId}`}
+                onClick={() => {
+                  onRemoveAttachment(overflowMenu.attachmentId);
+                  setOverflowMenu(null);
+                }}
+              >
+                Remove…
+              </button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

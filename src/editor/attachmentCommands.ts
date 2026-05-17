@@ -193,6 +193,34 @@ export function createAttachment(
     baseDefaults.params = { eventName: 'Event.Name' };
   } else if (presetId === 'Repeat') {
     baseDefaults.params = {};
+  } else if (presetId === 'WavePattern') {
+    baseDefaults.params = { amplitude: 30, length: 80, velocity: 80, startProgress: 0, endProgress: 1 };
+  } else if (presetId === 'ZigzagPattern') {
+    baseDefaults.params = { width: 30, height: 15, velocity: 100, segments: 5 };
+  } else if (presetId === 'SpiralPattern') {
+    baseDefaults.params = { maxRadius: 60, revolutions: 2, velocity: 80, direction: 'outward' };
+  } else if (presetId === 'FigureEightPattern') {
+    baseDefaults.params = { width: 80, height: 60, velocity: 100 };
+  } else if (presetId === 'OrbitPattern') {
+    baseDefaults.params = { radius: 50, velocity: 100, clockwise: true, centerMode: 'current' };
+  } else if (presetId === 'BouncePattern') {
+    baseDefaults.params = { velocityX: 120, velocityY: 60, axis: 'both' };
+    baseDefaults.condition = {
+      type: 'BoundsHit',
+      bounds: { minX: 0, minY: 0, maxX: world.width, maxY: world.height },
+      mode: 'any',
+      scope: target.type === 'group' ? 'group-extents' : 'member-any',
+      behavior: 'bounce',
+    };
+  } else if (presetId === 'PatrolPattern') {
+    baseDefaults.params = { velocityX: 120, velocityY: 0, axis: 'x' };
+    baseDefaults.condition = {
+      type: 'BoundsHit',
+      bounds: { minX: 0, minY: 0, maxX: world.width, maxY: world.height },
+      mode: 'any',
+      scope: target.type === 'group' ? 'group-extents' : 'member-any',
+      behavior: 'bounce',
+    };
   }
 
   const attachment: AttachmentSpec = {
