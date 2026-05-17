@@ -51,7 +51,7 @@ export function createDragOverlayText(scene: Phaser.Scene): Phaser.GameObjects.T
   const text = scene.add.text(0, 0, '', {
     color: '#ffffff',
     backgroundColor: '#000000',
-    fontFamily: 'IBM Plex Mono',
+    fontFamily: 'Space Grotesk',
     fontSize: '12px',
     padding: { x: 4, y: 2 },
   });

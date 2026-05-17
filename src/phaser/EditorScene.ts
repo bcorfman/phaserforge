@@ -948,7 +948,7 @@ export class EditorScene extends Phaser.Scene {
       const frame = this.add.graphics();
       const label = this.add.text(0, 0, scene.groups[groupId]?.name ?? groupId, {
         color: '#ffdf9d',
-        fontFamily: 'IBM Plex Mono',
+        fontFamily: 'Space Grotesk',
         fontSize: '11px',
       });
       label.setDepth(10);
