@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <defs>
+    <style>
+      .bg{fill:#0b1020}
+      .panel{fill:#111a33;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .canvas{fill:#0f1630;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .bar{fill:#101a36;stroke:#2a3a6a;stroke-width:2;rx:14}
+      .btn{fill:#16244a;stroke:#2a3a6a;stroke-width:1.5;rx:12}
+      .btn2{fill:#101a36;stroke:#2a3a6a;stroke-width:1.5;rx:12}
+      .btnDanger{fill:#3a1b2a;stroke:#7a3a5a;stroke-width:1.5;rx:12}
+      .menu{fill:#0f1733;stroke:#2a3a6a;stroke-width:2;rx:14}
+      .title{fill:#e8eeff;font:700 26px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .h{fill:#cfe0ff;font:700 16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .t{fill:#d6def7;font:500 14px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .muted{fill:#a9b6df;font:500 13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .mono{fill:#d6def7;font:600 12.5px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+      .kbd{fill:#1a2b4f;stroke:#2a3a6a;stroke-width:1;rx:8}
+      .hl{fill:none;stroke:#2be4a7;stroke-width:2;stroke-dasharray:6 6}
+      .x{fill:none;stroke:#ff6b6b;stroke-width:3;stroke-linecap:round}
+      .ok{fill:none;stroke:#2be4a7;stroke-width:3;stroke-linecap:round}
+      .call{fill:#0b1a2b;stroke:#2a3a6a;stroke-width:1.5;rx:14}
+    </style>
+  </defs>
+  <rect class="bg" width="1400" height="900"/>
+
+  <text class="title" x="44" y="60">07 — Grouping Consolidation: Single Obvious Path + Verb Renames</text>
+  <text class="muted" x="44" y="86">Primary workflow: on-canvas Selection Bar → “…” menu. Eliminate extra entrypoints; rename verbs to reduce confusion.</text>
+
+  <!-- Left: canvas + selection bar -->
+  <g transform="translate(44,120)">
+    <rect class="canvas" x="0" y="0" width="880" height="700" rx="16"/>
+    <text class="h" x="18" y="34">Canvas</text>
+    <text class="muted" x="18" y="56">Selection: 3 sprites (not in a formation)</text>
+
+    <rect x="220" y="200" width="74" height="74" fill="#ffb86b" opacity="0.25" stroke="#ffb86b" stroke-width="3"/>
+    <rect x="340" y="250" width="74" height="74" fill="#ffb86b" opacity="0.25" stroke="#ffb86b" stroke-width="3"/>
+    <rect x="460" y="210" width="74" height="74" fill="#ffb86b" opacity="0.25" stroke="#ffb86b" stroke-width="3"/>
+    <rect class="hl" x="198" y="178" width="370" height="175" rx="14"/>
+
+    <!-- selection bar (near-cursor) -->
+    <g transform="translate(110,560)">
+      <rect class="bar" x="0" y="0" width="660" height="96" rx="14"/>
+      <text class="t" x="16" y="30">3 selected</text>
+
+      <rect class="btn" x="16" y="48" width="116" height="34" rx="12"/>
+      <text class="t" x="44" y="70">Group…</text>
+
+      <rect class="btn2" x="140" y="48" width="168" height="34" rx="12"/>
+      <text class="t" x="154" y="70">Add to formation…</text>
+
+      <rect class="btn2" x="316" y="48" width="210" height="34" rx="12"/>
+      <text class="t" x="330" y="70">Remove from formation</text>
+
+      <rect class="btn" x="536" y="48" width="50" height="34" rx="12"/>
+      <text class="t" x="556" y="70">…</text>
+
+      <rect class="btnDanger" x="594" y="48" width="50" height="34" rx="12"/>
+      <text class="t" x="608" y="70">Del</text>
+    </g>
+
+    <text class="muted" x="18" y="686">Rename verbs: “Ungroup” → “Remove from formation”; “Dissolve group” → “Dissolve formation”.</text>
+  </g>
+
+  <!-- Right: “…” menu + consolidation checklist -->
+  <g transform="translate(950,120)">
+    <rect class="panel" x="0" y="0" width="406" height="700" rx="16"/>
+    <text class="h" x="18" y="34">Selection Bar “…” Menu (single surface)</text>
+    <text class="muted" x="18" y="56">All grouping verbs live here</text>
+
+    <g transform="translate(18,78)">
+      <rect class="menu" x="0" y="0" width="370" height="220" rx="14"/>
+      <text class="h" x="16" y="28">Selection Actions</text>
+      <line x1="16" y1="42" x2="354" y2="42" stroke="#2a3a6a" stroke-width="1.5"/>
+
+      <text class="t" x="16" y="74">Group…</text>
+      <rect class="kbd" x="240" y="56" width="114" height="24" rx="8"/>
+      <text class="mono" x="250" y="73">Ctrl/Cmd+⇧+G</text>
+
+      <text class="t" x="16" y="110">Add to formation…</text>
+      <text class="muted" x="262" y="110">submenu</text>
+
+      <text class="t" x="16" y="146">Remove from formation</text>
+
+      <text class="t" x="16" y="182">Dissolve formation</text>
+      <rect class="kbd" x="240" y="164" width="114" height="24" rx="8"/>
+      <text class="mono" x="250" y="181">Ctrl/Cmd+⇧+U</text>
+    </g>
+
+    <text class="h" x="18" y="334">Eliminate Extra Entry Points</text>
+    <text class="muted" x="18" y="356">No alternative entrypoints (not even aliases)</text>
+
+    <g transform="translate(18,378)">
+      <rect class="call" x="0" y="0" width="370" height="284" rx="14"/>
+      <text class="t" x="16" y="30">Keep (primary)</text>
+      <path class="ok" d="M18 46 L28 56 L44 38"/>
+      <text class="muted" x="56" y="52">Selection bar actions + “…” menu</text>
+
+      <text class="t" x="16" y="88">Keep (parity)</text>
+      <path class="ok" d="M18 104 L28 114 L44 96"/>
+      <text class="muted" x="56" y="110">Keyboard shortcuts route into same flow</text>
+
+      <text class="t" x="16" y="146">Remove / re-route (avoid duplicates)</text>
+      <path class="x" d="M18 162 L44 188"/>
+      <path class="x" d="M44 162 L18 188"/>
+      <text class="muted" x="56" y="172">Top-right “Create Group” button (remove)</text>
+      <path class="x" d="M18 206 L44 232"/>
+      <path class="x" d="M44 206 L18 232"/>
+      <text class="muted" x="56" y="216">Inspector “Group/Ungroup” duplicates (remove)</text>
+      <path class="x" d="M18 250 L44 276"/>
+      <path class="x" d="M44 250 L18 276"/>
+      <text class="muted" x="56" y="260">Sidebar/overflow “Group” variants (remove)</text>
+    </g>
+  </g>
+</svg>

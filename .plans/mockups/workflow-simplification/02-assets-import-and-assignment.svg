@@ -109,6 +109,14 @@
 
     <rect class="hl" x="228" y="168" width="134" height="134" rx="14"/>
 
+    <!-- drag path hint -->
+    <g transform="translate(-40,-10)">
+      <path d="M0 0 C-120 40 -220 80 -320 110" fill="none" stroke="#8ad1ff" stroke-width="2.5" stroke-dasharray="6 6"/>
+      <path d="M-320 110 L-308 104 L-312 118 Z" fill="#8ad1ff"/>
+      <rect class="btn2" x="-372" y="114" width="180" height="30" rx="12"/>
+      <text class="t" x="-360" y="134">Dragging: hero_idle</text>
+    </g>
+
     <!-- drag tooltip -->
     <g transform="translate(380,140)">
       <rect class="tip" x="0" y="0" width="320" height="54" rx="12"/>
