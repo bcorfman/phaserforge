@@ -77,13 +77,6 @@ describe('EventsPanel Action Library drawer', () => {
       openButton!.click();
     });
 
-    const newAction = container.querySelector('[data-testid="event-add-new-action"]') as HTMLButtonElement | null;
-    expect(newAction).not.toBeNull();
-
-    await React.act(async () => {
-      newAction!.click();
-    });
-
     expect(container.querySelector('[data-testid="action-library"]')).not.toBeNull();
 
     const pinMoveUntil = container.querySelector('[data-testid="action-library-pin-MoveUntil"]') as HTMLButtonElement | null;
@@ -94,7 +87,7 @@ describe('EventsPanel Action Library drawer', () => {
     });
 
     // Pinned section should appear after pinning.
-    expect(container.textContent).toContain('Pinned (global)');
+    expect(container.textContent).toContain('Pinned (filtered)');
 
     const addWait = container.querySelector('[data-testid="action-library-add-Wait"]') as HTMLElement | null;
     expect(addWait).not.toBeNull();
@@ -177,21 +170,59 @@ describe('EventsPanel Action Library drawer', () => {
       );
     });
 
-    // Sanity: the "Pause" step exists in sampleScene.
+    // The mockup removed the inline filter box; ensure steps still render.
     expect(container.querySelector('[data-testid="attachment-open-att-wait-right"]')).not.toBeNull();
+  });
 
-    const filterInput = container.querySelector('[data-testid="event-action-filter"]') as HTMLInputElement | null;
-    expect(filterInput).not.toBeNull();
+  it('removes a step via the overflow menu (ellipsis button)', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const onRemoveAttachment = vi.fn();
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
 
     await React.act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
-      setter?.call(filterInput!, 'Move');
-      filterInput!.dispatchEvent(new window.Event('input', { bubbles: true }));
-      filterInput!.dispatchEvent(new window.Event('change', { bubbles: true }));
+      root.render(
+        <EventsPanel
+          project={sampleProject}
+          scene={sampleScene}
+          target={{ type: 'group', groupId: 'g-enemies' }}
+          selectedAttachmentId={undefined}
+          registry={registry as any}
+          onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={() => {}}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
+          onRemoveAttachment={onRemoveAttachment}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+        />
+      );
     });
 
-    // "Pause" rows should be hidden by the filter (Move matches Move Left/Right only).
-    expect(container.querySelector('[data-testid="attachment-open-att-wait-right"]')).toBeNull();
+    const menuButton = container.querySelector('[data-testid="attachment-menu-att-wait-right"]') as HTMLButtonElement | null;
+    expect(menuButton).not.toBeNull();
+
+    await React.act(async () => {
+      menuButton!.click();
+    });
+
+    const removeItem = container.querySelector('[data-testid="attachment-menu-remove-att-wait-right"]') as HTMLButtonElement | null;
+    expect(removeItem).not.toBeNull();
+
+    await React.act(async () => {
+      removeItem!.click();
+    });
+
+    expect(onRemoveAttachment).toHaveBeenCalledWith('att-wait-right');
   });
 
   it('drag-to-reorder calls onReorderAttachments with new order', async () => {
