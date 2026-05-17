@@ -394,34 +394,6 @@ function EntityInspector({
     <div className="inspector-block">
       <div className="inspector-title">{resolved.name ?? resolved.id}</div>
       <div className="inspector-row">Authored values update the selected sprite immediately on the canvas.</div>
-      {actionProps && (
-        <InspectorFoldout
-          title="Events"
-          open={foldouts.isOpen('entity.actions', true)}
-          onToggle={() => foldouts.toggle('entity.actions', true)}
-        >
-          <EventsPanel
-            project={actionProps.project}
-            scene={actionProps.scene}
-            target={{ type: 'entity', entityId: entity.id }}
-            registry={actionProps.registry}
-            onCreateEventBlock={actionProps.onCreateEventBlock}
-            onUpdateEventBlock={(next) => actionProps.onUpdateEventBlock(next.id, next)}
-            onRemoveEventBlock={actionProps.onRemoveEventBlock}
-            onAddAttachment={(presetId, init) => actionProps.onAddAttachment(presetId, init)}
-            onSelectAttachment={actionProps.onSelectAttachment}
-            onMoveAttachment={actionProps.onMoveAttachment}
-            onReorderAttachments={actionProps.onReorderAttachments}
-            onRemoveAttachment={actionProps.onRemoveAttachment}
-            onMakeParallel={actionProps.onMakeParallelAttachments}
-            onUngroupParallel={actionProps.onUngroupParallelAttachments}
-            onMoveParallelGroup={actionProps.onMoveParallelAttachmentGroup}
-            onCreatePatternFromAttachments={actionProps.onCreatePatternFromAttachments}
-            onApplyPattern={actionProps.onApplyPattern}
-            selectedAttachmentId={actionProps.selectedAttachmentId}
-          />
-        </InspectorFoldout>
-      )}
       <InspectorFoldout
         title="Transform"
         open={foldouts.isOpen('entity.transform', true)}
@@ -1004,6 +976,34 @@ function EntityInspector({
           )}
         </InspectorFoldout>
       )}
+      {actionProps && (
+        <InspectorFoldout
+          title="Events"
+          open={foldouts.isOpen('entity.actions', true)}
+          onToggle={() => foldouts.toggle('entity.actions', true)}
+        >
+          <EventsPanel
+            project={actionProps.project}
+            scene={actionProps.scene}
+            target={{ type: 'entity', entityId: entity.id }}
+            registry={actionProps.registry}
+            onCreateEventBlock={actionProps.onCreateEventBlock}
+            onUpdateEventBlock={(next) => actionProps.onUpdateEventBlock(next.id, next)}
+            onRemoveEventBlock={actionProps.onRemoveEventBlock}
+            onAddAttachment={(presetId, init) => actionProps.onAddAttachment(presetId, init)}
+            onSelectAttachment={actionProps.onSelectAttachment}
+            onMoveAttachment={actionProps.onMoveAttachment}
+            onReorderAttachments={actionProps.onReorderAttachments}
+            onRemoveAttachment={actionProps.onRemoveAttachment}
+            onMakeParallel={actionProps.onMakeParallelAttachments}
+            onUngroupParallel={actionProps.onUngroupParallelAttachments}
+            onMoveParallelGroup={actionProps.onMoveParallelAttachmentGroup}
+            onCreatePatternFromAttachments={actionProps.onCreatePatternFromAttachments}
+            onApplyPattern={actionProps.onApplyPattern}
+            selectedAttachmentId={actionProps.selectedAttachmentId}
+          />
+        </InspectorFoldout>
+      )}
     </div>
   );
 }
@@ -1283,33 +1283,6 @@ export function renderGroupInspector(
     <div className="inspector-block">
       <div className="inspector-title" data-testid="inspector-title">{group.name ?? group.id}</div>
       <InspectorFoldout
-        title="Events"
-        open={handlers.foldouts.isOpen('group.actions', true)}
-        onToggle={() => handlers.foldouts.toggle('group.actions', true)}
-      >
-        <EventsPanel
-          project={project}
-          scene={scene}
-          target={{ type: 'group', groupId: group.id }}
-          registry={handlers.registry}
-          onCreateEventBlock={handlers.onCreateEventBlock}
-          onUpdateEventBlock={(next) => handlers.onUpdateEventBlock(next.id, next)}
-          onRemoveEventBlock={handlers.onRemoveEventBlock}
-          onAddAttachment={(presetId, init) => handlers.onAddAttachment(presetId, init)}
-          onSelectAttachment={handlers.onSelectAttachment}
-          onMoveAttachment={handlers.onMoveAttachment}
-          onReorderAttachments={handlers.onReorderAttachments}
-          onRemoveAttachment={handlers.onRemoveAttachment}
-          onMakeParallel={handlers.onMakeParallelAttachments}
-          onUngroupParallel={handlers.onUngroupParallelAttachments}
-          onMoveParallelGroup={handlers.onMoveParallelAttachmentGroup}
-          onCreatePatternFromAttachments={handlers.onCreatePatternFromAttachments}
-          onApplyPattern={handlers.onApplyPattern}
-          selectedAttachmentId={handlers.selectedAttachmentId}
-        />
-      </InspectorFoldout>
-
-      <InspectorFoldout
         title="Grouping"
         open={handlers.foldouts.isOpen('group.grouping', true)}
         onToggle={() => handlers.foldouts.toggle('group.grouping', true)}
@@ -1548,6 +1521,33 @@ export function renderGroupInspector(
             </button>
           </div>
         ))}
+      </InspectorFoldout>
+
+      <InspectorFoldout
+        title="Events"
+        open={handlers.foldouts.isOpen('group.actions', true)}
+        onToggle={() => handlers.foldouts.toggle('group.actions', true)}
+      >
+        <EventsPanel
+          project={project}
+          scene={scene}
+          target={{ type: 'group', groupId: group.id }}
+          registry={handlers.registry}
+          onCreateEventBlock={handlers.onCreateEventBlock}
+          onUpdateEventBlock={(next) => handlers.onUpdateEventBlock(next.id, next)}
+          onRemoveEventBlock={handlers.onRemoveEventBlock}
+          onAddAttachment={(presetId, init) => handlers.onAddAttachment(presetId, init)}
+          onSelectAttachment={handlers.onSelectAttachment}
+          onMoveAttachment={handlers.onMoveAttachment}
+          onReorderAttachments={handlers.onReorderAttachments}
+          onRemoveAttachment={handlers.onRemoveAttachment}
+          onMakeParallel={handlers.onMakeParallelAttachments}
+          onUngroupParallel={handlers.onUngroupParallelAttachments}
+          onMoveParallelGroup={handlers.onMoveParallelAttachmentGroup}
+          onCreatePatternFromAttachments={handlers.onCreatePatternFromAttachments}
+          onApplyPattern={handlers.onApplyPattern}
+          selectedAttachmentId={handlers.selectedAttachmentId}
+        />
       </InspectorFoldout>
     </div>
   );

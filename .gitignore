@@ -25,3 +25,4 @@ dist-ssr
 .phaseractions*
 .serena/
 playwright-report/
+test-results/
