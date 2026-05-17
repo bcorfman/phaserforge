@@ -66,16 +66,17 @@ describe('Group inspector', () => {
       })
     );
 
-    expect(markup).toContain('Events');
+    expect(markup).toContain('Actions/Events');
     expect(markup).toContain('Grouping');
     expect(markup).toContain('Formation Name');
-    expect(markup).toContain('Ungroup');
-    expect(markup).toContain('Delete Group');
+    expect(markup).not.toContain('Ungroup');
+    expect(markup).not.toContain('Dissolve Group');
+    expect(markup).not.toContain('Delete Group');
     expect(markup).not.toContain('Expand Members');
     expect(markup).not.toContain('Member sprites are read-only here');
   });
 
-  it('renders Events after formation editing foldouts to avoid tab scope ambiguity', () => {
+  it('renders Actions/Events after formation editing foldouts to avoid tab scope ambiguity', () => {
     const group = sampleScene.groups['g-enemies'];
     const markup = renderToStaticMarkup(
       renderGroupInspector(group, project, sampleScene, {
@@ -102,7 +103,7 @@ describe('Group inspector', () => {
     const groupingIndex = markup.indexOf('<div class="inspector-foldout-title">Grouping</div>');
     const formationIndex = markup.indexOf('<div class="inspector-foldout-title">Formation</div>');
     const layoutIndex = markup.indexOf('<div class="inspector-foldout-title">Layout</div>');
-    const eventsIndex = markup.indexOf('<div class="inspector-foldout-title">Events</div>');
+    const eventsIndex = markup.indexOf('<div class="inspector-foldout-title">Actions/Events</div>');
 
     expect(groupingIndex).toBeGreaterThan(-1);
     expect(formationIndex).toBeGreaterThan(groupingIndex);

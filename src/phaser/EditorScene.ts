@@ -1857,14 +1857,9 @@ export class EditorScene extends Phaser.Scene {
       case 'g':
       case 'G':
         if (event.ctrlKey || event.metaKey) {
-          if (event.shiftKey) {
-            // Ctrl+Shift+G: Create group from selection
-            if (this.selection.kind === 'entities') {
-              const groupName = `Group ${Object.keys(this.compiled?.scene?.groups ?? {}).length + 1}`;
-              EventBus.emit('create-group-from-selection', groupName);
-            }
-          } else {
-            // Ctrl+G: Toggle grid
+          // Ctrl+G: Toggle grid
+          // NOTE: Ctrl/Cmd+Shift+G is handled at the React layer (CanvasOverlay) so it can open the Group… prompt.
+          if (!event.shiftKey) {
             event.preventDefault();
             this.toggleGridSnap();
           }

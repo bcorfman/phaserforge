@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <defs>
+    <style>
+      .bg{fill:#0b1020}
+      .panel{fill:#111a33;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .canvas{fill:#0f1630;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .dock{fill:#0f1733;stroke:#2a3a6a;stroke-width:2;rx:16}
+      .btn{fill:#16244a;stroke:#2a3a6a;stroke-width:1.5;rx:12}
+      .btn2{fill:#101a36;stroke:#2a3a6a;stroke-width:1.5;rx:12}
+      .menu{fill:#0f1733;stroke:#2a3a6a;stroke-width:2;rx:14}
+      .tag{fill:#1a2b4f;stroke:#2a3a6a;stroke-width:1.2;rx:999}
+      .title{fill:#e8eeff;font:700 26px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .h{fill:#cfe0ff;font:700 16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .t{fill:#d6def7;font:500 14px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .muted{fill:#a9b6df;font:500 13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .mono{fill:#d6def7;font:600 12.5px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+      .hl{fill:none;stroke:#2be4a7;stroke-width:2;stroke-dasharray:6 6}
+      .x{fill:none;stroke:#ff6b6b;stroke-width:3;stroke-linecap:round}
+      .ok{fill:none;stroke:#2be4a7;stroke-width:3;stroke-linecap:round}
+      .step{fill:#16244a;stroke:#2a3a6a;stroke-width:1.5;rx:14}
+      .num{fill:#0b1020;font:800 16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .pill{fill:#2be4a7;opacity:0.9}
+    </style>
+  </defs>
+  <rect class="bg" width="1400" height="900"/>
+
+  <text class="title" x="44" y="60">08 — Actions/Events Authoring: Single Obvious Surface</text>
+  <text class="muted" x="44" y="86">Primary workflow: select target → Actions/Events panel (discover events) → create handler → edit steps. Remove the separate Attached Actions UI.</text>
+
+  <!-- Left: overall layout (Canvas + Inspector) -->
+  <g transform="translate(44,120)">
+    <rect class="canvas" x="0" y="0" width="560" height="700" rx="16"/>
+    <text class="h" x="18" y="34">Canvas</text>
+    <text class="muted" x="18" y="56">Select target first</text>
+
+    <rect x="210" y="210" width="110" height="110" fill="#ff6b6b" opacity="0.18" stroke="#ff6b6b" stroke-width="3"/>
+    <text class="t" x="214" y="344">Sprite “hero”</text>
+    <rect class="hl" x="196" y="196" width="138" height="138" rx="14"/>
+
+    <g transform="translate(18,420)">
+      <rect class="menu" x="0" y="0" width="524" height="250" rx="14"/>
+      <text class="h" x="16" y="30">Inspector (selected: hero)</text>
+      <text class="muted" x="16" y="52">Events foldout exists, but the primary editing surface is the Events panel</text>
+
+      <rect class="btn2" x="16" y="76" width="492" height="34" rx="12"/>
+      <text class="t" x="28" y="98">Visual ▾</text>
+      <rect class="btn2" x="16" y="118" width="492" height="34" rx="12"/>
+      <text class="t" x="28" y="140">Physics ▾</text>
+      <rect class="btn2" x="16" y="160" width="492" height="34" rx="12"/>
+      <text class="t" x="28" y="182">Actions/Events ▾</text>
+
+      <text class="muted" x="16" y="224">If a secondary entry exists, it should deep-link into the Events panel (not a second editor).</text>
+    </g>
+  </g>
+
+  <!-- Middle: Events panel (single surface) -->
+  <g transform="translate(630,120)">
+    <rect class="dock" x="0" y="0" width="726" height="700" rx="16"/>
+    <text class="h" x="18" y="34">Actions/Events Panel (primary)</text>
+    <text class="muted" x="18" y="56">One surface for: discover → create handler → edit steps</text>
+
+    <!-- Step strip -->
+    <g transform="translate(18,80)">
+      <rect class="step" x="0" y="0" width="690" height="58" rx="14"/>
+      <rect class="pill" x="14" y="16" width="26" height="26" rx="8"/><text class="num" x="23" y="35">1</text>
+      <text class="t" x="52" y="34">Pick event</text>
+      <rect class="pill" x="248" y="16" width="26" height="26" rx="8"/><text class="num" x="257" y="35">2</text>
+      <text class="t" x="286" y="34">Create handler</text>
+      <rect class="pill" x="476" y="16" width="26" height="26" rx="8"/><text class="num" x="485" y="35">3</text>
+      <text class="t" x="514" y="34">Edit steps</text>
+    </g>
+
+    <!-- Three columns (Emitters / Events / Handlers) -->
+    <g transform="translate(18,160)">
+      <rect class="menu" x="0" y="0" width="220" height="220" rx="14"/>
+      <text class="h" x="14" y="28">Emitters</text>
+      <rect class="btn2" x="14" y="44" width="192" height="36" rx="12"/><text class="t" x="28" y="67">HitPlayer</text>
+      <rect class="btn2" x="14" y="88" width="192" height="36" rx="12"/><text class="t" x="28" y="111">OnDeath</text>
+      <rect class="btn2" x="14" y="132" width="192" height="36" rx="12"/><text class="t" x="28" y="155">OnCollect</text>
+      <text class="muted" x="14" y="196">Click to jump to emitter step</text>
+
+      <rect class="menu" x="235" y="0" width="220" height="220" rx="14"/>
+      <text class="h" x="249" y="28">Events</text>
+      <rect class="hl" x="249" y="44" width="192" height="36" rx="12"/>
+      <rect class="btn2" x="249" y="44" width="192" height="36" rx="12"/><text class="t" x="263" y="67">HitPlayer</text>
+      <rect class="btn" x="249" y="90" width="192" height="34" rx="12"/><text class="t" x="263" y="112">Create handler on hero</text>
+      <text class="muted" x="249" y="156">This is the “create handler” door</text>
+
+      <rect class="menu" x="470" y="0" width="220" height="220" rx="14"/>
+      <text class="h" x="484" y="28">Handlers</text>
+      <rect class="btn2" x="484" y="44" width="192" height="36" rx="12"/><text class="t" x="498" y="67">hero · HitPlayer</text>
+      <text class="muted" x="484" y="110">Click to open handler card</text>
+    </g>
+
+    <!-- Event block card with actions -->
+    <g transform="translate(18,410)">
+      <rect class="menu" x="0" y="0" width="690" height="270" rx="14"/>
+      <text class="h" x="16" y="30">Handler: HitPlayer (target: hero)</text>
+      <text class="muted" x="16" y="52">Actions live here (single editor)</text>
+
+      <rect class="btn" x="16" y="74" width="130" height="32" rx="12"/><text class="t" x="30" y="96">+ Add…</text>
+      <rect class="tag" x="156" y="74" width="120" height="32" rx="999"/><text class="t" x="176" y="96">Pinned</text>
+      <rect class="tag" x="284" y="74" width="140" height="32" rx="999"/><text class="t" x="304" y="96">Patterns</text>
+
+      <rect class="btn2" x="16" y="120" width="658" height="36" rx="12"/><text class="t" x="30" y="144">Step 1 · Call · “damagePlayer”</text>
+      <rect class="btn2" x="16" y="164" width="658" height="36" rx="12"/><text class="t" x="30" y="188">Step 2 · Wait · 0.2s</text>
+      <rect class="btn2" x="16" y="208" width="658" height="36" rx="12"/><text class="t" x="30" y="232">Step 3 · MoveUntil · …</text>
+
+      <text class="muted" x="16" y="258">Multi-select steps → Make Parallel / Convert → Pattern (same selection bar pattern).</text>
+    </g>
+  </g>
+
+  <!-- Bottom-right: de-duplication callout -->
+  <g transform="translate(944,40)">
+    <rect class="panel" x="0" y="0" width="412" height="78" rx="16" opacity="0.95"/>
+    <text class="h" x="16" y="30">Delete / Merge</text>
+    <text class="muted" x="16" y="52">Remove the separate Attached Actions UI; Actions/Events is the only editor.</text>
+  </g>
+
+  <!-- Small “Attached Actions” as duplicate (crossed out) -->
+  <g transform="translate(1060,740)">
+    <rect class="panel" x="0" y="0" width="296" height="120" rx="16"/>
+  <text class="h" x="16" y="30">Attached Actions</text>
+  <text class="muted" x="16" y="52">Removed (duplicate editing surface)</text>
+    <path class="x" d="M16 72 L280 104"/>
+    <path class="x" d="M280 72 L16 104"/>
+    <rect class="btn2" x="16" y="80" width="264" height="28" rx="12"/>
+    <text class="t" x="26" y="100">No longer present</text>
+  </g>
+</svg>

@@ -944,18 +944,6 @@ export function EntityListView({
               >
                 Rename…
               </button>
-              <button
-                type="button"
-                className="scene-graph-menu-item"
-                data-testid={`group-menu-dissolve-${menuOpen.groupId}`}
-                onClick={() => {
-                  setMenuOpen(null);
-                  ensureCurrentScene(menuOpen.sceneId);
-                  dispatch({ type: 'dissolve-group', id: menuOpen.groupId });
-                }}
-              >
-                Dissolve Group
-              </button>
               <div className="scene-graph-menu-divider" />
               <button
                 type="button"

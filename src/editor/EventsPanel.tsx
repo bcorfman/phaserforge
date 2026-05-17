@@ -101,13 +101,16 @@ export function EventsPanel({
   if (tab === 'map') {
     return (
       <div data-testid="events-panel">
-        <div className="sidebar-scope-tabs" role="tablist" aria-label="Events Scope">
+        <div className="sidebar-scope-tabs" role="tablist" aria-label="Actions/Events Scope">
           <button className={`button ${tab === 'blocks' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'blocks'} onClick={() => setTab('blocks')}>
             Handlers
           </button>
           <button className={`button ${tab === 'map' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'map'} onClick={() => setTab('map')}>
             Wiring
           </button>
+        </div>
+        <div className="muted" style={{ marginTop: 8 }}>
+          Create event handlers and edit the action steps they run.
         </div>
         <EventWiringMap
           project={project}
@@ -122,13 +125,16 @@ export function EventsPanel({
 
   return (
     <div data-testid="events-panel">
-      <div className="sidebar-scope-tabs" role="tablist" aria-label="Events Scope">
+      <div className="sidebar-scope-tabs" role="tablist" aria-label="Actions/Events Scope">
         <button className={`button ${tab === 'blocks' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'blocks'} onClick={() => setTab('blocks')}>
           Handlers
         </button>
         <button className={`button ${tab === 'map' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'map'} onClick={() => setTab('map')}>
           Wiring
         </button>
+      </div>
+      <div className="muted" style={{ marginTop: 8 }}>
+        Create event handlers and edit the action steps they run.
       </div>
       <div className="inspector-row">
         <button className="button button-compact" data-testid="add-event-block" type="button" onClick={() => onCreateEventBlock()}>

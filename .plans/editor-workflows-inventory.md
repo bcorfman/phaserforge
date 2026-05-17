@@ -129,6 +129,65 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### A37 — Create Pattern from selected steps
 - Select 1+ steps in an Event card → `Convert → Pattern` → name it → confirm.
 
+### A38 — Switch Sidebar Scope (Scene ↔ Project)
+- In the left sidebar, click `Scene` or `Project` tabs.
+
+### A39 — Expand / Collapse a Scene in the Scene Graph
+- In Entity List → Scenes, click the chevron (▸/▾) next to a scene.
+
+### A40 — Create Scene
+- Entity List → Scenes → `+ Add`.
+
+### A41 — Set Current Scene
+- Entity List → Scenes → click a scene name.
+
+### A42 — Rename Scene
+- Entity List → Scenes → overflow menu `⋯` → `Rename…` (or click an already-selected scene row to inline-rename) → `Enter` to save / `Esc` to cancel.
+
+### A43 — Duplicate Scene
+- Entity List → Scenes → overflow menu `⋯` → `⧉ Duplicate Scene`.
+
+### A44 — Set / Clear Base Scene
+- Entity List → Scenes → overflow menu `⋯` → `★ Set as Base` / `★ Clear Base`.
+
+### A45 — Delete Scene
+- Entity List → Scenes → overflow menu `⋯` → `Delete…` (disabled if it would delete the last remaining scene).
+
+### A46 — Reparent Entities via Scene Graph Drag/Drop
+- In Entity List: drag selected sprite(s) onto a formation (group) row to add them to that formation.
+- Drag sprite(s) onto the “Sprites” section to remove them from formations.
+
+### A47 — Create Formation Draft (from an existing entity)
+- Entity List → a sprite row overflow `⋯` → `Create formation from…` (opens a draft popup).
+- In the draft popup: pick arrange preset/params → `Create`.
+
+### A48 — Resize Assets Dock (sidebar splitter)
+- Drag the horizontal splitter between Entity List and Assets Dock.
+
+### A49 — Configure Startup Mode
+- Toolbar → `Startup` select (Reload Last YAML / New Empty Scene).
+
+### A50 — Adjust UI Scale
+- Toolbar → `UI Scale` slider.
+
+### A51 — Change Theme (System/Light/Dark)
+- Toolbar → theme toggle buttons.
+
+### A52 — Cloud Load YAML
+- Cloud panel → select a saved project → `Load`.
+
+### A53 — Cloud Save YAML
+- Cloud panel → `Save` (saves current YAML to the selected/active cloud project).
+
+### A54 — Manage Counters (Project + Scene)
+- Scene State → Counters → `+ Add Global Counter` / `+ Add Scene Counter` → edit name/scope/value; delete via row controls.
+
+### A55 — Manage Collections
+- Scene State → Collections → `+ Add Collection` → edit derived-from + members; delete via row controls.
+
+### A56 — Pin Selection While Dragging (Inspector)
+- Inspector → enable `Pin selection while dragging` (selection stays stable while manipulating UI).
+
 ## Composite Workflows (built from atomic workflows)
 
 ### W1 — Basic Scene Layout (blocking + spacing)
@@ -164,6 +223,15 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### W11 — Mode-based Testing Loop
 - Do any authoring workflow (W1–W9) → A7 toggle Play → validate → A7 back to Edit → A6 undo/redo or adjust.
 
+### W12 — Multi-Scene Authoring Loop
+- A40 create scene (optional) → A41 pick scene → (W1/W2/W3/W4/W5/W6/W7/W8/W9) author → A43 duplicate (optional) → A44 set base (optional).
+
+### W13 — Cloud Round-trip Loop
+- A53 cloud save → refresh/load on another device/session → A52 cloud load → A7 test → A24/A25 local export (optional).
+
+### W14 — Event Authoring (discover → create handler → attach actions)
+- A27/A28 select target → Events panel: pick an event from Events list → create handler on target → use A35 to add/edit action steps → A36 apply pattern (optional) → A7 test.
+
 ## Repetitive / Redundant Workflows (same task, multiple ways today)
 
 ### Grouping (A16) has many inconsistent entrypoints
@@ -189,10 +257,14 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### Mode toggle is duplicated (likely OK)
 - Canvas overlay toggle, `Tab`, runtime also emits toggle-mode.
 
+### Action attachment editing is duplicated / fragmented
+- Attached Actions panel vs Events panel both provide “add/reorder/remove/make-parallel/repeat children” UIs.
+- Similar affordances exist again in some Inspector surfaces via Event foldouts.
+
 ## Missing Workflows
 
-### Replace an existing selected sprite’s asset by direct manipulation
-- You can change an entity’s asset via Inspector dropdown (A27), and you can drag an asset to the canvas to create a *new* entity (A21), but there’s no obvious “drop asset onto selected sprite to replace its asset” workflow.
+### Asset replacement discoverability (drag-drop exists, but may not be obvious)
+- A21 supports dropping an asset onto an existing sprite to replace its asset, but the workflow is easy to miss without a visible “replace” hint/affordance.
 
 ### Convert/relink an already-imported asset between Embedded ↔ Path
 - Import supports embedded vs path at creation time, but there’s no clear “convert later” workflow.

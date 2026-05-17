@@ -101,3 +101,42 @@ test('selection bar groups ungrouped entities and can add to an existing group',
     return group?.members ?? null;
   }).toEqual(['e1', 'e2', 'e3']);
 });
+
+test('Ctrl/Cmd+Shift+G opens the Group… prompt (keyboard parity)', async ({ page, browserName }) => {
+  await dismissViewHint(page);
+
+  // Ungroup the sample formation so entities become selectable as ungrouped sprites.
+  await selectGroupInSceneGraph(page, 'g-enemies');
+  await page.getByTestId('canvas-dissolve-button').click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene?: { groups?: Record<string, unknown> } }>(page);
+    return Boolean(state.scene?.groups?.['g-enemies']);
+  }).toBe(false);
+
+  // Multi-select two ungrouped entities.
+  await tapWorld(page, { x: -9999, y: -9999 });
+  await expectSelection(page, { kind: 'none' });
+
+  const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
+  const e1 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1') ?? null) as any);
+  if (!e1 || !e2) throw new Error('Entity rects unavailable');
+  await dragWorld(page, { x: e1.minX - 30, y: e1.minY - 30 }, { x: e2.maxX + 5, y: e2.maxY + 5 });
+
+  await expect.poll(async () => {
+    const state = await getState<{ selection?: unknown }>(page);
+    return state.selection;
+  }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
+
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.keyboard.down(modifier);
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('G');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up(modifier);
+
+  await expect(page.getByTestId('canvas-group-prompt')).toBeVisible();
+  await page.getByTestId('group-prompt-cancel').click();
+  await expect(page.getByTestId('canvas-group-prompt')).toBeHidden();
+  void browserName;
+});

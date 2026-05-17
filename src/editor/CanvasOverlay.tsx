@@ -83,6 +83,33 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   const canDissolveGroup = state.mode === 'edit' && state.selection.kind === 'group';
 
   useEffect(() => {
+    if (state.mode !== 'edit') return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (latestModeRef.current !== 'edit') return;
+      if (event.target instanceof HTMLElement) {
+        const tag = event.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || event.target.isContentEditable) return;
+      }
+
+      const isGroupShortcut = (event.ctrlKey || event.metaKey) && event.shiftKey && (event.key === 'g' || event.key === 'G');
+      if (!isGroupShortcut) return;
+      if (!canGroupSelection) return;
+      event.preventDefault();
+
+      const anchor = document.querySelector('[data-testid="canvas-group-button"]') as HTMLElement | null;
+      if (anchor) {
+        openGroupPromptNearElement(anchor);
+        return;
+      }
+      setGroupNameDraft(getNextFormationName(scene));
+      setGroupPromptPosition({ x: 16, y: 120 });
+      setGroupPromptOpen(true);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canGroupSelection, scene, state.mode]);
+
+  useEffect(() => {
     if (!menuOpen) return;
 
     const handlePointerDown = (event: PointerEvent) => {
@@ -414,6 +441,17 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
       {showSelectionBar && (
         <div className="canvas-selection-bar" data-testid="canvas-selection-bar">
           <div className="canvas-selection-pill" data-testid="canvas-selection-label">{selectionLabel}</div>
+          {state.selection.kind === 'group' && (
+            <button
+              aria-label="Edit formation members"
+              className="button"
+              data-testid="canvas-edit-members-button"
+              type="button"
+              onClick={() => dispatch({ type: 'ungroup-group', id: state.selection.id })}
+            >
+              Edit members
+            </button>
+          )}
           {state.selection.kind === 'entities' && (
             <button
               aria-label="Group selection"
