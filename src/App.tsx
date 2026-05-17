@@ -9,6 +9,7 @@ import { Toolbar } from './editor/Toolbar';
 import { CanvasOverlay } from './editor/CanvasOverlay';
 import { ViewbarYamlControls } from './editor/ViewbarYamlControls';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
+import { loadProjectFonts } from './editor/fontLoader';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
@@ -57,6 +58,10 @@ function AppShell() {
     setWorldWidthDraft(String(world.width));
     setWorldHeightDraft(String(world.height));
   }, [world.width, world.height]);
+
+  useEffect(() => {
+    void loadProjectFonts(state.project.assets.fonts);
+  }, [state.project.assets.fonts]);
 
   useEffect(() => {
     appStateRef.current = {
