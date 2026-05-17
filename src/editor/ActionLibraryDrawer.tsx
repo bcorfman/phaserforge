@@ -13,6 +13,24 @@ function titleCase(input: string): string {
     .join(' ');
 }
 
+function formatActionDisplayName(entry: ActionLibraryEntry): string {
+  const name = (entry.displayName ?? '').trim();
+  if (!name) return name;
+  if ((entry.category ?? '') === 'movement' && name.endsWith(' Pattern')) {
+    return name.slice(0, -' Pattern'.length).trim();
+  }
+  return name;
+}
+
+function formatActionTypeTag(entry: ActionLibraryEntry): string {
+  const type = (entry.type ?? '').trim();
+  if (!type) return type;
+  if ((entry.category ?? '') === 'movement' && type.endsWith('Pattern')) {
+    return type.slice(0, -'Pattern'.length).trim();
+  }
+  return type;
+}
+
 export function ActionLibraryDrawer({
   open,
   title,
@@ -187,7 +205,7 @@ export function ActionLibraryDrawer({
                         if (e.key === 'Enter' || e.key === ' ') onPickAction(a.type);
                       }}
                     >
-                      <span>{a.displayName}</span>
+                      <span>{formatActionDisplayName(a)}</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <button
                           className="scene-graph-button"
@@ -313,9 +331,9 @@ export function ActionLibraryDrawer({
                           }}
                         >
                           <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                            <span>{a.displayName}</span>
+                            <span>{formatActionDisplayName(a)}</span>
                             <span className="muted" style={{ fontSize: '0.78rem' }}>
-                              {a.category ? titleCase(a.category) : 'Uncategorized'} · {a.type}
+                              {a.category ? titleCase(a.category) : 'Uncategorized'} · {formatActionTypeTag(a)}
                             </span>
                           </span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

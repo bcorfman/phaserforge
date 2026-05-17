@@ -24,6 +24,7 @@ const registry = {
     { type: 'MoveUntil', displayName: 'Move Until', category: 'movement', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'MoveXUntil', displayName: 'Move X Until', category: 'movement', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'MoveYUntil', displayName: 'Move Y Until', category: 'movement', targetKinds: ['entity', 'group'], implemented: true },
+    { type: 'WavePattern', displayName: 'Wave Pattern', category: 'movement', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'Wait', displayName: 'Wait', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'Call', displayName: 'Call', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'EmitEvent', displayName: 'Emit Event', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
@@ -99,6 +100,56 @@ describe('EventsPanel Action Library drawer', () => {
     // Drawer closes after picking.
     expect(container.querySelector('[data-testid="action-library"]')).toBeNull();
     expect(onAddAttachment).toHaveBeenCalledWith('Wait', expect.objectContaining({ eventId: undefined }));
+  });
+
+  it('strips Pattern suffix from movement actions in the drawer', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await React.act(async () => {
+      root.render(
+        <EventsPanel
+          project={sampleProject}
+          scene={sampleScene}
+          target={{ type: 'group', groupId: 'g-enemies' }}
+          selectedAttachmentId={undefined}
+          registry={registry as any}
+          onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={() => {}}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
+          onRemoveAttachment={() => {}}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+        />
+      );
+    });
+
+    const openButton = container.querySelector('[data-testid="event-add-open"]') as HTMLButtonElement | null;
+    expect(openButton).not.toBeNull();
+    await React.act(async () => {
+      openButton!.click();
+    });
+
+    const movementTab = container.querySelector('[data-testid="action-library-cat-movement"]') as HTMLButtonElement | null;
+    expect(movementTab).not.toBeNull();
+    await React.act(async () => {
+      movementTab!.click();
+    });
+
+    expect(container.textContent).toContain('Wave');
+    expect(container.textContent).not.toContain('Wave Pattern');
+    expect(container.textContent).not.toContain('WavePattern');
   });
 
   it('uses OnSceneStart label for start-trigger blocks', async () => {
