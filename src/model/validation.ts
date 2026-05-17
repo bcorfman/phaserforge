@@ -35,6 +35,9 @@ function validateEntities(scene: SceneSpec): void {
     if (entity.id !== id) {
       throw new Error(`Entity id mismatch: key=${id} value=${entity.id}`);
     }
+    if ((entity as any).text && entity.asset) {
+      throw new Error(`Entity ${id} cannot have both text and asset`);
+    }
     if (resolved.rotationDeg < 0 || resolved.rotationDeg > 359) {
       throw new Error(`Entity ${id} rotation must be between 0 and 359 degrees`);
     }

@@ -42,6 +42,7 @@ import { applyPatternToTargetAndEvent, createPatternFromAttachments } from './pa
 import { getSceneWorld } from './sceneWorld';
 import { getAssetReferences } from './assetReferences';
 import { buildDefaultDraftParams, type FormationDraftSpec, type FormationTemplateSource } from './formationDraft';
+import { measureTextEntityPixels, resolveTextEntityDefaults, resolveTextFontFamily } from './textEntity';
 
 export const PROJECT_STORAGE_KEY = 'phaseractions.projectYaml.v1';
 export const SCENE_STORAGE_KEY_V1 = 'phaseractions.sceneYaml.v1';
@@ -195,6 +196,7 @@ export type EditorAction =
   | { type: 'remove-event-block'; id: Id }
   | { type: 'create-pattern-from-attachments'; attachmentIds: Id[]; name?: string }
   | { type: 'apply-pattern'; patternId: Id; target: TargetRef; eventId?: Id; bindings: Record<Id, unknown> }
+  | { type: 'apply-loop-template'; templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown'; target: TargetRef; eventId?: Id }
   | { type: 'create-counter'; scope: 'global' | 'scene'; id?: Id }
   | { type: 'update-counter'; id: Id; next: CounterSpec }
   | { type: 'remove-counter'; id: Id }
@@ -205,7 +207,10 @@ export type EditorAction =
   | { type: 'move-entity'; id: Id; dx: number; dy: number }
   | { type: 'move-group'; id: Id; dx: number; dy: number }
   | { type: 'move-entities'; entityIds: Id[]; dx: number; dy: number }
-  | { type: 'duplicate-entities'; entityIds: Id[] }
+  | { type: 'duplicate-entities'; entityIds: Id[]; options?: { includeBehaviors?: boolean; includeHandlers?: boolean; copyIntoSameGroup?: boolean } }
+  | { type: 'layout-entities'; positions: Array<{ id: Id; x: number; y: number }> }
+  | { type: 'create-text-entity'; at?: { x: number; y: number } }
+  | { type: 'rasterize-text-entity-to-sprite'; entityId: Id; assetId?: Id }
   | { type: 'set-entities-asset'; entityIds: Id[]; asset?: SpriteAssetSpec }
   | { type: 'arrange-group-grid'; id: Id; layout: GroupGridLayout }
   | { type: 'arrange-group'; id: Id; arrangeKind: string; params: Record<string, number | string | boolean> }
@@ -303,6 +308,68 @@ function allocUniqueId(existing: Record<string, unknown>, base: string): string 
   let counter = 2;
   while (existing[`${sanitizedBase}-${counter}`]) counter += 1;
   return `${sanitizedBase}-${counter}`;
+}
+
+function rasterizeTextEntityToDataUrl(
+  project: ProjectSpec,
+  text: EntitySpec['text']
+): { dataUrl: string; width: number; height: number } | null {
+  if (!text) return null;
+  const resolved = resolveTextEntityDefaults(text);
+  const measured = measureTextEntityPixels(project, resolved);
+  const width = Math.max(1, measured.width);
+  const height = Math.max(1, measured.height);
+
+  let canvas: HTMLCanvasElement | OffscreenCanvas | null = null;
+  try {
+    if (typeof OffscreenCanvas !== 'undefined') canvas = new OffscreenCanvas(width, height) as any;
+  } catch {
+    canvas = null;
+  }
+  if (!canvas) {
+    try {
+      if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+        const el = document.createElement('canvas');
+        el.width = width;
+        el.height = height;
+        canvas = el;
+      }
+    } catch {
+      canvas = null;
+    }
+  }
+  if (!canvas) return null;
+
+  const ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = (canvas as any).getContext?.('2d') ?? null;
+  if (!ctx) return null;
+
+  const fontFamily = resolveTextFontFamily(project, resolved);
+  const fontSize = resolved.fontSize;
+  (ctx as any).clearRect(0, 0, width, height);
+  (ctx as any).textBaseline = 'top';
+  (ctx as any).fillStyle = resolved.color;
+  (ctx as any).font = `${fontSize}px ${fontFamily}`;
+
+  const lines = String(resolved.value ?? '').split('\n');
+  const lineHeight = Math.max(1, Math.round(fontSize * 1.2));
+  for (let i = 0; i < lines.length; i += 1) {
+    (ctx as any).fillText(lines[i] ?? '', 0, i * lineHeight);
+  }
+
+  let dataUrl: string | null = null;
+  try {
+    if (typeof (canvas as any).toDataURL === 'function') {
+      dataUrl = (canvas as any).toDataURL('image/png');
+    } else if (typeof (canvas as any).convertToBlob === 'function') {
+      // OffscreenCanvas
+      // NOTE: keep this synchronous by returning null if not supported.
+      dataUrl = null;
+    }
+  } catch {
+    dataUrl = null;
+  }
+  if (!dataUrl || !dataUrl.startsWith('data:')) return null;
+  return { dataUrl, width, height };
 }
 
 function assetIdBaseFromOriginalName(name: string | undefined, fallbackBase: string = 'background'): string {
@@ -452,7 +519,12 @@ function importEntities(state: EditorState, drafts: ImportedEntityDraft[]): Edit
 }
 
 function templateEntityFromSource(state: EditorState, scene: GameSceneSpec, template: FormationTemplateSource): EntitySpec | undefined {
-  if (template.kind === 'entity') return scene.entities[template.entityId];
+  if (template.kind === 'entity') {
+    const entity = scene.entities[template.entityId];
+    if (!entity) return undefined;
+    if ((entity as any).text) return undefined;
+    return entity;
+  }
 
   const defaultSize = 64;
   const image = template.assetKind === 'image' ? state.project.assets.images?.[template.assetId] : undefined;
@@ -557,13 +629,17 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'import-entities':
     case 'update-group':
     case 'create-attachment':
+    case 'apply-loop-template':
     case 'update-attachment':
     case 'remove-attachment':
     case 'move-attachment':
     case 'move-entity':
     case 'move-group':
     case 'move-entities':
+    case 'layout-entities':
     case 'duplicate-entities':
+    case 'create-text-entity':
+    case 'rasterize-text-entity-to-sprite':
     case 'arrange-group-grid':
     case 'arrange-group':
     case 'create-group-from-arrange':
@@ -1839,6 +1915,84 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
 
       return withScene(state, { ...scene, entities: { ...scene.entities, [entityId]: entity } }, true);
     }
+    case 'create-text-entity': {
+      const scene = getActiveScene(state);
+      const entityId = allocUniqueId(scene.entities ?? {}, 't');
+      const world = getSceneWorld(scene);
+      const at = action.at ?? { x: world.width / 2, y: world.height / 2 };
+      const text = resolveTextEntityDefaults({ value: 'Text' });
+      const measured = measureTextEntityPixels(state.project, text);
+      const entity: EntitySpec = resolveEntityDefaults({
+        id: entityId,
+        x: at.x,
+        y: at.y,
+        width: measured.width,
+        height: measured.height,
+        rotationDeg: 0,
+        scaleX: 1,
+        scaleY: 1,
+        originX: 0.5,
+        originY: 0.5,
+        text,
+        asset: undefined,
+      } as any);
+      const nextScene: GameSceneSpec = { ...scene, entities: { ...scene.entities, [entityId]: entity } } as any;
+      const selection: Selection = { kind: 'entity', id: entityId };
+      return withScene({ ...state, selection }, nextScene, true, selection);
+    }
+    case 'rasterize-text-entity-to-sprite': {
+      const scene = getActiveScene(state);
+      const source = scene.entities[action.entityId];
+      if (!source || !source.text) return state;
+
+      const raster = rasterizeTextEntityToDataUrl(state.project, source.text);
+      if (!raster) {
+        return { ...state, error: 'Rasterize failed (no canvas available).' };
+      }
+
+      const nextAssetId = action.assetId?.trim()
+        ? allocUniqueId(state.project.assets.images ?? {}, action.assetId.trim())
+        : allocUniqueId(state.project.assets.images ?? {}, `img-text-${action.entityId}`);
+
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          images: {
+            ...(state.project.assets.images ?? {}),
+            [nextAssetId]: {
+              id: nextAssetId,
+              source: { kind: 'embedded', dataUrl: raster.dataUrl, originalName: `${nextAssetId}.png`, mimeType: 'image/png' },
+              name: nextAssetId,
+              width: raster.width,
+              height: raster.height,
+            },
+          },
+        },
+      };
+
+      const nextEntity: EntitySpec = resolveEntityDefaults({
+        ...source,
+        width: raster.width,
+        height: raster.height,
+        text: undefined,
+        asset: {
+          source: { kind: 'asset', assetId: nextAssetId },
+          imageType: 'image',
+          frame: { kind: 'single' },
+        },
+      } as any);
+
+      const nextScene: GameSceneSpec = {
+        ...scene,
+        entities: {
+          ...scene.entities,
+          [action.entityId]: nextEntity,
+        },
+      } as any;
+
+      return withScene({ ...state, project: nextProject }, nextScene, true);
+    }
     case 'assign-asset-to-target': {
       const scene = state.project.scenes[action.target.sceneId];
       if (!scene) return state;
@@ -2010,12 +2164,30 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     }
     case 'update-entity': {
       const scene = getActiveScene(state);
-      if (!scene.entities[action.id]) return state;
+      const prev = scene.entities[action.id];
+      if (!prev) return state;
+      let nextEntity = action.next;
+      if ((nextEntity as any).text) {
+        // Enforce mutual exclusivity with sprite assets.
+        if (nextEntity.asset) nextEntity = { ...nextEntity, asset: undefined };
+        const prevText = (prev as any).text as any;
+        const nextText = (nextEntity as any).text as any;
+        const shouldMeasure =
+          !prevText
+          || String(prevText.value ?? '') !== String(nextText.value ?? '')
+          || String(prevText.fontAssetId ?? '') !== String(nextText.fontAssetId ?? '')
+          || String(prevText.fontFamily ?? '') !== String(nextText.fontFamily ?? '')
+          || Number(prevText.fontSize ?? 0) !== Number(nextText.fontSize ?? 0);
+        if (shouldMeasure) {
+          const measured = measureTextEntityPixels(state.project, nextText);
+          nextEntity = { ...nextEntity, width: measured.width, height: measured.height };
+        }
+      }
       return withScene(state, {
         ...scene,
         entities: {
           ...scene.entities,
-          [action.id]: action.next,
+          [action.id]: nextEntity,
         },
       }, true);
     }
@@ -2044,6 +2216,52 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         true,
         { kind: 'attachment', id: attachmentId },
       );
+    }
+    case 'apply-loop-template': {
+      const scene = getActiveScene(state);
+      const target = action.target;
+      const eventId = action.eventId;
+      let nextScene: SceneSpec = scene;
+      let selectId: Id | undefined;
+
+      const create = (presetId: string, init: Partial<AttachmentSpec> = {}) => {
+        const created = createAttachment(nextScene, target, presetId, { ...(eventId ? { eventId } : {}), ...init });
+        nextScene = created.scene;
+        return created.attachmentId;
+      };
+
+      const placeholder = (name: string, init: Partial<AttachmentSpec> = {}) => {
+        const id = create('Call', { name, condition: { type: 'Instant' } as any, ...init });
+        return id;
+      };
+
+      if (action.templateId === 'loops:intro_then_repeat') {
+        const introId = placeholder('Intro step');
+        const repeatId = create('Repeat', {});
+        const childId = placeholder('Repeat step', { parentAttachmentId: repeatId });
+        void childId;
+        selectId = introId;
+      } else if (action.templateId === 'loops:repeat_n_times') {
+        const repeatId = create('Repeat', { params: { count: 3 } });
+        placeholder('Repeat step', { parentAttachmentId: repeatId });
+        selectId = repeatId;
+      } else if (action.templateId === 'loops:repeat_until_condition') {
+        const repeatId = create('Repeat', {
+          condition: { type: 'BoundsHit', bounds: { minX: 0, minY: 0, maxX: 1024, maxY: 768 }, mode: 'any', behavior: 'stop' } as any,
+        });
+        placeholder('Repeat step', { parentAttachmentId: repeatId });
+        selectId = repeatId;
+      } else if (action.templateId === 'loops:repeat_with_cooldown') {
+        const repeatId = create('Repeat', {});
+        placeholder('Repeat step', { parentAttachmentId: repeatId });
+        create('Wait', { parentAttachmentId: repeatId, params: { durationMs: 250 } });
+        selectId = repeatId;
+      } else {
+        return state;
+      }
+
+      const selection: Selection = selectId ? { kind: 'attachment', id: selectId } : state.selection;
+      return withScene({ ...state, selection }, nextScene as GameSceneSpec, true, selection);
     }
     case 'update-attachment': {
       const scene = getActiveScene(state);
@@ -2333,13 +2551,38 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         entities: updatedEntities,
       }, true);
     }
+    case 'layout-entities': {
+      const scene = getActiveScene(state);
+      if (!Array.isArray(action.positions) || action.positions.length === 0) return state;
+      const updatedEntities = { ...scene.entities };
+      let changed = false;
+      for (const pos of action.positions) {
+        const id = pos?.id;
+        if (!id || !updatedEntities[id]) continue;
+        const x = Math.round(Number(pos.x));
+        const y = Math.round(Number(pos.y));
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        const prev = updatedEntities[id];
+        if (prev.x === x && prev.y === y) continue;
+        updatedEntities[id] = { ...prev, x, y };
+        changed = true;
+      }
+      if (!changed) return state;
+      return withScene(state, { ...scene, entities: updatedEntities } as GameSceneSpec, true);
+    }
     case 'duplicate-entities': {
       const scene = getActiveScene(state);
       const uniqueIds = [...new Set(action.entityIds)];
       if (uniqueIds.length === 0) return state;
 
+      const includeBehaviors = action.options?.includeBehaviors !== false;
+      const includeHandlers = action.options?.includeHandlers !== false;
+      const copyIntoSameGroup = action.options?.copyIntoSameGroup !== false;
+
       const entities: Record<Id, EntitySpec> = { ...scene.entities };
       const groups: Record<Id, GroupSpec> = { ...scene.groups };
+      const attachments: Record<Id, AttachmentSpec> = { ...(scene.attachments ?? {}) };
+      const eventBlocks: Record<Id, EventBlockSpec> = { ...(scene.eventBlocks ?? {}) } as any;
       const duplicatedIds: Id[] = [];
 
       for (const sourceId of uniqueIds) {
@@ -2350,20 +2593,79 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         duplicatedIds.push(nextId);
         entities[nextId] = { ...source, id: nextId };
 
-        const containingGroupId = Object.keys(groups).find((groupId) => groups[groupId]?.members.includes(sourceId));
-        if (!containingGroupId) continue;
-        const group = groups[containingGroupId];
-        if (!group) continue;
-        groups[containingGroupId] = {
-          ...group,
-          members: [...group.members, nextId],
-          layout: { type: 'freeform' },
-        };
+        if (copyIntoSameGroup) {
+          const containingGroupId = Object.keys(groups).find((groupId) => groups[groupId]?.members.includes(sourceId));
+          if (containingGroupId) {
+            const group = groups[containingGroupId];
+            if (group) {
+              groups[containingGroupId] = {
+                ...group,
+                members: [...group.members, nextId],
+                layout: { type: 'freeform' },
+              };
+            }
+          }
+        }
+
+        const eventIdMap = new Map<Id, Id>();
+        if (includeHandlers) {
+          for (const block of Object.values(scene.eventBlocks ?? {})) {
+            if (block.target.type !== 'entity' || block.target.entityId !== sourceId) continue;
+            const nextEventId = allocUniqueId(eventBlocks as any, `${block.id}-copy`);
+            (eventBlocks as any)[nextEventId] = {
+              ...block,
+              id: nextEventId,
+              target: { type: 'entity', entityId: nextId },
+            };
+            eventIdMap.set(block.id, nextEventId);
+          }
+        }
+
+        if (includeBehaviors) {
+          const sourceAttachments = Object.values(scene.attachments ?? {}).filter((att) =>
+            att.target.type === 'entity' && att.target.entityId === sourceId
+          );
+          if (sourceAttachments.length > 0) {
+            const attachmentIdMap = new Map<Id, Id>();
+            const reserved: Record<string, unknown> = { ...(attachments as any) };
+            for (const att of sourceAttachments) {
+              const nextAttId = allocUniqueId(reserved, `${att.id}-copy`);
+              reserved[nextAttId] = true;
+              attachmentIdMap.set(att.id, nextAttId);
+            }
+            for (const att of sourceAttachments) {
+              const nextAttId = attachmentIdMap.get(att.id)!;
+              const nextParent = att.parentAttachmentId ? attachmentIdMap.get(att.parentAttachmentId) : undefined;
+              const nextChildren = (att.children ?? []).map((id) => attachmentIdMap.get(id)).filter(Boolean) as Id[];
+              const nextEventId = includeHandlers
+                ? (att.eventId ? (eventIdMap.get(att.eventId) ?? undefined) : undefined)
+                : undefined;
+              const cloned: any = {
+                ...att,
+                id: nextAttId,
+                target: { type: 'entity', entityId: nextId },
+              };
+              if (nextEventId) cloned.eventId = nextEventId;
+              else delete cloned.eventId;
+              if (nextParent) cloned.parentAttachmentId = nextParent;
+              else delete cloned.parentAttachmentId;
+              if (nextChildren.length > 0) cloned.children = nextChildren;
+              else delete cloned.children;
+              attachments[nextAttId] = cloned as any;
+            }
+          }
+        }
       }
 
       if (duplicatedIds.length === 0) return state;
 
-      const nextScene: GameSceneSpec = { ...scene, entities, groups };
+      const nextScene: GameSceneSpec = {
+        ...scene,
+        entities,
+        groups,
+        attachments,
+        eventBlocks: Object.keys(eventBlocks).length > 0 ? eventBlocks : undefined,
+      } as any;
       const selection: Selection = duplicatedIds.length === 1
         ? { kind: 'entity', id: duplicatedIds[0] }
         : { kind: 'entities', ids: duplicatedIds };
@@ -2533,6 +2835,9 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const groupedEntityIds = new Set(Object.values(scene.groups).flatMap((group) => group.members));
       const ungroupedSelection = state.selection.ids.filter((id) => !groupedEntityIds.has(id));
       if (ungroupedSelection.length < 2) return state;
+      if (ungroupedSelection.some((id) => Boolean((scene.entities[id] as any)?.text))) {
+        return { ...state, error: 'Text entities cannot be added to formations.' };
+      }
 
       const groupId = `g-${Date.now()}`;
       const newGroup = createGroupSpec(groupId, ungroupedSelection, action.name.trim() || getNextFormationName(scene));
@@ -2575,6 +2880,9 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const scene = getActiveScene(state);
 
       const selectionIds = state.selection.ids;
+      if (selectionIds.some((id) => Boolean((scene.entities[id] as any)?.text))) {
+        return { ...state, error: 'Text entities cannot be added to formations.' };
+      }
       const restore = state.pendingGroupRestore;
       if (restore && idsEqualAsSet(selectionIds, restore.group.members) && !scene.groups[restore.group.id]) {
         return {

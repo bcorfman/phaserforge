@@ -201,6 +201,15 @@ export interface WorldSpec {
   height: number;
 }
 
+export interface TextEntitySpec {
+  value: string;
+  fontAssetId?: Id;
+  fontFamily?: string;
+  fontSize?: number;
+  color?: string;
+  align?: 'left' | 'center' | 'right';
+}
+
 export interface EntitySpec {
   id: Id;
   name?: string;
@@ -208,6 +217,7 @@ export interface EntitySpec {
   y: number;
   width: number;
   height: number;
+  text?: TextEntitySpec;
   hitbox?: HitboxSpec;
   rotationDeg?: number;
   scaleX?: number;

@@ -6,6 +6,8 @@ import { EventsPanel } from './EventsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { AttachmentSpec, AttachmentTriggerSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
+import { resolveTextEntityDefaults } from './textEntity';
+import { computeEdgeSafeBounds } from './boundsHelper';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedNumberTextInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
@@ -153,6 +155,9 @@ export function Inspector() {
           onApplyPattern={(patternId, eventId, bindings) =>
             dispatch({ type: 'apply-pattern', patternId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}), bindings })
           }
+          onApplyLoopTemplate={(templateId, eventId) =>
+            dispatch({ type: 'apply-loop-template', templateId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}) } as any)
+          }
           onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
           onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
           onUpdateGroup={updateGroup}
@@ -190,7 +195,9 @@ export function Inspector() {
           onMoveParallelAttachmentGroup: (groupId, direction, eventId) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'entity', entityId: entity.id }, groupId, direction, ...(eventId ? { eventId } : {}) }),
           onCreatePatternFromAttachments: (attachmentIds, name) => dispatch({ type: 'create-pattern-from-attachments', attachmentIds, ...(name ? { name } : {}) }),
           onApplyPattern: (patternId, eventId, bindings) => dispatch({ type: 'apply-pattern', patternId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}), bindings }),
+          onApplyLoopTemplate: (templateId, eventId) => dispatch({ type: 'apply-loop-template', templateId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}) } as any),
           onSetEntitiesAsset: (entityIds, asset) => dispatch({ type: 'set-entities-asset', entityIds, asset }),
+          onRasterizeTextEntity: (entityId) => dispatch({ type: 'rasterize-text-entity-to-sprite', entityId } as any),
         })
       ) : (
         <div className="muted">Sprite not found.</div>
@@ -283,7 +290,9 @@ export function renderEntityInspector(
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
     onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
     onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
+    onApplyLoopTemplate?: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
+    onRasterizeTextEntity?: (entityId: Id) => void;
   }
 ) {
   return <EntityInspector entity={entity} onUpdate={onUpdate} actionProps={actionProps} />;
@@ -314,7 +323,9 @@ function EntityInspector({
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
     onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
     onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
+    onApplyLoopTemplate?: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
+    onRasterizeTextEntity?: (entityId: Id) => void;
   };
 }) {
   let showHitboxOverlay = true;
@@ -330,6 +341,9 @@ function EntityInspector({
   const update = (patch: Partial<EntitySpec>) => onUpdate({ ...entity, ...patch });
   const foldouts = useInspectorFoldouts();
   const scene = actionProps?.scene;
+  const project = actionProps?.project;
+  const isTextEntity = Boolean((entity as any).text);
+  const resolvedText = isTextEntity ? resolveTextEntityDefaults((entity as any).text) : null;
   const [spriteSizeTab, setSpriteSizeTab] = useState<'percent' | 'pixels'>('percent');
   const [lockPercent, setLockPercent] = useState(true);
   const [lockPixels, setLockPixels] = useState(true);
@@ -673,6 +687,106 @@ function EntityInspector({
           </label>
         </div>
       </InspectorFoldout>
+
+      {isTextEntity && resolvedText ? (
+        <InspectorFoldout
+          title="Text"
+          open={foldouts.isOpen('entity.text', true)}
+          onToggle={() => foldouts.toggle('entity.text', true)}
+        >
+          <label className="field">
+            <span>Content</span>
+            <textarea
+              className="text-input"
+              rows={3}
+              data-testid="entity-text-content"
+              value={resolvedText.value}
+              onChange={(e) => update({ text: { ...(entity as any).text, value: e.target.value } as any })}
+            />
+          </label>
+
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Font Asset</span>
+              <select
+                aria-label="Font Asset"
+                data-testid="entity-text-font-asset"
+                value={String(resolvedText.fontAssetId ?? '')}
+                onChange={(e) => update({ text: { ...(entity as any).text, fontAssetId: e.target.value || undefined } as any })}
+              >
+                <option value="">(none)</option>
+                {Object.values(project?.assets?.fonts ?? {}).map((font) => (
+                  <option key={font.id} value={font.id}>{font.name ?? font.id}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Font Family</span>
+              <input
+                className="text-input"
+                aria-label="Font Family"
+                data-testid="entity-text-font-family"
+                value={resolvedText.fontFamily ?? ''}
+                placeholder="(optional override)"
+                onChange={(e) => update({ text: { ...(entity as any).text, fontFamily: e.target.value || undefined } as any })}
+              />
+            </label>
+          </div>
+
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Size</span>
+              <ValidatedNumberInput
+                aria-label="Text Size"
+                data-testid="entity-text-font-size"
+                min={1}
+                value={resolvedText.fontSize}
+                onCommit={(next) => update({ text: { ...(entity as any).text, fontSize: next } as any })}
+              />
+            </label>
+            <label className="field">
+              <span>Color</span>
+              <input
+                className="text-input"
+                aria-label="Text Color"
+                data-testid="entity-text-color"
+                value={resolvedText.color}
+                onChange={(e) => update({ text: { ...(entity as any).text, color: e.target.value } as any })}
+              />
+            </label>
+          </div>
+
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Align</span>
+              <select
+                aria-label="Text Align"
+                data-testid="entity-text-align"
+                value={resolvedText.align}
+                onChange={(e) => update({ text: { ...(entity as any).text, align: e.target.value as any } as any })}
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </label>
+            <div className="field" />
+          </div>
+
+          <div className="inspector-row inspector-inline-buttons">
+            <button
+              className="button"
+              data-testid="entity-text-rasterize"
+              type="button"
+              disabled={!actionProps?.onRasterizeTextEntity}
+              onClick={() => actionProps?.onRasterizeTextEntity?.(entity.id)}
+            >
+              Rasterize to Sprite…
+            </button>
+          </div>
+        </InspectorFoldout>
+      ) : null}
+
       <InspectorFoldout
         title="Hitbox (Bounds)"
         open={foldouts.isOpen('entity.hitbox', true)}
@@ -1000,6 +1114,7 @@ function EntityInspector({
             onMoveParallelGroup={actionProps.onMoveParallelAttachmentGroup}
             onCreatePatternFromAttachments={actionProps.onCreatePatternFromAttachments}
             onApplyPattern={actionProps.onApplyPattern}
+            onApplyLoopTemplate={actionProps.onApplyLoopTemplate ?? (() => {})}
             selectedAttachmentId={actionProps.selectedAttachmentId}
           />
         </InspectorFoldout>
@@ -1026,6 +1141,7 @@ function GroupInspector({
   onRemoveEventBlock,
   onCreatePatternFromAttachments,
   onApplyPattern,
+  onApplyLoopTemplate,
   onSelectMember,
   onRemoveMember,
   onUpdateGroup,
@@ -1055,6 +1171,7 @@ function GroupInspector({
   onRemoveEventBlock: (id: Id) => void;
   onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
   onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
+  onApplyLoopTemplate: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
   onSelectMember: (id: string) => void;
   onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
@@ -1208,6 +1325,7 @@ function GroupInspector({
       onRemoveEventBlock,
       onCreatePatternFromAttachments,
       onApplyPattern,
+      onApplyLoopTemplate,
       onSelectMember,
       onRemoveMember,
       onUpdateGroup,
@@ -1253,6 +1371,7 @@ export function renderGroupInspector(
     onRemoveEventBlock: (id: Id) => void;
     onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
     onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
+    onApplyLoopTemplate: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
     onSelectMember: (id: string) => void;
     onRemoveMember: (id: string) => void;
     onUpdateGroup: (next: GroupSpec) => void;
@@ -1521,9 +1640,108 @@ export function renderGroupInspector(
           onMoveParallelGroup={handlers.onMoveParallelAttachmentGroup}
           onCreatePatternFromAttachments={handlers.onCreatePatternFromAttachments}
           onApplyPattern={handlers.onApplyPattern}
+          onApplyLoopTemplate={handlers.onApplyLoopTemplate}
           selectedAttachmentId={handlers.selectedAttachmentId}
         />
       </InspectorFoldout>
+    </div>
+  );
+}
+
+function BoundsHelperPanel({
+  enabled,
+  autoTarget,
+  defaultCenter,
+  onApply,
+}: {
+  enabled: boolean;
+  autoTarget?: { type: 'entity' | 'group'; id: string };
+  defaultCenter: { x: number; y: number };
+  onApply: (bounds: { minX: number; maxX: number; minY: number; maxY: number }) => void;
+}) {
+  const [cx, setCx] = useState(() => Math.round(defaultCenter.x));
+  const [cy, setCy] = useState(() => Math.round(defaultCenter.y));
+  const [xSpan, setXSpan] = useState(0);
+  const [ySpan, setYSpan] = useState(0);
+  const [halfW, setHalfW] = useState(0);
+  const [halfH, setHalfH] = useState(0);
+
+  useEffect(() => {
+    setCx(Math.round(defaultCenter.x));
+    setCy(Math.round(defaultCenter.y));
+  }, [defaultCenter.x, defaultCenter.y]);
+
+  const autoFromSelection = () => {
+    if (!autoTarget?.id) return;
+    void import('../phaser/EventBus').then(({ getActiveScene }) => {
+      const scene = getActiveScene() as any;
+      const rect = autoTarget.type === 'group'
+        ? scene?.getGroupWorldBounds?.(autoTarget.id)
+        : scene?.getEntityWorldRect?.(autoTarget.id);
+      if (!rect) return;
+      const w = Math.max(0, Number(rect.maxX) - Number(rect.minX));
+      const h = Math.max(0, Number(rect.maxY) - Number(rect.minY));
+      setHalfW(Math.round(w / 2));
+      setHalfH(Math.round(h / 2));
+      const centerX = Number(rect.centerX ?? (Number(rect.minX) + Number(rect.maxX)) / 2);
+      const centerY = Number(rect.centerY ?? (Number(rect.minY) + Number(rect.maxY)) / 2);
+      if (Number.isFinite(centerX) && Number.isFinite(centerY)) {
+        setCx(Math.round(centerX));
+        setCy(Math.round(centerY));
+      }
+    }).catch(() => {});
+  };
+
+  return (
+    <div className="inspector-block" style={{ padding: 10, marginTop: 10 }}>
+      <div className="inspector-row" style={{ marginBottom: 6, fontWeight: 700 }}>Bounds Helper</div>
+      <div className="inspector-grid-2">
+        <label className="field">
+          <span>Center X</span>
+          <ValidatedNumberInput aria-label="Bounds Helper Center X" data-testid="bounds-helper-cx" value={cx} onCommit={setCx} />
+        </label>
+        <label className="field">
+          <span>Center Y</span>
+          <ValidatedNumberInput aria-label="Bounds Helper Center Y" data-testid="bounds-helper-cy" value={cy} onCommit={setCy} />
+        </label>
+      </div>
+      <div className="inspector-grid-2">
+        <label className="field">
+          <span>± X Span</span>
+          <ValidatedNumberInput aria-label="Bounds Helper X Span" data-testid="bounds-helper-xspan" min={0} value={xSpan} onCommit={setXSpan} />
+        </label>
+        <label className="field">
+          <span>± Y Span</span>
+          <ValidatedNumberInput aria-label="Bounds Helper Y Span" data-testid="bounds-helper-yspan" min={0} value={ySpan} onCommit={setYSpan} />
+        </label>
+      </div>
+      <div className="inspector-grid-2">
+        <label className="field">
+          <span>Half W</span>
+          <ValidatedNumberInput aria-label="Bounds Helper Half W" data-testid="bounds-helper-halfw" min={0} value={halfW} onCommit={setHalfW} />
+        </label>
+        <label className="field">
+          <span>Half H</span>
+          <ValidatedNumberInput aria-label="Bounds Helper Half H" data-testid="bounds-helper-halfh" min={0} value={halfH} onCommit={setHalfH} />
+        </label>
+      </div>
+      <div className="inspector-row inspector-inline-buttons">
+        <button className="button" type="button" data-testid="bounds-helper-auto" onClick={autoFromSelection}>
+          Auto from selection
+        </button>
+        <button
+          className="button"
+          type="button"
+          data-testid="bounds-helper-apply"
+          disabled={!enabled}
+          onClick={() => {
+            const computed = computeEdgeSafeBounds({ cx, cy, xSpan, ySpan, halfW, halfH });
+            onApply(computed);
+          }}
+        >
+          Apply to BoundsHit
+        </button>
+      </div>
     </div>
   );
 }
@@ -2107,6 +2325,44 @@ function AttachmentInspector({
                 </div>
               </>
             )}
+            <BoundsHelperPanel
+              enabled={Boolean(boundsCondition)}
+              autoTarget={
+                attachment.target.type === 'entity'
+                  ? { type: 'entity', id: attachment.target.entityId }
+                  : attachment.target.type === 'group'
+                    ? { type: 'group', id: attachment.target.groupId }
+                    : undefined
+              }
+              defaultCenter={{
+                x: attachment.target.type === 'entity'
+                  ? (scene.entities[attachment.target.entityId]?.x ?? 0)
+                  : attachment.target.type === 'group'
+                    ? (() => {
+                        const group = scene.groups[attachment.target.groupId];
+                        const members = group?.members ?? [];
+                        if (members.length === 0) return 0;
+                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
+                        return sum / members.length;
+                      })()
+                    : 0,
+                y: attachment.target.type === 'entity'
+                  ? (scene.entities[attachment.target.entityId]?.y ?? 0)
+                  : attachment.target.type === 'group'
+                    ? (() => {
+                        const group = scene.groups[attachment.target.groupId];
+                        const members = group?.members ?? [];
+                        if (members.length === 0) return 0;
+                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
+                        return sum / members.length;
+                      })()
+                    : 0,
+              }}
+              onApply={(computed) => {
+                const ensured = ensureBoundsCondition();
+                onUpdate({ ...attachment, condition: { ...ensured, bounds: computed } as any });
+              }}
+            />
           </InspectorFoldout>
         </InspectorFoldout>
       )}
@@ -2209,6 +2465,44 @@ function AttachmentInspector({
                 </div>
               </>
             )}
+            <BoundsHelperPanel
+              enabled={Boolean(boundsCondition)}
+              autoTarget={
+                attachment.target.type === 'entity'
+                  ? { type: 'entity', id: attachment.target.entityId }
+                  : attachment.target.type === 'group'
+                    ? { type: 'group', id: attachment.target.groupId }
+                    : undefined
+              }
+              defaultCenter={{
+                x: attachment.target.type === 'entity'
+                  ? (scene.entities[attachment.target.entityId]?.x ?? 0)
+                  : attachment.target.type === 'group'
+                    ? (() => {
+                        const group = scene.groups[attachment.target.groupId];
+                        const members = group?.members ?? [];
+                        if (members.length === 0) return 0;
+                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
+                        return sum / members.length;
+                      })()
+                    : 0,
+                y: attachment.target.type === 'entity'
+                  ? (scene.entities[attachment.target.entityId]?.y ?? 0)
+                  : attachment.target.type === 'group'
+                    ? (() => {
+                        const group = scene.groups[attachment.target.groupId];
+                        const members = group?.members ?? [];
+                        if (members.length === 0) return 0;
+                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
+                        return sum / members.length;
+                      })()
+                    : 0,
+              }}
+              onApply={(computed) => {
+                const ensured = ensureBoundsCondition();
+                onUpdate({ ...attachment, condition: { ...ensured, bounds: computed } as any });
+              }}
+            />
           </InspectorFoldout>
         </InspectorFoldout>
       )}
@@ -2311,6 +2605,44 @@ function AttachmentInspector({
                 </div>
               </>
             )}
+            <BoundsHelperPanel
+              enabled={Boolean(boundsCondition)}
+              autoTarget={
+                attachment.target.type === 'entity'
+                  ? { type: 'entity', id: attachment.target.entityId }
+                  : attachment.target.type === 'group'
+                    ? { type: 'group', id: attachment.target.groupId }
+                    : undefined
+              }
+              defaultCenter={{
+                x: attachment.target.type === 'entity'
+                  ? (scene.entities[attachment.target.entityId]?.x ?? 0)
+                  : attachment.target.type === 'group'
+                    ? (() => {
+                        const group = scene.groups[attachment.target.groupId];
+                        const members = group?.members ?? [];
+                        if (members.length === 0) return 0;
+                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
+                        return sum / members.length;
+                      })()
+                    : 0,
+                y: attachment.target.type === 'entity'
+                  ? (scene.entities[attachment.target.entityId]?.y ?? 0)
+                  : attachment.target.type === 'group'
+                    ? (() => {
+                        const group = scene.groups[attachment.target.groupId];
+                        const members = group?.members ?? [];
+                        if (members.length === 0) return 0;
+                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
+                        return sum / members.length;
+                      })()
+                    : 0,
+              }}
+              onApply={(computed) => {
+                const ensured = ensureBoundsCondition();
+                onUpdate({ ...attachment, condition: { ...ensured, bounds: computed } as any });
+              }}
+            />
           </InspectorFoldout>
         </InspectorFoldout>
       )}
