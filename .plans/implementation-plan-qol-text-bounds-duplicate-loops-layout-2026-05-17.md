@@ -22,6 +22,15 @@ Implement five editor/runtime improvements:
 
 All phases are **TDD-driven** (store/helper tests → scene/editor tests where practical → implementation) and completion requires `npm run test:e2e`.
 
+## Status
+
+- [x] 1) Text Entities
+- [x] 2) Bounds Helper Calculator
+- [x] 3) Duplicate Entity Options + Copy Attachments on Duplicate
+- [x] 4) Loop Templates
+- [x] 5) Align / Distribute / Spacing Panel
+- [x] Acceptance / Verification (`npm run test:unit`, `npm run test:e2e`)
+
 ## Decisions / Assumptions (locked)
 
 - Text entities are **not allowed** to be members of formations/groups.
@@ -231,6 +240,5 @@ Implement:
 
 Required before calling this work “done”:
 
-- `npm run test:unit`
-- `npm run test:e2e`
-
+- [x] `npm run test:unit`
+- [x] `npm run test:e2e`

@@ -1862,6 +1862,12 @@ function AttachmentInspector({
 
   const boundsCondition = attachment.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
   const elapsedCondition = attachment.condition?.type === 'ElapsedTime' ? attachment.condition : undefined;
+  const hasPresetBoundsEditor =
+    attachment.presetId === 'MoveUntil' ||
+    attachment.presetId === 'MoveXUntil' ||
+    attachment.presetId === 'MoveYUntil' ||
+    attachment.presetId === 'BouncePattern' ||
+    attachment.presetId === 'PatrolPattern';
 
   return (
     <div className="inspector-block" data-testid="attachment-inspector">
@@ -2129,6 +2135,124 @@ function AttachmentInspector({
               </select>
             </label>
           </div>
+        )}
+
+        {attachment.condition?.type === 'BoundsHit' && !hasPresetBoundsEditor && (
+          <InspectorFoldout
+            title="Bounds"
+            open={foldouts.isOpen('attachment.until.bounds', true)}
+            onToggle={() => foldouts.toggle('attachment.until.bounds', true)}
+          >
+            <label className="field">
+              <span>Behavior</span>
+              <select
+                aria-label="Behavior"
+                value={attachment.condition.behavior ?? 'limit'}
+                onChange={(e) =>
+                  onUpdate({ ...attachment, condition: { ...attachment.condition, behavior: e.target.value as any } as any })
+                }
+              >
+                <option value="stop">Stop</option>
+                <option value="limit">Clamp at Edge</option>
+                <option value="bounce">Bounce</option>
+                <option value="wrap">Wrap</option>
+              </select>
+            </label>
+            <div className="inspector-grid-2">
+              <label className="field">
+                <span>Min X</span>
+                <ValidatedNumberInput
+                  aria-label="Bounds Min X"
+                  value={attachment.condition.bounds.minX}
+                  onCommit={(next) =>
+                    onUpdate({
+                      ...attachment,
+                      condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, minX: next } } as any,
+                    })
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>Min Y</span>
+                <ValidatedNumberInput
+                  aria-label="Bounds Min Y"
+                  value={attachment.condition.bounds.minY}
+                  onCommit={(next) =>
+                    onUpdate({
+                      ...attachment,
+                      condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, minY: next } } as any,
+                    })
+                  }
+                />
+              </label>
+            </div>
+            <div className="inspector-grid-2">
+              <label className="field">
+                <span>Max X</span>
+                <ValidatedNumberInput
+                  aria-label="Bounds Max X"
+                  value={attachment.condition.bounds.maxX}
+                  onCommit={(next) =>
+                    onUpdate({
+                      ...attachment,
+                      condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, maxX: next } } as any,
+                    })
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>Max Y</span>
+                <ValidatedNumberInput
+                  aria-label="Bounds Max Y"
+                  value={attachment.condition.bounds.maxY}
+                  onCommit={(next) =>
+                    onUpdate({
+                      ...attachment,
+                      condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, maxY: next } } as any,
+                    })
+                  }
+                />
+              </label>
+            </div>
+            <BoundsHelperPanel
+              enabled
+              autoTarget={
+                attachment.target.type === 'entity'
+                  ? { type: 'entity', id: attachment.target.entityId }
+                  : attachment.target.type === 'group'
+                    ? { type: 'group', id: attachment.target.groupId }
+                    : undefined
+              }
+              defaultCenter={{
+                x: attachment.target.type === 'entity'
+                  ? (scene.entities[attachment.target.entityId]?.x ?? 0)
+                  : attachment.target.type === 'group'
+                    ? (() => {
+                        const group = scene.groups[attachment.target.groupId];
+                        const members = group?.members ?? [];
+                        if (members.length === 0) return 0;
+                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
+                        return sum / members.length;
+                      })()
+                    : 0,
+                y: attachment.target.type === 'entity'
+                  ? (scene.entities[attachment.target.entityId]?.y ?? 0)
+                  : attachment.target.type === 'group'
+                    ? (() => {
+                        const group = scene.groups[attachment.target.groupId];
+                        const members = group?.members ?? [];
+                        if (members.length === 0) return 0;
+                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
+                        return sum / members.length;
+                      })()
+                    : 0,
+              }}
+              onApply={(computed) => {
+                const ensured = ensureBoundsCondition();
+                onUpdate({ ...attachment, condition: { ...ensured, ...attachment.condition, bounds: computed } as any });
+              }}
+            />
+          </InspectorFoldout>
         )}
       </InspectorFoldout>
 

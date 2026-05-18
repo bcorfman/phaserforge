@@ -397,6 +397,7 @@ function AppShell() {
 
   const appBodyRef = useRef<HTMLDivElement | null>(null);
   const leftPaneDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [leftPaneMouseDragging, setLeftPaneMouseDragging] = useState(false);
   const [leftPaneWidth, setLeftPaneWidth] = useState(() => {
     const storage: any = (globalThis as any).localStorage;
     const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaseractions.leftPaneWidth.v1') : null;
@@ -408,6 +409,53 @@ function AppShell() {
     const storage: any = (globalThis as any).localStorage;
     if (typeof storage?.setItem === 'function') storage.setItem('phaseractions.leftPaneWidth.v1', String(leftPaneWidth));
   }, [leftPaneWidth]);
+
+  const startLeftPaneDrag = (clientX: number) => {
+    leftPaneDragRef.current = { startX: clientX, startWidth: leftPaneWidth };
+  };
+
+  const updateLeftPaneDrag = (clientX: number) => {
+    const drag = leftPaneDragRef.current;
+    if (!drag) return;
+    const body = appBodyRef.current;
+    const bodyRect = body?.getBoundingClientRect();
+    const delta = clientX - drag.startX;
+    const desired = drag.startWidth + delta;
+    const minWidth = 240;
+    const maxWidth = 520;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, desired));
+    if (bodyRect && bodyRect.width > 0) {
+      const minCanvas = 480;
+      const rightMin = 340;
+      const available = bodyRect.width - 12 - rightMin - minCanvas;
+      const maxByCanvas = Math.max(minWidth, Math.min(maxWidth, available));
+      setLeftPaneWidth(Math.max(minWidth, Math.min(maxByCanvas, clamped)));
+      return;
+    }
+    setLeftPaneWidth(clamped);
+  };
+
+  const endLeftPaneDrag = () => {
+    leftPaneDragRef.current = null;
+  };
+
+  useEffect(() => {
+    const onMouseMove = (event: MouseEvent) => updateLeftPaneDrag(event.clientX);
+    const onMouseUp = () => {
+      if (!leftPaneMouseDragging) return;
+      setLeftPaneMouseDragging(false);
+      endLeftPaneDrag();
+    };
+
+    if (!leftPaneMouseDragging) return;
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [leftPaneMouseDragging]);
 
   return (
     <div className="app-root" data-testid="app-root">
@@ -434,31 +482,20 @@ function AppShell() {
           role="separator"
           aria-orientation="vertical"
           onPointerDown={(event) => {
-            leftPaneDragRef.current = { startX: event.clientX, startWidth: leftPaneWidth };
+            startLeftPaneDrag(event.clientX);
             (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
           }}
           onPointerMove={(event) => {
-            const drag = leftPaneDragRef.current;
-            if (!drag) return;
-            const body = appBodyRef.current;
-            const bodyRect = body?.getBoundingClientRect();
-            const delta = event.clientX - drag.startX;
-            const desired = drag.startWidth + delta;
-            const minWidth = 240;
-            const maxWidth = 520;
-            const clamped = Math.max(minWidth, Math.min(maxWidth, desired));
-            if (bodyRect && bodyRect.width > 0) {
-              const minCanvas = 480;
-              const rightMin = 340;
-              const available = bodyRect.width - 12 - rightMin - minCanvas;
-              const maxByCanvas = Math.max(minWidth, Math.min(maxWidth, available));
-              setLeftPaneWidth(Math.max(minWidth, Math.min(maxByCanvas, clamped)));
-              return;
-            }
-            setLeftPaneWidth(clamped);
+            updateLeftPaneDrag(event.clientX);
           }}
           onPointerUp={() => {
-            leftPaneDragRef.current = null;
+            endLeftPaneDrag();
+          }}
+          onMouseDown={(event) => {
+            // WebKit can be flaky with Pointer Events on synthetic drags; keep a mouse fallback for e2e and real users.
+            if (event.button !== 0) return;
+            startLeftPaneDrag(event.clientX);
+            setLeftPaneMouseDragging(true);
           }}
         />
         <main aria-labelledby="viewport-heading" className="pane pane-center" data-testid="canvas-pane">
