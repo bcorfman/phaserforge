@@ -2,11 +2,21 @@
 
 Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bcorfman/phaseractions-studio)
 
-**PhaserActions Studio** helps you build gameplay faster by removing the slowest part of game development: hand-orchestrating behavior in update loops. Instead of scattering timers, flags, and state transitions across your Phaser code, you attach composable actions to entities or groups — then define the conditions that control when those actions stop, repeat, or trigger the next behavior. The editor is the multiplier: live parameter editing lets you tune the behavior while the Phaser runtime is running, while the underlying Action–Condition–Event model keeps the logic reusable, inspectable, and data-driven. The result is not just a nicer editor; it is a faster way to express gameplay itself.
+**PhaserActions Studio** is a gameplay behavior editor for Phaser that targets the real bottleneck in experienced teams: **orchestration**.
+
+You already know how to write movement, firing, and collisions. What slows you down is everything *between* those ideas and a shippable result: timers, flags, ad-hoc state machines, event ordering bugs, copy/paste drift, and the constant cost of “just one more exception” in `update()`.
+
+Instead of hand-wiring that glue, you attach **composable actions** to entities or groups, then drive them with **conditions** and **events**. The editor is the multiplier: you can **tune parameters live while the runtime is running**, duplicate behavior with intent (not just sprites), and keep gameplay logic **inspectable and data-driven** via YAML round-trip. This is less “nice tooling” and more a change in what you author: **behavior becomes content**.
 
 <img src="res/images/mainwindow.png?raw=true" style="width: 800px"/>
 
 ## What’s In The Editor Today
+
+This editor is opinionated about speed: one primary workflow, near-cursor selection actions, and a runtime preview that runs the same compiled scene spec you ship.
+
+- **You stop paying the orchestration tax**: behavior lives as attachments/event blocks, not scattered `update()` glue.
+- **Iteration becomes tuning**: change parameters and immediately feel the result in Play mode (no rebuild-and-hope loop).
+- **Reuse becomes reliable**: duplicate and reapply behavior intentionally, with YAML as the durable representation.
 
 - **Multi-scene projects** with per-scene world size (fast scene switching, consistent runtime semantics).
 - **Base scene + waves**:
@@ -27,7 +37,9 @@ Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki
   - **Advanced…** import modal for sprites (multi-frame selection + optional auto-hitbox).
   - Asset deletion is **blocked when referenced**, preventing broken scenes at runtime.
 - **Canvas editing**: drag sprites/formations, marquee multi-select, group/dissolve, grid snap, undo/redo, pan/zoom, fit/reset view.
+- **Align / Distribute / Spacing**: selection-bar `…` menu for quick layout operations on multi-selection (complements Snap-to-Grid).
 - **Formations (groups)**: declarative arrange layouts (grid, line, circle, arc, etc.) driven by `public/editor-registry.yaml`—repeatable patterns without hand-placing every entity.
+- **Text entities**: create in-scene labels (`+ Add → Text (new)`), edit content/font/color/alignment in Inspector, and optionally **Rasterize to Sprite…** (creates an embedded image asset).
 - **Input maps (semantic controls) (Project tab)**: author action bindings (keyboard/mouse/gamepad), choose active/fallback maps per scene, preview runtime action states in Play mode.
 - **Play mode mouse controls**: optional hide OS cursor, and mouse-driven entity motion with independent X/Y axis locks.
 - **Collisions + trigger zones**:
@@ -35,8 +47,11 @@ Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki
   - Collision rules can run scripts on overlap/block **enter** via `collisionRules[].onEnter` (single call or list of calls) for “gameplay glue” authored in YAML.
   - Play mode exposes trigger + collision enter/stay/exit/click events in the runtime test snapshot.
 - **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, `InputDrive` (input → velocity), `InputFire` (spawn projectiles), plus `Repeat` as a wrapper.
+- **Loop templates**: Add Step drawer includes a **Loops** category that expands common loop scaffolds (intro-then-repeat, repeat N, repeat until condition, repeat with cooldown) into existing actions.
+- **Duplicate… options**: entity context menu offers **Duplicate…** with toggles to include behaviors (attachments), include handlers (event blocks), and optionally keep the copy in the same formation.
 - **`Call` actions require a registered handler**. The runtime includes built-in handlers like `scene.goto`, `scene.gotoWave`, `entity.destroy`, and `audio.play_sfx` (plus sample/demo ops like `drop`). Unknown `callId` values will fail during preview compile/run.
 - **Inline conditions (current)**: `BoundsHit` and `ElapsedTime` (used by `MoveUntil`).
+- **Bounds Helper**: Inspector subpanel for BoundsHit that can auto-pull sprite size from the current selection and apply computed bounds.
 - **Play mode** compiles the active scene (and base layer when configured) and runs actions; **Edit mode** stays focused on authoring and iteration speed.
 
 ## YAML Round-Trip
@@ -52,7 +67,7 @@ Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki
 - **Select**: click a sprite / formation. Shift+click adds to multi-select. Drag on empty space to marquee-select (Shift adds).
 - **Move**: drag selection; Arrow keys nudge (Shift+Arrow = 10px).
 - **Pan / zoom**: mouse wheel zoom; middle-mouse drag or hold Space + drag to pan; use Fit/Reset buttons in the view bar.
-- **Selection actions**: use the on-canvas **selection bar** (no right-click menu).
+- **Selection actions**: use the on-canvas **selection bar** `…` menu (grouping, align/distribute/spacing, etc.; no right-click menu).
 - **Shortcuts** (Ctrl on Windows/Linux, Cmd on macOS):
   - Undo / redo: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y)
   - Toggle Edit/Preview: Tab
