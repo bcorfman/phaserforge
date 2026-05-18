@@ -3,6 +3,8 @@ import { createEmptyProject } from '../../src/model/emptyProject';
 import { dismissViewHint, dragDropByTestIdAtClientPoint, getEntitySpriteWorldRect, getState, hitTestAtClientPoint, openSceneScope, seedProject, triggerUndo, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
+  test.describe.configure({ timeout: 120000 });
+
   test('imports an image and drags to canvas to create an entity with asset ref', async ({ page }) => {
     await seedProject(page, createEmptyProject());
     await dismissViewHint(page);

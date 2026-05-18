@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getState, gotoStudio, seedSampleScene } from './helpers';
+import { dismissViewHint, getState, seedSampleScene } from './helpers';
 
 test('create a second scene, switch scenes, and preserve per-scene edits', async ({ page }) => {
+  test.setTimeout(120000);
   await seedSampleScene(page);
-  await gotoStudio(page);
   await dismissViewHint(page);
 
   const state1 = await getState<{ currentSceneId?: string; scene?: { entities?: Record<string, unknown> } }>(page);

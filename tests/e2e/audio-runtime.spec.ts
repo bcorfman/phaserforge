@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getSceneSnapshot, gotoStudio, waitForSampleScene } from './helpers';
-import { serializeProjectToYaml } from '../../src/model/serialization';
+import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
 import { sampleProject } from '../../src/model/sampleProject';
 
 test.setTimeout(120000);
@@ -28,15 +27,7 @@ test('entering play mode applies scene music/ambience (bridge snapshot)', async 
     },
   };
 
-  const yaml = serializeProjectToYaml(project as any);
-  await page.addInitScript(([projectYaml]) => {
-    window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
-    window.localStorage.setItem('phaseractions.projectYaml.v1', projectYaml);
-    window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
-  }, [yaml]);
-
-  await gotoStudio(page);
-  await waitForSampleScene(page);
+  await seedProject(page, project as any);
   await dismissViewHint(page);
 
   await page.getByTestId('toggle-mode-button').click();
