@@ -38,8 +38,6 @@ jobs:
   e2e:
     name: E2E (shard ${{ matrix.shard }}/${{ matrix.shards }})
     runs-on: ubuntu-latest
-    env:
-      PW_WORKERS: 1
     strategy:
       fail-fast: false
       matrix:
