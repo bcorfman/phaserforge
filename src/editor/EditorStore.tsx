@@ -157,6 +157,7 @@ export type ImportedEntityDraft = {
 export type EditorAction =
   | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; registry: EditorRegistryConfig }
   | { type: 'set-startup-mode'; startupMode: StartupMode }
+  | { type: 'reset-project' }
   | { type: 'set-theme-mode'; themeMode: ThemeMode }
   | { type: 'set-ui-scale'; uiScale: number }
   | { type: 'set-show-hitbox-overlay'; value: boolean }
@@ -173,6 +174,7 @@ export type EditorAction =
   | { type: 'load-yaml' }
   | { type: 'load-yaml-text'; text: string; sourceLabel: string }
   | { type: 'reset-scene' }
+  | { type: 'clear-scene'; sceneId: Id }
   | { type: 'set-current-scene'; sceneId: Id }
   | { type: 'create-scene'; sceneId?: Id }
   | { type: 'duplicate-scene'; sceneId: Id; nextSceneId?: Id }
@@ -625,6 +627,7 @@ const MERGE_WINDOW_MS = 500;
 
 function isUndoableAction(action: EditorAction): boolean {
   switch (action.type) {
+    case 'reset-project':
     case 'update-entity':
     case 'import-entities':
     case 'update-group':
@@ -665,6 +668,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'rename-scene':
     case 'toggle-base-scene':
     case 'reset-scene':
+    case 'clear-scene':
     case 'load-yaml':
     case 'load-yaml-text':
     case 'add-background-layer-from-file':
@@ -702,6 +706,7 @@ function isUndoableAction(action: EditorAction): boolean {
 
 function getHistoryScope(action: EditorAction): HistoryScope {
   switch (action.type) {
+    case 'reset-project':
     case 'create-scene':
     case 'duplicate-scene':
     case 'delete-scene':
@@ -710,6 +715,7 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'load-yaml':
     case 'load-yaml-text':
     case 'reset-scene':
+    case 'clear-scene':
     case 'add-background-layer-from-file':
     case 'add-image-asset-from-file':
     case 'add-image-asset-from-path':
@@ -1003,6 +1009,22 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         ...state,
         startupMode: action.startupMode,
       };
+    case 'reset-project': {
+      const project = createEmptyProject();
+      const currentSceneId = project.initialSceneId;
+      const scene = project.scenes[currentSceneId];
+      return {
+        ...state,
+        project,
+        currentSceneId,
+        selection: { kind: 'none' },
+        expandedGroups: defaultExpandedGroups(scene),
+        dirty: true,
+        error: undefined,
+        statusMessage: 'Reset to new empty scene.',
+        statusExpiresAt: Date.now() + 3500,
+      };
+    }
     case 'set-theme-mode':
       return {
         ...state,
@@ -1097,6 +1119,43 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           defaultExpandedGroups(nextScene),
         );
       })();
+    case 'clear-scene': {
+      const source = state.project.scenes[action.sceneId];
+      if (!source) return state;
+
+      const cleared: GameSceneSpec = {
+        ...source,
+        entities: {},
+        groups: {},
+        attachments: {},
+        eventBlocks: {},
+        behaviors: {},
+        actions: {},
+        conditions: {},
+        backgroundLayers: [],
+        collisionRules: [],
+        triggers: [],
+        music: undefined,
+        ambience: undefined,
+        input: undefined,
+      };
+
+      const isActive = action.sceneId === state.currentSceneId;
+      return {
+        ...state,
+        project: {
+          ...state.project,
+          scenes: {
+            ...state.project.scenes,
+            [action.sceneId]: cleared,
+          },
+        },
+        selection: isActive ? { kind: 'none' } : state.selection,
+        expandedGroups: isActive ? defaultExpandedGroups(cleared) : state.expandedGroups,
+        dirty: true,
+        error: undefined,
+      };
+    }
     case 'set-current-scene': {
       if (!state.project.scenes[action.sceneId]) return state;
       const nextScene = state.project.scenes[action.sceneId];

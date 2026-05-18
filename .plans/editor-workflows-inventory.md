@@ -165,7 +165,7 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 - Drag the horizontal splitter between Entity List and Assets Dock.
 
 ### A49 — Configure Startup Mode
-- Toolbar → `Startup` select (Reload Last YAML / New Empty Scene).
+- Project tab → Startup & Reset → `Startup mode` select (Reload Last YAML / New Empty Scene).
 
 ### A50 — Adjust UI Scale
 - Toolbar → `UI Scale` slider.
@@ -187,6 +187,12 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 
 ### A56 — Pin Selection While Dragging (Inspector)
 - Inspector → enable `Pin selection while dragging` (selection stays stable while manipulating UI).
+
+### A57 — Reset Project to New Empty Scene
+- Project tab → Startup & Reset → `Reset Now → New Empty Scene` (confirm).
+
+### A58 — Clear Scene Contents
+- Scene tab → Scenes → overflow menu `⋯` → `Clear Scene…` (confirm).
 
 ## Composite Workflows (built from atomic workflows)
 
