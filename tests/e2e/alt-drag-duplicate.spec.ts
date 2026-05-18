@@ -19,6 +19,27 @@ test.beforeEach(async ({ page }) => {
 test('alt-drag duplicates a selected sprite', async ({ page }) => {
   await tapWorld(page, { x: 220, y: 140 });
 
+  // Add a handler + step targeting e1 so duplication can assert cloning.
+  await page.getByTestId('add-event-block').click();
+  await expect.poll(async () => {
+    const state = await getState<any>(page);
+    const blocks = Object.values(state.scene?.eventBlocks ?? {}).filter((b: any) => b?.target?.type === 'entity' && b?.target?.entityId === 'e1');
+    return blocks[0]?.id ?? null;
+  }).not.toBeNull();
+  const stateWithHandler = await getState<any>(page);
+  const blocks = Object.values(stateWithHandler.scene?.eventBlocks ?? {}).filter((b: any) => b?.target?.type === 'entity' && b?.target?.entityId === 'e1');
+  const handlerIdResolved = blocks[0]?.id as string;
+  if (!handlerIdResolved) throw new Error('Missing handler id');
+
+  await page.getByTestId(`event-add-open-${handlerIdResolved}`).click();
+  await page.getByTestId('action-library-add-Wait').click();
+
+  await expect.poll(async () => {
+    const state = await getState<any>(page);
+    const attachments = Object.values(state.scene?.attachments ?? {}).filter((a: any) => a?.target?.type === 'entity' && a?.target?.entityId === 'e1' && a?.eventId === handlerIdResolved);
+    return attachments.some((a: any) => a?.presetId === 'Wait');
+  }).toBe(true);
+
   const before = await getState<{
     scene: {
       entities: Record<string, { x: number }>;
@@ -93,4 +114,19 @@ test('alt-drag duplicates a selected sprite', async ({ page }) => {
     if (selectedId === 'e1') return null;
     return state.scene.entities[selectedId]?.x ?? null;
   }).toBeGreaterThan(e1BeforeX + 20);
+
+  await expect.poll(async () => {
+    const state = await getState<any>(page);
+    const selectedId = state.selection?.kind === 'entity'
+      ? state.selection.id
+      : state.selection?.kind === 'entities'
+        ? state.selection.ids?.[0]
+        : undefined;
+    if (!selectedId || selectedId === 'e1') return null;
+    const blocks = Object.values(state.scene?.eventBlocks ?? {}).filter((b: any) => b?.target?.type === 'entity' && b?.target?.entityId === selectedId);
+    const blockId = blocks[0]?.id;
+    const atts = Object.values(state.scene?.attachments ?? {}).filter((a: any) => a?.target?.type === 'entity' && a?.target?.entityId === selectedId);
+    const hasWait = atts.some((a: any) => a?.presetId === 'Wait' && a?.eventId === blockId);
+    return { hasBlock: blocks.length, hasWait };
+  }).toEqual({ hasBlock: 1, hasWait: true });
 });
