@@ -47,7 +47,16 @@ test('edits formation details and layout from the inspector', async ({ page }) =
 test('converts group layout via the inspector layout type dropdown', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
 
-  await page.getByTestId('layout-type-select').selectOption('grid');
+  const expandLayout = page.getByTestId('inspector').getByLabel('Expand Layout');
+  if (await expandLayout.isVisible().catch(() => false)) {
+    await expandLayout.click();
+  }
+
+  const layoutType = page.getByTestId('layout-type-select');
+  await expect(layoutType).toBeVisible();
+  await layoutType.scrollIntoViewIfNeeded();
+
+  await layoutType.selectOption('grid');
   await page.getByTestId('convert-grid-rows-input').fill('5');
   await page.getByTestId('convert-grid-cols-input').fill('3');
   await page.getByTestId('convert-layout-apply-button').click();
@@ -57,7 +66,7 @@ test('converts group layout via the inspector layout type dropdown', async ({ pa
     return state?.scene?.groups?.['g-enemies']?.layout ?? {};
   }).toMatchObject({ type: 'grid', rows: 5, cols: 3 });
 
-  await page.getByTestId('layout-type-select').selectOption('freeform');
+  await layoutType.selectOption('freeform');
   await page.getByTestId('convert-layout-apply-button').click();
 
   await expect.poll(async () => {
@@ -216,18 +225,16 @@ test('move-until velocity inputs allow clearing until blur', async ({ page }) =>
   await page.getByTestId('attachment-open-att-move-right').click();
 
   const velocityX = page.getByTestId('attachment-velocity-x-input');
-  const velocityY = page.getByTestId('attachment-velocity-y-input');
 
-  await velocityX.click();
-  await velocityX.press('Control+A');
-  await velocityX.press('Backspace');
+  await expect(velocityX).toBeVisible();
+  await velocityX.fill('');
   await expect(velocityX).toHaveValue('');
 
-  await velocityX.type('123');
+  await velocityX.fill('123');
   await expect(velocityX).toHaveValue('123');
 
   // Commit on blur.
-  await velocityX.evaluate((el: HTMLInputElement) => el.blur());
+  await page.getByTestId('attachment-name-input').click();
   await expect.poll(async () => {
     const state = await getState<{ scene: { attachments: Record<string, { params?: Record<string, unknown> }> } }>(page);
     const params = state.scene.attachments['att-move-right'].params ?? {};
@@ -312,14 +319,37 @@ test('reassigns a sprite asset from another sprite via the inspector', async ({ 
   await resetScene(page);
   const { assetId: assetA } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
   const { assetId: assetB } = await importImageAssetFromFile(page, 'res/images/enemy_B.png');
-  await dragAssetToCanvas(page, 'image', assetA);
-  await dragAssetToCanvas(page, 'image', assetB);
-  const entityAId = 'e';
-  const entityBId = 'e-2';
+  await dragAssetToCanvas(page, 'image', assetA, { targetPosition: { x: 200, y: 160 } });
+  await dragAssetToCanvas(page, 'image', assetB, { targetPosition: { x: 320, y: 160 } });
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene?: { entities?: Record<string, { asset?: { source?: { kind?: string; assetId?: string } } }> } } | null>(page);
+    const entities = state?.scene?.entities ?? {};
+    const idsFor = (assetId: string) => Object.entries(entities)
+      .filter(([, entity]) => entity.asset?.source?.kind === 'asset' && entity.asset.source.assetId === assetId)
+      .map(([id]) => id);
+    const aIds = idsFor(assetA);
+    const bIds = idsFor(assetB);
+    // Ensure we really created two separate sprites (not replaced one).
+    return aIds.length >= 1 && bIds.length >= 1 && new Set([...aIds, ...bIds]).size >= 2;
+  }).toBe(true);
+
+  const { entityAId } = await page.evaluate(([aId, bId]) => {
+    const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene?: { entities?: Record<string, any> } } | null;
+    const entities = state?.scene?.entities ?? {};
+    const find = (assetId: string) => Object.entries(entities)
+      .filter(([, entity]) => entity?.asset?.source?.kind === 'asset' && entity.asset.source.assetId === assetId)
+      .map(([id]) => id)[0] ?? null;
+    return { entityAId: find(aId), entityBId: find(bId) };
+  }, [assetA, assetB]);
+  if (!entityAId) throw new Error('Imported entity id unavailable');
 
   await openSceneScope(page);
   await page.getByTestId(`ungrouped-entity-${entityAId}`).click();
-  await page.getByTestId('entity-asset-select').selectOption({ label: `asset:${assetB} (image)` });
+  await expect(page.getByTestId('entity-asset-select')).toBeVisible();
+  const assetBKey = `asset:${assetB}:image`;
+  await expect(page.getByTestId('entity-asset-select').locator(`option[value="${assetBKey}"]`)).toHaveCount(1);
+  await page.getByTestId('entity-asset-select').selectOption({ value: assetBKey });
 
   await expect.poll(async () => {
     const state = await getState<{ scene?: { entities?: Record<string, { asset?: { source?: { kind: string; originalName?: string } } }> } } | null>(page);

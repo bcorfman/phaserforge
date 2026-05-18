@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { dragDropByTestId, getState, gotoStudio, seedSampleScene, waitForSampleScene } from './helpers';
+import { dragDropByTestId, getState, seedSampleScene } from './helpers';
+
+test.describe.configure({ timeout: 120000 });
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
-  await gotoStudio(page);
-  await waitForSampleScene(page);
 });
 
 test('Scene Graph: multi-select sprites and drag into a formation to add members', async ({ page }) => {

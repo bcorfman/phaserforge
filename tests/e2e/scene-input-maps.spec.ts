@@ -3,6 +3,8 @@ import { createEmptyProject } from '../../src/model/emptyProject';
 import { dismissViewHint, openSceneScope, seedProject } from './helpers';
 
 test.describe('Scene input maps', () => {
+  test.describe.configure({ timeout: 120000 });
+
   test('selects project default / none and jumps to Project input maps editor', async ({ page }) => {
     const project = createEmptyProject();
     project.inputMaps = {

@@ -52,7 +52,7 @@ function countTriggerHooks(zone: TriggerZoneSpec): { enter: boolean; exit: boole
 
 export function EntityList() {
   const { state, dispatch } = useEditorStore();
-  const { project, currentSceneId, selection, sidebarScope, expandedGroups, mode } = state;
+  const { project, currentSceneId, selection, sidebarScope, expandedGroups, mode, startupMode } = state;
   const scene = project.scenes[currentSceneId];
   return (
     <EntityListView
@@ -63,6 +63,7 @@ export function EntityList() {
       sidebarScope={sidebarScope}
       expandedGroups={expandedGroups}
       mode={mode}
+      startupMode={startupMode}
       dispatch={dispatch}
     />
   );
@@ -76,6 +77,7 @@ export function EntityListView({
   sidebarScope,
   expandedGroups,
   mode,
+  startupMode,
   dispatch,
 }: {
   project: ProjectSpec;
@@ -85,6 +87,7 @@ export function EntityListView({
   sidebarScope: 'scene' | 'project';
   expandedGroups: Record<string, boolean>;
   mode: 'edit' | 'play';
+  startupMode: 'reload_last_yaml' | 'new_empty_scene';
   dispatch: (action: any) => void;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -856,6 +859,41 @@ export function EntityListView({
 
       {sidebarScope === 'project' ? (
         <>
+          <section className="panel-section" aria-labelledby="project-startup" data-testid="project-startup-panel">
+            <div className="panel-heading-row">
+              <h3 className="panel-heading" id="project-startup">Startup &amp; Reset</h3>
+            </div>
+
+            <label className="field">
+              <span>Startup mode</span>
+              <select
+                aria-label="Startup mode"
+                data-testid="project-startup-mode-select"
+                value={startupMode}
+                disabled={mode !== 'edit'}
+                onChange={(e) => dispatch({ type: 'set-startup-mode', startupMode: e.target.value as typeof startupMode })}
+              >
+                <option value="reload_last_yaml">Reload Last YAML</option>
+                <option value="new_empty_scene">New Empty Scene</option>
+              </select>
+            </label>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              <button
+                className="button button-danger"
+                data-testid="project-reset-now-button"
+                type="button"
+                disabled={mode !== 'edit'}
+                onClick={() => {
+                  const ok = window.confirm('Reset project to a new empty scene? This will discard the current project content.');
+                  if (!ok) return;
+                  dispatch({ type: 'reset-project' } as any);
+                }}
+              >
+                Reset Now → New Empty Scene
+              </button>
+            </div>
+          </section>
           <InputMapsPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
         </>
       ) : (
@@ -1022,6 +1060,20 @@ export function EntityListView({
                   ★ {isBase ? 'Clear Base' : 'Set as Base'}
                 </button>
                 <div className="scene-graph-menu-divider" />
+                <button
+                  type="button"
+                  className="scene-graph-menu-item scene-graph-menu-danger"
+                  data-testid={`scene-menu-clear-${menuOpen.sceneId}`}
+                  onClick={() => {
+                    const sceneId = menuOpen.sceneId;
+                    setMenuOpen(null);
+                    const ok = window.confirm(`Clear scene "${sceneId}"? This removes all entities, groups, triggers, layers, audio, and behaviors in that scene.`);
+                    if (!ok) return;
+                    dispatch({ type: 'clear-scene', sceneId } as any);
+                  }}
+                >
+                  Clear Scene…
+                </button>
                 <button
                   type="button"
                   className={`scene-graph-menu-item scene-graph-menu-danger ${canDelete ? '' : 'disabled'}`}

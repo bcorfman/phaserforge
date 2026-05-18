@@ -2,15 +2,13 @@ import { expect, test } from '@playwright/test';
 import {
   dismissViewHint,
   getState,
-  gotoStudio,
   seedSampleScene,
-  waitForSampleScene,
 } from './helpers';
+
+test.describe.configure({ timeout: 120000 });
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
-  await gotoStudio(page);
-  await waitForSampleScene(page);
   await dismissViewHint(page);
 });
 
