@@ -17,18 +17,6 @@ export function Toolbar() {
       </div>
       <div className="toolbar-right">
         <div className="toolbar-right-top">
-          <label className="toolbar-field toolbar-field-compact" style={{ minWidth: 12.5 * 16 }}>
-            <span>Startup</span>
-            <select
-              aria-label="Startup mode"
-              data-testid="startup-mode-select"
-              value={state.startupMode}
-              onChange={(e) => dispatch({ type: 'set-startup-mode', startupMode: e.target.value as typeof state.startupMode })}
-            >
-              <option value="reload_last_yaml">Reload Last YAML</option>
-              <option value="new_empty_scene">New Empty Scene</option>
-            </select>
-          </label>
           <label className="toolbar-field toolbar-field-compact">
             <span>UI Scale</span>
             <div className="toolbar-slider-row">

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, dragAssetToCanvas, expectInputValue, getState, gotoStudio, importImageAssetFromFile, importSpritesheetAssetFromFile, openSceneScope, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
+import { dismissViewHint, dragAssetToCanvas, expectInputValue, getState, gotoStudio, importImageAssetFromFile, importSpritesheetAssetFromFile, openProjectScope, openSceneScope, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -42,7 +42,9 @@ test('updates startup mode and persists the last YAML-backed scene across reload
   await waitForSampleScene(page);
   await dismissViewHint(page);
 
-  await page.getByTestId('startup-mode-select').selectOption('reload_last_yaml');
+  await openProjectScope(page);
+  await page.getByTestId('project-startup-mode-select').selectOption('reload_last_yaml');
+  await openSceneScope(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('formation-name-input').fill('Persisted Wing');
   await expect.poll(async () => {
@@ -56,7 +58,8 @@ test('updates startup mode and persists the last YAML-backed scene across reload
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Persisted Wing');
 
-  await page.getByTestId('startup-mode-select').selectOption('new_empty_scene');
+  await openProjectScope(page);
+  await page.getByTestId('project-startup-mode-select').selectOption('new_empty_scene');
   await page.reload();
   await gotoStudio(page);
   await waitForEmptyScene(page);
