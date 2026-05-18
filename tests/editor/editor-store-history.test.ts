@@ -134,4 +134,28 @@ describe('EditorStore history', () => {
     expect(Object.keys(sceneOf(undone).entities).length).toBe(entityCount0);
     expect(sceneOf(undone).entities[duplicateId]).toBeUndefined();
   });
+
+  it('records layout-entities as a single undo step', () => {
+    const state0 = seededState();
+    const scene0 = sceneOf(state0);
+    const x1 = scene0.entities.e1.x;
+    const y1 = scene0.entities.e1.y;
+    const x2 = scene0.entities.e2.x;
+    const y2 = scene0.entities.e2.y;
+
+    const laidOut = reducer(state0, {
+      type: 'layout-entities',
+      positions: [
+        { id: 'e1', x: x1 + 10, y: y1 + 20 },
+        { id: 'e2', x: x2 + 30, y: y2 + 40 },
+      ],
+    } as any);
+    expect(laidOut.history.past).toHaveLength(1);
+
+    const undone = reducer(laidOut, { type: 'history-undo' } as any);
+    expect(sceneOf(undone).entities.e1.x).toBe(x1);
+    expect(sceneOf(undone).entities.e1.y).toBe(y1);
+    expect(sceneOf(undone).entities.e2.x).toBe(x2);
+    expect(sceneOf(undone).entities.e2.y).toBe(y2);
+  });
 });

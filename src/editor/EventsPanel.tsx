@@ -65,6 +65,7 @@ export function EventsPanel({
   onMoveParallelGroup,
   onCreatePatternFromAttachments,
   onApplyPattern,
+  onApplyLoopTemplate,
 }: {
   project: ProjectSpec;
   scene: SceneSpec;
@@ -84,6 +85,7 @@ export function EventsPanel({
   onMoveParallelGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
   onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
   onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
+  onApplyLoopTemplate: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
 }) {
   const [tab, setTab] = useState<'blocks' | 'map'>('blocks');
   const eventBlocks = useMemo(() => {
@@ -94,6 +96,21 @@ export function EventsPanel({
   const supportedPresetEntries = useMemo(
     () => registry.actions.filter((entry) => entry.implemented && SUPPORTED_PRESETS.has(entry.type)),
     [registry.actions]
+  );
+
+  const loopTemplateEntries = useMemo(
+    () => ([
+      { type: 'loops:intro_then_repeat', displayName: 'Intro then Repeat…', category: 'loops' },
+      { type: 'loops:repeat_n_times', displayName: 'Repeat N times…', category: 'loops' },
+      { type: 'loops:repeat_until_condition', displayName: 'Repeat until Condition…', category: 'loops' },
+      { type: 'loops:repeat_with_cooldown', displayName: 'Repeat with Cooldown…', category: 'loops' },
+    ] as any),
+    []
+  );
+
+  const actionLibraryEntries = useMemo(
+    () => [...supportedPresetEntries, ...loopTemplateEntries],
+    [supportedPresetEntries, loopTemplateEntries]
   );
 
   const inputActionIds = useMemo(() => listInputActionIds(project), [project]);
@@ -147,7 +164,7 @@ export function EventsPanel({
         project={project}
         scene={scene}
         target={target}
-        supportedPresetEntries={supportedPresetEntries}
+        supportedPresetEntries={actionLibraryEntries}
         selectedAttachmentId={selectedAttachmentId}
         inputActionIds={inputActionIds}
         onUpdateEventBlock={() => {}}
@@ -162,6 +179,7 @@ export function EventsPanel({
         onMoveParallelGroup={(groupId, direction) => onMoveParallelGroup(groupId, direction, undefined)}
         onCreatePatternFromAttachments={onCreatePatternFromAttachments}
         onApplyPattern={onApplyPattern}
+        onApplyLoopTemplate={onApplyLoopTemplate}
         hideEventControls
         eventIdForRows={undefined}
       />
@@ -174,7 +192,7 @@ export function EventsPanel({
           project={project}
           scene={scene}
           target={target}
-          supportedPresetEntries={supportedPresetEntries}
+          supportedPresetEntries={actionLibraryEntries}
           selectedAttachmentId={selectedAttachmentId}
           inputActionIds={inputActionIds}
           onUpdateEventBlock={onUpdateEventBlock}
@@ -189,6 +207,7 @@ export function EventsPanel({
           onMoveParallelGroup={onMoveParallelGroup}
           onCreatePatternFromAttachments={onCreatePatternFromAttachments}
           onApplyPattern={onApplyPattern}
+          onApplyLoopTemplate={onApplyLoopTemplate}
           eventIdForRows={block.id}
         />
       ))}
@@ -322,6 +341,7 @@ function EventBlockCard({
   onMoveParallelGroup,
   onCreatePatternFromAttachments,
   onApplyPattern,
+  onApplyLoopTemplate,
   hideEventControls,
   eventIdForRows,
 }: {
@@ -344,6 +364,7 @@ function EventBlockCard({
   onMoveParallelGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
   onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
   onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
+  onApplyLoopTemplate: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
   hideEventControls?: boolean;
   eventIdForRows: Id | undefined;
 }) {
@@ -557,6 +578,11 @@ function EventBlockCard({
   );
 
   const pickPreset = (presetId: string) => {
+    if (presetId.startsWith('loops:')) {
+      onApplyLoopTemplate(presetId as any, block.id as any);
+      setDrawerOpen(false);
+      return;
+    }
     const init: Partial<AttachmentSpec> = { eventId: block.id };
     if (presetId === 'Call') init.condition = { type: 'Instant' } as any;
     onAddAttachment(presetId, init);

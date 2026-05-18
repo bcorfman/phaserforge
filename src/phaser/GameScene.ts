@@ -6,6 +6,7 @@ import { getRotatedEntityBounds } from '../runtime/geometry';
 import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { getSceneWorld } from '../editor/sceneWorld';
+import { resolveTextEntityDefaults, resolveTextFontFamily } from '../editor/textEntity';
 import { clampCameraScroll, clampZoom } from '../editor/viewport';
 import { OpRegistry } from '../compiler/opRegistry';
 import { BasicAudioService } from '../runtime/services/BasicAudioService';
@@ -28,8 +29,8 @@ export class GameScene extends Phaser.Scene {
   private compiled?: CompiledScene;
   private project?: ProjectSpec;
   private opRegistry: OpRegistry = new OpRegistry();
-  private baseSprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
-  private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
+  private baseSprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>();
+  private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>();
   private baseFormationPhysicsGroups = new Map<string, Phaser.Physics.Arcade.Group>();
   private formationPhysicsGroups = new Map<string, Phaser.Physics.Arcade.Group>();
   private basePhysicsObjects = new Map<string, PhysicsObject>();
@@ -666,7 +667,7 @@ export class GameScene extends Phaser.Scene {
   private syncSpritesForLayer(
     compiled: CompiledScene,
     stores: {
-      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>;
+      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>;
       physicsObjects: Map<string, PhysicsObject>;
       velocityCache: Map<string, { vx: number; vy: number }>;
       sizeCache: Map<string, { w: number; h: number }>;
@@ -690,7 +691,8 @@ export class GameScene extends Phaser.Scene {
       }
       if (!sprite) continue;
       sprite.setPosition(entity.x, entity.y);
-      this.applyEntityDisplayProps(sprite, entity, compiled.scene.entities[entity.id]?.asset as any);
+      const spec = compiled.scene.entities[entity.id] as any;
+      this.applyEntityDisplayProps(sprite, entity, spec?.asset as any, spec?.text);
       this.syncPhysicsState(entity.id, sprite, entity, stores);
     }
   }
@@ -838,7 +840,7 @@ export class GameScene extends Phaser.Scene {
 
   private syncPhysicsState(
     entityId: string,
-    sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite,
+    sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text,
     entity: CompiledScene['entities'][string],
     stores: {
       physicsObjects: Map<string, PhysicsObject>;
@@ -846,6 +848,7 @@ export class GameScene extends Phaser.Scene {
       sizeCache: Map<string, { w: number; h: number }>;
     }
   ): void {
+    if (sprite instanceof Phaser.GameObjects.Text) return;
     const physicsObject = stores.physicsObjects.get(entityId);
     if (!physicsObject) return;
     if (physicsObject !== (sprite as any)) return;
@@ -909,9 +912,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private applyEntityDisplayProps(
-    sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite,
+    sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text,
     entity: CompiledScene['entities'][string],
-    asset?: SpriteAssetSpec
+    asset?: SpriteAssetSpec,
+    textSpec?: unknown
   ): void {
     sprite.setPosition(entity.x, entity.y);
     sprite.setAngle(entity.rotationDeg ?? 0);
@@ -919,6 +923,16 @@ export class GameScene extends Phaser.Scene {
     sprite.setAlpha(entity.alpha ?? 1);
     sprite.setVisible(entity.visible ?? true);
     sprite.setDepth(entity.depth ?? 0);
+    if (sprite instanceof Phaser.GameObjects.Text) {
+      const resolved = resolveTextEntityDefaults(textSpec as any);
+      sprite.setText(resolved.value);
+      sprite.setFontFamily(resolveTextFontFamily(this.project, resolved));
+      sprite.setFontSize(resolved.fontSize);
+      sprite.setColor(resolved.color);
+      sprite.setAlign(resolved.align);
+      sprite.setScale((entity.flipX ? -1 : 1) * Math.abs(entity.scaleX ?? 1), (entity.flipY ? -1 : 1) * Math.abs(entity.scaleY ?? 1));
+      return;
+    }
     if (sprite instanceof Phaser.GameObjects.Rectangle) {
       sprite.setSize(entity.width, entity.height);
       sprite.setDisplaySize(entity.width, entity.height);
@@ -961,7 +975,7 @@ export class GameScene extends Phaser.Scene {
     compiled: CompiledScene,
     sceneSpec: GameSceneSpec,
     stores: {
-      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>;
+      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>;
       physicsObjects: Map<string, PhysicsObject>;
       velocityCache: Map<string, { vx: number; vy: number }>;
       sizeCache: Map<string, { w: number; h: number }>;
@@ -971,21 +985,31 @@ export class GameScene extends Phaser.Scene {
     this.ensurePlaceholderTexture();
     for (const entity of Object.values(compiled.entities)) {
       if (stores.sprites.has(entity.id)) continue;
-      const asset = compiled.scene.entities[entity.id]?.asset as any as SpriteAssetSpec | undefined;
+      const spec = compiled.scene.entities[entity.id] as any;
+      const asset = spec?.asset as any as SpriteAssetSpec | undefined;
       const textureKey = asset ? this.getTextureKey(asset) : undefined;
-      let sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
-      if (asset && textureKey && this.textures.exists(textureKey)) {
-        const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
-        if (asset.imageType === 'spritesheet') {
-          sprite = this.physics.add.sprite(entity.x, entity.y, textureKey, frame);
-        } else {
-          sprite = this.physics.add.image(entity.x, entity.y, textureKey);
-        }
+      let sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text;
+      if (spec?.text) {
+        sprite = this.add.text(entity.x, entity.y, '', {
+          color: '#ffffff',
+          fontFamily: 'system-ui',
+          fontSize: '14px',
+        });
+        this.applyEntityDisplayProps(sprite, entity, asset, spec.text);
       } else {
-        sprite = this.physics.add.image(entity.x, entity.y, PLACEHOLDER_TEXTURE_KEY);
+        if (asset && textureKey && this.textures.exists(textureKey)) {
+          const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+          if (asset.imageType === 'spritesheet') {
+            sprite = this.physics.add.sprite(entity.x, entity.y, textureKey, frame);
+          } else {
+            sprite = this.physics.add.image(entity.x, entity.y, textureKey);
+          }
+        } else {
+          sprite = this.physics.add.image(entity.x, entity.y, PLACEHOLDER_TEXTURE_KEY);
+        }
+        this.configurePhysicsObject(entity.id, sprite as any, stores.physicsObjects);
+        this.applyEntityDisplayProps(sprite, entity, asset, undefined);
       }
-      this.configurePhysicsObject(entity.id, sprite as any, stores.physicsObjects);
-      this.applyEntityDisplayProps(sprite, entity, asset);
       // Ensure the interactive hit area matches the final display size.
       // (Firefox + placeholder textures can otherwise end up with a tiny hit area.)
       const displayW = sprite instanceof Phaser.GameObjects.Rectangle ? entity.width : (sprite.displayWidth || entity.width);
@@ -1016,7 +1040,7 @@ export class GameScene extends Phaser.Scene {
     compiled: CompiledScene | undefined;
     sceneSpec: GameSceneSpec;
     stores: {
-      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>;
+      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>;
       physicsObjects: Map<string, PhysicsObject>;
       velocityCache: Map<string, { vx: number; vy: number }>;
       sizeCache: Map<string, { w: number; h: number }>;
@@ -1091,7 +1115,7 @@ export class GameScene extends Phaser.Scene {
     compiled: CompiledScene,
     entityId: string,
     stores: {
-      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>;
+      sprites: Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>;
       physicsObjects: Map<string, PhysicsObject>;
       velocityCache: Map<string, { vx: number; vy: number }>;
       sizeCache: Map<string, { w: number; h: number }>;
@@ -1102,22 +1126,31 @@ export class GameScene extends Phaser.Scene {
     if (!entity || (entity as any).destroyed) return;
 
     this.ensurePlaceholderTexture();
-    const asset = compiled.scene.entities[entityId]?.asset as any as SpriteAssetSpec | undefined;
+    const spec = compiled.scene.entities[entityId] as any;
+    const asset = spec?.asset as any as SpriteAssetSpec | undefined;
     const textureKey = asset ? this.getTextureKey(asset) : undefined;
-    let sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
-    if (asset && textureKey && this.textures.exists(textureKey)) {
-      const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
-      if (asset.imageType === 'spritesheet') {
-        sprite = this.physics.add.sprite(entity.x, entity.y, textureKey, frame);
-      } else {
-        sprite = this.physics.add.image(entity.x, entity.y, textureKey);
-      }
+    let sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text;
+    if (spec?.text) {
+      sprite = this.add.text(entity.x, entity.y, '', {
+        color: '#ffffff',
+        fontFamily: 'system-ui',
+        fontSize: '14px',
+      });
+      this.applyEntityDisplayProps(sprite, entity, asset, spec.text);
     } else {
-      sprite = this.physics.add.image(entity.x, entity.y, PLACEHOLDER_TEXTURE_KEY);
+      if (asset && textureKey && this.textures.exists(textureKey)) {
+        const frame = asset.frame?.frameKey ?? asset.frame?.frameIndex;
+        if (asset.imageType === 'spritesheet') {
+          sprite = this.physics.add.sprite(entity.x, entity.y, textureKey, frame);
+        } else {
+          sprite = this.physics.add.image(entity.x, entity.y, textureKey);
+        }
+      } else {
+        sprite = this.physics.add.image(entity.x, entity.y, PLACEHOLDER_TEXTURE_KEY);
+      }
+      this.configurePhysicsObject(entity.id, sprite as any, stores.physicsObjects);
+      this.applyEntityDisplayProps(sprite, entity, asset, undefined);
     }
-
-    this.configurePhysicsObject(entity.id, sprite as any, stores.physicsObjects);
-    this.applyEntityDisplayProps(sprite, entity, asset);
     // Ensure the interactive hit area matches the final display size.
     {
       const displayW = sprite instanceof Phaser.GameObjects.Rectangle ? entity.width : (sprite.displayWidth || entity.width);

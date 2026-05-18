@@ -160,13 +160,24 @@ export function getAttachmentById(scene: SceneSpec, id: Id): AttachmentSpec | un
   return scene.attachments[id];
 }
 
+function allocUniqueId(existing: Record<string, unknown>, base: string): string {
+  if (!existing[base]) return base;
+  let suffix = 2;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const candidate = `${base}-${suffix}`;
+    if (!existing[candidate]) return candidate;
+    suffix += 1;
+  }
+}
+
 export function createAttachment(
   scene: SceneSpec,
   target: TargetRef,
   presetId: string,
   init: Partial<AttachmentSpec> = {}
 ): { scene: SceneSpec; attachmentId: Id } {
-  const id: Id = `att-${Date.now()}`;
+  const id: Id = allocUniqueId(scene.attachments, `att-${Date.now()}`);
   const existing = getAttachmentsForTargetAndEvent(scene, target, init.eventId).filter(
     (a) => (a.parentAttachmentId ?? undefined) === (init.parentAttachmentId ?? undefined)
   );
