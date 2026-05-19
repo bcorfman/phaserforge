@@ -43,6 +43,7 @@ import { getSceneWorld } from './sceneWorld';
 import { getAssetReferences } from './assetReferences';
 import { buildDefaultDraftParams, type FormationDraftSpec, type FormationTemplateSource } from './formationDraft';
 import { measureTextEntityPixels, resolveTextEntityDefaults, resolveTextFontFamily } from './textEntity';
+import { allocDuplicateName } from './duplicateNaming';
 
 export const PROJECT_STORAGE_KEY = 'phaseractions.projectYaml.v1';
 export const SCENE_STORAGE_KEY_V1 = 'phaseractions.sceneYaml.v1';
@@ -1938,7 +1939,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     }
     case 'create-entity-from-asset': {
       const scene = getActiveScene(state);
-      const entityId = allocUniqueId(scene.entities ?? {}, 'e');
+      const entityId = allocUniqueId(scene.entities ?? {}, 'entity');
       const world = getSceneWorld(scene);
       const at = action.at ?? { x: world.width / 2, y: world.height / 2 };
       const defaultSize = 64;
@@ -2643,14 +2644,22 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const attachments: Record<Id, AttachmentSpec> = { ...(scene.attachments ?? {}) };
       const eventBlocks: Record<Id, EventBlockSpec> = { ...(scene.eventBlocks ?? {}) } as any;
       const duplicatedIds: Id[] = [];
+      const reservedNames = new Set<string>();
+      for (const entity of Object.values(scene.entities)) {
+        const displayName = ((entity.name ?? '').trim() || entity.id).trim();
+        if (displayName.length > 0) reservedNames.add(displayName);
+      }
 
       for (const sourceId of uniqueIds) {
         const source = scene.entities[sourceId];
         if (!source) continue;
 
         const nextId = allocUniqueId(entities, `${sourceId}-copy`);
+        const sourceDisplayName = ((source.name ?? '').trim() || sourceId).trim();
+        const nextName = allocDuplicateName(sourceDisplayName, reservedNames);
+        reservedNames.add(nextName);
         duplicatedIds.push(nextId);
-        entities[nextId] = { ...source, id: nextId };
+        entities[nextId] = { ...source, id: nextId, name: nextName };
 
         if (copyIntoSameGroup) {
           const containingGroupId = Object.keys(groups).find((groupId) => groups[groupId]?.members.includes(sourceId));
