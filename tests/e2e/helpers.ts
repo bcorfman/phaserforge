@@ -17,6 +17,8 @@ const NAVIGATE_TIMEOUT_MS = IS_CI ? 45000 : 30000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 60000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 
+const seededSampleContexts = new WeakSet<object>();
+
 export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean }): Promise<void> {
   if (!options?.forceNavigate) {
     const existingAppRoot = page.getByTestId('app-root');
@@ -52,27 +54,31 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
 
 export async function seedSampleScene(page: Page, options: { once?: boolean } = {}): Promise<void> {
   const yaml = serializeProjectToYaml(sampleProject);
-  await page.addInitScript(
-    ([sceneYaml, seedOnce]) => {
-      const sentinelKey = 'phaseractions.testSeeded.v1';
-      const uiResetKey = 'phaseractions.testUiReset.v1';
-      if (seedOnce && window.localStorage.getItem(sentinelKey)) return;
-      if (seedOnce) window.localStorage.setItem(sentinelKey, '1');
+  const contextKey = page.context() as unknown as object;
+  if (!seededSampleContexts.has(contextKey)) {
+    seededSampleContexts.add(contextKey);
+    await page.addInitScript(
+      ([sceneYaml, seedOnce]) => {
+        const sentinelKey = 'phaseractions.testSeeded.v1';
+        const uiResetKey = 'phaseractions.testUiReset.v1';
+        if (seedOnce && window.localStorage.getItem(sentinelKey)) return;
+        if (seedOnce) window.localStorage.setItem(sentinelKey, '1');
 
-      // Tests must be isolated by default: reset the persisted authored project before boot.
-      window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
-      if (!window.localStorage.getItem(uiResetKey)) {
-        window.localStorage.setItem(uiResetKey, '1');
-        window.localStorage.removeItem('phaseractions.leftPaneWidth.v1');
-        window.localStorage.removeItem('phaseractions.assetsDockHeight.v1');
-        window.localStorage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
-      }
-      window.localStorage.setItem('phaseractions.showHitboxOverlay.v1', '1');
-      window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
-      window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
-    },
-    [yaml, Boolean(options.once)]
-  );
+        // Tests must be isolated by default: reset the persisted authored project before boot.
+        window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
+        if (!window.localStorage.getItem(uiResetKey)) {
+          window.localStorage.setItem(uiResetKey, '1');
+          window.localStorage.removeItem('phaseractions.leftPaneWidth.v1');
+          window.localStorage.removeItem('phaseractions.assetsDockHeight.v1');
+          window.localStorage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
+        }
+        window.localStorage.setItem('phaseractions.showHitboxOverlay.v1', '1');
+        window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
+        window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
+      },
+      [yaml, Boolean(options.once)]
+    );
+  }
   await gotoStudio(page, { forceNavigate: true });
   await waitForSampleScene(page);
 }
