@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dragAssetToCanvas, dragDropByTestIdAtClientPoint, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, worldToClient } from './helpers';
+import { dismissViewHint, dragAssetToCanvas, dragDropByTestIdAtClientPoint, dropAssetOnTestId, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test.describe.configure({ timeout: 120000 });
@@ -103,12 +103,7 @@ test.describe('Assets dock', () => {
       return Object.keys(state?.scene?.entities ?? {});
     });
 
-    const enemyAsset = page.getByTestId('assets-dock-item-image-enemy-a');
-    const canvas = page.locator('#game-container canvas');
-    await expect(canvas).toBeVisible();
-    const canvasBox = await canvas.boundingBox();
-    if (!canvasBox) throw new Error('Canvas bounding box unavailable');
-    await enemyAsset.dragTo(canvas, { targetPosition: { x: canvasBox.width * 0.5, y: canvasBox.height * 0.5 } });
+    await dragAssetToCanvas(page, 'image', 'enemy-a');
 
     await expect.poll(async () => {
       const state = await getState<any>(page);
@@ -231,9 +226,7 @@ test.describe('Assets dock', () => {
     await expect(page.getByTestId('assets-dock-item-audio-theme')).toBeVisible();
 
     await page.getByTestId('scene-inspector-panel').getByText('Expand All').click();
-    const source = page.getByTestId('assets-dock-item-audio-theme');
-    const musicSelect = page.getByTestId('scene-music-asset-select');
-    await source.dragTo(musicSelect);
+    await dropAssetOnTestId(page, { assetKind: 'audio', assetId: 'theme' }, 'scene-music-asset-select');
 
     await expect.poll(async () => {
       const state = await getState<any>(page);
