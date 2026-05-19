@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dragDropByTestIdAtClientPoint, getEntitySpriteWorldRect, getState, hitTestAtClientPoint, openSceneScope, seedProject, triggerUndo, worldToClient } from './helpers';
+import { dismissViewHint, dragAssetToCanvas, dragDropByTestIdAtClientPoint, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test.describe.configure({ timeout: 120000 });
@@ -53,6 +53,35 @@ test.describe('Assets dock', () => {
     expect(created.height).toBe(importedMeta.height);
     expect(created.scaleX ?? 1).toBe(1);
     expect(created.scaleY ?? 1).toBe(1);
+  });
+
+  test('dragging an image asset onto the canvas preserves the current viewport', async ({ page }) => {
+    await seedProject(page, createEmptyProject());
+    await dismissViewHint(page);
+    await openSceneScope(page);
+
+    await page.getByTestId('assets-dock-import-button').click();
+    await page.getByTestId('assets-dock-file-input').setInputFiles('res/images/enemy_A.png');
+    await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
+
+    await page.getByTestId('fit-view-button').click();
+    await panByScreenDelta(page, { x: 180, y: 120 });
+
+    await page.getByTestId('toggle-mode-button').click();
+    await expect.poll(async () => (await getState<any>(page))?.mode).toBe('play');
+    await page.getByTestId('toggle-mode-button').click();
+    await expect.poll(async () => (await getState<any>(page))?.mode).toBe('edit');
+
+    await page.getByTestId('fit-view-button').click();
+    const before = await getSceneSnapshot<any>(page);
+    expect(before).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
+
+    await dragAssetToCanvas(page, 'image', 'enemy-a');
+
+    await expect.poll(async () => {
+      const next = await getSceneSnapshot<any>(page);
+      return next ? { zoom: next.zoom, scrollX: next.scrollX, scrollY: next.scrollY } : null;
+    }).toEqual({ zoom: before.zoom, scrollX: before.scrollX, scrollY: before.scrollY });
   });
 
   test('dragging an image asset onto an existing sprite replaces its asset', async ({ page }) => {
