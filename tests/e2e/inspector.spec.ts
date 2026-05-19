@@ -459,12 +459,15 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
   const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', assetId);
   await openSceneScope(page);
+  let entityId: string | null = null;
   await expect.poll(async () => {
-    const state = await getState<{ scene?: { entities?: Record<string, unknown> } } | null>(page);
-    return Object.keys(state?.scene?.entities ?? {}).length;
-  }).toBe(1);
-  const stateWithEntity = await getState<{ scene: { entities: Record<string, unknown> } }>(page);
-  const [entityId] = Object.keys(stateWithEntity.scene.entities).sort();
+    const state = await getState<{ scene?: { entities?: Record<string, any> } } | null>(page);
+    const entities = state?.scene?.entities ?? {};
+    const match = Object.entries(entities).find(([, entity]) => entity?.asset?.source?.kind === 'asset' && entity?.asset?.source?.assetId === assetId);
+    entityId = (match?.[0] as string | undefined) ?? null;
+    return entityId;
+  }).toBeTruthy();
+  if (!entityId) throw new Error('Failed to find created entity');
   await page.getByTestId(`ungrouped-entity-${entityId}`).click();
   await page.getByTestId('event-add-open').click();
   await page.getByTestId('action-library-add-MoveUntil').click();
@@ -516,12 +519,15 @@ test('preview applies wrap behavior for an imported sprite move action', async (
   const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', assetId);
   await openSceneScope(page);
+  let entityId: string | null = null;
   await expect.poll(async () => {
-    const state = await getState<{ scene?: { entities?: Record<string, unknown> } } | null>(page);
-    return Object.keys(state?.scene?.entities ?? {}).length;
-  }).toBe(1);
-  const stateWithEntity = await getState<{ scene: { entities: Record<string, unknown> } }>(page);
-  const [entityId] = Object.keys(stateWithEntity.scene.entities).sort();
+    const state = await getState<{ scene?: { entities?: Record<string, any> } } | null>(page);
+    const entities = state?.scene?.entities ?? {};
+    const match = Object.entries(entities).find(([, entity]) => entity?.asset?.source?.kind === 'asset' && entity?.asset?.source?.assetId === assetId);
+    entityId = (match?.[0] as string | undefined) ?? null;
+    return entityId;
+  }).toBeTruthy();
+  if (!entityId) throw new Error('Failed to find created entity');
   await page.getByTestId(`ungrouped-entity-${entityId}`).click();
   await page.getByTestId('event-add-open').click();
   await page.getByTestId('action-library-add-MoveUntil').click();
