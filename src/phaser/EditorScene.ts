@@ -199,6 +199,12 @@ export class EditorScene extends Phaser.Scene {
     if (event.button === 1) {
       event.preventDefault();
       this.isMiddleMouseDown = false;
+      // Firefox/Chromium can occasionally miss Phaser's `pointerup` during middle-mouse panning,
+      // leaving the cursor stuck in "grabbing". Treat window mouseup as a hard-stop for pan.
+      if (this.panState) {
+        this.panState = undefined;
+        this.input.setDefaultCursor(this.isSpacePanning ? 'grab' : 'default');
+      }
     }
   };
 
