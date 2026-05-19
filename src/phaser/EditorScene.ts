@@ -192,6 +192,20 @@ export class EditorScene extends Phaser.Scene {
     if (event.button === 1) {
       event.preventDefault();
       this.isMiddleMouseDown = true;
+      // WebKit sometimes doesn't deliver Phaser `pointerdown` events for middle mouse.
+      // Start panning from the DOM event as a fallback so cursor + scroll update reliably.
+      if (this.mode === 'edit' && !this.panState && !this.dragState) {
+        const pointer = this.input?.activePointer;
+        if (pointer && this.shouldStartPan(pointer)) {
+          this.panState = {
+            startPointerX: pointer.x,
+            startPointerY: pointer.y,
+            startScrollX: this.cameras.main.scrollX,
+            startScrollY: this.cameras.main.scrollY,
+          };
+          this.input.setDefaultCursor('grabbing');
+        }
+      }
     }
   };
 
@@ -199,6 +213,12 @@ export class EditorScene extends Phaser.Scene {
     if (event.button === 1) {
       event.preventDefault();
       this.isMiddleMouseDown = false;
+      // Firefox/Chromium can occasionally miss Phaser's `pointerup` during middle-mouse panning,
+      // leaving the cursor stuck in "grabbing". Treat window mouseup as a hard-stop for pan.
+      if (this.panState) {
+        this.panState = undefined;
+        this.input.setDefaultCursor(this.isSpacePanning ? 'grab' : 'default');
+      }
     }
   };
 

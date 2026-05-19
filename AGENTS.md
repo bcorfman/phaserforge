@@ -5,8 +5,19 @@
 ### TDD Requirement
 All phases and implementation changes should be TDD-driven. Each gesture or editing behavior starts with store/helper tests, then scene-level interaction tests where practical, then implementation. Maintain comprehensive test coverage for reducers, helpers, and integrations.
 
-### Completion Verification (E2E Required)
-Before reporting any **code** changes (including new code) as completed, run `npm run test:e2e` and ensure it passes. Non-code-only changes (docs, plans, mockups, etc.) do not require an E2E run. If E2E cannot be run (environment/tooling constraints), explicitly say so and report results of the closest equivalent verification performed.
+### Completion Verification (E2E Required; Must Be Non-Flaky)
+Before reporting any **code** changes (including new code) as completed, run `npm run test:e2e` and ensure it passes with **zero flakes**.
+
+Important: GitHub Actions CI is configured to fail on flaky E2E tests. The bar for completion is:
+- All E2E tests pass, and
+- No E2E test is marked flaky (in any shard / browser / retry path).
+
+Non-code-only changes (docs, plans, mockups, etc.) do not require an E2E run. If E2E cannot be run (environment/tooling constraints), explicitly say so and report results of the closest equivalent verification performed.
+
+#### Flake Policy (Fix vs Test Redesign)
+When addressing an E2E failure:
+- First, weigh whether a **direct product fix** is appropriate, or whether the test should be **redesigned to be less brittle** (prefer stable user-visible invariants over timing/cursor/style assumptions).
+- If a direct product fix has been attempted and has failed to eliminate the flake **more than twice**, the agent **MUST redesign the test** to be less brittle (and keep coverage meaningful).
 
 ### ArcadeActions Reference Only
 The `arcadeactions` directory is for reference only. Do not modify or add files to it. Use it to understand formations, actions, and arrange functions, but all changes must stay within `phaseractions-studio`. For expandability, rely on external config files and editor-side logic.
