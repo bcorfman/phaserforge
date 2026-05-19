@@ -129,6 +129,20 @@ export class BootScene extends Phaser.Scene {
     });
   }
 
+  private captureViewStateForProjectReload(mode: 'edit' | 'play'): void {
+    try {
+      if (mode === 'edit' && (this.scene.isActive('EditorScene') || this.scene.isSleeping('EditorScene'))) {
+        const editor = this.scene.get('EditorScene') as EditorScene;
+        this.lastViewState = editor.getViewState();
+      } else if (mode === 'play' && (this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene'))) {
+        const game = this.scene.get('GameScene') as GameScene;
+        this.lastViewState = game.getViewState();
+      }
+    } catch {
+      // ignore view capture errors (scene may not be ready yet)
+    }
+  }
+
   private resolveSceneSpec(project: ProjectSpec, sceneId: string | undefined): SceneSpec {
     if (sceneId && project.scenes[sceneId]) return project.scenes[sceneId];
     if (project.scenes[project.initialSceneId]) return project.scenes[project.initialSceneId];
@@ -216,6 +230,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   private handleLoadProject(project: ProjectSpec, currentSceneId: string, mode: 'edit' | 'play' = 'edit'): void {
+    this.captureViewStateForProjectReload(mode);
     this.project = project;
     this.authoredSceneId = currentSceneId;
     this.runtimeSceneId = currentSceneId;
