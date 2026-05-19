@@ -100,7 +100,7 @@ export function EntityListView({
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'scene' | null>(null);
+  const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'scene' | 'trigger' | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
@@ -196,14 +196,14 @@ export function EntityListView({
     }
   }, [assetsDockHeight]);
 
-  const startEditing = (kind: 'entity' | 'group' | 'scene', id: string, currentName: string) => {
+  const startEditing = (kind: 'entity' | 'group' | 'scene' | 'trigger', id: string, currentName: string) => {
     setEditingKind(kind);
     setEditingId(id);
     setEditingName(currentName);
     setEditingSceneId(kind === 'scene' ? id : currentSceneId);
   };
 
-  const startEditingInScene = (sceneId: string, kind: 'entity' | 'group' | 'scene', id: string, currentName: string) => {
+  const startEditingInScene = (sceneId: string, kind: 'entity' | 'group' | 'scene' | 'trigger', id: string, currentName: string) => {
     setEditingKind(kind);
     setEditingId(id);
     setEditingName(currentName);
@@ -242,6 +242,8 @@ export function EntityListView({
       if (entity) {
         dispatch({ type: 'update-entity', id: editingId, next: { ...entity, name: editingName } });
       }
+    } else if (editingKind === 'trigger') {
+      dispatch({ type: 'update-trigger-zone', id: editingId, patch: { name: editingName } } as any);
     }
     cancelEditing();
   };
@@ -250,6 +252,82 @@ export function EntityListView({
     if (e.key === 'Enter') saveRename();
     if (e.key === 'Escape') cancelEditing();
   };
+
+  useEffect(() => {
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (sidebarScope !== 'scene') return;
+      if (mode !== 'edit') return;
+      if (editingKind != null) return;
+      if (menuOpen || spritesAddMenu || duplicateDialog) return;
+      if (event.defaultPrevented) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      const root = rootRef.current;
+      const active = globalThis.document?.activeElement;
+      if (!root || !(active instanceof Node) || !root.contains(active)) return;
+
+      if (active instanceof HTMLElement) {
+        if (active.closest('input, textarea, [contenteditable="true"]')) return;
+      }
+
+      const sceneForKeys = project.scenes[currentSceneId] as GameSceneSpec | undefined;
+      if (!sceneForKeys) return;
+      const summary = summarizeSceneGroups(sceneForKeys);
+      const ungroupedIds = summary.ungroupedEntities.map((e) => e.id);
+      const formationIds = summary.groups.map((entry) => entry.group.id);
+      const triggerIds = ((sceneForKeys.triggers ?? []) as TriggerZoneSpec[]).map((zone) => zone.id as string);
+
+      const stepSelection = (ids: string[], currentId: string, delta: number, kind: 'entity' | 'group' | 'trigger') => {
+        const index = ids.indexOf(currentId);
+        if (index < 0) return;
+        const nextIndex = index + delta;
+        if (nextIndex < 0 || nextIndex >= ids.length) return;
+        dispatch({ type: 'select', selection: { kind, id: ids[nextIndex] } as any });
+      };
+
+      if (event.key === 'F2') {
+        if (selection.kind === 'entity' && ungroupedIds.includes(selection.id as any)) {
+          const entity = (sceneForKeys.entities as any)?.[selection.id as any];
+          startEditing('entity', selection.id as any, entity?.name ?? (selection.id as any));
+          event.preventDefault();
+          return;
+        }
+        if (selection.kind === 'group' && formationIds.includes(selection.id as any)) {
+          const group = (sceneForKeys.groups as any)?.[selection.id as any];
+          startEditing('group', selection.id as any, group?.name ?? (selection.id as any));
+          event.preventDefault();
+          return;
+        }
+        if (selection.kind === 'trigger' && triggerIds.includes(selection.id as any)) {
+          const zone = ((sceneForKeys.triggers ?? []) as any[]).find((z) => z?.id === selection.id);
+          startEditing('trigger', selection.id as any, zone?.name ?? (selection.id as any));
+          event.preventDefault();
+          return;
+        }
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        if (selection.kind === 'entity') stepSelection(ungroupedIds, selection.id as any, -1, 'entity');
+        else if (selection.kind === 'group') stepSelection(formationIds, selection.id as any, -1, 'group');
+        else if (selection.kind === 'trigger') stepSelection(triggerIds, selection.id as any, -1, 'trigger');
+        else return;
+        event.preventDefault();
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        if (selection.kind === 'entity') stepSelection(ungroupedIds, selection.id as any, 1, 'entity');
+        else if (selection.kind === 'group') stepSelection(formationIds, selection.id as any, 1, 'group');
+        else if (selection.kind === 'trigger') stepSelection(triggerIds, selection.id as any, 1, 'trigger');
+        else return;
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown);
+    return () => window.removeEventListener('keydown', handleWindowKeyDown);
+  }, [sidebarScope, mode, editingKind, menuOpen, spritesAddMenu, duplicateDialog, project, currentSceneId, selection, dispatch]);
 
   const handleEntityClick = (id: string, event: React.MouseEvent) => {
     const isMulti = event.shiftKey || event.metaKey || event.ctrlKey;
@@ -786,14 +864,26 @@ export function EntityListView({
                           const onClass = (on: boolean) => `trigger-marker ${on ? 'on' : ''}`;
                           return (
                             <div key={zone.id} className="member-row">
-                              <button
-                                className={`list-item ${showActiveSelection && selection.kind === 'trigger' && selection.id === zone.id ? 'active' : ''}`}
-                                data-testid={sceneId === currentSceneId ? `trigger-zone-${zone.id}` : `trigger-zone-${sceneId}-${zone.id}`}
-                                type="button"
-                                onClick={() => selectInScene(sceneId, { kind: 'trigger', id: zone.id as Id })}
-                              >
-                                {zone.name ?? zone.id}
-                              </button>
+                              {editingId === zone.id && editingKind === 'trigger' ? (
+                                <input
+                                  autoFocus
+                                  className="scene-graph-rename-input"
+                                  value={editingName}
+                                  onChange={(e) => setEditingName(e.target.value)}
+                                  onBlur={saveRename}
+                                  onKeyDown={handleKeyDown}
+                                  data-testid={`rename-trigger-input-${zone.id}`}
+                                />
+                              ) : (
+                                <button
+                                  className={`list-item ${showActiveSelection && selection.kind === 'trigger' && selection.id === zone.id ? 'active' : ''}`}
+                                  data-testid={sceneId === currentSceneId ? `trigger-zone-${zone.id}` : `trigger-zone-${sceneId}-${zone.id}`}
+                                  type="button"
+                                  onClick={() => selectInScene(sceneId, { kind: 'trigger', id: zone.id as Id })}
+                                >
+                                  {zone.name ?? zone.id}
+                                </button>
+                              )}
                               <span className={onClass(hooks.enter)} aria-label="Enter hook" title="Enter">E</span>
                               <span className={onClass(hooks.exit)} aria-label="Exit hook" title="Exit">X</span>
                               <span className={onClass(hooks.click)} aria-label="Click hook" title="Click">C</span>
