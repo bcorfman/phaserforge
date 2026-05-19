@@ -498,6 +498,8 @@ export async function dragDropByTestIdAtClientPoint(
   const relativeY = clamp(clientPoint.y - box.y, 1, box.height - 1);
 
   try {
+    const browserType = page.context().browser()?.browserType().name() ?? 'unknown';
+    if (browserType === 'webkit') throw new Error('Prefer synthetic drag/drop on WebKit');
     // First try Playwright's drag emulation (most faithful across engines).
     await source.dragTo(dropTarget, { targetPosition: { x: relativeX, y: relativeY }, timeout: 10000 });
     return;
@@ -610,6 +612,21 @@ export async function dropAssetAtClientPoint(
     },
     [payload, targetTestId, clientPoint]
   );
+}
+
+export async function dropAssetOnTestId(
+  page: Page,
+  payload: AssetDragPayload,
+  targetTestId: string
+): Promise<void> {
+  const target = page.getByTestId(targetTestId);
+  await expect(target).toBeVisible();
+  await target.scrollIntoViewIfNeeded();
+  const box = await target.boundingBox();
+  if (!box || box.width === 0 || box.height === 0) {
+    throw new Error(`dropAssetOnTestId: target bounding box unavailable for ${targetTestId}`);
+  }
+  await dropAssetAtClientPoint(page, payload, targetTestId, { x: box.x + box.width * 0.5, y: box.y + box.height * 0.5 });
 }
 
 export async function panByScreenDelta(page: Page, delta: Point): Promise<void> {
