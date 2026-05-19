@@ -60,7 +60,7 @@ test('alt-drag duplicates a selected sprite', async ({ page }) => {
     const state = await getState<{
       selection: { kind: string; id?: string; ids?: string[] };
       scene: {
-        entities: Record<string, { x: number }>;
+        entities: Record<string, { x: number; name?: string }>;
         groups: Record<string, { members: string[]; layout?: { type: string } }>;
       };
     }>(page);
@@ -75,6 +75,7 @@ test('alt-drag duplicates a selected sprite', async ({ page }) => {
       entityCount: Object.keys(state.scene.entities).length,
       selectedId,
       selectedX: selectedId ? state.scene.entities[selectedId]?.x ?? null : null,
+      selectedName: selectedId ? state.scene.entities[selectedId]?.name ?? null : null,
       e1X: state.scene.entities.e1?.x ?? null,
       members: state.scene.groups['g-enemies']?.members ?? [],
       layoutType: state.scene.groups['g-enemies']?.layout?.type ?? null,
@@ -83,6 +84,7 @@ test('alt-drag duplicates a selected sprite', async ({ page }) => {
     entityCount: entityCountBefore + 1,
     e1X: e1BeforeX,
     layoutType: 'freeform',
+    selectedName: 'e16',
   });
 
   await expect.poll(async () => {
