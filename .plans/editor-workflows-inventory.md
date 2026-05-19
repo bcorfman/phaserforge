@@ -8,6 +8,7 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 
 ### A1 — Select Single
 - Click sprite/formation on canvas, or click it in the left sidebar list (Entity List).
+- In Entity List: when a list item row is focused, `↑/↓` moves the highlight to the previous/next item in that list.
 
 ### A2 — Select Multiple
 - Shift/Ctrl/Cmd-click sprites in the Entity List (additive selection).
@@ -18,7 +19,8 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 - Click empty canvas (no Shift) to clear selection.
 
 ### A4 — Rename Item (inline)
-- In Entity List: click an already-selected entity/group/scene to enter rename; `Enter` saves, `Esc` cancels.
+- In Entity List: click an already-selected entity/group/scene/trigger to enter rename; `Enter` saves, `Esc` cancels.
+- In Entity List: `F2` renames the highlighted sprite/formation/trigger (when a list row is focused).
 
 ### A5 — Open Selection Actions Menu
 - Click `…` in the on-canvas selection bar (single surface; no right-click menu).
@@ -47,12 +49,14 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 
 ### A13 — Duplicate by Drag
 - Alt-drag a sprite selection to duplicate, then drag the duplicates.
+- Alternative (Entity List): sprite row overflow `⋯` → `⧉ Duplicate…` (duplicates the full multi-selection when 2+ sprites are selected).
 
 ### A14 — Resize Bounds (drag handles)
 - Select the thing that exposes bounds handles, then drag a bounds handle.
 
 ### A15 — Delete Selection
 - `Delete`/`Backspace`, or remove via sidebar overflow menus (entity/group/scene/trigger).
+- In Entity List: sprite row overflow `⋯` → `Delete…` deletes the full multi-selection when 2+ sprites are selected.
 
 ### A16 — Create Group (from selected sprites)
 - Convert a multi-sprite selection into a new formation (group).
