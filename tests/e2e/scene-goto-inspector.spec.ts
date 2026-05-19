@@ -13,8 +13,15 @@ test('Inspector: Call Id = scene.goto shows structured fields and defaults', asy
   await page.getByTestId('scene-item-scene-1').click();
   await expect.poll(async () => (await getState<{ currentSceneId?: string }>(page))?.currentSceneId).toBe('scene-1');
 
-  await page.getByTestId('group-item-g-enemies').click();
-  await page.getByTestId('attachment-open-att-drop-right').click();
+  const groupRow = page.getByTestId('group-item-g-enemies');
+  await expect(groupRow).toBeVisible();
+  await groupRow.scrollIntoViewIfNeeded();
+  await groupRow.click();
+  await expect(page.getByTestId('formation-name-input')).toBeVisible();
+
+  const attachmentButton = page.getByTestId('attachment-open-att-drop-right');
+  await expect(attachmentButton).toBeVisible();
+  await attachmentButton.click();
 
   await page.getByTestId('attachment-call-id-input').fill('scene.goto');
 
