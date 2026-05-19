@@ -220,7 +220,25 @@ export async function dragAssetToCanvas(
 ): Promise<void> {
   const source = page.getByTestId(`assets-dock-item-${assetKind}-${assetId}`);
   const canvas = page.locator('#game-container canvas');
-  await source.dragTo(canvas, { targetPosition: options?.targetPosition ?? { x: 240, y: 160 } });
+  const targetPosition = options?.targetPosition ?? { x: 240, y: 160 };
+
+  // WebKit is notoriously flaky with native `dragTo` in CI (the drag can complete without firing
+  // a usable drop). Prefer a synthetic HTML5 drop there.
+  const browserType = page.context().browser()?.browserType().name() ?? 'unknown';
+  if (browserType === 'webkit') {
+    await expect(canvas).toBeVisible();
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('dragAssetToCanvas: canvas bounding box unavailable');
+    await dropAssetAtClientPoint(
+      page,
+      { assetKind, assetId },
+      'game-container',
+      { x: box.x + targetPosition.x, y: box.y + targetPosition.y }
+    );
+    return;
+  }
+
+  await source.dragTo(canvas, { targetPosition });
 }
 
 export async function getState<T = any>(page: Page): Promise<T> {
