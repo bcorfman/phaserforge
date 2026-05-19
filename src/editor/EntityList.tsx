@@ -115,7 +115,7 @@ export function EntityListView({
   const spritesAddMenuRootRef = useRef<HTMLDivElement | null>(null);
   const [duplicateDialog, setDuplicateDialog] = useState<{
     sceneId: string;
-    entityId: string;
+    entityIds: string[];
     x: number;
     y: number;
     includeBehaviors: boolean;
@@ -1087,7 +1087,7 @@ export function EntityListView({
                 ensureCurrentScene(dlg.sceneId);
                 dispatch({
                   type: 'duplicate-entities',
-                  entityIds: [dlg.entityId],
+                  entityIds: dlg.entityIds,
                   options: {
                     includeBehaviors: dlg.includeBehaviors,
                     includeHandlers: dlg.includeHandlers,
@@ -1196,29 +1196,44 @@ export function EntityListView({
                 Create formation from…
               </button>
               <div className="scene-graph-menu-divider" />
-              <button
-                type="button"
-                className="scene-graph-menu-item"
-                data-testid={`entity-menu-rename-${menuOpen.entityId}`}
-                onClick={() => {
-                  setMenuOpen(null);
-                  ensureCurrentScene(menuOpen.sceneId);
-                  const entity = project.scenes[menuOpen.sceneId]?.entities?.[menuOpen.entityId];
-                  startEditingInScene(menuOpen.sceneId, 'entity', menuOpen.entityId, entity?.name ?? menuOpen.entityId);
-                }}
-              >
-                Rename…
-              </button>
+              {(() => {
+                const isMultiEntitySelection = selection.kind === 'entities'
+                  && menuOpen.sceneId === currentSceneId
+                  && selection.ids.length > 1
+                  && selection.ids.includes(menuOpen.entityId);
+                if (isMultiEntitySelection) return null;
+                return (
+                  <button
+                    type="button"
+                    className="scene-graph-menu-item"
+                    data-testid={`entity-menu-rename-${menuOpen.entityId}`}
+                    onClick={() => {
+                      setMenuOpen(null);
+                      ensureCurrentScene(menuOpen.sceneId);
+                      const entity = project.scenes[menuOpen.sceneId]?.entities?.[menuOpen.entityId];
+                      startEditingInScene(menuOpen.sceneId, 'entity', menuOpen.entityId, entity?.name ?? menuOpen.entityId);
+                    }}
+                  >
+                    Rename…
+                  </button>
+                );
+              })()}
               <button
                 type="button"
                 className="scene-graph-menu-item"
                 data-testid={`entity-menu-duplicate-${menuOpen.entityId}`}
                 onClick={(e) => {
                   setMenuOpen(null);
+                  const idsToDuplicate = selection.kind === 'entities'
+                    && menuOpen.sceneId === currentSceneId
+                    && selection.ids.length > 1
+                    && selection.ids.includes(menuOpen.entityId)
+                      ? selection.ids
+                      : [menuOpen.entityId];
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                   setDuplicateDialog({
                     sceneId: menuOpen.sceneId,
-                    entityId: menuOpen.entityId,
+                    entityIds: idsToDuplicate,
                     x: Math.min(rect.left, window.innerWidth - 280),
                     y: rect.bottom + 6,
                     includeBehaviors: true,
@@ -1237,6 +1252,14 @@ export function EntityListView({
                 onClick={() => {
                   setMenuOpen(null);
                   ensureCurrentScene(menuOpen.sceneId);
+                  const isMultiEntitySelection = selection.kind === 'entities'
+                    && menuOpen.sceneId === currentSceneId
+                    && selection.ids.length > 1
+                    && selection.ids.includes(menuOpen.entityId);
+                  if (isMultiEntitySelection) {
+                    dispatch({ type: 'delete-selection' } as any);
+                    return;
+                  }
                   dispatch({ type: 'remove-scene-graph-item', item: { kind: 'entity', id: menuOpen.entityId } });
                 }}
               >
