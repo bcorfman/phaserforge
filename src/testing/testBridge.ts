@@ -1,6 +1,7 @@
 import type { Selection } from '../editor/EditorStore';
 import type { ProjectSpec, SceneSpec, StartupMode } from '../model/types';
 import { PROJECT_STORAGE_KEY, SCENE_STORAGE_KEY } from '../editor/EditorStore';
+import { EventBus } from '../phaser/EventBus';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number };
@@ -119,6 +120,11 @@ function ensureBridge(): void {
     },
     getState() {
       return appStateGetter ? clone(appStateGetter()) : null;
+    },
+    reloadRuntime() {
+      const snapshot = appStateGetter?.();
+      if (!snapshot) return;
+      EventBus.emit('runtime:load-project', snapshot.project, snapshot.currentSceneId, snapshot.mode);
     },
     setMode(mode: 'edit' | 'play') {
       const current = appStateGetter?.()?.mode;

@@ -227,6 +227,11 @@ export async function getState<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getState()) as Promise<T>;
 }
 
+export async function reloadRuntime(page: Page): Promise<void> {
+  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.reloadRuntime?.());
+  await waitForSceneReady(page);
+}
+
 export async function resetScene(page: Page): Promise<void> {
   await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.resetScene?.());
   await expect.poll(async () => {
