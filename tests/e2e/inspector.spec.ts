@@ -470,7 +470,11 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
   if (!entityId) throw new Error('Failed to find created entity');
   await page.getByTestId(`ungrouped-entity-${entityId}`).click();
   await page.getByTestId('event-add-open').click();
-  await page.getByTestId('action-library-add-MoveUntil').click();
+  const actionLibrary = page.getByTestId('action-library');
+  await expect(actionLibrary).toBeVisible();
+  const moveUntil = actionLibrary.getByTestId('action-library-add-MoveUntil');
+  await moveUntil.scrollIntoViewIfNeeded();
+  await moveUntil.click();
   await page.getByTestId('attachment-velocity-x-input').fill('300');
   await page.getByTestId('attachment-bounds-behavior-select').selectOption('bounce');
 
