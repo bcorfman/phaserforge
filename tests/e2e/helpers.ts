@@ -36,14 +36,22 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
   };
 
   // Multiple retries help when a worker lands on a stale/blank page after navigation.
+  // Keep the total time bounded so per-test `beforeEach` hooks don't exceed their 120s timeout in CI.
+  const maxAttempts = IS_CI ? 2 : 3;
+  const attemptTimeoutMs = IS_CI ? 55000 : 60000;
   let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      await bootOnce();
+      await Promise.race([
+        bootOnce(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`gotoStudio attempt timeout (${attemptTimeoutMs}ms)`)), attemptTimeoutMs)),
+      ]);
       lastError = undefined;
       break;
     } catch (error) {
       lastError = error;
+      // If an attempt gets stuck mid-navigation, force a neutral state before retrying.
+      await page.goto('about:blank', { waitUntil: 'domcontentloaded', timeout: 5000 }).catch(() => {});
     }
   }
   if (lastError) {
@@ -243,6 +251,11 @@ export async function dragAssetToCanvas(
 
 export async function getState<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getState()) as Promise<T>;
+}
+
+export async function reloadRuntime(page: Page): Promise<void> {
+  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.reloadRuntime?.());
+  await waitForSceneReady(page);
 }
 
 export async function resetScene(page: Page): Promise<void> {

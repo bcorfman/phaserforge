@@ -120,6 +120,13 @@ function ensureBridge(): void {
     getState() {
       return appStateGetter ? clone(appStateGetter()) : null;
     },
+    async reloadRuntime() {
+      const snapshot = appStateGetter?.();
+      if (!snapshot) return;
+      // Lazy import to avoid pulling Phaser into jsdom/Vitest runs.
+      const { EventBus } = await import('../phaser/EventBus');
+      EventBus.emit('runtime:load-project', snapshot.project, snapshot.currentSceneId, snapshot.mode);
+    },
     setMode(mode: 'edit' | 'play') {
       const current = appStateGetter?.()?.mode;
       if (!current || current === mode) return;

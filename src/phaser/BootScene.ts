@@ -229,6 +229,21 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
+  private captureViewStateForProjectReload(mode: 'edit' | 'play'): void {
+    if (mode === 'edit') {
+      if (this.scene.isActive('EditorScene') || this.scene.isSleeping('EditorScene')) {
+        const editor = this.scene.get('EditorScene') as EditorScene;
+        this.lastViewState = editor.getViewState();
+      }
+      return;
+    }
+
+    if (this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene')) {
+      const game = this.scene.get('GameScene') as GameScene;
+      this.lastViewState = game.getViewState();
+    }
+  }
+
   private handleLoadProject(project: ProjectSpec, currentSceneId: string, mode: 'edit' | 'play' = 'edit'): void {
     this.captureViewStateForProjectReload(mode);
     this.project = project;
