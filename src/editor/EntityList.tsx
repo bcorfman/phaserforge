@@ -277,30 +277,49 @@ export function EntityListView({
       const formationIds = summary.groups.map((entry) => entry.group.id);
       const triggerIds = ((sceneForKeys.triggers ?? []) as TriggerZoneSpec[]).map((zone) => zone.id as string);
 
+      const focusRow = (kind: 'entity' | 'group' | 'trigger', id: string) => {
+        const root = rootRef.current;
+        if (!root) return;
+        const testId =
+          kind === 'entity'
+            ? `ungrouped-entity-${id}`
+            : kind === 'group'
+              ? `group-item-${id}`
+              : `trigger-zone-${id}`;
+        const row = root.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+        row?.focus();
+      };
+
       const stepSelection = (ids: string[], currentId: string, delta: number, kind: 'entity' | 'group' | 'trigger') => {
         const index = ids.indexOf(currentId);
         if (index < 0) return;
         const nextIndex = index + delta;
         if (nextIndex < 0 || nextIndex >= ids.length) return;
-        dispatch({ type: 'select', selection: { kind, id: ids[nextIndex] } as any });
+        const nextId = ids[nextIndex];
+        dispatch({ type: 'select', selection: { kind, id: nextId } as any });
+        // Keep focus in sync so only one row looks "active" (selected + focused).
+        focusRow(kind, nextId);
       };
 
       if (event.key === 'F2') {
         if (selection.kind === 'entity' && ungroupedIds.includes(selection.id as any)) {
           const entity = (sceneForKeys.entities as any)?.[selection.id as any];
           startEditing('entity', selection.id as any, entity?.name ?? (selection.id as any));
+          event.stopPropagation();
           event.preventDefault();
           return;
         }
         if (selection.kind === 'group' && formationIds.includes(selection.id as any)) {
           const group = (sceneForKeys.groups as any)?.[selection.id as any];
           startEditing('group', selection.id as any, group?.name ?? (selection.id as any));
+          event.stopPropagation();
           event.preventDefault();
           return;
         }
         if (selection.kind === 'trigger' && triggerIds.includes(selection.id as any)) {
           const zone = ((sceneForKeys.triggers ?? []) as any[]).find((z) => z?.id === selection.id);
           startEditing('trigger', selection.id as any, zone?.name ?? (selection.id as any));
+          event.stopPropagation();
           event.preventDefault();
           return;
         }
@@ -312,6 +331,7 @@ export function EntityListView({
         else if (selection.kind === 'group') stepSelection(formationIds, selection.id as any, -1, 'group');
         else if (selection.kind === 'trigger') stepSelection(triggerIds, selection.id as any, -1, 'trigger');
         else return;
+        event.stopPropagation();
         event.preventDefault();
         return;
       }
@@ -321,12 +341,15 @@ export function EntityListView({
         else if (selection.kind === 'group') stepSelection(formationIds, selection.id as any, 1, 'group');
         else if (selection.kind === 'trigger') stepSelection(triggerIds, selection.id as any, 1, 'trigger');
         else return;
+        event.stopPropagation();
         event.preventDefault();
       }
     };
 
-    window.addEventListener('keydown', handleWindowKeyDown);
-    return () => window.removeEventListener('keydown', handleWindowKeyDown);
+    // Capture phase so we can take priority over canvas-level handlers (e.g. arrow-key nudging)
+    // when the keyboard focus is inside the entity list.
+    window.addEventListener('keydown', handleWindowKeyDown, true);
+    return () => window.removeEventListener('keydown', handleWindowKeyDown, true);
   }, [sidebarScope, mode, editingKind, menuOpen, spritesAddMenu, duplicateDialog, project, currentSceneId, selection, dispatch]);
 
   const handleEntityClick = (id: string, event: React.MouseEvent) => {
