@@ -369,9 +369,13 @@ export async function dragOnCanvas(page: Page, from: Point, to: Point, button: '
 
   await page.mouse.move(startX, startY);
   await page.mouse.down({ button });
+  // Some browsers can miss a drag-start if the first move is too large. Nudge first.
+  await page.mouse.move(clamp(startX + 2, rect.x + 1, rect.x + rect.width - 1), clamp(startY + 2, rect.y + 1, rect.y + rect.height - 1), {
+    steps: 2,
+  });
   // Use low-level mouse.move with steps to reliably generate intermediate pointer events
   // (critical for drag thresholds and modifier-driven drags like Alt-duplicate).
-  await page.mouse.move(endX, endY, { steps: 12 });
+  await page.mouse.move(endX, endY, { steps: 18 });
   await page.mouse.up({ button });
 }
 
