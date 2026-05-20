@@ -3,16 +3,12 @@ import {
   dismissViewHint,
   getEntityWorldRect,
   getState,
-  gotoStudio,
   seedSampleScene,
   tapWorld,
-  waitForSampleScene,
 } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
-  await gotoStudio(page);
-  await waitForSampleScene(page);
   await dismissViewHint(page);
 });
 
