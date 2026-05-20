@@ -1,7 +1,6 @@
 import type { Selection } from '../editor/EditorStore';
 import type { ProjectSpec, SceneSpec, StartupMode } from '../model/types';
 import { PROJECT_STORAGE_KEY, SCENE_STORAGE_KEY } from '../editor/EditorStore';
-import { EventBus } from '../phaser/EventBus';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number };
@@ -121,9 +120,11 @@ function ensureBridge(): void {
     getState() {
       return appStateGetter ? clone(appStateGetter()) : null;
     },
-    reloadRuntime() {
+    async reloadRuntime() {
       const snapshot = appStateGetter?.();
       if (!snapshot) return;
+      // Lazy import to avoid pulling Phaser into jsdom/Vitest runs.
+      const { EventBus } = await import('../phaser/EventBus');
       EventBus.emit('runtime:load-project', snapshot.project, snapshot.currentSceneId, snapshot.mode);
     },
     setMode(mode: 'edit' | 'play') {
