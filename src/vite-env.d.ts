@@ -15,6 +15,7 @@ interface PhaserActionsStudioTestBridge {
   clearStoredScene(): void;
   getState(): unknown;
   reloadRuntime(): Promise<void>;
+  dispatch(action: unknown): void;
   setMode(mode: 'edit' | 'play'): void;
   isSceneReady(): boolean;
   getSceneSnapshot(): unknown;

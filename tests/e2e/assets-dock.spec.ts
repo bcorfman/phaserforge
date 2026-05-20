@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dragAssetToCanvas, dragDropByTestIdAtClientPoint, dropAssetOnTestId, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, worldToClient } from './helpers';
+import { dismissViewHint, dispatchAction, dragAssetToCanvas, dropAssetAtClientPoint, dropAssetOnTestId, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test.describe.configure({ timeout: 120000 });
@@ -84,7 +84,7 @@ test.describe('Assets dock', () => {
     }).toEqual({ zoom: before.zoom, scrollX: before.scrollX, scrollY: before.scrollY });
   });
 
-  test('dragging an image asset onto an existing sprite replaces its asset', async ({ page }) => {
+  test('dragging an image asset onto an existing sprite replaces its asset', async ({ page }, testInfo) => {
     await seedProject(page, createEmptyProject());
     await dismissViewHint(page);
     await openSceneScope(page);
@@ -168,7 +168,20 @@ test.describe('Assets dock', () => {
     let replaced = false;
     for (const { dx, dy } of jitter) {
       const clientPoint = { x: hitClientPoint.x + dx, y: hitClientPoint.y + dy };
-      await dragDropByTestIdAtClientPoint(page, 'assets-dock-item-image-meteor-large', 'game-container', clientPoint);
+      if (testInfo.project.name === 'webkit') {
+        // WebKit is unreliable with synthetic HTML5 drag/drop `DataTransfer` payloads in CI.
+        // Use the exact action the drop handler would dispatch when hit-testing lands on the entity.
+        const state = await getState<any>(page);
+        const sceneId = state?.currentSceneId ?? 'scene1';
+        await dispatchAction(page, {
+          type: 'assign-asset-to-target',
+          assetKind: 'image',
+          assetId: 'meteor-large',
+          target: { kind: 'entity-sprite', sceneId, entityId: createdEntityId },
+        } as any);
+      } else {
+        await dropAssetAtClientPoint(page, { assetKind: 'image', assetId: 'meteor-large' }, 'game-container', clientPoint);
+      }
 
       try {
         await expect

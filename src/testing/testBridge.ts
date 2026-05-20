@@ -62,6 +62,7 @@ function clone<T>(value: T): T {
 let appStateGetter: (() => AppStateSnapshot) | null = null;
 const sceneGetters = new Set<() => SceneBridge | null>();
 let selectionSetter: ((selection: Selection) => void) | null = null;
+let actionDispatcher: ((action: unknown) => void) | null = null;
 let toggleModeHandler: (() => void) | null = null;
 let undoHandler: (() => void) | null = null;
 let redoHandler: (() => void) | null = null;
@@ -126,6 +127,9 @@ function ensureBridge(): void {
       // Lazy import to avoid pulling Phaser into jsdom/Vitest runs.
       const { EventBus } = await import('../phaser/EventBus');
       EventBus.emit('runtime:load-project', snapshot.project, snapshot.currentSceneId, snapshot.mode);
+    },
+    dispatch(action: unknown) {
+      actionDispatcher?.(action);
     },
     setMode(mode: 'edit' | 'play') {
       const current = appStateGetter?.()?.mode;
@@ -262,6 +266,17 @@ export function registerSelectionSetter(setter: (selection: Selection) => void):
 export function unregisterSelectionSetter(setter: (selection: Selection) => void): void {
   if (selectionSetter === setter) {
     selectionSetter = null;
+  }
+}
+
+export function registerActionDispatcher(dispatcher: (action: unknown) => void): void {
+  actionDispatcher = dispatcher;
+  ensureBridge();
+}
+
+export function unregisterActionDispatcher(dispatcher: (action: unknown) => void): void {
+  if (actionDispatcher === dispatcher) {
+    actionDispatcher = null;
   }
 }
 

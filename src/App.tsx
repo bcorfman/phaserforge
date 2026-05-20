@@ -15,11 +15,13 @@ import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
 import {
   registerAppStateGetter,
+  registerActionDispatcher,
   registerModeToggleHandler,
   registerResetSceneHandler,
   registerSelectionSetter,
   registerUndoRedoHandlers,
   unregisterAppStateGetter,
+  unregisterActionDispatcher,
   unregisterModeToggleHandler,
   unregisterResetSceneHandler,
   unregisterSelectionSetter,
@@ -101,6 +103,13 @@ function AppShell() {
       unregisterAppStateGetter(getStateSnapshot);
     };
   }, []);
+
+  useEffect(() => {
+    registerActionDispatcher(dispatch);
+    return () => {
+      unregisterActionDispatcher(dispatch);
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     const setSelection = (selection: Parameters<typeof dispatch>[0] extends { type: 'select'; selection: infer T } ? T : never) => {
