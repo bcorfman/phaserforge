@@ -20,6 +20,8 @@ const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 const seededSampleContexts = new WeakSet<object>();
 
 export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean }): Promise<void> {
+  // Keep helper calls bounded under the per-test timeout (60s local, 120s CI).
+  await page.context().setDefaultTimeout(IS_CI ? 60000 : 45000);
   if (!options?.forceNavigate) {
     const existingAppRoot = page.getByTestId('app-root');
     if (await existingAppRoot.isVisible().catch(() => false)) {
@@ -37,21 +39,15 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
 
   // Multiple retries help when a worker lands on a stale/blank page after navigation.
   // Keep the total time bounded so per-test `beforeEach` hooks don't exceed their 120s timeout in CI.
-  const maxAttempts = IS_CI ? 2 : 3;
-  const attemptTimeoutMs = IS_CI ? 55000 : 60000;
+  const maxAttempts = 2;
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      await Promise.race([
-        bootOnce(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error(`gotoStudio attempt timeout (${attemptTimeoutMs}ms)`)), attemptTimeoutMs)),
-      ]);
+      await bootOnce();
       lastError = undefined;
       break;
     } catch (error) {
       lastError = error;
-      // If an attempt gets stuck mid-navigation, force a neutral state before retrying.
-      await page.goto('about:blank', { waitUntil: 'domcontentloaded', timeout: 5000 }).catch(() => {});
     }
   }
   if (lastError) {
@@ -256,6 +252,10 @@ export async function getState<T = any>(page: Page): Promise<T> {
 export async function reloadRuntime(page: Page): Promise<void> {
   await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.reloadRuntime?.());
   await waitForSceneReady(page);
+}
+
+export async function dispatchAction(page: Page, action: unknown): Promise<void> {
+  await page.evaluate((nextAction) => window.__PHASER_ACTIONS_STUDIO_TEST__?.dispatch?.(nextAction), action);
 }
 
 export async function resetScene(page: Page): Promise<void> {
