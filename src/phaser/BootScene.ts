@@ -230,7 +230,10 @@ export class BootScene extends Phaser.Scene {
   }
 
   private handleLoadProject(project: ProjectSpec, currentSceneId: string, mode: 'edit' | 'play' = 'edit'): void {
-    this.captureViewStateForProjectReload(mode);
+    // Only preserve camera state on reloads. On initial app startup the editor scene has not
+    // initialized its view yet, so capturing `{ zoom: 1, scrollX: 0, scrollY: 0 }` would
+    // prevent the default `fitView()` centering from running.
+    if (this.project) this.captureViewStateForProjectReload(mode);
     this.project = project;
     this.authoredSceneId = currentSceneId;
     this.runtimeSceneId = currentSceneId;
