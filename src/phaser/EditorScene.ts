@@ -31,6 +31,7 @@ import { getSceneWorld } from '../editor/sceneWorld';
 import { resolveTextEntityDefaults, resolveTextFontFamily } from '../editor/textEntity';
 import { canPanCamera, clampCameraScroll, clampZoom, getFitZoom, getNextZoom, getZoomedScroll } from '../editor/viewport';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
+import { resolvePointerModifier } from './inputModifiers';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
 const REFERENCE_GHOST_ALPHA_MULTIPLIER = 0.35;
@@ -188,6 +189,18 @@ export class EditorScene extends Phaser.Scene {
     this.handleKeyUp(event);
   };
 
+  private readonly handleWindowBlurBound = () => {
+    // Browsers can miss `keyup` when the window loses focus, leaving cached modifier state stuck.
+    this.isAltDown = false;
+    this.isShiftDown = false;
+    this.isSpacePanning = false;
+    this.isMiddleMouseDown = false;
+    if (this.panState) {
+      this.panState = undefined;
+      this.input.setDefaultCursor('default');
+    }
+  };
+
   private readonly handleMouseDownBound = (event: MouseEvent) => {
     if (event.button === 1) {
       event.preventDefault();
@@ -249,6 +262,7 @@ export class EditorScene extends Phaser.Scene {
     window.addEventListener('keyup', this.handleKeyUpBound);
     window.addEventListener('mousedown', this.handleMouseDownBound);
     window.addEventListener('mouseup', this.handleMouseUpBound);
+    window.addEventListener('blur', this.handleWindowBlurBound);
 
     const canvas = this.game.canvas as HTMLCanvasElement | undefined;
     if (canvas) {
@@ -293,6 +307,7 @@ export class EditorScene extends Phaser.Scene {
     window.removeEventListener('keyup', this.handleKeyUpBound);
     window.removeEventListener('mousedown', this.handleMouseDownBound);
     window.removeEventListener('mouseup', this.handleMouseUpBound);
+    window.removeEventListener('blur', this.handleWindowBlurBound);
 
     const canvas = this.game.canvas as HTMLCanvasElement | undefined;
     if (canvas && this.wheelListener) {
@@ -1495,9 +1510,7 @@ export class EditorScene extends Phaser.Scene {
     // Handle pending drag (drag threshold)
     if (this.pendingDrag && !this.dragState) {
       if (hasExceededDragThreshold(this.pendingDrag.startPoint, worldPoint)) {
-        const altKey =
-          this.isAltDown ||
-          Boolean(pointer.event && 'altKey' in pointer.event && (pointer.event as MouseEvent).altKey);
+        const altKey = resolvePointerModifier(pointer.event, 'altKey', this.isAltDown);
         // Start actual drag
         const { hitResult } = this.pendingDrag;
         if (hitResult.kind === 'none') {
@@ -1638,9 +1651,7 @@ export class EditorScene extends Phaser.Scene {
         const endX = this.dragState.currentX || this.dragState.startX;
         const endY = this.dragState.currentY || this.dragState.startY;
         const selectedEntityIds = this.getEntitiesInMarquee(this.dragState.startX, this.dragState.startY, endX, endY);
-        const shiftKey =
-          this.isShiftDown ||
-          Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
+        const shiftKey = resolvePointerModifier(pointer.event, 'shiftKey', this.isShiftDown);
         if (shiftKey) {
           const baseIds =
             this.selection.kind === 'entities'
@@ -1666,9 +1677,7 @@ export class EditorScene extends Phaser.Scene {
     } else if (this.pendingDrag) {
       const { hitResult } = this.pendingDrag;
       if (hitResult.kind === 'entity' || hitResult.kind === 'group') {
-        const shiftKey =
-          this.isShiftDown ||
-          Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
+        const shiftKey = resolvePointerModifier(pointer.event, 'shiftKey', this.isShiftDown);
         const dragDistance = pointer.getDistance ? pointer.getDistance() : 0;
         if (hitResult.kind === 'entity' && dragDistance > DRAG_THRESHOLD) {
           const startWorld = this.cameras.main.getWorldPoint(pointer.downX, pointer.downY);
@@ -1678,9 +1687,7 @@ export class EditorScene extends Phaser.Scene {
           const dx = Math.round(this.snapDeltaToGrid(rawDx));
           const dy = Math.round(this.snapDeltaToGrid(rawDy));
 
-          const altKey =
-            this.isAltDown ||
-            Boolean(pointer.event && 'altKey' in pointer.event && (pointer.event as MouseEvent).altKey);
+          const altKey = resolvePointerModifier(pointer.event, 'altKey', this.isAltDown);
           const isMulti = this.selection.kind === 'entities' && this.selection.ids.includes(hitResult.id);
           const dragEntityIds = isMulti ? this.selection.ids : [hitResult.id];
 
@@ -1717,9 +1724,7 @@ export class EditorScene extends Phaser.Scene {
           EventBus.emit('canvas-select', hitResult);
         }
       } else if (hitResult.kind === 'none') {
-        const shiftKey =
-          this.isShiftDown ||
-          Boolean(pointer.event && 'shiftKey' in pointer.event && (pointer.event as MouseEvent).shiftKey);
+        const shiftKey = resolvePointerModifier(pointer.event, 'shiftKey', this.isShiftDown);
         // Fallback: if pointermove events are throttled (notably in headless Firefox),
         // complete marquee selection using the down/up coordinates.
         if (pointer.getDistance && pointer.getDistance() > DRAG_THRESHOLD) {

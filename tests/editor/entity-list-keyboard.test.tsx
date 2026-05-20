@@ -33,6 +33,51 @@ function renderEntityList(props: Partial<React.ComponentProps<typeof EntityListV
 }
 
 describe('EntityList keyboard shortcuts', () => {
+  it('ArrowDown still selects the next ungrouped sprite even if another window keydown listener preventsDefault in bubble phase', async () => {
+    const project = {
+      ...sampleProject,
+      scenes: {
+        ...sampleProject.scenes,
+        [sampleProject.initialSceneId]: {
+          ...(sampleProject.scenes[sampleProject.initialSceneId] as any),
+          entities: {
+            ...(sampleProject.scenes[sampleProject.initialSceneId] as any).entities,
+            entity: { id: 'entity', x: 10, y: 10, width: 10, height: 10 },
+            entity2: { id: 'entity2', x: 20, y: 20, width: 10, height: 10 },
+          },
+        },
+      },
+    };
+
+    const bubblePrevent = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') e.preventDefault();
+    };
+    window.addEventListener('keydown', bubblePrevent);
+
+    const { container, root, dispatch, props } = renderEntityList({
+      project: project as any,
+      scene: project.scenes[sampleProject.initialSceneId] as any,
+      selection: { kind: 'entity', id: 'entity' } as any,
+    });
+
+    await React.act(async () => {
+      root.render(<EntityListView {...props} />);
+    });
+
+    const first = container.querySelector('[data-testid="ungrouped-entity-entity"]') as HTMLButtonElement | null;
+    expect(first).not.toBeNull();
+
+    await React.act(async () => {
+      first!.focus();
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+    });
+
+    window.removeEventListener('keydown', bubblePrevent);
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'select', selection: { kind: 'entity', id: 'entity2' } });
+    expect(document.activeElement).toBe(container.querySelector('[data-testid="ungrouped-entity-entity2"]'));
+  });
+
   it('ArrowDown selects the next ungrouped sprite when a sprite row is focused', async () => {
     const project = {
       ...sampleProject,
@@ -68,6 +113,7 @@ describe('EntityList keyboard shortcuts', () => {
     });
 
     expect(dispatch).toHaveBeenCalledWith({ type: 'select', selection: { kind: 'entity', id: 'entity2' } });
+    expect(document.activeElement).toBe(container.querySelector('[data-testid="ungrouped-entity-entity2"]'));
   });
 
   it('F2 enters rename mode for a selected trigger zone when its row is focused', async () => {
@@ -105,4 +151,3 @@ describe('EntityList keyboard shortcuts', () => {
     expect(input?.value).toBe('Zone 1');
   });
 });
-
