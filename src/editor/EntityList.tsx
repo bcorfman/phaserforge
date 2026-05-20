@@ -249,8 +249,41 @@ export function EntityListView({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== 'Escape') return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const kind = editingKind;
+    const id = editingId;
+    const sceneId = editingSceneId ?? currentSceneId;
+
     if (e.key === 'Enter') saveRename();
-    if (e.key === 'Escape') cancelEditing();
+    else cancelEditing();
+
+    if (!kind || !id) return;
+    setTimeout(() => {
+      const root = rootRef.current;
+      if (!root) return;
+
+      const testIds =
+        kind === 'entity'
+          ? [`ungrouped-entity-${id}`, `ungrouped-entity-${sceneId}-${id}`]
+          : kind === 'group'
+            ? [`group-item-${id}`, `group-item-${sceneId}-${id}`]
+            : kind === 'trigger'
+              ? [`trigger-zone-${id}`, `trigger-zone-${sceneId}-${id}`]
+              : kind === 'scene'
+                ? [`scene-item-${id}`]
+                : [];
+
+      for (const testId of testIds) {
+        const row = root.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+        if (row) {
+          row.focus();
+          return;
+        }
+      }
+    }, 0);
   };
 
   useEffect(() => {

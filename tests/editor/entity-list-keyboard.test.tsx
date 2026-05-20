@@ -33,6 +33,62 @@ function renderEntityList(props: Partial<React.ComponentProps<typeof EntityListV
 }
 
 describe('EntityList keyboard shortcuts', () => {
+  it('Enter after renaming keeps keyboard navigation working (focus returns to the row)', async () => {
+    const project = {
+      ...sampleProject,
+      scenes: {
+        ...sampleProject.scenes,
+        [sampleProject.initialSceneId]: {
+          ...(sampleProject.scenes[sampleProject.initialSceneId] as any),
+          entities: {
+            ...(sampleProject.scenes[sampleProject.initialSceneId] as any).entities,
+            entity: { id: 'entity', x: 10, y: 10, width: 10, height: 10 },
+            entity2: { id: 'entity2', x: 20, y: 20, width: 10, height: 10 },
+          },
+        },
+      },
+    };
+
+    const { container, root, dispatch, props } = renderEntityList({
+      project: project as any,
+      scene: project.scenes[sampleProject.initialSceneId] as any,
+      selection: { kind: 'entity', id: 'entity' } as any,
+    });
+
+    await React.act(async () => {
+      root.render(<EntityListView {...props} />);
+    });
+
+    const row = container.querySelector('[data-testid="ungrouped-entity-entity"]') as HTMLButtonElement | null;
+    expect(row).not.toBeNull();
+
+    await React.act(async () => {
+      row!.focus();
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+    });
+
+    const input = container.querySelector('[data-testid="rename-entity-input-entity"]') as HTMLInputElement | null;
+    expect(input).not.toBeNull();
+
+    await React.act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input!, 'Renamed');
+      input!.dispatchEvent(new window.Event('input', { bubbles: true }));
+      input!.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+
+    await React.act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await React.act(async () => {
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'select', selection: { kind: 'entity', id: 'entity2' } });
+    expect(document.activeElement).toBe(container.querySelector('[data-testid="ungrouped-entity-entity2"]'));
+  });
+
   it('ArrowDown still selects the next ungrouped sprite even if another window keydown listener preventsDefault in bubble phase', async () => {
     const project = {
       ...sampleProject,
