@@ -1,5 +1,60 @@
 export type WorldRect = { minX: number; minY: number; maxX: number; maxY: number; centerX: number; centerY: number };
 
+export function getSelectionBounds(items: Array<{ rect: WorldRect }>): WorldRect | undefined {
+  if (items.length === 0) return undefined;
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const item of items) {
+    minX = Math.min(minX, item.rect.minX);
+    minY = Math.min(minY, item.rect.minY);
+    maxX = Math.max(maxX, item.rect.maxX);
+    maxY = Math.max(maxY, item.rect.maxY);
+  }
+  return { minX, minY, maxX, maxY, centerX: (minX + maxX) / 2, centerY: (minY + maxY) / 2 };
+}
+
+export function alignSelectionToWorld(
+  items: Array<{ id: string; x: number; y: number; rect: WorldRect }>,
+  align: 'left' | 'centerX' | 'right' | 'top' | 'centerY' | 'bottom',
+  worldWidth: number,
+  worldHeight: number
+): Array<{ id: string; x: number; y: number }> {
+  const bounds = getSelectionBounds(items);
+  if (!bounds) return [];
+  const w = Number(worldWidth);
+  const h = Number(worldHeight);
+  if (!Number.isFinite(w) || !Number.isFinite(h)) return [];
+
+  let dx = 0;
+  let dy = 0;
+  if (align === 'left') dx = 0 - bounds.minX;
+  else if (align === 'centerX') dx = w / 2 - bounds.centerX;
+  else if (align === 'right') dx = w - bounds.maxX;
+  else if (align === 'top') dy = 0 - bounds.minY;
+  else if (align === 'centerY') dy = h / 2 - bounds.centerY;
+  else if (align === 'bottom') dy = h - bounds.maxY;
+
+  return items.map((it) => ({ id: it.id, x: it.x + dx, y: it.y + dy }));
+}
+
+export function setSelectionCenter(
+  items: Array<{ id: string; x: number; y: number; rect: WorldRect }>,
+  target: { x?: number; y?: number }
+): Array<{ id: string; x: number; y: number }> {
+  const bounds = getSelectionBounds(items);
+  if (!bounds) return [];
+  const x = target.x;
+  const y = target.y;
+  const hasX = Number.isFinite(x as number);
+  const hasY = Number.isFinite(y as number);
+  if (!hasX && !hasY) return [];
+  const dx = hasX ? (x as number) - bounds.centerX : 0;
+  const dy = hasY ? (y as number) - bounds.centerY : 0;
+  return items.map((it) => ({ id: it.id, x: it.x + dx, y: it.y + dy }));
+}
+
 export function alignByBounds(
   items: Array<{ id: string; x: number; y: number; rect: WorldRect }>,
   align: 'left' | 'centerX' | 'right' | 'top' | 'centerY' | 'bottom',
@@ -73,4 +128,3 @@ export function snapPositions(
   const snap = (v: number) => Math.round(v / g) * g;
   return positions.map((p) => ({ id: p.id, x: snap(p.x), y: snap(p.y) }));
 }
-

@@ -27,11 +27,11 @@ This version assumes the features in `.plans/implementation-plan-qol-text-bounds
 
 - Turn on Snap if desired (**A10 — Toggle Grid Snap**).
 - Place the ships approximately, then:
-  - Select the 4 top-row ships → on-canvas selection bar → **Layout…** → **Align → Center Y** (to line them up at `y=450`), then nudge/drag X to exact centers.
-  - Select the 3 bottom-row ships → selection bar → **Layout…** → **Align → Center Y** (to `y=200`) → **Spacing → X = 200px** (or equivalent grid cells) to land at `x=200, 400, 600`.
+  - Select the 4 bottom-row ships → on-canvas selection bar → **Layout…** → **Align → Center Y** (to line them up at `y=450`), then nudge/drag X to exact centers.
+  - Select the 3 top-row ships → selection bar → **Layout…** → **Align → Center Y** (to `y=200`) → **Spacing → X = 200px** (or equivalent grid cells) to land at `x=200, 400, 600`.
 - Exact centers to match the Arcade demo:
-  - Top row `y=450`: Wave `x=150`, Zigzag `x=300`, Figure-8 `x=500`, Orbit `x=650`
-  - Bottom row `y=200`: Spiral `x=200`, Bounce `x=400`, Patrol `x=600`
+  - Bottom row `y=450`: Wave `x=150`, Zigzag `x=300`, Figure-8 `x=500`, Orbit `x=650`
+  - Top row `y=200`: Spiral `x=200`, Bounce `x=400`, Patrol `x=600`
 
 ## 4. Add text labels (new Text entities)
 
@@ -45,7 +45,7 @@ For each ship, add a text label entity above it (Arcade demo places labels above
   - Font: pick a font asset (if imported) or set `fontFamily` override
 - Position each label at:
   - `x = ship.x`
-  - `y = ship.y + 80`
+  - `y = ship.y - 80`
 
 Tip: Create one label, then **Alt+Drag** duplicates it (including its text settings). Rename the text content per-copy.
 
@@ -89,7 +89,7 @@ Use Loop Templates to avoid manual nesting:
 - Add **Bounce**:
   - `axis=both`, `velocityX=2`, `velocityY=1` (Arcade is px/frame; Studio uses px/sec—scale up/down if needed)
 - In the Bounds section, enable BoundsHit, then use **Bounds Helper (new)**:
-  - Center: auto-fill from selection (`cx=400`, `cy=200` if you matched the layout)
+  - Center: auto-fill from selection (`cx=400`, `cy=450` if you matched the layout)
   - Travel span: `±x = 60`, `±y = 40`
   - Sprite size: **Auto from selection**
   - Apply to BoundsHit
@@ -99,7 +99,7 @@ Use Loop Templates to avoid manual nesting:
 - Add **Patrol**:
   - `axis=x`, `velocityX=2` (scale if needed)
 - Enable BoundsHit and use **Bounds Helper (new)**:
-  - Center: auto-fill from selection (`cx=600`, `cy=200` if you matched the layout)
+  - Center: auto-fill from selection (`cx=600`, `cy=450` if you matched the layout)
   - Travel span: `±x = 40`, `±y = 0`
   - Sprite size: **Auto from selection**
   - Apply to BoundsHit, then edit `minY=0`, `maxY=600` (Y doesn’t matter for x-only patrol, but keep it within world bounds)

@@ -23,6 +23,13 @@ export interface HoverState {
   handle?: string;
 }
 
+export interface DragFrameResult {
+  hasMoved: boolean;
+  snappedDx: number;
+  snappedDy: number;
+  shouldEmitMutation: boolean;
+}
+
 export type HoverOutlineShape =
   | { kind: 'rect'; x: number; y: number; width: number; height: number }
   | { kind: 'rounded-rect'; x: number; y: number; width: number; height: number; radius: number };
@@ -96,6 +103,23 @@ export function updateDragOverlay(
   overlay.setText(text);
   overlay.setPosition(currentPoint.x + 10, currentPoint.y - 10);
   overlay.setVisible(true);
+}
+
+export function computeDragFrameResult(
+  dragState: DragState,
+  currentPoint: { x: number; y: number },
+  snapDeltaToGrid: (delta: number) => number
+): DragFrameResult {
+  const dx = currentPoint.x - dragState.startX;
+  const dy = currentPoint.y - dragState.startY;
+
+  const hasMoved = dragState.hasMoved || Math.abs(dx) > 0 || Math.abs(dy) > 0;
+  const snappedDx = Math.round(snapDeltaToGrid(dx));
+  const snappedDy = Math.round(snapDeltaToGrid(dy));
+
+  const shouldEmitMutation = !(snappedDx === 0 && snappedDy === 0 && dragState.kind !== 'marquee');
+
+  return { hasMoved, snappedDx, snappedDy, shouldEmitMutation };
 }
 
 /**
