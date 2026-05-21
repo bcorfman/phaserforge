@@ -3,6 +3,7 @@ import {
   hasExceededDragThreshold,
   formatValue,
   getInteractionLabel,
+  computeDragFrameResult,
   DRAG_THRESHOLD
 } from '../../src/editor/canvasInteraction';
 
@@ -52,6 +53,29 @@ describe('Canvas Interaction utilities', () => {
 
     it('includes handle info for bounds handles', () => {
       expect(getInteractionLabel('bounds-handle', 'nw')).toBe('Bounds nw');
+    });
+  });
+
+  describe('computeDragFrameResult', () => {
+    it('marks hasMoved even when snapping yields zero delta', () => {
+      const dragState = { kind: 'entity', startX: 10, startY: 10, hasMoved: false } as any;
+      const currentPoint = { x: 10.2, y: 10.2 };
+      const snapDeltaToGrid = () => 0;
+
+      const result = computeDragFrameResult(dragState, currentPoint, snapDeltaToGrid);
+      expect(result.hasMoved).toBe(true);
+      expect(result.snappedDx).toBe(0);
+      expect(result.snappedDy).toBe(0);
+      expect(result.shouldEmitMutation).toBe(false);
+    });
+
+    it('does not skip mutations for marquee drags', () => {
+      const dragState = { kind: 'marquee', startX: 10, startY: 10, hasMoved: false } as any;
+      const currentPoint = { x: 10, y: 10 };
+      const snapDeltaToGrid = () => 0;
+
+      const result = computeDragFrameResult(dragState, currentPoint, snapDeltaToGrid);
+      expect(result.shouldEmitMutation).toBe(true);
     });
   });
 });

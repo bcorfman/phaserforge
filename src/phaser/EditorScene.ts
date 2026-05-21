@@ -21,6 +21,7 @@ import {
   DRAG_THRESHOLD,
   createDragOverlayText,
   updateDragOverlay,
+  computeDragFrameResult,
   createHoverOutline,
   updateHoverOutline,
   type DragState,
@@ -1586,19 +1587,17 @@ export class EditorScene extends Phaser.Scene {
       return;
     }
 
-    const dx = worldPoint.x - this.dragState.startX;
-    const dy = worldPoint.y - this.dragState.startY;
+    const frame = computeDragFrameResult(this.dragState, worldPoint, (delta) => this.snapDeltaToGrid(delta));
+    this.dragState.hasMoved = frame.hasMoved;
 
-    // Mark as moved if not already
-    if (!this.dragState.hasMoved && (Math.abs(dx) > 0 || Math.abs(dy) > 0)) {
-      this.dragState.hasMoved = true;
+    // Update drag overlay even on no-op frames so it doesn't flicker/disappear while dragging.
+    if (this.dragOverlay) {
+      const attachment = this.activeBoundsConditionId ? this.compiled?.scene.attachments[this.activeBoundsConditionId] : undefined;
+      const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
+      updateDragOverlay(this.dragOverlay, this.dragState, worldPoint, boundsCondition?.bounds);
     }
 
-    // Apply grid snapping to deltas
-    const snappedDx = Math.round(this.snapDeltaToGrid(dx));
-    const snappedDy = Math.round(this.snapDeltaToGrid(dy));
-
-    if (snappedDx === 0 && snappedDy === 0 && this.dragState.kind !== 'marquee') {
+    if (!frame.shouldEmitMutation) {
       // Avoid emitting no-op mutations (prevents useless history entries).
       return;
     }
@@ -1611,29 +1610,22 @@ export class EditorScene extends Phaser.Scene {
     } else if (this.dragState.kind === 'entity') {
       const entityIds = this.dragState.entityIds ?? (this.dragState.id ? [this.dragState.id] : []);
       if (entityIds.length > 0) {
-        EventBus.emit('canvas-move-entities', { entityIds, dx: snappedDx, dy: snappedDy });
+        EventBus.emit('canvas-move-entities', { entityIds, dx: frame.snappedDx, dy: frame.snappedDy });
       }
     } else if (this.dragState.kind === 'group') {
-      EventBus.emit('canvas-move-group', { id: this.dragState.id, dx: snappedDx, dy: snappedDy });
+      EventBus.emit('canvas-move-group', { id: this.dragState.id, dx: frame.snappedDx, dy: frame.snappedDy });
     } else if (this.dragState.kind === 'bounds-handle' && this.dragState.handle) {
       // Calculate new bounds based on handle being dragged
       const attachment = this.activeBoundsConditionId ? this.compiled?.scene.attachments[this.activeBoundsConditionId] : undefined;
       const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
       if (!boundsCondition) return;
-      const newBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, this.dragState.handle, snappedDx, snappedDy);
+      const newBounds = calculateBoundsAfterHandleDrag(boundsCondition.bounds, this.dragState.handle, frame.snappedDx, frame.snappedDy);
       EventBus.emit('canvas-update-bounds', newBounds);
     }
 
-    // Update drag overlay
-    if (this.dragOverlay) {
-      const attachment = this.activeBoundsConditionId ? this.compiled?.scene.attachments[this.activeBoundsConditionId] : undefined;
-      const boundsCondition = attachment?.condition?.type === 'BoundsHit' ? attachment.condition : undefined;
-      updateDragOverlay(this.dragOverlay, this.dragState, worldPoint, boundsCondition?.bounds);
-    }
-
     if (this.dragState.kind !== 'marquee') {
-      this.dragState.startX += snappedDx;
-      this.dragState.startY += snappedDy;
+      this.dragState.startX += frame.snappedDx;
+      this.dragState.startY += frame.snappedDy;
     }
   }
 

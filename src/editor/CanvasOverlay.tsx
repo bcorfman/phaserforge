@@ -5,7 +5,16 @@ import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
 import { getNextFormationName } from './behaviorCommands';
 import { clampPopupToViewport, placePopupNearRect } from './popupPositioning';
 import { CreateFormationDraftPanel } from './CreateFormationDraftPanel';
-import { alignByBounds, distributeCenters, snapPositions, spacingByCenters, type WorldRect } from './layoutGeometry';
+import {
+  alignByBounds,
+  alignSelectionToWorld,
+  distributeCenters,
+  getSelectionBounds,
+  setSelectionCenter,
+  snapPositions,
+  spacingByCenters,
+  type WorldRect
+} from './layoutGeometry';
 
 function getSelectedEntityIds(selection: Selection): string[] {
   if (selection.kind === 'entity') return [selection.id];
@@ -24,6 +33,9 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   const layoutRootRef = useRef<HTMLDivElement | null>(null);
   const [layoutUnits, setLayoutUnits] = useState<'grid' | 'pixels'>('grid');
   const [layoutSpacingX, setLayoutSpacingX] = useState('1');
+  const [layoutSpacingY, setLayoutSpacingY] = useState('1');
+  const [layoutSetX, setLayoutSetX] = useState('');
+  const [layoutSetY, setLayoutSetY] = useState('');
   const [groupPromptOpen, setGroupPromptOpen] = useState(false);
   const [groupPromptPosition, setGroupPromptPosition] = useState<{ x: number; y: number } | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState('');
@@ -392,6 +404,17 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     setLayoutOpen(true);
   };
 
+  useEffect(() => {
+    if (!layoutOpen) return;
+    if (state.mode !== 'edit') return;
+    if (state.selection.kind !== 'entities' || state.selection.ids.length < 2) return;
+    const items = gatherLayoutItems(state.selection.ids);
+    const bounds = getSelectionBounds(items);
+    if (!bounds) return;
+    setLayoutSetX(String(Math.round(bounds.centerX)));
+    setLayoutSetY(String(Math.round(bounds.centerY)));
+  }, [layoutOpen, state.mode, state.selection, state.currentSceneId]);
+
   const applyLayoutPositions = (positions: Array<{ id: string; x: number; y: number }>) => {
     const final = gridSnapEnabled ? snapPositions(positions, 8) : positions;
     dispatch({ type: 'layout-entities', positions: final } as any);
@@ -596,45 +619,13 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
           <div className="canvas-selection-menu-heading" style={{ marginBottom: 6 }}>Layout</div>
 
           <div className="canvas-selection-menu-section">
-            <div className="canvas-selection-menu-heading">Align</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-left" type="button" onClick={() => {
-                const ids = state.selection.ids;
-                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'left', ids[0]!));
-              }}>Left</button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-center-x" type="button" onClick={() => {
-                const ids = state.selection.ids;
-                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'centerX', ids[0]!));
-              }}>Center X</button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-right" type="button" onClick={() => {
-                const ids = state.selection.ids;
-                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'right', ids[0]!));
-              }}>Right</button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-top" type="button" onClick={() => {
-                const ids = state.selection.ids;
-                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'top', ids[0]!));
-              }}>Top</button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-center-y" type="button" onClick={() => {
-                const ids = state.selection.ids;
-                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'centerY', ids[0]!));
-              }}>Center Y</button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-bottom" type="button" onClick={() => {
-                const ids = state.selection.ids;
-                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'bottom', ids[0]!));
-              }}>Bottom</button>
-            </div>
-          </div>
-
-          <div className="canvas-selection-menu-section">
-            <div className="canvas-selection-menu-heading">Distribute</div>
+            <div className="canvas-selection-menu-heading">Arrange items</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
               <button className="canvas-selection-menu-item" data-testid="layout-distribute-x" type="button" onClick={() => applyLayoutPositions(distributeCenters(gatherLayoutItems(state.selection.ids), 'x'))}>Distribute X</button>
               <button className="canvas-selection-menu-item" data-testid="layout-distribute-y" type="button" onClick={() => applyLayoutPositions(distributeCenters(gatherLayoutItems(state.selection.ids), 'y'))}>Distribute Y</button>
             </div>
-          </div>
 
-          <div className="canvas-selection-menu-section">
-            <div className="canvas-selection-menu-heading">Spacing</div>
+            <div className="canvas-selection-menu-heading" style={{ marginTop: 10 }}>Spacing</div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
               <button className={`button button-compact ${layoutUnits === 'grid' ? 'active' : ''}`} type="button" data-testid="layout-units-grid" onClick={() => setLayoutUnits('grid')}>Grid</button>
               <button className={`button button-compact ${layoutUnits === 'pixels' ? 'active' : ''}`} type="button" data-testid="layout-units-pixels" onClick={() => setLayoutUnits('pixels')}>Pixels</button>
@@ -648,6 +639,92 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
               const spacing = layoutUnits === 'grid' ? raw * 8 : raw;
               applyLayoutPositions(spacingByCenters(gatherLayoutItems(state.selection.ids), 'x', spacing));
             }}>Apply Spacing X</button>
+
+            <label className="field" style={{ marginTop: 8 }}>
+              <span>Spacing Y</span>
+              <input className="text-input" data-testid="layout-spacing-y" type="number" value={layoutSpacingY} onChange={(e) => setLayoutSpacingY(e.target.value)} />
+            </label>
+            <button className="canvas-selection-menu-item" data-testid="layout-apply-spacing-y" type="button" onClick={() => {
+              const raw = Number(layoutSpacingY);
+              const spacing = layoutUnits === 'grid' ? raw * 8 : raw;
+              applyLayoutPositions(spacingByCenters(gatherLayoutItems(state.selection.ids), 'y', spacing));
+            }}>Apply Spacing Y</button>
+          </div>
+
+          <div className="canvas-selection-menu-section">
+            <div className="canvas-selection-menu-heading">Position selection</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <label className="field" style={{ margin: 0 }}>
+                <span>X</span>
+                <input className="text-input" data-testid="layout-set-x" type="number" value={layoutSetX} onChange={(e) => setLayoutSetX(e.target.value)} />
+              </label>
+              <label className="field" style={{ margin: 0 }}>
+                <span>Y</span>
+                <input className="text-input" data-testid="layout-set-y" type="number" value={layoutSetY} onChange={(e) => setLayoutSetY(e.target.value)} />
+              </label>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 6 }}>
+              <button className="canvas-selection-menu-item" data-testid="layout-apply-set-x" type="button" onClick={() => {
+                const x = Number(layoutSetX);
+                applyLayoutPositions(setSelectionCenter(gatherLayoutItems(state.selection.ids), { x }));
+              }}>Set X</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-apply-set-y" type="button" onClick={() => {
+                const y = Number(layoutSetY);
+                applyLayoutPositions(setSelectionCenter(gatherLayoutItems(state.selection.ids), { y }));
+              }}>Set Y</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-apply-set-xy" type="button" onClick={() => {
+                const x = Number(layoutSetX);
+                const y = Number(layoutSetY);
+                applyLayoutPositions(setSelectionCenter(gatherLayoutItems(state.selection.ids), { x, y }));
+              }}>Set X+Y</button>
+            </div>
+
+            <div className="canvas-selection-menu-heading" style={{ marginTop: 10 }}>Align selection</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+              <button className="canvas-selection-menu-item" data-testid="layout-align-left" type="button" onClick={() => {
+                applyLayoutPositions(alignSelectionToWorld(gatherLayoutItems(state.selection.ids), 'left', scene.world.width, scene.world.height));
+              }}>Left</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-align-center-x" type="button" onClick={() => {
+                applyLayoutPositions(alignSelectionToWorld(gatherLayoutItems(state.selection.ids), 'centerX', scene.world.width, scene.world.height));
+              }}>Center X</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-align-right" type="button" onClick={() => {
+                applyLayoutPositions(alignSelectionToWorld(gatherLayoutItems(state.selection.ids), 'right', scene.world.width, scene.world.height));
+              }}>Right</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-align-top" type="button" onClick={() => {
+                applyLayoutPositions(alignSelectionToWorld(gatherLayoutItems(state.selection.ids), 'top', scene.world.width, scene.world.height));
+              }}>Top</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-align-center-y" type="button" onClick={() => {
+                applyLayoutPositions(alignSelectionToWorld(gatherLayoutItems(state.selection.ids), 'centerY', scene.world.width, scene.world.height));
+              }}>Center Y</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-align-bottom" type="button" onClick={() => {
+                applyLayoutPositions(alignSelectionToWorld(gatherLayoutItems(state.selection.ids), 'bottom', scene.world.width, scene.world.height));
+              }}>Bottom</button>
+            </div>
+            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>Center aligns to world center.</div>
+          </div>
+
+          <div className="canvas-selection-menu-section">
+            <div className="canvas-selection-menu-heading">Advanced</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+              <button className="canvas-selection-menu-item" data-testid="layout-stack-center-x" type="button" onClick={() => {
+                const ids = state.selection.ids;
+                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'centerX', ids[0]!));
+              }}>Stack X centers</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-stack-center-y" type="button" onClick={() => {
+                const ids = state.selection.ids;
+                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'centerY', ids[0]!));
+              }}>Stack Y centers</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-match-left-edges" type="button" onClick={() => {
+                const ids = state.selection.ids;
+                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'left', ids[0]!));
+              }}>Match left edges</button>
+              <button className="canvas-selection-menu-item" data-testid="layout-match-top-edges" type="button" onClick={() => {
+                const ids = state.selection.ids;
+                applyLayoutPositions(alignByBounds(gatherLayoutItems(ids), 'top', ids[0]!));
+              }}>Match top edges</button>
+            </div>
           </div>
 
           <button className="button button-compact" type="button" data-testid="layout-close" onClick={() => setLayoutOpen(false)}>Close</button>
