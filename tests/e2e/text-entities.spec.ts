@@ -32,8 +32,7 @@ test('creates a text entity, edits it, and round-trips via YAML', async ({ page 
 
   const initial = await getState<any>(page);
   const sceneId = initial.currentSceneId as string;
-  await page.getByTestId(`sprites-add-${sceneId}`).click();
-  await page.getByTestId('sprites-add-menu-create-text').click();
+  await page.getByTestId(`texts-add-${sceneId}`).click();
 
   await expect(page.getByTestId('entity-text-content')).toBeVisible();
   await page.getByTestId('entity-text-content').fill('Hello\nWorld');

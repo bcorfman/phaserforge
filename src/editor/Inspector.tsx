@@ -405,9 +405,13 @@ function EntityInspector({
   const canUseSpriteSize = Boolean(resolved.asset);
 
   return (
-    <div className="inspector-block">
-      <div className="inspector-title">{resolved.name ?? resolved.id}</div>
-      <div className="inspector-row">Authored values update the selected sprite immediately on the canvas.</div>
+	    <div className="inspector-block">
+	      <div className="inspector-title">{resolved.name ?? resolved.id}</div>
+	      <div className="inspector-row">
+	        {isTextEntity
+	          ? 'Authored values update the selected text immediately on the canvas.'
+	          : 'Authored values update the selected sprite immediately on the canvas.'}
+	      </div>
       <InspectorFoldout
         title="Transform"
         open={foldouts.isOpen('entity.transform', true)}
@@ -787,24 +791,25 @@ function EntityInspector({
         </InspectorFoldout>
       ) : null}
 
-      <InspectorFoldout
-        title="Hitbox (Bounds)"
-        open={foldouts.isOpen('entity.hitbox', true)}
-        onToggle={() => foldouts.toggle('entity.hitbox', true)}
-        summary={(
-          <label className="field field-checkbox" onClick={(e) => e.stopPropagation()}>
-            <span>👁 Show</span>
-            <input
-              aria-label="Show Hitbox Overlay"
-              data-testid="entity-hitbox-overlay-enabled-input"
-              type="checkbox"
-              disabled={!setShowHitboxOverlay}
-              checked={showHitboxOverlay}
-              onChange={(e) => setShowHitboxOverlay?.(e.target.checked)}
-            />
-          </label>
-        )}
-      >
+	      {!isTextEntity ? (
+	        <InspectorFoldout
+	          title="Hitbox (Bounds)"
+	          open={foldouts.isOpen('entity.hitbox', true)}
+	          onToggle={() => foldouts.toggle('entity.hitbox', true)}
+	          summary={(
+	            <label className="field field-checkbox" onClick={(e) => e.stopPropagation()}>
+	              <span>👁 Show</span>
+	              <input
+	                aria-label="Show Hitbox Overlay"
+	                data-testid="entity-hitbox-overlay-enabled-input"
+	                type="checkbox"
+	                disabled={!setShowHitboxOverlay}
+	                checked={showHitboxOverlay}
+	                onChange={(e) => setShowHitboxOverlay?.(e.target.checked)}
+	              />
+	            </label>
+	          )}
+	        >
         <label className="field">
           <span>Use Hitbox</span>
           <input
@@ -895,12 +900,14 @@ function EntityInspector({
             </div>
           </>
         )}
-      </InspectorFoldout>
-      <InspectorFoldout
-        title="Physics"
-        open={foldouts.isOpen('entity.physics', false)}
-        onToggle={() => foldouts.toggle('entity.physics', false)}
-      >
+	        </InspectorFoldout>
+	      ) : null}
+	      {!isTextEntity ? (
+	        <InspectorFoldout
+	          title="Physics"
+	          open={foldouts.isOpen('entity.physics', false)}
+	          onToggle={() => foldouts.toggle('entity.physics', false)}
+	        >
         <label className="field field-checkbox">
           <span>Enable Body</span>
           <input
@@ -957,75 +964,78 @@ function EntityInspector({
             onChange={(e) => update({ collision: { enabled: true, layer: e.target.value } })}
           />
         </label>
-      </InspectorFoldout>
-      <InspectorFoldout
-        title="Visual"
-        open={foldouts.isOpen('entity.visual', true)}
-        onToggle={() => foldouts.toggle('entity.visual', true)}
-      >
-        <div className="inspector-grid-2">
+	        </InspectorFoldout>
+	      ) : null}
+      {!isTextEntity ? (
+        <InspectorFoldout
+          title="Visual"
+          open={foldouts.isOpen('entity.visual', true)}
+          onToggle={() => foldouts.toggle('entity.visual', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Alpha</span>
+              <ValidatedNumberInput
+                aria-label="Alpha"
+                data-testid="entity-alpha-input"
+                min={0}
+                max={1}
+                step="0.1"
+                value={resolved.alpha}
+                clamp={(next) => Math.max(0, Math.min(1, next || 0))}
+                onCommit={(next) => update({ alpha: next })}
+              />
+            </label>
+            <label className="field">
+              <span>Visible</span>
+              <input aria-label="Visible" data-testid="entity-visible-input" type="checkbox" checked={resolved.visible} onChange={(e) => update({ visible: e.target.checked })} />
+            </label>
+          </div>
           <label className="field">
-            <span>Alpha</span>
+            <span>Depth</span>
             <ValidatedNumberInput
-              aria-label="Alpha"
-              data-testid="entity-alpha-input"
-              min={0}
-              max={1}
-              step="0.1"
-              value={resolved.alpha}
-              clamp={(next) => Math.max(0, Math.min(1, next || 0))}
-              onCommit={(next) => update({ alpha: next })}
+              aria-label="Depth"
+              data-testid="entity-depth-input"
+              value={resolved.depth}
+              onCommit={(next) => update({ depth: next })}
             />
           </label>
           <label className="field">
-            <span>Visible</span>
-            <input aria-label="Visible" data-testid="entity-visible-input" type="checkbox" checked={resolved.visible} onChange={(e) => update({ visible: e.target.checked })} />
+            <span>Asset</span>
+            <select
+              aria-label="Asset"
+              data-testid="entity-asset-select"
+              value={currentAssetKey}
+              onChange={(e) => {
+                const key = e.target.value;
+                if (key === '__none__') {
+                  update({ asset: undefined });
+                  return;
+                }
+                const selected = assetOptions.find((it) => it.key === key);
+                if (!selected) return;
+                update({ asset: selected.asset });
+              }}
+            >
+              <option value="__none__">None (placeholder)</option>
+              {assetOptions.map((option) => (
+                <option key={option.key} value={option.key}>{option.label}</option>
+              ))}
+            </select>
           </label>
-        </div>
-        <label className="field">
-          <span>Depth</span>
-          <ValidatedNumberInput
-            aria-label="Depth"
-            data-testid="entity-depth-input"
-            value={resolved.depth}
-            onCommit={(next) => update({ depth: next })}
-          />
-        </label>
-        <label className="field">
-          <span>Asset</span>
-          <select
-            aria-label="Asset"
-            data-testid="entity-asset-select"
-            value={currentAssetKey}
-            onChange={(e) => {
-              const key = e.target.value;
-              if (key === '__none__') {
-                update({ asset: undefined });
-                return;
-              }
-              const selected = assetOptions.find((it) => it.key === key);
-              if (!selected) return;
-              update({ asset: selected.asset });
-            }}
-          >
-            <option value="__none__">None (placeholder)</option>
-            {assetOptions.map((option) => (
-              <option key={option.key} value={option.key}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        {containingGroup && actionProps?.onSetEntitiesAsset && (
-          <button
-            className="button"
-            data-testid="apply-asset-to-formation-button"
-            type="button"
-            disabled={!resolved.asset}
-            onClick={() => actionProps.onSetEntitiesAsset?.(containingGroup.members, resolved.asset)}
-          >
-            Apply Asset to Formation
-          </button>
-        )}
-      </InspectorFoldout>
+          {containingGroup && actionProps?.onSetEntitiesAsset && (
+            <button
+              className="button"
+              data-testid="apply-asset-to-formation-button"
+              type="button"
+              disabled={!resolved.asset}
+              onClick={() => actionProps.onSetEntitiesAsset?.(containingGroup.members, resolved.asset)}
+            >
+              Apply Asset to Formation
+            </button>
+          )}
+        </InspectorFoldout>
+      ) : null}
       {resolved.asset && (
         <InspectorFoldout
           title="Asset Details"
@@ -1090,12 +1100,12 @@ function EntityInspector({
           )}
         </InspectorFoldout>
       )}
-      {actionProps && (
-        <InspectorFoldout
-          title="Actions/Events"
-          open={foldouts.isOpen('entity.actions', true)}
-          onToggle={() => foldouts.toggle('entity.actions', true)}
-        >
+	      {actionProps && !isTextEntity && (
+	        <InspectorFoldout
+	          title="Actions/Events"
+	          open={foldouts.isOpen('entity.actions', true)}
+	          onToggle={() => foldouts.toggle('entity.actions', true)}
+	        >
           <EventsPanel
             project={actionProps.project}
             scene={actionProps.scene}
