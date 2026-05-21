@@ -26,10 +26,13 @@ export interface SceneBridge {
     sceneKey?: string;
     compiledSceneId?: string;
     zoom: number;
+    maxZoom?: number;
     scrollX: number;
     scrollY: number;
     viewportWidth: number;
     viewportHeight: number;
+    worldWidth?: number;
+    worldHeight?: number;
     backgroundLayerCount?: number;
   };
   getEntityWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;

@@ -5,6 +5,7 @@ import {
   clampZoom,
   formatZoomPercent,
   getFitZoom,
+  getMaxZoom,
   getNextZoom,
   getZoomedScroll,
 } from '../../src/editor/viewport';
@@ -17,13 +18,17 @@ describe('viewport helpers', () => {
 
   it('calculates fit zoom from viewport size', () => {
     expect(getFitZoom(1024, 768)).toBeLessThan(1);
-    expect(getFitZoom(1600, 1200)).toBe(1);
+    expect(getFitZoom(1600, 1200)).toBeGreaterThan(1);
     expect(getFitZoom(1200, 900, 2000, 1500)).toBeLessThan(1);
   });
 
   it('steps zoom in and out predictably', () => {
     expect(getNextZoom(1, 'in')).toBe(1.2);
     expect(getNextZoom(1, 'out')).toBe(0.8);
+  });
+
+  it('raises max zoom enough to fill the viewport when the world is small', () => {
+    expect(getMaxZoom(1200, 900, 200, 150)).toBeGreaterThan(3);
   });
 
   it('formats zoom percent for the UI', () => {
