@@ -33,6 +33,23 @@ export function clampPopupToViewport({
   };
 }
 
+export function constrainPopupSizeToViewport({
+  popupSize,
+  viewportSize,
+  padding = 12,
+}: {
+  popupSize: Size;
+  viewportSize: Size;
+  padding?: number;
+}): Size {
+  const maxWidth = Math.max(0, viewportSize.width - padding * 2);
+  const maxHeight = Math.max(0, viewportSize.height - padding * 2);
+  return {
+    width: Math.min(popupSize.width, maxWidth),
+    height: Math.min(popupSize.height, maxHeight),
+  };
+}
+
 export function placePopupNearRect({
   anchorRect,
   popupSize,

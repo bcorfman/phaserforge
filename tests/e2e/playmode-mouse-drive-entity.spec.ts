@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, seedProject } from './helpers';
 
+if (process.env.PW_ALL_BROWSERS === '1') {
+  // All-browsers runs are heavier (more projects + retries), so allow extra time for the initial boot/seed.
+  test.setTimeout(120000);
+}
+
 test('Play mode: mouse-driven entity motion respects axis locks', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',

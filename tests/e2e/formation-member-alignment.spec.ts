@@ -13,22 +13,23 @@ test('Formation members align with formation label', async ({ page }) => {
   await expect(formationLabel).toBeVisible();
   await expect(memberLabel).toBeVisible();
 
-  const delta = await page.evaluate(() => {
-    const formationEl = document.querySelector('[data-testid="group-item-g-enemies"]') as HTMLElement | null;
-    const memberEl = document.querySelector('[data-testid="group-member-g-enemies-e1"]') as HTMLElement | null;
-    if (!formationEl || !memberEl) return null;
+  await expect.poll(async () => {
+    const delta = await page.evaluate(() => {
+      const formationEl = document.querySelector('[data-testid="group-item-g-enemies"]') as HTMLElement | null;
+      const memberEl = document.querySelector('[data-testid="group-member-g-enemies-e1"]') as HTMLElement | null;
+      if (!formationEl || !memberEl) return null;
 
-    const formationRect = formationEl.getBoundingClientRect();
-    const memberRect = memberEl.getBoundingClientRect();
-    const formationPaddingLeft = parseFloat(getComputedStyle(formationEl).paddingLeft || '0');
-    const memberPaddingLeft = parseFloat(getComputedStyle(memberEl).paddingLeft || '0');
+      const formationRect = formationEl.getBoundingClientRect();
+      const memberRect = memberEl.getBoundingClientRect();
+      const formationPaddingLeft = parseFloat(getComputedStyle(formationEl).paddingLeft || '0');
+      const memberPaddingLeft = parseFloat(getComputedStyle(memberEl).paddingLeft || '0');
 
-    const formationTextStart = formationRect.left + formationPaddingLeft;
-    const memberTextStart = memberRect.left + memberPaddingLeft;
-    return Math.round((memberTextStart - formationTextStart) * 10) / 10;
-  });
+      const formationTextStart = formationRect.left + formationPaddingLeft;
+      const memberTextStart = memberRect.left + memberPaddingLeft;
+      return Math.round((memberTextStart - formationTextStart) * 10) / 10;
+    });
 
-  expect(delta).not.toBeNull();
-  expect(Math.abs(delta!)).toBeLessThanOrEqual(1);
+    if (delta === null) return null;
+    return Math.abs(delta);
+  }, { timeout: 5000 }).toBeLessThanOrEqual(1);
 });
-
