@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { getFitZoom } from '../../src/editor/viewport';
+import { getCenteredCameraScroll, getFitZoom } from '../../src/editor/viewport';
 import { dismissViewHint, getSceneSnapshot, getState, seedProject } from './helpers';
 
 test('startup centers the editor viewport', async ({ page }) => {
@@ -22,11 +22,15 @@ test('startup centers the editor viewport', async ({ page }) => {
   expect(snapshot).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
   const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height);
-  const expectedScrollX = world.width / 2 - snapshot.viewportWidth / (2 * expectedZoom);
-  const expectedScrollY = world.height / 2 - snapshot.viewportHeight / (2 * expectedZoom);
+  const expectedScroll = getCenteredCameraScroll(
+    snapshot.viewportWidth,
+    snapshot.viewportHeight,
+    world.width,
+    world.height,
+    expectedZoom
+  );
 
   expect(Math.abs(snapshot.zoom - expectedZoom)).toBeLessThanOrEqual(0.01);
-  expect(Math.abs(snapshot.scrollX - expectedScrollX)).toBeLessThanOrEqual(1);
-  expect(Math.abs(snapshot.scrollY - expectedScrollY)).toBeLessThanOrEqual(1);
+  expect(Math.abs(snapshot.scrollX - expectedScroll.scrollX)).toBeLessThanOrEqual(1);
+  expect(Math.abs(snapshot.scrollY - expectedScroll.scrollY)).toBeLessThanOrEqual(1);
 });
-
