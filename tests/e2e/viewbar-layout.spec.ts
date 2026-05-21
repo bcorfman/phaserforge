@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('viewport controls sit above the viewport heading copy', async ({ page }) => {
+test('viewport controls sit below the viewport heading copy', async ({ page }) => {
   const zoomOutButton = page.getByTestId('zoom-out-button');
   const viewportHeading = page.locator('#viewport-heading');
 
@@ -18,6 +18,5 @@ test('viewport controls sit above the viewport heading copy', async ({ page }) =
   const [zoomOutBox, headingBox] = await Promise.all([zoomOutButton.boundingBox(), viewportHeading.boundingBox()]);
   if (!zoomOutBox || !headingBox) throw new Error('Expected both viewbar controls and heading to have layout boxes');
 
-  expect(zoomOutBox.y).toBeLessThan(headingBox.y);
+  expect(headingBox.y).toBeLessThan(zoomOutBox.y);
 });
-
