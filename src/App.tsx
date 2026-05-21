@@ -393,8 +393,8 @@ function AppShell() {
     };
   }, [dispatch, activeScene, state.selection, state.mode, state.formationDraft]);
 
-  const commitWorldDraft = (dimension: 'width' | 'height') => {
-    const raw = dimension === 'width' ? worldWidthDraft : worldHeightDraft;
+  const commitWorldDraft = (dimension: 'width' | 'height', rawOverride?: string) => {
+    const raw = rawOverride ?? (dimension === 'width' ? worldWidthDraft : worldHeightDraft);
     const parsed = Number(raw);
     const nextValue = Number.isFinite(parsed) && parsed >= 1 ? Math.round(parsed) : world[dimension];
     dispatch({
@@ -509,13 +509,6 @@ function AppShell() {
         />
         <main aria-labelledby="viewport-heading" className="pane pane-center" data-testid="canvas-pane">
           <section className="viewbar shell-card" data-testid="viewbar">
-            <div className="viewbar-copy">
-              <p className="eyebrow">Canvas</p>
-              <h2 className="section-title" id="viewport-heading">Viewport</h2>
-              <p className="section-copy">
-                Pan with middle mouse or Space + drag. Use zoom controls to inspect sprite spacing and bounds.
-              </p>
-            </div>
             <div className="viewbar-controls-row">
               <div className="viewbar-group">
                 <button
@@ -572,10 +565,10 @@ function AppShell() {
                       inputMode="numeric"
                       value={worldWidthDraft}
                       onChange={(e) => setWorldWidthDraft(e.target.value)}
-                      onBlur={() => commitWorldDraft('width')}
+                      onBlur={(e) => commitWorldDraft('width', e.currentTarget.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          commitWorldDraft('width');
+                          commitWorldDraft('width', e.currentTarget.value);
                           e.currentTarget.blur();
                         }
                       }}
@@ -590,10 +583,10 @@ function AppShell() {
                       inputMode="numeric"
                       value={worldHeightDraft}
                       onChange={(e) => setWorldHeightDraft(e.target.value)}
-                      onBlur={() => commitWorldDraft('height')}
+                      onBlur={(e) => commitWorldDraft('height', e.currentTarget.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          commitWorldDraft('height');
+                          commitWorldDraft('height', e.currentTarget.value);
                           e.currentTarget.blur();
                         }
                       }}
@@ -601,6 +594,13 @@ function AppShell() {
                   </label>
                 </div>
               </div>
+            </div>
+            <div className="viewbar-copy">
+              <p className="eyebrow">Canvas</p>
+              <h2 className="section-title" id="viewport-heading">Viewport</h2>
+              <p className="section-copy">
+                Pan with middle mouse or Space + drag. Use zoom controls to inspect sprite spacing and bounds.
+              </p>
             </div>
           </section>
           <div className="phaser-frame" data-testid="phaser-frame">
