@@ -112,6 +112,18 @@ export class EditorScene extends Phaser.Scene {
     super('EditorScene');
   }
 
+  private clientToWorldPoint(pointerX: number, pointerY: number): { x: number; y: number } {
+    const camera = this.cameras.main;
+    const originX = camera.width * camera.originX;
+    const originY = camera.height * camera.originY;
+    const zoomX = camera.zoomX || 1;
+    const zoomY = camera.zoomY || 1;
+    return {
+      x: (pointerX - camera.x - originX) / zoomX + camera.scrollX + originX,
+      y: (pointerY - camera.y - originY) / zoomY + camera.scrollY + originY,
+    };
+  }
+
   public setRuntimeOps(opRegistry: OpRegistry): void {
     this.opRegistry = opRegistry;
   }
@@ -832,10 +844,11 @@ export class EditorScene extends Phaser.Scene {
   private handleViewportResize(): void {
     const prev = this.lastViewportSize;
     const next = { width: this.scale.width, height: this.scale.height };
-    this.lastViewportSize = next;
     if (!this.compiled) return;
     if (prev.width <= 0 || prev.height <= 0) return;
-    if (prev.width === next.width && prev.height === next.height) return;
+    // Ignore no-op/float-jitter resize events (seen intermittently in headless browsers).
+    if (Math.abs(prev.width - next.width) < 0.01 && Math.abs(prev.height - next.height) < 0.01) return;
+    this.lastViewportSize = next;
 
     const resized = getResizedViewportScroll(
       this.cameras.main.scrollX,
@@ -1491,7 +1504,7 @@ export class EditorScene extends Phaser.Scene {
       this.input.setDefaultCursor('grabbing');
       return;
     }
-    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const worldPoint = this.clientToWorldPoint(pointer.x, pointer.y);
     if (this.formationDraftActive && this.formationDraftHandle?.visible) {
       const bounds = this.formationDraftHandle.getBounds();
       if (bounds.contains(worldPoint.x, worldPoint.y)) return;
@@ -1532,7 +1545,7 @@ export class EditorScene extends Phaser.Scene {
       this.emitViewState();
       return;
     }
-    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const worldPoint = this.clientToWorldPoint(pointer.x, pointer.y);
     this.lastPointerWorldPoint = { x: worldPoint.x, y: worldPoint.y };
 
     // Update hover state and cursor
@@ -1710,8 +1723,8 @@ export class EditorScene extends Phaser.Scene {
         const shiftKey = resolvePointerModifier(pointer.event, 'shiftKey', this.isShiftDown);
         const dragDistance = pointer.getDistance ? pointer.getDistance() : 0;
         if (hitResult.kind === 'entity' && dragDistance > DRAG_THRESHOLD) {
-          const startWorld = this.cameras.main.getWorldPoint(pointer.downX, pointer.downY);
-          const endWorld = this.cameras.main.getWorldPoint(pointer.upX, pointer.upY);
+          const startWorld = this.clientToWorldPoint(pointer.downX, pointer.downY);
+          const endWorld = this.clientToWorldPoint(pointer.upX, pointer.upY);
           const rawDx = endWorld.x - startWorld.x;
           const rawDy = endWorld.y - startWorld.y;
           const dx = Math.round(this.snapDeltaToGrid(rawDx));
@@ -1758,8 +1771,8 @@ export class EditorScene extends Phaser.Scene {
         // Fallback: if pointermove events are throttled (notably in headless Firefox),
         // complete marquee selection using the down/up coordinates.
         if (pointer.getDistance && pointer.getDistance() > DRAG_THRESHOLD) {
-          const startWorld = this.cameras.main.getWorldPoint(pointer.downX, pointer.downY);
-          const endWorld = this.cameras.main.getWorldPoint(pointer.upX, pointer.upY);
+          const startWorld = this.clientToWorldPoint(pointer.downX, pointer.downY);
+          const endWorld = this.clientToWorldPoint(pointer.upX, pointer.upY);
           const selectedEntityIds = this.getEntitiesInMarquee(startWorld.x, startWorld.y, endWorld.x, endWorld.y);
           if (shiftKey) {
             const baseIds =
@@ -1815,7 +1828,7 @@ export class EditorScene extends Phaser.Scene {
     if (!this.wheelZoomAnchor
       || Math.abs(this.wheelZoomAnchor.pointerX - pointerX) > 0.5
       || Math.abs(this.wheelZoomAnchor.pointerY - pointerY) > 0.5) {
-      const worldPoint = this.cameras.main.getWorldPoint(pointerX, pointerY);
+      const worldPoint = this.clientToWorldPoint(pointerX, pointerY);
       this.wheelZoomAnchor = { pointerX, pointerY, worldX: worldPoint.x, worldY: worldPoint.y };
     }
     const dominantDelta = Math.abs(deltaY) >= Math.abs(deltaX) ? deltaY : deltaX;
