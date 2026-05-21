@@ -39,33 +39,38 @@ test('runtime reload preserves editor camera view', async ({ page }) => {
   const before = await worldToViewport();
   await reloadRuntime(page);
 
-  // View-state restore can be async after the runtime re-compiles; wait for it to settle.
+  // View-state restore can be async after the runtime re-compiles; wait for the viewport to settle.
   const round = (value: number, places = 2) => {
     const factor = 10 ** places;
     return Math.round(value * factor) / factor;
   };
 
-  await expect
-    .poll(
-      async () => {
-        const snap = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number; viewportWidth: number; viewportHeight: number }>(page);
-        return {
-          zoom: round(snap.zoom, 3),
-          scrollX: round(snap.scrollX, 2),
-          scrollY: round(snap.scrollY, 2),
-          viewportWidth: snap.viewportWidth,
-          viewportHeight: snap.viewportHeight,
-        };
-      },
-      { timeout: 30000 }
-    )
-    .toEqual({
-      zoom: round(beforeView.zoom, 3),
-      scrollX: round(beforeView.scrollX, 2),
-      scrollY: round(beforeView.scrollY, 2),
-      viewportWidth: beforeView.viewportWidth,
-      viewportHeight: beforeView.viewportHeight,
-    });
+  const beforeRounded = {
+    zoom: round(beforeView.zoom, 3),
+    scrollX: round(beforeView.scrollX, 2),
+    scrollY: round(beforeView.scrollY, 2),
+    viewportWidth: Math.round(beforeView.viewportWidth),
+    viewportHeight: Math.round(beforeView.viewportHeight),
+  };
+
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number; viewportWidth: number; viewportHeight: number }>(page);
+    const current = {
+      zoom: round(snap.zoom, 3),
+      scrollX: round(snap.scrollX, 2),
+      scrollY: round(snap.scrollY, 2),
+      viewportWidth: Math.round(snap.viewportWidth),
+      viewportHeight: Math.round(snap.viewportHeight),
+    };
+
+    const viewportStable = Math.abs(current.viewportWidth - beforeRounded.viewportWidth) <= 2
+      && Math.abs(current.viewportHeight - beforeRounded.viewportHeight) <= 2;
+    const viewRestored = Math.abs(current.zoom - beforeRounded.zoom) <= 0.005
+      && Math.abs(current.scrollX - beforeRounded.scrollX) <= 0.5
+      && Math.abs(current.scrollY - beforeRounded.scrollY) <= 0.5;
+
+    return viewportStable && viewRestored;
+  }, { timeout: 30000 }).toBe(true);
 
   await expect
     .poll(

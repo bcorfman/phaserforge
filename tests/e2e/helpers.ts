@@ -10,10 +10,12 @@ type Rect = { minX: number; minY: number; maxX: number; maxY: number; centerX?: 
 type AssetDragPayload = { assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: string };
 
 const IS_CI = Boolean(process.env.CI);
-const APP_BOOT_TIMEOUT_MS = 60000;
+// Keep boot attempts bounded so helper-level retries can complete within the per-test timeout.
+// When running multiple browsers locally, the shared web server can be slower to respond.
+const APP_BOOT_TIMEOUT_MS = IS_CI ? 60000 : process.env.PW_ALL_BROWSERS === '1' ? 10000 : 20000;
 // Local runs can still be resource constrained (e.g. 3 workers + fresh Vite server per run),
 // so keep navigation/scene timeouts a bit more forgiving to avoid false negatives.
-const NAVIGATE_TIMEOUT_MS = IS_CI ? 45000 : 30000;
+const NAVIGATE_TIMEOUT_MS = IS_CI ? 45000 : process.env.PW_ALL_BROWSERS === '1' ? 10000 : 30000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 60000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 
@@ -39,7 +41,7 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
 
   // Multiple retries help when a worker lands on a stale/blank page after navigation.
   // Keep the total time bounded so per-test `beforeEach` hooks don't exceed their 120s timeout in CI.
-  const maxAttempts = 2;
+  const maxAttempts = IS_CI ? 2 : 3;
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
@@ -48,6 +50,12 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
       break;
     } catch (error) {
       lastError = error;
+      // A fast reload between attempts avoids repeatedly waiting on a stuck initial navigation.
+      try {
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: NAVIGATE_TIMEOUT_MS });
+      } catch {
+        // Ignore reload errors and let the next boot attempt try a fresh navigation.
+      }
     }
   }
   if (lastError) {

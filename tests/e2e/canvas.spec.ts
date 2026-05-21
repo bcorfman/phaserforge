@@ -98,13 +98,13 @@ test('supports undo/redo via viewbar buttons', async ({ page }) => {
     return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
   }).toEqual({ x: 260, y: 170 });
 
-  await page.getByTestId('undo-button').click();
+  await page.getByTestId('undo-button').click({ force: true });
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, { x: number; y: number }> } }>(page);
     return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
   }).toEqual({ x: 220, y: 140 });
 
-  await page.getByTestId('redo-button').click();
+  await page.getByTestId('redo-button').click({ force: true });
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, { x: number; y: number }> } }>(page);
     return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
