@@ -507,12 +507,19 @@ function AppShell() {
             setLeftPaneMouseDragging(true);
           }}
         />
-        <main aria-labelledby="viewport-heading" className="pane pane-center" data-testid="canvas-pane">
-          <section className="viewbar shell-card" data-testid="viewbar">
-            <div className="viewbar-controls-row">
-              <div className="viewbar-group">
-                <button
-                  aria-label="Fit view"
+	        <main aria-labelledby="viewport-heading" className="pane pane-center" data-testid="canvas-pane">
+	          <section className="viewbar shell-card" data-testid="viewbar">
+	            <div className="viewbar-copy">
+	              <p className="eyebrow">Canvas</p>
+	              <h2 className="section-title" id="viewport-heading">Viewport</h2>
+	              <p className="section-copy">
+	                Pan with middle mouse or Space + drag. Use zoom controls to inspect sprite spacing and bounds.
+	              </p>
+	            </div>
+	            <div className="viewbar-controls-row">
+	              <div className="viewbar-group">
+	                <button
+	                  aria-label="Fit view"
                   className="button"
                   data-testid="fit-view-button"
                   type="button"
@@ -593,19 +600,12 @@ function AppShell() {
                     />
                   </label>
                 </div>
-              </div>
-            </div>
-            <div className="viewbar-copy">
-              <p className="eyebrow">Canvas</p>
-              <h2 className="section-title" id="viewport-heading">Viewport</h2>
-              <p className="section-copy">
-                Pan with middle mouse or Space + drag. Use zoom controls to inspect sprite spacing and bounds.
-              </p>
-            </div>
-          </section>
-          <div className="phaser-frame" data-testid="phaser-frame">
-            <CanvasOverlay gridSnapEnabled={gridSnapEnabled} />
-            {!state.hasSeenViewHint && (
+	              </div>
+	            </div>
+	          </section>
+	          <div className="phaser-frame" data-testid="phaser-frame">
+	            <CanvasOverlay gridSnapEnabled={gridSnapEnabled} />
+	            {!state.hasSeenViewHint && (
               <div className="view-hint" data-testid="view-hint">
                 <div className="view-hint-title">View Controls</div>
                 <div className="view-hint-text">

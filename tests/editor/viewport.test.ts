@@ -7,6 +7,7 @@ import {
   getFitZoom,
   getMaxZoom,
   getNextZoom,
+  getResizedViewportScroll,
   getZoomedScroll,
 } from '../../src/editor/viewport';
 
@@ -40,6 +41,45 @@ describe('viewport helpers', () => {
       scrollX: 100,
       scrollY: 75,
     });
+  });
+
+  it('keeps the camera center stable when the viewport is resized', () => {
+    const zoom = 1;
+    const prevViewport = { w: 800, h: 600 };
+    const origin = { x: 0.5, y: 0.5 };
+    const scroll = { x: 100, y: 50 };
+    const prevOffset = {
+      x: prevViewport.w * origin.x * (1 - 1 / zoom),
+      y: prevViewport.h * origin.y * (1 - 1 / zoom),
+    };
+    const prevCenter = {
+      x: scroll.x + prevOffset.x + prevViewport.w / 2,
+      y: scroll.y + prevOffset.y + prevViewport.h / 2,
+    };
+
+    const nextViewport = { w: 1200, h: 900 };
+    const next = getResizedViewportScroll(
+      scroll.x,
+      scroll.y,
+      prevViewport.w,
+      prevViewport.h,
+      nextViewport.w,
+      nextViewport.h,
+      zoom,
+      origin.x,
+      origin.y
+    );
+    const nextOffset = {
+      x: nextViewport.w * origin.x * (1 - 1 / zoom),
+      y: nextViewport.h * origin.y * (1 - 1 / zoom),
+    };
+    const nextCenter = {
+      x: next.scrollX + nextOffset.x + nextViewport.w / 2,
+      y: next.scrollY + nextOffset.y + nextViewport.h / 2,
+    };
+
+    expect(nextCenter.x).toBeCloseTo(prevCenter.x, 5);
+    expect(nextCenter.y).toBeCloseTo(prevCenter.y, 5);
   });
 
   it('clamps camera scroll to the world extents', () => {
