@@ -3,22 +3,39 @@ import { DEFAULT_WORLD } from './sceneWorld';
 export const SCENE_WIDTH = DEFAULT_WORLD.width;
 export const SCENE_HEIGHT = DEFAULT_WORLD.height;
 export const MIN_ZOOM = 0.5;
-export const MAX_ZOOM = 3;
+export const BASE_MAX_ZOOM = 3;
+export const ABS_MAX_ZOOM = 24;
 export const ZOOM_STEP = 0.2;
 const FIT_PADDING = 48;
 
-export function clampZoom(zoom: number): number {
-  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(zoom.toFixed(2))));
+export function getMaxZoom(
+  viewportWidth: number,
+  viewportHeight: number,
+  worldWidth = SCENE_WIDTH,
+  worldHeight = SCENE_HEIGHT
+): number {
+  const safeWorldWidth = Math.max(1, worldWidth);
+  const safeWorldHeight = Math.max(1, worldHeight);
+  const fillZoom = Math.min(viewportWidth / safeWorldWidth, viewportHeight / safeWorldHeight);
+  const desiredMax = Math.max(BASE_MAX_ZOOM, fillZoom);
+  // Quantize upwards to the UI step so the "+" button can always reach the fill zoom (no off-by-a-step ceiling).
+  const quantizedMax = Math.ceil(desiredMax / ZOOM_STEP) * ZOOM_STEP;
+  return Math.min(ABS_MAX_ZOOM, Math.max(BASE_MAX_ZOOM, Number(quantizedMax.toFixed(2))));
+}
+
+export function clampZoom(zoom: number, maxZoom = BASE_MAX_ZOOM): number {
+  return Math.min(maxZoom, Math.max(MIN_ZOOM, Number(zoom.toFixed(2))));
 }
 
 export function getFitZoom(viewportWidth: number, viewportHeight: number, worldWidth = SCENE_WIDTH, worldHeight = SCENE_HEIGHT): number {
   const width = Math.max(1, viewportWidth - FIT_PADDING * 2);
   const height = Math.max(1, viewportHeight - FIT_PADDING * 2);
-  return clampZoom(Math.min(1, width / worldWidth, height / worldHeight));
+  const zoom = Math.min(width / Math.max(1, worldWidth), height / Math.max(1, worldHeight));
+  return clampZoom(zoom, getMaxZoom(viewportWidth, viewportHeight, worldWidth, worldHeight));
 }
 
-export function getNextZoom(currentZoom: number, direction: 'in' | 'out'): number {
-  return clampZoom(currentZoom + (direction === 'in' ? ZOOM_STEP : -ZOOM_STEP));
+export function getNextZoom(currentZoom: number, direction: 'in' | 'out', maxZoom = BASE_MAX_ZOOM): number {
+  return clampZoom(currentZoom + (direction === 'in' ? ZOOM_STEP : -ZOOM_STEP), maxZoom);
 }
 
 export function formatZoomPercent(zoom: number): string {
