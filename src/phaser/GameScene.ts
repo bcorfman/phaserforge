@@ -343,17 +343,9 @@ export class GameScene extends Phaser.Scene {
     const world = getSceneWorld(sceneSpec);
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const nextZoom = clampZoom(this.pendingViewState.zoom, maxZoom);
-    const clamped = clampCameraScroll(
-      this.pendingViewState.scrollX,
-      this.pendingViewState.scrollY,
-      this.scale.width,
-      this.scale.height,
-      world.width,
-      world.height,
-      nextZoom
-    );
     this.cameras.main.setZoom(nextZoom);
-    this.cameras.main.setScroll(clamped.scrollX, clamped.scrollY);
+    // Preserve captured view state exactly (it originated from a clamped editor view).
+    this.cameras.main.setScroll(this.pendingViewState.scrollX, this.pendingViewState.scrollY);
     this.pendingViewState = undefined;
   }
 

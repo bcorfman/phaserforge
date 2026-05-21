@@ -59,6 +59,48 @@ export function getZoomedScroll(
   };
 }
 
+export function getResizedViewportScroll(
+  scrollX: number,
+  scrollY: number,
+  prevViewportWidth: number,
+  prevViewportHeight: number,
+  nextViewportWidth: number,
+  nextViewportHeight: number,
+  zoom: number,
+  originX = 0.5,
+  originY = 0.5
+): { scrollX: number; scrollY: number } {
+  const safeZoom = Math.max(0.0001, zoom);
+  const prevOffsetX = prevViewportWidth * originX * (1 - 1 / safeZoom);
+  const prevOffsetY = prevViewportHeight * originY * (1 - 1 / safeZoom);
+  const nextOffsetX = nextViewportWidth * originX * (1 - 1 / safeZoom);
+  const nextOffsetY = nextViewportHeight * originY * (1 - 1 / safeZoom);
+  const centerWorldX = scrollX + prevOffsetX + prevViewportWidth / (2 * safeZoom);
+  const centerWorldY = scrollY + prevOffsetY + prevViewportHeight / (2 * safeZoom);
+  return {
+    scrollX: centerWorldX - nextOffsetX - nextViewportWidth / (2 * safeZoom),
+    scrollY: centerWorldY - nextOffsetY - nextViewportHeight / (2 * safeZoom),
+  };
+}
+
+export function getCenteredCameraScroll(
+  viewportWidth: number,
+  viewportHeight: number,
+  worldWidth: number,
+  worldHeight: number,
+  zoom: number,
+  originX = 0.5,
+  originY = 0.5
+): { scrollX: number; scrollY: number } {
+  const safeZoom = Math.max(0.0001, zoom);
+  const offsetX = viewportWidth * originX * (1 - 1 / safeZoom);
+  const offsetY = viewportHeight * originY * (1 - 1 / safeZoom);
+  return {
+    scrollX: worldWidth / 2 - offsetX - viewportWidth / (2 * safeZoom),
+    scrollY: worldHeight / 2 - offsetY - viewportHeight / (2 * safeZoom),
+  };
+}
+
 export function clampCameraScroll(
   scrollX: number,
   scrollY: number,
@@ -66,14 +108,19 @@ export function clampCameraScroll(
   viewportHeight: number,
   worldWidth: number,
   worldHeight: number,
-  zoom: number
+  zoom: number,
+  originX = 0.5,
+  originY = 0.5
 ): { scrollX: number; scrollY: number } {
-  const visibleWidth = viewportWidth / zoom;
-  const visibleHeight = viewportHeight / zoom;
-  const minScrollX = Math.min(0, worldWidth - visibleWidth);
-  const maxScrollX = Math.max(0, worldWidth - visibleWidth);
-  const minScrollY = Math.min(0, worldHeight - visibleHeight);
-  const maxScrollY = Math.max(0, worldHeight - visibleHeight);
+  const safeZoom = Math.max(0.0001, zoom);
+  const visibleWidth = viewportWidth / safeZoom;
+  const visibleHeight = viewportHeight / safeZoom;
+  const offsetX = viewportWidth * originX * (1 - 1 / safeZoom);
+  const offsetY = viewportHeight * originY * (1 - 1 / safeZoom);
+  const minScrollX = Math.min(0, worldWidth - visibleWidth) - offsetX;
+  const maxScrollX = Math.max(0, worldWidth - visibleWidth) - offsetX;
+  const minScrollY = Math.min(0, worldHeight - visibleHeight) - offsetY;
+  const maxScrollY = Math.max(0, worldHeight - visibleHeight) - offsetY;
 
   return {
     scrollX: Math.min(maxScrollX, Math.max(minScrollX, scrollX)),
