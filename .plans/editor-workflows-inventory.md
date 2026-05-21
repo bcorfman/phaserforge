@@ -198,10 +198,25 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### A58 — Clear Scene Contents
 - Scene tab → Scenes → overflow menu `⋯` → `Clear Scene…` (confirm).
 
+### A59 — Layout Selection (Arrange / Position)
+- With 2+ sprites selected: on-canvas selection bar → `Layout…`
+- **Arrange items** (changes internal spacing):
+  - `Distribute X/Y` spaces items evenly between endpoints (stable sort along the chosen axis).
+  - `Apply Spacing X/Y` enforces fixed center-to-center spacing (units in Grid cells or Pixels).
+- **Position selection** (moves the selection as one; preserves spacing):
+  - `Set X / Set Y / Set X+Y` shifts the *selection bounds center* to the target value(s).
+  - `Align selection` moves the *selection bounds* to world edges/center (Center targets the world center by default).
+- **Advanced** (explicit overlap / edge matching):
+  - `Stack …` intentionally overlaps by aligning item centers to the anchor item.
+  - `Match … edges` aligns item edges to the anchor item.
+
+### A60 — Create Text Entity
+- Entity List → Scenes → Text → `+ Add`.
+
 ## Composite Workflows (built from atomic workflows)
 
 ### W1 — Basic Scene Layout (blocking + spacing)
-- A1/A2 select → A8/A9 navigate → A10 optionally snap → A11 drag place → A12 fine nudge → A6 iterate.
+- A1/A2 select → A8/A9 navigate → A10 optionally snap → A11 drag place → A59 arrange/position → A12 fine nudge → A6 iterate.
 
 ### W2 — Formation Authoring (grouping existing sprites)
 - A2 select multiple sprites → A16 create group → A11 move formation → A28 convert/tune layout → A17/A18 adjust membership.
