@@ -113,6 +113,8 @@ export function EntityListView({
   const menuRootRef = useRef<HTMLDivElement | null>(null);
   const [spritesAddMenu, setSpritesAddMenu] = useState<{ sceneId: string; x: number; y: number } | null>(null);
   const spritesAddMenuRootRef = useRef<HTMLDivElement | null>(null);
+  const [spriteFromAssetPicker, setSpriteFromAssetPicker] = useState<{ sceneId: string; x: number; y: number } | null>(null);
+  const spriteFromAssetPickerRootRef = useRef<HTMLDivElement | null>(null);
   const [duplicateDialog, setDuplicateDialog] = useState<{
     sceneId: string;
     entityIds: string[];
@@ -161,6 +163,25 @@ export function EntityListView({
     window.addEventListener('pointerdown', handlePointerDown);
     return () => window.removeEventListener('pointerdown', handlePointerDown);
   }, [spritesAddMenu]);
+
+  useEffect(() => {
+    if (!spriteFromAssetPicker) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = spriteFromAssetPickerRootRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setSpriteFromAssetPicker(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSpriteFromAssetPicker(null);
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [spriteFromAssetPicker]);
 
   useEffect(() => {
     if (!duplicateDialog) return;
@@ -265,13 +286,18 @@ export function EntityListView({
       const root = rootRef.current;
       if (!root) return;
 
-      const testIds =
-        kind === 'entity'
-          ? [`ungrouped-entity-${id}`, `ungrouped-entity-${sceneId}-${id}`]
-          : kind === 'group'
-            ? [`group-item-${id}`, `group-item-${sceneId}-${id}`]
-            : kind === 'trigger'
-              ? [`trigger-zone-${id}`, `trigger-zone-${sceneId}-${id}`]
+	      const testIds =
+	        kind === 'entity'
+	          ? [
+	            `ungrouped-entity-${id}`,
+	            `ungrouped-entity-${sceneId}-${id}`,
+	            `text-entity-${id}`,
+	            `text-entity-${sceneId}-${id}`,
+	          ]
+	          : kind === 'group'
+	            ? [`group-item-${id}`, `group-item-${sceneId}-${id}`]
+	            : kind === 'trigger'
+	              ? [`trigger-zone-${id}`, `trigger-zone-${sceneId}-${id}`]
               : kind === 'scene'
                 ? [`scene-item-${id}`]
                 : [];
@@ -310,18 +336,19 @@ export function EntityListView({
       const formationIds = summary.groups.map((entry) => entry.group.id);
       const triggerIds = ((sceneForKeys.triggers ?? []) as TriggerZoneSpec[]).map((zone) => zone.id as string);
 
-      const focusRow = (kind: 'entity' | 'group' | 'trigger', id: string) => {
-        const root = rootRef.current;
-        if (!root) return;
-        const testId =
-          kind === 'entity'
-            ? `ungrouped-entity-${id}`
-            : kind === 'group'
-              ? `group-item-${id}`
-              : `trigger-zone-${id}`;
-        const row = root.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
-        row?.focus();
-      };
+	      const focusRow = (kind: 'entity' | 'group' | 'trigger', id: string) => {
+	        const root = rootRef.current;
+	        if (!root) return;
+	        if (kind === 'entity') {
+	          const row = (root.querySelector(`[data-testid="ungrouped-entity-${id}"]`) ??
+	            root.querySelector(`[data-testid="text-entity-${id}"]`)) as HTMLElement | null;
+	          row?.focus();
+	          return;
+	        }
+	        const testId = kind === 'group' ? `group-item-${id}` : `trigger-zone-${id}`;
+	        const row = root.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+	        row?.focus();
+	      };
 
       const stepSelection = (ids: string[], currentId: string, delta: number, kind: 'entity' | 'group' | 'trigger') => {
         const index = ids.indexOf(currentId);
@@ -525,9 +552,11 @@ export function EntityListView({
               const isExpanded = expandedScenes[sceneId] ?? (sceneId === currentSceneId);
               const sceneForRow = project.scenes[sceneId];
               const summary = summarizeSceneGroups(sceneForRow);
-              const groupsForRow = summary.groups;
-              const ungroupedForRow = summary.ungroupedEntities;
-              const zonesForRow = (sceneForRow.triggers ?? []) as TriggerZoneSpec[];
+	                  const groupsForRow = summary.groups;
+	              const ungroupedForRow = summary.ungroupedEntities;
+	              const ungroupedSpritesForRow = ungroupedForRow.filter((entity) => !entity.text);
+	              const ungroupedTextForRow = ungroupedForRow.filter((entity) => Boolean(entity.text));
+	              const zonesForRow = (sceneForRow.triggers ?? []) as TriggerZoneSpec[];
 
               const showActiveSelection = sceneId === currentSceneId;
 
@@ -614,9 +643,9 @@ export function EntityListView({
                         </button>
                       </div>
 
-                      <div
-                        className={sceneId === currentSceneId && dragOverSprites ? 'scene-graph-drop-target scene-graph-drop-target-sprites' : undefined}
-                        data-testid={sceneId === currentSceneId ? 'sprites-dropzone' : `sprites-dropzone-${sceneId}`}
+	                      <div
+	                        className={sceneId === currentSceneId && dragOverSprites ? 'scene-graph-drop-target scene-graph-drop-target-sprites' : undefined}
+	                        data-testid={sceneId === currentSceneId ? 'sprites-dropzone' : `sprites-dropzone-${sceneId}`}
                         onDragOver={(e) => {
                           if (sceneId !== currentSceneId) return;
                           e.preventDefault();
@@ -630,14 +659,14 @@ export function EntityListView({
                           if (sceneId !== currentSceneId) return;
                           handleDropOnSprites(e);
                         }}
-                      >
-                        {ungroupedForRow.length === 0 ? (
-                          <div className="muted">No ungrouped sprites.</div>
-                        ) : (
-                          ungroupedForRow.map((entity) => (
-                            <div key={entity.id} className="member-row">
-                              {editingId === entity.id && editingKind === 'entity' ? (
-                                <input
+	                      >
+	                        {ungroupedSpritesForRow.length === 0 ? (
+	                          <div className="muted">No ungrouped sprites.</div>
+	                        ) : (
+	                          ungroupedSpritesForRow.map((entity) => (
+	                            <div key={entity.id} className="member-row">
+	                              {editingId === entity.id && editingKind === 'entity' ? (
+	                                <input
                                   autoFocus
                                   className="scene-graph-rename-input"
                                   value={editingName}
@@ -679,9 +708,81 @@ export function EntityListView({
                                 ⋯
                               </button>
                             </div>
-                          ))
-                        )}
-                      </div>
+	                          ))
+	                        )}
+	                      </div>
+
+	                      {/* Text */}
+	                      <div className="panel-heading-row" style={{ marginTop: 12 }}>
+	                        <h4 className="panel-heading" id={`scene-${sceneId}-text`}>Text</h4>
+	                        <button
+	                          className="button button-compact"
+	                          data-testid={`texts-add-${sceneId}`}
+	                          type="button"
+	                          disabled={mode !== 'edit'}
+	                          onClick={() => {
+	                            ensureCurrentScene(sceneId);
+	                            dispatch({ type: 'set-sidebar-scope', scope: 'scene' });
+	                            dispatch({ type: 'create-text-entity' } as any);
+	                          }}
+	                        >
+	                          + Add
+	                        </button>
+	                      </div>
+
+	                      <div className="member-list" style={{ paddingLeft: 6 }}>
+	                        {ungroupedTextForRow.length === 0 ? (
+	                          <div className="muted">No text entities.</div>
+	                        ) : (
+	                          ungroupedTextForRow.map((entity) => (
+	                            <div key={entity.id} className="member-row">
+	                              {editingId === entity.id && editingKind === 'entity' ? (
+	                                <input
+	                                  autoFocus
+	                                  className="scene-graph-rename-input"
+	                                  value={editingName}
+	                                  onChange={(e) => setEditingName(e.target.value)}
+	                                  onBlur={saveRename}
+	                                  onKeyDown={handleKeyDown}
+	                                  data-testid={`rename-entity-input-${entity.id}`}
+	                                />
+	                              ) : (
+		                                <button
+		                                  className={`list-item ${showActiveSelection && isSelected(selection, 'entity', entity.id) ? 'active' : ''}`}
+		                                  data-testid={sceneId === currentSceneId ? `text-entity-${entity.id}` : `text-entity-${sceneId}-${entity.id}`}
+	                                  onClick={(event) => {
+	                                    if (sceneId !== currentSceneId) {
+	                                      selectInScene(sceneId, { kind: 'entity', id: entity.id });
+	                                      return;
+	                                    }
+	                                    handleEntityClick(entity.id, event);
+		                                  }}
+		                                  type="button"
+		                                  draggable={sceneId === currentSceneId && editingKind == null}
+		                                  onDragStart={(e) => {
+		                                    if (sceneId !== currentSceneId) return;
+		                                    if (editingKind != null) return;
+		                                    handleEntityDragStart(entity.id, e);
+		                                  }}
+		                                  onDragEnd={handleDragEnd}
+		                                  disabled={sceneId !== currentSceneId}
+		                                >
+	                                  {entity.name ?? entity.id}
+	                                </button>
+	                              )}
+	                              <button
+	                                aria-label={`More options for entity ${entity.id}`}
+	                                className="scene-graph-button"
+	                                data-testid={sceneId === currentSceneId ? `entity-menu-${entity.id}` : `entity-menu-${sceneId}-${entity.id}`}
+	                                type="button"
+	                                onClick={(e) => openOverflowMenu(e, { kind: 'entity', sceneId, entityId: entity.id })}
+	                              >
+	                                ⋯
+	                              </button>
+	                            </div>
+	                          ))
+	                        )}
+	                      </div>
 
                       {/* Formations */}
                       <div className="panel-heading-row" style={{ marginTop: 10 }}>
@@ -1058,34 +1159,72 @@ export function EntityListView({
           <button
             type="button"
             className="scene-graph-menu-item"
-            data-testid="sprites-add-menu-import-sprite"
+            data-testid="sprites-add-menu-from-asset"
             onClick={() => {
               const targetSceneId = spritesAddMenu.sceneId;
+              const nextPicker = spritesAddMenu;
               setSpritesAddMenu(null);
               ensureCurrentScene(targetSceneId);
-              dispatch({ type: 'set-sidebar-scope', scope: 'project' });
-              queueMicrotask(() => {
-                const panel = document.querySelector('#project-import-sprites');
-                if (panel instanceof HTMLElement) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              });
+              setSpriteFromAssetPicker(nextPicker);
             }}
-          >
-            Sprite (import)
-          </button>
-          <button
-            type="button"
-            className="scene-graph-menu-item"
-            data-testid="sprites-add-menu-create-text"
-            onClick={() => {
-              const targetSceneId = spritesAddMenu.sceneId;
-              setSpritesAddMenu(null);
-              ensureCurrentScene(targetSceneId);
-              dispatch({ type: 'set-sidebar-scope', scope: 'scene' });
-              dispatch({ type: 'create-text-entity' } as any);
-            }}
-          >
-            Text (new)
-          </button>
+	          >
+	            Sprite (from Asset)
+	          </button>
+	        </div>
+	      ) : null}
+
+      {spriteFromAssetPicker ? (
+        <div
+          ref={spriteFromAssetPickerRootRef}
+          className="scene-graph-menu"
+          style={{ position: 'fixed', left: spriteFromAssetPicker.x, top: spriteFromAssetPicker.y, zIndex: 52, minWidth: 260, maxHeight: 360, overflow: 'auto' }}
+          data-testid="sprite-from-asset-picker"
+          role="menu"
+        >
+          <div className="scene-graph-menu-hint">Sprite (from Asset)</div>
+          {[
+            ...Object.keys(project.assets.images ?? {}).sort().map((assetId) => ({ assetKind: 'image' as const, assetId })),
+            ...Object.keys(project.assets.spriteSheets ?? {}).sort().map((assetId) => ({ assetKind: 'spritesheet' as const, assetId })),
+          ].length === 0 ? (
+            <div className="scene-graph-menu-item muted">No image assets yet.</div>
+          ) : (
+            <>
+              {Object.keys(project.assets.images ?? {}).sort().map((assetId) => (
+                <button
+                  key={`image:${assetId}`}
+                  type="button"
+                  className="scene-graph-menu-item"
+                  data-testid={`sprite-from-asset-pick-image-${assetId}`}
+                  onClick={() => {
+                    const targetSceneId = spriteFromAssetPicker.sceneId;
+                    setSpriteFromAssetPicker(null);
+                    ensureCurrentScene(targetSceneId);
+                    dispatch({ type: 'set-sidebar-scope', scope: 'scene' });
+                    dispatch({ type: 'create-entity-from-asset', assetKind: 'image', assetId } as any);
+                  }}
+                >
+                  {assetId}
+                </button>
+              ))}
+              {Object.keys(project.assets.spriteSheets ?? {}).sort().map((assetId) => (
+                <button
+                  key={`spritesheet:${assetId}`}
+                  type="button"
+                  className="scene-graph-menu-item"
+                  data-testid={`sprite-from-asset-pick-spritesheet-${assetId}`}
+                  onClick={() => {
+                    const targetSceneId = spriteFromAssetPicker.sceneId;
+                    setSpriteFromAssetPicker(null);
+                    ensureCurrentScene(targetSceneId);
+                    dispatch({ type: 'set-sidebar-scope', scope: 'scene' });
+                    dispatch({ type: 'create-entity-from-asset', assetKind: 'spritesheet', assetId } as any);
+                  }}
+                >
+                  {assetId} <span className="badge badge-inline">SHEET</span>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       ) : null}
 

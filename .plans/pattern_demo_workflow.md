@@ -27,8 +27,13 @@ This version assumes the features in `.plans/implementation-plan-qol-text-bounds
 
 - Turn on Snap if desired (**A10 — Toggle Grid Snap**).
 - Place the ships approximately, then:
-  - Select the 4 bottom-row ships → on-canvas selection bar → **Layout…** → **Align → Center Y** (to line them up at `y=450`), then nudge/drag X to exact centers.
-  - Select the 3 top-row ships → selection bar → **Layout…** → **Align → Center Y** (to `y=200`) → **Spacing → X = 200px** (or equivalent grid cells) to land at `x=200, 400, 600`.
+  - Select the 4 bottom-row ships → on-canvas selection bar → **Layout…** (**A59 — Layout Selection**) →
+    - **Position selection → Set Y = 450 → Set Y** (snaps the whole row to the correct Y without collapsing spacing)
+    - Nudge/drag X to the exact centers (these four X positions are not evenly spaced in the Arcade demo).
+  - Select the 3 top-row ships → selection bar → **Layout…** (**A59 — Layout Selection**) →
+    - **Arrange items → Spacing X = 200px → Apply Spacing X** (or equivalent grid cells)
+    - **Position selection → Set Y = 200 → Set Y**
+    - **Align selection → Center X** (centers the row on world center)
 - Exact centers to match the Arcade demo:
   - Bottom row `y=450`: Wave `x=150`, Zigzag `x=300`, Figure-8 `x=500`, Orbit `x=650`
   - Top row `y=200`: Spiral `x=200`, Bounce `x=400`, Patrol `x=600`
