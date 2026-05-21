@@ -30,7 +30,7 @@ import {
 import { getEditableBoundsConditionId } from '../editor/boundsCondition';
 import { getSceneWorld } from '../editor/sceneWorld';
 import { resolveTextEntityDefaults, resolveTextFontFamily } from '../editor/textEntity';
-import { canPanCamera, clampCameraScroll, clampZoom, getFitZoom, getNextZoom, getZoomedScroll } from '../editor/viewport';
+import { canPanCamera, clampCameraScroll, clampZoom, getFitZoom, getMaxZoom, getNextZoom, getZoomedScroll } from '../editor/viewport';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { resolvePointerModifier } from './inputModifiers';
 
@@ -325,12 +325,17 @@ export class EditorScene extends Phaser.Scene {
     runtimeEvents?: { pendingEvents: number; lastDrainedEventNames: string[] };
     referenceSpriteCount: number;
     zoom: number;
+    maxZoom?: number;
     scrollX: number;
     scrollY: number;
     viewportWidth: number;
     viewportHeight: number;
+    worldWidth?: number;
+    worldHeight?: number;
     backgroundLayerCount: number;
   } {
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     return {
       ready: Boolean(this.compiled),
       isActive: this.scene.isActive(),
@@ -339,10 +344,13 @@ export class EditorScene extends Phaser.Scene {
       ...(this.compiled?.debug ? { runtimeEvents: { ...this.compiled.debug } } : {}),
       referenceSpriteCount: this.referenceSprites.size,
       zoom: this.currentZoom,
+      maxZoom,
       scrollX: this.cameras.main.scrollX,
       scrollY: this.cameras.main.scrollY,
       viewportWidth: this.scale.width,
       viewportHeight: this.scale.height,
+      worldWidth: world.width,
+      worldHeight: world.height,
       backgroundLayerCount: this.backgroundObjects.length,
     };
   }
@@ -753,8 +761,9 @@ export class EditorScene extends Phaser.Scene {
       this.refreshBoundsOverlay(sceneSpec);
       this.applySelectionStyles();
       if (this.pendingViewState) {
-        const nextZoom = clampZoom(this.pendingViewState.zoom);
         const world = getSceneWorld(sceneSpec);
+        const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
+        const nextZoom = clampZoom(this.pendingViewState.zoom, maxZoom);
         const clamped = clampCameraScroll(
           this.pendingViewState.scrollX,
           this.pendingViewState.scrollY,
@@ -1781,7 +1790,9 @@ export class EditorScene extends Phaser.Scene {
       this.wheelZoomAnchor = { pointerX, pointerY, worldX: worldPoint.x, worldY: worldPoint.y };
     }
     const dominantDelta = Math.abs(deltaY) >= Math.abs(deltaX) ? deltaY : deltaX;
-    const nextZoom = clampZoom(this.currentZoom + (dominantDelta < 0 ? 0.1 : -0.1));
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
+    const nextZoom = clampZoom(this.currentZoom + (dominantDelta < 0 ? 0.1 : -0.1), maxZoom);
     if (nextZoom === this.currentZoom) return;
 
     const nextScroll = getZoomedScroll(
@@ -1825,11 +1836,28 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private zoomIn(): void {
-    this.applyZoom(getNextZoom(this.currentZoom, 'in'));
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
+    const next = getNextZoom(this.currentZoom, 'in', maxZoom);
+    // Phaser internally clamps camera zoom in a few places. Keep our state in sync by treating the camera as source of truth.
+    this.applyZoom(next);
+    const cameraZoom = this.cameras.main.zoom || this.currentZoom;
+    if (cameraZoom !== this.currentZoom) {
+      this.currentZoom = cameraZoom;
+      this.emitViewState();
+    }
   }
 
   private zoomOut(): void {
-    this.applyZoom(getNextZoom(this.currentZoom, 'out'));
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
+    const next = getNextZoom(this.currentZoom, 'out', maxZoom);
+    this.applyZoom(next);
+    const cameraZoom = this.cameras.main.zoom || this.currentZoom;
+    if (cameraZoom !== this.currentZoom) {
+      this.currentZoom = cameraZoom;
+      this.emitViewState();
+    }
   }
 
   private resetZoom(): void {
@@ -1844,7 +1872,8 @@ export class EditorScene extends Phaser.Scene {
 
   private applyZoom(zoom: number): void {
     const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
-    this.currentZoom = clampZoom(zoom);
+    const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
+    this.currentZoom = clampZoom(zoom, maxZoom);
     this.cameras.main.setZoom(this.currentZoom);
     const centeredScrollX = world.width / 2 - this.scale.width / (2 * this.currentZoom);
     const centeredScrollY = world.height / 2 - this.scale.height / (2 * this.currentZoom);

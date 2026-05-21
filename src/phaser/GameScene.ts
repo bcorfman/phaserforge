@@ -7,7 +7,7 @@ import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { getSceneWorld } from '../editor/sceneWorld';
 import { resolveTextEntityDefaults, resolveTextFontFamily } from '../editor/textEntity';
-import { clampCameraScroll, clampZoom } from '../editor/viewport';
+import { clampCameraScroll, clampZoom, getMaxZoom } from '../editor/viewport';
 import { OpRegistry } from '../compiler/opRegistry';
 import { BasicAudioService } from '../runtime/services/BasicAudioService';
 import { BasicInputService } from '../runtime/services/BasicInputService';
@@ -341,7 +341,8 @@ export class GameScene extends Phaser.Scene {
   private applyPendingViewState(sceneSpec: SceneSpec): void {
     if (!this.pendingViewState) return;
     const world = getSceneWorld(sceneSpec);
-    const nextZoom = clampZoom(this.pendingViewState.zoom);
+    const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
+    const nextZoom = clampZoom(this.pendingViewState.zoom, maxZoom);
     const clamped = clampCameraScroll(
       this.pendingViewState.scrollX,
       this.pendingViewState.scrollY,
@@ -370,10 +371,13 @@ export class GameScene extends Phaser.Scene {
     };
     runtimeEvents?: { pendingEvents: number; lastDrainedEventNames: string[] };
     zoom: number;
+    maxZoom?: number;
     scrollX: number;
     scrollY: number;
     viewportWidth: number;
     viewportHeight: number;
+    worldWidth?: number;
+    worldHeight?: number;
     backgroundLayerCount: number;
     audio?: { musicAssetId?: string; ambienceAssetIds: string[] };
     audioPlayback?: { musicIsPlaying: boolean; ambiencePlayingAssetIds: string[] };
@@ -389,6 +393,8 @@ export class GameScene extends Phaser.Scene {
     activeCollisionEventCount?: number;
     activeLastProcessedCollisionEventCount?: number;
   } {
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const audio = this.audioService?.getSnapshot();
     const audioPlayback = this.audioService?.getDebugPlayback?.();
     const input = this.inputService?.getSnapshot();
@@ -412,10 +418,13 @@ export class GameScene extends Phaser.Scene {
       },
       ...(this.compiled?.debug ? { runtimeEvents: { ...this.compiled.debug } } : {}),
       zoom: this.cameras.main.zoom,
+      maxZoom,
       scrollX: this.cameras.main.scrollX,
       scrollY: this.cameras.main.scrollY,
       viewportWidth: this.scale.width,
       viewportHeight: this.scale.height,
+      worldWidth: world.width,
+      worldHeight: world.height,
       backgroundLayerCount: this.baseBackgroundObjects.length + this.backgroundObjects.length,
       ...(audio ? { audio } : {}),
       ...(audioPlayback ? { audioPlayback } : {}),
