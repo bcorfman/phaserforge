@@ -151,24 +151,33 @@ test('side panes avoid horizontal overflow', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expect(page.getByTestId('inspector-pane')).toBeVisible();
 
-  const results = await page.evaluate(() => {
-    const panes = [
-      document.querySelector('[data-testid="entity-list-pane"]'),
-      document.querySelector('[data-testid="inspector-pane"]'),
-    ].filter(Boolean) as HTMLElement[];
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const panes = [
+        document.querySelector('[data-testid="entity-list-pane"]'),
+        document.querySelector('[data-testid="inspector-pane"]'),
+      ].filter(Boolean) as HTMLElement[];
 
-    return panes.map((pane) => {
-      const body = pane.querySelector('.panel.panel-scroll') as HTMLElement | null;
-      const el = body ?? pane;
-      return {
-        testId: pane.getAttribute('data-testid'),
-        clientWidth: el.clientWidth,
-        scrollWidth: el.scrollWidth,
-      };
-    });
-  });
+      const results = panes.map((pane) => {
+        const body = pane.querySelector('.panel.panel-scroll') as HTMLElement | null;
+        const el = body ?? pane;
+        return {
+          testId: pane.getAttribute('data-testid'),
+          clientWidth: el.clientWidth,
+          scrollWidth: el.scrollWidth,
+        };
+      });
 
-  for (const entry of results) {
-    expect(entry.scrollWidth, `pane ${entry.testId} scrollWidth`).toBeLessThanOrEqual(entry.clientWidth + 1);
-  }
+      const worst = results.reduce<{ testId: string | null; delta: number }>(
+        (acc, cur) => {
+          const delta = cur.scrollWidth - cur.clientWidth;
+          return delta > acc.delta ? { testId: cur.testId, delta } : acc;
+        },
+        { testId: null, delta: -Infinity }
+      );
+
+      const ok = results.every((entry) => entry.scrollWidth <= entry.clientWidth + 1);
+      return { ok, worst, results };
+    }), { timeout: 15000 })
+    .toMatchObject({ ok: true });
 });

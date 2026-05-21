@@ -3,7 +3,7 @@ import { EventBus, getActiveScene } from '../phaser/EventBus';
 import { useEditorStore, type Selection } from './EditorStore';
 import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
 import { getNextFormationName } from './behaviorCommands';
-import { clampPopupToViewport, placePopupNearRect } from './popupPositioning';
+import { clampPopupToViewport, constrainPopupSizeToViewport, placePopupNearRect, type Size } from './popupPositioning';
 import { CreateFormationDraftPanel } from './CreateFormationDraftPanel';
 import {
   alignByBounds,
@@ -27,9 +27,11 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   const scene = state.project.scenes[state.currentSceneId];
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [menuPopupSize, setMenuPopupSize] = useState<Size | null>(null);
   const menuRootRef = useRef<HTMLDivElement | null>(null);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [layoutPosition, setLayoutPosition] = useState<{ x: number; y: number } | null>(null);
+  const [layoutPopupSize, setLayoutPopupSize] = useState<Size | null>(null);
   const layoutRootRef = useRef<HTMLDivElement | null>(null);
   const [layoutUnits, setLayoutUnits] = useState<'grid' | 'pixels'>('grid');
   const [layoutSpacingX, setLayoutSpacingX] = useState('1');
@@ -38,6 +40,7 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   const [layoutSetY, setLayoutSetY] = useState('');
   const [groupPromptOpen, setGroupPromptOpen] = useState(false);
   const [groupPromptPosition, setGroupPromptPosition] = useState<{ x: number; y: number } | null>(null);
+  const [groupPromptPopupSize, setGroupPromptPopupSize] = useState<Size | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState('');
   const groupPromptRootRef = useRef<HTMLDivElement | null>(null);
   const [dragAssetHint, setDragAssetHint] = useState<{ kind: 'replace'; entityId: string; x: number; y: number } | { kind: 'create'; x: number; y: number } | null>(null);
@@ -121,6 +124,11 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
       }
       setGroupNameDraft(getNextFormationName(scene));
       setGroupPromptPosition({ x: 16, y: 120 });
+      setGroupPromptPopupSize(constrainPopupSizeToViewport({
+        popupSize: { width: 320, height: 160 },
+        viewportSize: { width: window.innerWidth, height: window.innerHeight },
+        padding: 12,
+      }));
       setGroupPromptOpen(true);
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -369,13 +377,17 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
 
   const openMenuNearElement = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
-    const desiredWidth = 320;
-    const desiredHeight = 360;
     const padding = 12;
+    const viewportSize = { width: window.innerWidth, height: window.innerHeight };
+    const constrainedSize = constrainPopupSizeToViewport({
+      popupSize: { width: 320, height: 360 },
+      viewportSize,
+      padding,
+    });
     const { x, y } = placePopupNearRect({
       anchorRect: rect,
-      popupSize: { width: desiredWidth, height: desiredHeight },
-      viewportSize: { width: window.innerWidth, height: window.innerHeight },
+      popupSize: constrainedSize,
+      viewportSize,
       padding,
       offset: 10,
       prefer: 'below',
@@ -383,24 +395,30 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     });
 
     setMenuPosition({ x, y });
+    setMenuPopupSize(constrainedSize);
     setMenuOpen(true);
   };
 
   const openLayoutNearElement = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
-    const desiredWidth = 360;
-    const desiredHeight = 320;
     const padding = 12;
+    const viewportSize = { width: window.innerWidth, height: window.innerHeight };
+    const constrainedSize = constrainPopupSizeToViewport({
+      popupSize: { width: 360, height: 320 },
+      viewportSize,
+      padding,
+    });
     const { x, y } = placePopupNearRect({
       anchorRect: rect,
-      popupSize: { width: desiredWidth, height: desiredHeight },
-      viewportSize: { width: window.innerWidth, height: window.innerHeight },
+      popupSize: constrainedSize,
+      viewportSize,
       padding,
       offset: 10,
       prefer: 'below',
       align: 'right',
     });
     setLayoutPosition({ x, y });
+    setLayoutPopupSize(constrainedSize);
     setLayoutOpen(true);
   };
 
@@ -435,19 +453,24 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
 
   const openGroupPromptNearElement = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
-    const desiredWidth = 320;
     const padding = 12;
-    const desiredHeight = 160;
+    const viewportSize = { width: window.innerWidth, height: window.innerHeight };
+    const constrainedSize = constrainPopupSizeToViewport({
+      popupSize: { width: 320, height: 160 },
+      viewportSize,
+      padding,
+    });
     const { x, y } = placePopupNearRect({
       anchorRect: rect,
-      popupSize: { width: desiredWidth, height: desiredHeight },
-      viewportSize: { width: window.innerWidth, height: window.innerHeight },
+      popupSize: constrainedSize,
+      viewportSize,
       padding,
       offset: 10,
       prefer: 'above',
       align: 'left',
     });
     setGroupPromptPosition({ x, y });
+    setGroupPromptPopupSize(constrainedSize);
     setGroupNameDraft(getNextFormationName(scene));
     setGroupPromptOpen(true);
   };
@@ -614,7 +637,13 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
           role="dialog"
           aria-label="Layout"
           ref={layoutRootRef}
-          style={{ left: layoutPosition.x, top: layoutPosition.y, width: 360 }}
+          style={{
+            left: layoutPosition.x,
+            top: layoutPosition.y,
+            width: layoutPopupSize?.width ?? 360,
+            maxHeight: layoutPopupSize?.height,
+            overflowY: layoutPopupSize ? 'auto' : undefined,
+          }}
         >
           <div className="canvas-selection-menu-heading" style={{ marginBottom: 6 }}>Layout</div>
 
@@ -768,7 +797,13 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
           role="menu"
           aria-label="Selection actions"
           ref={menuRootRef}
-          style={{ left: menuPosition.x, top: menuPosition.y }}
+          style={{
+            left: menuPosition.x,
+            top: menuPosition.y,
+            width: menuPopupSize?.width,
+            maxHeight: menuPopupSize?.height,
+            overflowY: menuPopupSize ? 'auto' : undefined,
+          }}
         >
           {state.selection.kind === 'entities' && (
             <button
@@ -785,6 +820,11 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
                 } else {
                   setGroupNameDraft(getNextFormationName(scene));
                   setGroupPromptPosition(menuPosition);
+                  setGroupPromptPopupSize(constrainPopupSizeToViewport({
+                    popupSize: { width: 320, height: 160 },
+                    viewportSize: { width: window.innerWidth, height: window.innerHeight },
+                    padding: 12,
+                  }));
                   setGroupPromptOpen(true);
                 }
               }}
@@ -868,7 +908,13 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
           role="dialog"
           aria-label="Group selection"
           ref={groupPromptRootRef}
-          style={{ left: groupPromptPosition.x, top: groupPromptPosition.y }}
+          style={{
+            left: groupPromptPosition.x,
+            top: groupPromptPosition.y,
+            maxWidth: groupPromptPopupSize?.width,
+            maxHeight: groupPromptPopupSize?.height,
+            overflowY: groupPromptPopupSize ? 'auto' : undefined,
+          }}
         >
           <div className="canvas-selection-menu-heading" style={{ marginBottom: 4 }}>Group…</div>
           <label className="canvas-submenu-field" style={{ padding: 0 }}>
