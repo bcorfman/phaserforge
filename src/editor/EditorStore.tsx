@@ -2307,7 +2307,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     case 'apply-loop-template': {
       const scene = getActiveScene(state);
       const target = action.target;
-      const eventId = action.eventId;
+      const eventId = action.eventId === '__legacy__' ? undefined : action.eventId;
       let nextScene: SceneSpec = scene;
       let selectId: Id | undefined;
 

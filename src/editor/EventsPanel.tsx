@@ -579,7 +579,7 @@ function EventBlockCard({
 
   const pickPreset = (presetId: string) => {
     if (presetId.startsWith('loops:')) {
-      onApplyLoopTemplate(presetId as any, block.id as any);
+      onApplyLoopTemplate(presetId as any, eventIdForRows);
       setDrawerOpen(false);
       return;
     }
@@ -831,7 +831,7 @@ function EventBlockCard({
         <div className="inspector-row" data-testid="event-actions-selection-bar">
           <span>{selectedCount} selected</span>{' '}
           {selectedParallelGroupId ? (
-                <button className="tag-button" type="button" onClick={() => onUngroupParallel(selectedParallelGroupId, eventIdForRows ?? (block.id as any))}>
+                <button className="tag-button" type="button" onClick={() => onUngroupParallel(selectedParallelGroupId, eventIdForRows)}>
               Ungroup
             </button>
           ) : (

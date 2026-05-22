@@ -6,14 +6,22 @@
 All phases and implementation changes should be TDD-driven. Each gesture or editing behavior starts with store/helper tests, then scene-level interaction tests where practical, then implementation. Maintain comprehensive test coverage for reducers, helpers, and integrations.
 
 ### Completion Verification (E2E Required; Must Be Non-Flaky)
-Before reporting any **code** changes (including new code) as completed, run `npm run test:e2e` and ensure it passes with **zero flakes**.
+Before reporting any **code** changes (including new code) as completed, run the required E2E checks for the type of change and ensure they pass with **zero flakes**.
+
+#### Local E2E policy (what `npm dev test:e2e` means)
+Locally, **only after making GUI changes**, run **Chromium smoke** E2E tests:
+- GUI changes include anything under `src/editor/**`, `src/App.tsx`, or `src/phaser/EditorScene.ts` (and any other user-visible UI/editor workflow changes).
+- Treat running `npm dev test:e2e` locally as: “run Playwright E2E smoke on Chromium only”.
+  - Implementation detail: run `npm run test:e2e -- --project=chromium --grep @smoke` (equivalently `PW_PROJECTS=chromium npm run test:e2e -- --grep @smoke`).
+
+For non-GUI-only changes (server, data, helpers, etc.), prefer unit/integration tests and run E2E only when the change reasonably impacts editor behavior, app boot, or user-visible flows.
 
 Important: GitHub Actions CI is configured to fail on flaky E2E tests. The bar for completion is:
 - All E2E tests pass, and
 - No E2E test is marked flaky (in any shard / browser / retry path).
 
 #### Local Repro Requirement (When Fixing a Specific Browser Failure)
-When addressing a reported E2E failure that is tied to a specific browser/project (e.g. `[edge]`, `[webkit]`, etc.), the agent MUST run that same Playwright project locally (at least the failing spec) as part of verification before declaring the fix complete, in addition to the full `npm run test:e2e` run.
+When addressing a reported E2E failure that is tied to a specific browser/project (e.g. `[edge]`, `[webkit]`, etc.), the agent MUST run that same Playwright project locally (at least the failing spec) as part of verification before declaring the fix complete, in addition to the baseline local E2E policy for the change (e.g. Chromium smoke for GUI changes).
 
 Non-code-only changes (docs, plans, mockups, etc.) do not require an E2E run. If E2E cannot be run (environment/tooling constraints), explicitly say so and report results of the closest equivalent verification performed.
 
