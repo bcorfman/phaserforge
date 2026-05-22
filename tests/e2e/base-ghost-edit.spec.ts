@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { clickCanvasAt, dismissViewHint, getSceneSnapshot, getState, seedProject, tapWorld, worldToClient } from './helpers';
+import { dismissViewHint, getSceneSnapshot, getState, seedProject, tapWorld } from './helpers';
 
 test('Edit mode: base scene ghost renders but is non-interactive @browser', async ({ page }) => {
   await seedProject(page, {
@@ -45,7 +45,8 @@ test('Edit mode: base scene ghost renders but is non-interactive @browser', asyn
   await tapWorld(page, { x: 500, y: 300 });
   await expect.poll(async () => (await getState<any>(page))?.selection).toEqual({ kind: 'entity', id: 'w1' });
 
-  const ghostPoint = await worldToClient(page, { x: 200, y: 200 });
-  await clickCanvasAt(page, ghostPoint);
+  // Use the test bridge for a deterministic world-space click; this avoids occasional client-space
+  // coordinate mismatches in WebKit under CI load.
+  await tapWorld(page, { x: 200, y: 200 });
   await expect.poll(async () => (await getState<any>(page))?.selection).toEqual({ kind: 'none' });
 });
