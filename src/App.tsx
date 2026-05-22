@@ -600,15 +600,15 @@ function AppShell() {
                     />
                   </label>
                 </div>
-	              </div>
-	            </div>
-	          </section>
-	          <div className="phaser-frame" data-testid="phaser-frame">
-	            <CanvasOverlay gridSnapEnabled={gridSnapEnabled} />
-	            {!state.hasSeenViewHint && (
-              <div className="view-hint" data-testid="view-hint">
-                <div className="view-hint-title">View Controls</div>
-                <div className="view-hint-text">
+		              </div>
+		            </div>
+		          </section>
+		          <div className="phaser-frame" data-testid="phaser-frame">
+		            <CanvasOverlay gridSnapEnabled={gridSnapEnabled} />
+		            {!state.hasSeenViewHint && (
+	              <div className="view-hint" data-testid="view-hint">
+	                <div className="view-hint-title">View Controls</div>
+	                <div className="view-hint-text">
                   Pan with middle mouse or Space + drag. Use zoom controls to inspect sprite spacing and bounds.
                 </div>
                 <button

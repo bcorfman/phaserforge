@@ -43,6 +43,7 @@ import {
 } from '../editor/viewport';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { resolvePointerModifier } from './inputModifiers';
+import { getPreferredTextResolution } from './textResolution';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
 const REFERENCE_GHOST_ALPHA_MULTIPLIER = 0.35;
@@ -149,6 +150,7 @@ export class EditorScene extends Phaser.Scene {
       color: '#22d3ee',
       backgroundColor: '#052f3a',
       padding: { left: 8, right: 8, top: 4, bottom: 4 },
+      resolution: getPreferredTextResolution(),
     });
     this.hitboxOverlayLabel.setDepth(13);
     this.hitboxOverlayLabel.setVisible(false);
@@ -1057,6 +1059,7 @@ export class EditorScene extends Phaser.Scene {
         color: '#ffdf9d',
         fontFamily: 'Space Grotesk',
         fontSize: '11px',
+        resolution: getPreferredTextResolution(),
       });
       label.setDepth(10);
 
@@ -1406,6 +1409,7 @@ export class EditorScene extends Phaser.Scene {
     sprite.setDepth(entity.depth ?? 0);
     if (sprite instanceof Phaser.GameObjects.Text) {
       const resolved = resolveTextEntityDefaults(textSpec as any);
+      sprite.setResolution(getPreferredTextResolution());
       sprite.setText(resolved.value);
       sprite.setFontFamily(resolveTextFontFamily(this.project, resolved));
       sprite.setFontSize(resolved.fontSize);

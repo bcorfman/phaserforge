@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="460" viewBox="0 0 560 460">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f151a"/>
+      <stop offset="1" stop-color="#0b1014"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+    <style>
+      .panel { fill: url(#bg); stroke: #1d2a32; stroke-width: 1; }
+      .card { fill: rgba(255,255,255,0.03); stroke: rgba(61, 140, 152, 0.22); stroke-width: 1; }
+      .title { font: 700 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #eaf2f7; letter-spacing: 0.02em; }
+      .label { font: 700 10px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: rgba(234,242,247,0.65); letter-spacing: 0.18em; }
+      .hint { font: 500 11px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: rgba(234,242,247,0.65); }
+      .btn { fill: rgba(234,242,247,0.06); stroke: rgba(234,242,247,0.10); stroke-width: 1; }
+      .btnText { font: 600 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #eaf2f7; }
+      .chip { fill: rgba(20, 93, 102, 0.22); stroke: rgba(20, 93, 102, 0.55); stroke-width: 1; }
+      .chipText { font: 700 11px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #eaf2f7; }
+      .field { fill: rgba(234,242,247,0.04); stroke: rgba(234,242,247,0.12); stroke-width: 1; }
+      .fieldText { font: 600 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: rgba(234,242,247,0.85); }
+      .close { fill: rgba(234,242,247,0.08); stroke: rgba(234,242,247,0.16); stroke-width: 1; }
+      .closeText { font: 700 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #eaf2f7; }
+    </style>
+  </defs>
+
+  <!-- Popup container -->
+  <rect x="24" y="18" width="512" height="424" rx="18" class="panel" filter="url(#shadow)"/>
+  <text x="48" y="52" class="title">Layout</text>
+  <text x="492" y="52" text-anchor="end" class="hint">No scrolling • All actions visible</text>
+
+  <!-- Left column: arrange/spacing/position -->
+  <rect x="40" y="70" width="240" height="152" rx="14" class="card"/>
+  <text x="56" y="92" class="label">ARRANGE</text>
+
+  <!-- Arrange buttons -->
+  <rect x="56" y="104" width="108" height="30" rx="10" class="btn"/>
+  <text x="110" y="124" text-anchor="middle" class="btnText">Distribute X</text>
+  <rect x="172" y="104" width="92" height="30" rx="10" class="btn"/>
+  <text x="218" y="124" text-anchor="middle" class="btnText">Distribute Y</text>
+
+  <!-- Spacing chips + fields -->
+  <text x="56" y="152" class="label">SPACING</text>
+  <rect x="56" y="162" width="56" height="26" rx="999" class="chip"/>
+  <text x="84" y="180" text-anchor="middle" class="chipText">Grid</text>
+  <rect x="118" y="162" width="62" height="26" rx="999" class="btn"/>
+  <text x="149" y="180" text-anchor="middle" class="btnText">Pixels</text>
+
+  <rect x="56" y="196" width="92" height="30" rx="10" class="field"/>
+  <text x="66" y="216" class="fieldText">X: 2</text>
+  <rect x="154" y="196" width="92" height="30" rx="10" class="field"/>
+  <text x="164" y="216" class="fieldText">Y: 2</text>
+  <rect x="56" y="232" width="188" height="30" rx="10" class="btn"/>
+  <text x="150" y="252" text-anchor="middle" class="btnText">Apply Spacing</text>
+
+  <rect x="40" y="232" width="0" height="0" rx="0" fill="none"/>
+
+  <rect x="40" y="232" width="0" height="0" rx="0" fill="none"/>
+
+  <rect x="40" y="230" width="240" height="132" rx="14" class="card"/>
+  <text x="56" y="252" class="label">POSITION</text>
+  <rect x="56" y="264" width="92" height="30" rx="10" class="field"/>
+  <text x="66" y="284" class="fieldText">X: 128</text>
+  <rect x="154" y="264" width="92" height="30" rx="10" class="field"/>
+  <text x="164" y="284" class="fieldText">Y: 96</text>
+
+  <rect x="56" y="302" width="60" height="30" rx="10" class="btn"/>
+  <text x="86" y="322" text-anchor="middle" class="btnText">Set X</text>
+  <rect x="122" y="302" width="60" height="30" rx="10" class="btn"/>
+  <text x="152" y="322" text-anchor="middle" class="btnText">Set Y</text>
+  <rect x="188" y="302" width="58" height="30" rx="10" class="btn"/>
+  <text x="217" y="322" text-anchor="middle" class="btnText">Set XY</text>
+
+  <text x="56" y="350" class="hint">Tip: “Set XY” updates both in one click.</text>
+
+  <!-- Right column: align + advanced -->
+  <rect x="296" y="70" width="224" height="214" rx="14" class="card"/>
+  <text x="312" y="92" class="label">ALIGN</text>
+
+  <!-- Align grid -->
+  <rect x="312" y="104" width="62" height="30" rx="10" class="btn"/>
+  <text x="343" y="124" text-anchor="middle" class="btnText">Left</text>
+  <rect x="380" y="104" width="62" height="30" rx="10" class="btn"/>
+  <text x="411" y="124" text-anchor="middle" class="btnText">Center X</text>
+  <rect x="448" y="104" width="62" height="30" rx="10" class="btn"/>
+  <text x="479" y="124" text-anchor="middle" class="btnText">Right</text>
+
+  <rect x="312" y="140" width="62" height="30" rx="10" class="btn"/>
+  <text x="343" y="160" text-anchor="middle" class="btnText">Top</text>
+  <rect x="380" y="140" width="62" height="30" rx="10" class="btn"/>
+  <text x="411" y="160" text-anchor="middle" class="btnText">Center Y</text>
+  <rect x="448" y="140" width="62" height="30" rx="10" class="btn"/>
+  <text x="479" y="160" text-anchor="middle" class="btnText">Bottom</text>
+
+  <text x="312" y="188" class="hint">Center aligns to world center.</text>
+
+  <text x="312" y="214" class="label">ADVANCED</text>
+  <rect x="312" y="226" width="98" height="30" rx="10" class="btn"/>
+  <text x="361" y="246" text-anchor="middle" class="btnText">Stack X</text>
+  <rect x="416" y="226" width="104" height="30" rx="10" class="btn"/>
+  <text x="468" y="246" text-anchor="middle" class="btnText">Stack Y</text>
+  <rect x="312" y="262" width="124" height="30" rx="10" class="btn"/>
+  <text x="374" y="282" text-anchor="middle" class="btnText">Match left</text>
+  <rect x="442" y="262" width="78" height="30" rx="10" class="btn"/>
+  <text x="481" y="282" text-anchor="middle" class="btnText">Match top</text>
+
+  <!-- Footer close -->
+  <rect x="40" y="384" width="480" height="44" rx="14" class="close"/>
+  <text x="280" y="412" text-anchor="middle" class="closeText">Close</text>
+
+  <!-- Callouts -->
+  <text x="48" y="448" class="hint">Layout uses two columns and compact chips to keep everything visible at once.</text>
+</svg>
+
