@@ -258,6 +258,9 @@ export class GameScene extends Phaser.Scene {
       resetTriggerCount: () => { this.lastProcessedTriggerEventCount = 0; },
     });
     this.compiled.startAll();
+    // Apply camera state immediately; it does not depend on textures/sprites being ready.
+    // Deferring this until after async asset work can cause transient view mismatches during mode switches in CI.
+    this.applyPendingViewState(sceneSpec);
 
     if (project) {
       this.audioService?.applySceneAudio(sceneSpec, project);
