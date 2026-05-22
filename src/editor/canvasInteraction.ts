@@ -3,6 +3,7 @@
  */
 
 import * as Phaser from 'phaser';
+import { getPreferredTextResolution } from '../phaser/textResolution';
 
 export interface DragState {
   kind: 'entity' | 'group' | 'bounds-handle' | 'marquee';
@@ -61,6 +62,7 @@ export function createDragOverlayText(scene: Phaser.Scene): Phaser.GameObjects.T
     fontFamily: 'Space Grotesk',
     fontSize: '12px',
     padding: { x: 4, y: 2 },
+    resolution: getPreferredTextResolution(),
   });
   text.setDepth(1000);
   text.setVisible(false);

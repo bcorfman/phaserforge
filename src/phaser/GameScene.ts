@@ -8,6 +8,7 @@ import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridg
 import { getSceneWorld } from '../editor/sceneWorld';
 import { resolveTextEntityDefaults, resolveTextFontFamily } from '../editor/textEntity';
 import { clampCameraScroll, clampZoom, getMaxZoom } from '../editor/viewport';
+import { getPreferredTextResolution } from './textResolution';
 import { OpRegistry } from '../compiler/opRegistry';
 import { BasicAudioService } from '../runtime/services/BasicAudioService';
 import { BasicInputService } from '../runtime/services/BasicInputService';
@@ -929,6 +930,7 @@ export class GameScene extends Phaser.Scene {
     sprite.setDepth(entity.depth ?? 0);
     if (sprite instanceof Phaser.GameObjects.Text) {
       const resolved = resolveTextEntityDefaults(textSpec as any);
+      sprite.setResolution(getPreferredTextResolution());
       sprite.setText(resolved.value);
       sprite.setFontFamily(resolveTextFontFamily(this.project, resolved));
       sprite.setFontSize(resolved.fontSize);
