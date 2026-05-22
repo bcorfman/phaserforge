@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('Layout popover applies fixed spacing by centers', async ({ page }) => {
+test('Layout popover applies fixed spacing by centers @critical', async ({ page }) => {
   const r1 = await getEntityWorldRect(page, 'e1');
   const r2 = await getEntityWorldRect(page, 'e2');
   await tapWorld(page, { x: r1.centerX ?? (r1.minX + r1.maxX) / 2, y: r1.centerY ?? (r1.minY + r1.maxY) / 2 });
@@ -33,7 +33,7 @@ test('Layout popover applies fixed spacing by centers', async ({ page }) => {
 test.describe('Layout popover viewport reachability', () => {
   test.use({ viewport: { width: 820, height: 520 } });
 
-  test('Layout popover stays reachable when near viewport bottom', async ({ page }) => {
+  test('Layout popover stays reachable when near viewport bottom @browser', async ({ page }) => {
     const r1 = await getEntityWorldRect(page, 'e1');
     const r2 = await getEntityWorldRect(page, 'e2');
     await tapWorld(page, { x: r1.centerX ?? (r1.minX + r1.maxX) / 2, y: r1.centerY ?? (r1.minY + r1.maxY) / 2 });

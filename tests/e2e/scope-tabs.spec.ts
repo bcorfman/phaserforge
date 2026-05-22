@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('sidebar scope tabs switch between scene and project panels', async ({ page }) => {
+test('sidebar scope tabs switch between scene and project panels @critical', async ({ page }) => {
   await seedSampleScene(page);
   await gotoStudio(page);
   await waitForSampleScene(page);

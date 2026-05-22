@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, seedProject } from './helpers';
 
-test('Play mode: emitted event triggers handler Repeat composite children', async ({ page }) => {
+test('Play mode: emitted event triggers handler Repeat composite children @slow', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
     assets: { images: {}, spriteSheets: {}, fonts: {} },

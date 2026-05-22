@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { dismissViewHint, openProjectScope, openSceneScope, seedSampleScene, waitForEmptyScene, waitForSampleScene } from './helpers';
 
 test.describe('Startup & Reset + Clear Scene', () => {
-  test('resets to a new empty scene without reload', async ({ page }) => {
+  test('resets to a new empty scene without reload @critical', async ({ page }) => {
     await seedSampleScene(page);
     await waitForSampleScene(page);
     await dismissViewHint(page);
@@ -15,7 +15,7 @@ test.describe('Startup & Reset + Clear Scene', () => {
     await waitForEmptyScene(page);
   });
 
-  test('clears a scene via the scene overflow menu', async ({ page }) => {
+  test('clears a scene via the scene overflow menu @critical', async ({ page }) => {
     await seedSampleScene(page);
     await waitForSampleScene(page);
     await dismissViewHint(page);
@@ -27,4 +27,3 @@ test.describe('Startup & Reset + Clear Scene', () => {
     await waitForEmptyScene(page);
   });
 });
-

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getSceneSnapshot, getState, gotoStudio, seedSampleScene } from './helpers';
 
-test('Escape exits play mode back to edit mode', async ({ page }) => {
+test('Escape exits play mode back to edit mode @critical', async ({ page }) => {
   await seedSampleScene(page);
   await gotoStudio(page);
   await dismissViewHint(page);
@@ -14,4 +14,3 @@ test('Escape exits play mode back to edit mode', async ({ page }) => {
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('edit');
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('EditorScene');
 });
-

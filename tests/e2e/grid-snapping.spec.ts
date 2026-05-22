@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, dragWorld, getState, seedProject } from './helpers';
 
-test('grid snapping toggles and snaps small drags', async ({ page }) => {
+test('grid snapping toggles and snaps small drags @critical', async ({ page }) => {
   await seedProject(page, {
     id: 'project-grid-snap',
     assets: { images: {}, spriteSheets: {}, fonts: {} },
@@ -34,4 +34,3 @@ test('grid snapping toggles and snaps small drags', async ({ page }) => {
     return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
   }).toEqual({ x: 228, y: 140 });
 });
-

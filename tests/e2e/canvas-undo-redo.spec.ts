@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dispatchAction, getState, triggerRedo, triggerUndo, seedProject } from './helpers';
 
-test('drags an entity on the canvas and supports keyboard undo/redo', async ({ page }) => {
+test('drags an entity on the canvas and supports keyboard undo/redo @critical @browser', async ({ page }) => {
   await seedProject(page, {
     id: 'project-canvas-undo-redo',
     assets: { images: {}, spriteSheets: {}, fonts: {} },
@@ -43,4 +43,3 @@ test('drags an entity on the canvas and supports keyboard undo/redo', async ({ p
     return { x: state.scene.entities.e1.x, y: state.scene.entities.e1.y };
   }).toEqual({ x: 260, y: 170 });
 });
-

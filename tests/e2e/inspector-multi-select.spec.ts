@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
   await waitForSampleScene(page);
 });
 
-test('multi-select inspector disables non-applicable fields and bulk-edits scale', async ({ page }) => {
+test('multi-select inspector disables non-applicable fields and bulk-edits scale @critical', async ({ page }) => {
   await dismissViewHint(page);
 
   // Ungroup the sample formation so entities become selectable as ungrouped sprites.
@@ -59,4 +59,3 @@ test('multi-select inspector disables non-applicable fields and bulk-edits scale
     e2: { scaleX: 1.25, scaleY: 0.75 },
   });
 });
-

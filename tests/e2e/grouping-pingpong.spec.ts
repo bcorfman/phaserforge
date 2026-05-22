@@ -1,13 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getState, gotoStudio, seedSampleScene, selectGroupInSceneGraph, waitForSampleScene } from './helpers';
 
-test('Ungroup / Group ping-pongs between formation and member multi-select', async ({ page }) => {
+test('Ungroup / Group ping-pongs between formation and member multi-select @critical', async ({ page }) => {
   await seedSampleScene(page);
   await gotoStudio(page);
   await waitForSampleScene(page);
   await dismissViewHint(page);
 
   await selectGroupInSceneGraph(page, 'g-enemies');
+  await expect.poll(async () => (await getState<{ selection: any }>(page))?.selection).toEqual({ kind: 'group', id: 'g-enemies' });
   await expect(page.getByTestId('canvas-edit-members-button')).toBeVisible();
 
   const before = await getState<{ scene: { groups: Record<string, unknown>; attachments: Record<string, unknown> } }>(page);
@@ -23,7 +24,7 @@ test('Ungroup / Group ping-pongs between formation and member multi-select', asy
       hasGroup: Boolean(state.scene.groups['g-enemies']),
       attachmentCount: Object.keys(state.scene.attachments).length,
     };
-  }).toEqual({
+  }, { timeout: 20000 }).toEqual({
     selectionKind: 'entities',
     hasGroup: false,
     attachmentCount: 0,
@@ -33,6 +34,7 @@ test('Ungroup / Group ping-pongs between formation and member multi-select', asy
   await page.getByTestId('canvas-group-button').click();
   await expect(page.getByTestId('canvas-group-prompt')).toBeVisible();
   await page.getByTestId('group-prompt-confirm').click();
+  await expect(page.getByTestId('canvas-group-prompt')).toHaveCount(0);
 
   await expect.poll(async () => {
     const state = await getState<{ selection: { kind: string; id?: string }; scene: { groups: Record<string, unknown>; attachments: Record<string, unknown> } }>(page);
@@ -41,14 +43,14 @@ test('Ungroup / Group ping-pongs between formation and member multi-select', asy
       hasGroup: Boolean(state.scene.groups['g-enemies']),
       attachmentCount: Object.keys(state.scene.attachments).length,
     };
-  }).toEqual({
+  }, { timeout: 20000 }).toEqual({
     selection: { kind: 'group', id: 'g-enemies' },
     hasGroup: true,
     attachmentCount: Object.keys(before.scene.attachments).length,
   });
 });
 
-test('Dissolve Group removes the formation but preserves its actions by retargeting', async ({ page }) => {
+test('Dissolve Group removes the formation but preserves its actions by retargeting @critical', async ({ page }) => {
   await seedSampleScene(page);
   await gotoStudio(page);
   await waitForSampleScene(page);

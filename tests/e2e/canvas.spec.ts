@@ -27,14 +27,14 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('selects an entity by clicking it on the canvas', async ({ page }) => {
+test('selects an entity by clicking it on the canvas @critical @browser', async ({ page }) => {
   await tapWorld(page, { x: 220, y: 140 });
 
   await expectSelection(page, { kind: 'entity', id: 'e1' });
   await expect(page.getByTestId('inspector')).toContainText('e1');
 });
 
-test('clicking empty canvas clears selection', async ({ page }) => {
+test('clicking empty canvas clears selection @critical', async ({ page }) => {
   await dismissViewHint(page);
 
   await tapWorld(page, { x: 220, y: 140 });
@@ -46,7 +46,7 @@ test('clicking empty canvas clears selection', async ({ page }) => {
   await expectSelection(page, { kind: 'none' });
 });
 
-test('marquee selects multiple entities by click-dragging empty canvas', async ({ page }) => {
+test('marquee selects multiple entities by click-dragging empty canvas @critical @browser', async ({ page }) => {
   await dismissViewHint(page);
 
   const e1 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1') ?? null) as any);
@@ -61,7 +61,7 @@ test('marquee selects multiple entities by click-dragging empty canvas', async (
   }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
 });
 
-test('shift-click additively selects entities on the canvas', async ({ page }) => {
+test('shift-click additively selects entities on the canvas @critical @browser', async ({ page }) => {
   await dismissViewHint(page);
 
   await tapWorld(page, { x: 220, y: 140 });
@@ -77,7 +77,7 @@ test('shift-click additively selects entities on the canvas', async ({ page }) =
   }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
 });
 
-test('supports undo/redo via viewbar buttons', async ({ page }) => {
+test('supports undo/redo via viewbar buttons @critical', async ({ page }) => {
   await dragWorld(page, { x: 220, y: 140 }, { x: 260, y: 170 });
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, { x: number; y: number }> } }>(page);
@@ -97,7 +97,7 @@ test('supports undo/redo via viewbar buttons', async ({ page }) => {
   }, { timeout: 5000 }).toEqual({ x: 260, y: 170 });
 });
 
-test('resizes bounds and supports undo/redo', async ({ page }) => {
+test('resizes bounds and supports undo/redo @critical @browser', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('attachment-open-att-move-right').click();
   await expect.poll(async () => await getEditableBoundsRect(page)).toMatchObject({
@@ -124,7 +124,7 @@ test('resizes bounds and supports undo/redo', async ({ page }) => {
   });
 });
 
-test('drags a formation on the canvas and restores layout metadata on undo', async ({ page }) => {
+test('drags a formation on the canvas and restores layout metadata on undo @critical @browser', async ({ page }) => {
   await dragWorld(page, { x: 316, y: 120 }, { x: 346, y: 130 });
 
   await expect.poll(async () => {
@@ -139,7 +139,7 @@ test('drags a formation on the canvas and restores layout metadata on undo', asy
   }).toMatchObject({ startX: 220, startY: 140 });
 });
 
-test('resizes editable bounds from the canvas handle', async ({ page }) => {
+test('resizes editable bounds from the canvas handle @critical @browser', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('attachment-open-att-move-right').click();
   await expect.poll(async () => await getEditableBoundsRect(page)).toMatchObject({
@@ -159,7 +159,7 @@ test('resizes editable bounds from the canvas handle', async ({ page }) => {
   });
 });
 
-test('supports zooming and panning once the camera can scroll', async ({ page }) => {
+test('supports zooming and panning once the camera can scroll @critical @browser', async ({ page }) => {
   await dismissViewHint(page);
 
   const beforeZoom = await getSceneSnapshot<{ zoom: number }>(page);

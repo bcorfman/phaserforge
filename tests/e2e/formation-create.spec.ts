@@ -2,18 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { dismissViewHint, dispatchAction, getState, openSceneScope, seedProject } from './helpers';
 
-test.beforeEach(async ({ page }) => {
-  await page.goto('/');
-  await page.evaluate(() => {
-    window.localStorage.removeItem('phaseractions.projectYaml.v1');
-    window.localStorage.removeItem('phaseractions.startupMode.v1');
-    window.localStorage.removeItem('phaseractions.themeMode.v1');
-    window.localStorage.removeItem('phaseractions.uiScale.v1');
-    window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
-  });
-});
-
-test('creates a formation via the new draft workflow from Formations + Add', async ({ page }) => {
+test('creates a formation via the new draft workflow from Formations + Add @critical', async ({ page }) => {
   await seedProject(page, createEmptyProject());
   await dismissViewHint(page);
   await openSceneScope(page);
@@ -54,7 +43,7 @@ test('creates a formation via the new draft workflow from Formations + Add', asy
   });
 });
 
-test('assets menu entrypoint opens a formation draft seeded with that asset', async ({ page }) => {
+test('assets menu entrypoint opens a formation draft seeded with that asset @critical', async ({ page }) => {
   await seedProject(page, createEmptyProject());
   await dismissViewHint(page);
   await openSceneScope(page);

@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('alt-drag duplicates a selected sprite', async ({ page }) => {
+test('alt-drag duplicates a selected sprite @critical @browser', async ({ page }) => {
   await tapWorld(page, { x: 220, y: 140 });
 
   // Add a handler + step targeting e1 so duplication can assert cloning.

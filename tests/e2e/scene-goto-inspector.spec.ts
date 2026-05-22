@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getState, gotoStudio, seedSampleScene } from './helpers';
 
-test('Inspector: Call Id = scene.goto shows structured fields and defaults', async ({ page }) => {
+test('Inspector: Call Id = scene.goto shows structured fields and defaults @critical', async ({ page }) => {
   await seedSampleScene(page);
   await gotoStudio(page);
   await dismissViewHint(page);
