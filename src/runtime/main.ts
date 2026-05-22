@@ -4,9 +4,9 @@ import { EditorScene } from '../phaser/EditorScene';
 import { GameScene } from '../phaser/GameScene';
 import { SCENE_HEIGHT, SCENE_WIDTH } from '../editor/viewport';
 
-export default function StartGame(container: string): Phaser.Game
+export function createGameConfig(container: string): Phaser.Types.Core.GameConfig
 {
-    const config: Phaser.Types.Core.GameConfig = {
+    return {
         type: Phaser.AUTO,
         parent: container,
         width: SCENE_WIDTH,
@@ -21,14 +21,19 @@ export default function StartGame(container: string): Phaser.Game
             },
         },
         antialias: true,
-        autoRound: true,
         pixelArt: false,
-        resolution: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
         scale: {
             mode: Phaser.Scale.RESIZE,
             autoCenter: Phaser.Scale.CENTER_BOTH,
+            autoRound: true,
+            snap: { width: 1, height: 1 },
         },
     };
+}
+
+export default function StartGame(container: string): Phaser.Game
+{
+    const config = createGameConfig(container);
 
     // Keep an existing game instance from being recreated in hot reload scenarios
     // (only relevant during development with Vite HMR)

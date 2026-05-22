@@ -924,6 +924,17 @@ html[data-theme='dark'] .phaser-frame {
   background: var(--surface-muted);
 }
 
+.canvas-selection-menu-item:active:not(:disabled) {
+  background: var(--surface-muted);
+  transform: translateY(1px);
+}
+
+.canvas-selection-menu-item:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(20, 93, 102, 0.18),
+    0 0 0 1px var(--accent);
+}
+
 .canvas-selection-menu-item:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -944,14 +955,14 @@ html[data-theme='dark'] .phaser-frame {
   color: var(--muted);
 }
 
-#game-container,
-#game-container canvas {
+#game-container {
   width: 100%;
   height: 100%;
   display: block;
 }
 
 #game-container canvas {
+  display: block;
   cursor: default;
 }
 
@@ -1627,6 +1638,14 @@ html[data-theme='dark'] .phaser-frame {
 
 .inspector-grid-2 .field.field-wide-label > span {
   flex-basis: 7.5rem;
+}
+
+.inspector-grid-2 .field.field-tight-label > span {
+  flex: 0 0 auto;
+}
+
+.inspector-grid-2 .field.field-tight-label input {
+  min-width: 5.75rem;
 }
 
 .sprite-size-aspect {
