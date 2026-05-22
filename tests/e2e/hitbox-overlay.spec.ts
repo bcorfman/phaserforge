@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await waitForSampleScene(page);
 });
 
-test('shows a labeled hitbox overlay and supports toggling', async ({ page }) => {
+test('shows a labeled hitbox overlay and supports toggling @browser', async ({ page }) => {
   await dismissViewHint(page);
 
   const e1 = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1') ?? null);
@@ -41,4 +41,3 @@ test('shows a labeled hitbox overlay and supports toggling', async ({ page }) =>
     return await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getHitboxOverlayInfo?.() ?? null);
   }).toMatchObject({ visible: true });
 });
-

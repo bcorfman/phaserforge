@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, seedProject } from './helpers';
 
-test('Play mode: entering a trigger zone emits an enter event in the snapshot', async ({ page }) => {
+test('Play mode: entering a trigger zone emits an enter event in the snapshot @slow', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
     assets: { images: {}, spriteSheets: {}, fonts: {} },

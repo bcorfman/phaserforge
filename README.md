@@ -95,6 +95,23 @@ This editor is opinionated about speed: one primary workflow, near-cursor select
 
 > Note: For Playwright tests, you may need to run `npx playwright install` once to install browser binaries.
 
+## E2E Test Tags
+
+Playwright E2E specs are tagged in the test title:
+
+- `@smoke`: app loads, project opens, canvas renders, save/load works
+- `@critical`: core editor workflows
+- `@browser`: browser-sensitive rendering/input/drag/drop/transparency tests
+- `@regression`: bug-specific tests
+- `@slow`: big scenario tests
+
+Suggested commands:
+
+- Local fast loop: `npx playwright test --project=chromium --grep @smoke`
+- PR default: `npx playwright test --project=chromium --grep "@smoke|@critical"`
+- PR cross-browser risk set: `npx playwright test --project=firefox --project=webkit --project=msedge --grep "@smoke|@browser"`
+- Nightly/release: `npx playwright test`
+
 ### Testing cloud login locally
 Run `npm run dev:cloud`, then open `http://localhost:8080/`. The studio calls `/api/*` on the same origin; Vite proxies those requests to the local API (default `http://localhost:8787`). Set `API_PORT` if you change the API port.
 

@@ -5,7 +5,7 @@ import { sampleProject } from '../../src/model/sampleProject';
 
 test.setTimeout(120000);
 
-test('background layers render in both edit and play mode', async ({ page }) => {
+test('background layers render in both edit and play mode @browser', async ({ page }) => {
   const pixelPng =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+Xf5kAAAAASUVORK5CYII=';
 

@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('edits formation details and layout from the inspector', async ({ page }) => {
+test('edits formation details and layout from the inspector @critical', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');
 
@@ -45,7 +45,7 @@ test('edits formation details and layout from the inspector', async ({ page }) =
   });
 });
 
-test('converts group layout via the inspector layout type dropdown', async ({ page }) => {
+test('converts group layout via the inspector layout type dropdown @critical', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
 
   // Keep this test fast/stable: assert the inspector conversion UI exists, then apply conversions via actions.
@@ -70,7 +70,7 @@ test('converts group layout via the inspector layout type dropdown', async ({ pa
   }).toBe('freeform');
 });
 
-test('edits move-until and bounds values from the attachment inspector', async ({ page }) => {
+test('edits move-until and bounds values from the attachment inspector @critical', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('attachment-open-att-move-right').click();
 
@@ -91,7 +91,7 @@ test('edits move-until and bounds values from the attachment inspector', async (
   }).toEqual({ velocityX: 140, minX: 120, maxY: 700 });
 });
 
-test('removes a formation member and keeps the group selected', async ({ page }) => {
+test('removes a formation member and keeps the group selected @critical', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('inspector').getByLabel('Expand Members').click();
   await page.getByTestId('group-member-remove-e3').click();
@@ -110,7 +110,7 @@ test('removes a formation member and keeps the group selected', async ({ page })
   });
 });
 
-test('removes an attached action from the scene graph', async ({ page }) => {
+test('removes an attached action from the scene graph @critical', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('attachment-menu-att-wait-right').click();
   await page.getByTestId('attachment-menu-remove-att-wait-right').click();
@@ -121,7 +121,7 @@ test('removes an attached action from the scene graph', async ({ page }) => {
   }).toBe(false);
 });
 
-test('edits authored sprite transform and visual properties from the inspector', async ({ page }) => {
+test('edits authored sprite transform and visual properties from the inspector @critical', async ({ page }) => {
   await tapWorld(page, { x: 220, y: 140 });
 
   await page.getByTestId('entity-scale-x-input').fill('1.5');
@@ -157,7 +157,7 @@ test('edits authored sprite transform and visual properties from the inspector',
   });
 });
 
-test('validated numeric fields allow clearing until blur', async ({ page }) => {
+test('validated numeric fields allow clearing until blur @critical', async ({ page }) => {
   await tapWorld(page, { x: 220, y: 140 });
 
   const scaleX = page.getByTestId('entity-scale-x-input');
@@ -180,7 +180,7 @@ test('validated numeric fields allow clearing until blur', async ({ page }) => {
   }).toBe(2);
 });
 
-test('rotation input updates the sprite immediately when stepping with arrow keys', async ({ page }) => {
+test('rotation input updates the sprite immediately when stepping with arrow keys @critical', async ({ page }) => {
   await tapWorld(page, { x: 220, y: 140 });
 
   const rotation = page.getByTestId('entity-rotation-input');
@@ -215,7 +215,7 @@ test('rotation input updates the sprite immediately when stepping with arrow key
   }));
 });
 
-test('move-until velocity inputs allow clearing until blur', async ({ page }) => {
+test('move-until velocity inputs allow clearing until blur @critical', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('attachment-open-att-move-right').click();
 
@@ -237,7 +237,7 @@ test('move-until velocity inputs allow clearing until blur', async ({ page }) =>
   }).toBe(123);
 });
 
-test('bounds hit checkbox toggles BoundsHit condition', async ({ page }) => {
+test('bounds hit checkbox toggles BoundsHit condition @critical', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('attachment-open-att-move-right').click();
 
@@ -253,7 +253,7 @@ test('bounds hit checkbox toggles BoundsHit condition', async ({ page }) => {
   await expect(page.getByTestId('attachment-bounds-behavior-select')).toBeVisible();
 });
 
-test('creates a formation from imported sprites and arranges it into a grid', async ({ page }) => {
+test('creates a formation from imported sprites and arranges it into a grid @critical', async ({ page }) => {
   await resetScene(page);
   // Avoid file-picker + asset decoding work here (covered elsewhere) so this stays fast and stable in CI.
   // Add an image asset by path and create two sprites from it.
@@ -293,7 +293,7 @@ test('creates a formation from imported sprites and arranges it into a grid', as
   }).toMatchObject({ type: 'grid', rows: 1, cols: 2 });
 });
 
-test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
+test('assigns a MoveUntil action to an imported sprite @critical', async ({ page }) => {
   await resetScene(page);
   const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', assetId);
@@ -324,7 +324,7 @@ test('assigns a MoveUntil action to an imported sprite', async ({ page }) => {
   }).toEqual({ selectionKind: 'attachment', velocityX: 140, minX: 48 });
 });
 
-test('reassigns a sprite asset from another sprite via the inspector', async ({ page }) => {
+test('reassigns a sprite asset from another sprite via the inspector @critical', async ({ page }) => {
   await resetScene(page);
   const { assetId: assetA } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
   const { assetId: assetB } = await importImageAssetFromFile(page, 'res/images/enemy_B.png');
@@ -368,7 +368,7 @@ test('reassigns a sprite asset from another sprite via the inspector', async ({ 
   }).toBe(assetB);
 });
 
-test('assigns a group MoveUntil action to imported sprites and runs it in play mode', async ({ page }) => {
+test('assigns a group MoveUntil action to imported sprites and runs it in play mode @critical', async ({ page }) => {
   await resetScene(page);
   const { assetId } = await importSpritesheetAssetFromFile(page, 'res/images/mainwindow.png', { frameWidth: 64, frameHeight: 64 });
   await dragAssetToCanvas(page, 'spritesheet', assetId, { targetPosition: { x: 220, y: 160 } });
@@ -407,7 +407,7 @@ test('assigns a group MoveUntil action to imported sprites and runs it in play m
   }).not.toBe(before?.centerX);
 });
 
-test('preview uses edited move velocity and bounce behavior', async ({ page }) => {
+test('preview uses edited move velocity and bounce behavior @critical', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('attachment-open-att-move-right').click();
   const before = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1')?.centerX ?? null);
@@ -450,7 +450,7 @@ test('preview uses edited move velocity and bounce behavior', async ({ page }) =
     .toEqual({ sawIncrease: true, sawDecreaseAfterIncrease: true });
 });
 
-test('preview bounce reaches configured bounds edge before reversing', async ({ page }) => {
+test('preview bounce reaches configured bounds edge before reversing @critical', async ({ page }) => {
   await resetScene(page);
   const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', assetId);
@@ -514,7 +514,7 @@ test('preview bounce reaches configured bounds edge before reversing', async ({ 
   expect(maxObservedMaxX).toBeLessThanOrEqual(expectedMaxX + 8);
 });
 
-test('preview applies wrap behavior for an imported sprite move action', async ({ page }) => {
+test('preview applies wrap behavior for an imported sprite move action @critical', async ({ page }) => {
   await resetScene(page);
   const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', assetId);

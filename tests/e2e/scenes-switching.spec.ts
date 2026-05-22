@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getState, seedProject } from './helpers';
 
-test('create a second scene, switch scenes, and preserve per-scene edits', async ({ page }) => {
+test('create a second scene, switch scenes, and preserve per-scene edits @critical', async ({ page }) => {
   test.setTimeout(120000);
   await seedProject(page, {
     id: 'project-scenes-switching',

@@ -4,7 +4,7 @@ import { getFormationPhysicsGroupInfo, getState, seedSampleScene } from './helpe
 test.setTimeout(120000);
 test.describe.configure({ retries: process.env.CI ? 2 : 1 });
 
-test('Preview/play mode builds Arcade Physics groups for formations', async ({ page }) => {
+test('Preview/play mode builds Arcade Physics groups for formations @slow', async ({ page }) => {
   await seedSampleScene(page);
 
   const before = await getFormationPhysicsGroupInfo(page, 'g-enemies');

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
 
-test('Play mode: hide OS cursor option applies to game canvas', async ({ page }) => {
+test('Play mode: hide OS cursor option applies to game canvas @browser', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
     assets: { images: {}, spriteSheets: {}, fonts: {} },

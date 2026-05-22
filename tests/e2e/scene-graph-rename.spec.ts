@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('clicking an already-selected item enters rename mode', async ({ page }) => {
+test('clicking an already-selected item enters rename mode @critical', async ({ page }) => {
   await page.getByTestId('toggle-group-g-enemies').click();
   await page.getByTestId('group-member-g-enemies-e1').click();
   await page.getByTestId('group-member-g-enemies-e1').click();
