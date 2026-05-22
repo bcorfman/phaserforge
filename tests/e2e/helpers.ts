@@ -15,11 +15,11 @@ type AssetDragPayload = { assetKind: 'image' | 'spritesheet' | 'audio' | 'font';
 const IS_CI = Boolean(process.env.CI);
 // Keep boot attempts bounded so helper-level retries can complete within the per-test timeout.
 // When running multiple browsers locally, the shared web server can be slower to respond.
-const APP_BOOT_TIMEOUT_MS = IS_CI ? 60000 : process.env.PW_ALL_BROWSERS === '1' ? 10000 : 5000;
+const APP_BOOT_TIMEOUT_MS = IS_CI ? 60000 : 10000;
 // Local runs can still be resource constrained (e.g. 3 workers + fresh Vite server per run). However, a long
 // navigation timeout can turn transient server contention into a single-test "hang" that looks like a 45s+ slow test.
 // Prefer faster retries over a single long attempt.
-const NAVIGATE_TIMEOUT_MS = IS_CI ? 30000 : process.env.PW_ALL_BROWSERS === '1' ? 10000 : 5000;
+const NAVIGATE_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 60000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 

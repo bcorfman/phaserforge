@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getSceneSnapshot, getState, seedProject } from './helpers';
 
-test('Play mode: scene.goto switches runtime scene without changing editor currentSceneId', async ({ page }) => {
+test('Play mode: scene.goto switches runtime scene without changing editor currentSceneId @slow', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
     assets: { images: {}, spriteSheets: {}, fonts: {} },
@@ -54,9 +54,10 @@ test('Play mode: scene.goto switches runtime scene without changing editor curre
   await dismissViewHint(page);
   await expect.poll(async () => (await getState<{ currentSceneId?: string }>(page))?.currentSceneId).toBe('scene-1');
 
-  await page.getByTestId('toggle-mode-button').click();
+  // Prefer the test bridge so the mode toggle is deterministic across browsers under load.
+  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setMode?.('play'));
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('play');
-  await expect(page.getByTestId('scene-item-scene-2')).toBeDisabled();
+  await expect(page.getByTestId('scene-item-scene-2')).toBeDisabled({ timeout: 10000 });
 
   await expect.poll(async () => (await getSceneSnapshot<{ compiledSceneId?: string }>(page))?.compiledSceneId, { timeout: 5000 }).toBe('scene-2');
   await expect.poll(async () => (await getState<{ currentSceneId?: string }>(page))?.currentSceneId).toBe('scene-1');

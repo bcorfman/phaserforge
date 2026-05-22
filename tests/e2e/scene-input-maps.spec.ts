@@ -5,7 +5,7 @@ import { dismissViewHint, openSceneScope, seedProject } from './helpers';
 test.describe('Scene input maps', () => {
   test.describe.configure({ timeout: 120000 });
 
-  test('selects project default / none and jumps to Project input maps editor', async ({ page }) => {
+  test('selects project default / none and jumps to Project input maps editor @critical', async ({ page }) => {
     const project = createEmptyProject();
     project.inputMaps = {
       gameplay: { actions: { Jump: [], Pause: [] } } as any,

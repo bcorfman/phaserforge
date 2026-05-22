@@ -18,7 +18,7 @@ test.beforeEach(async ({ page }) => {
   await waitForSampleScene(page);
 });
 
-test('selection bar groups ungrouped entities and can add to an existing group', async ({ page }) => {
+test('selection bar groups ungrouped entities and can add to an existing group @critical', async ({ page }) => {
   await dismissViewHint(page);
 
   // Ungroup the sample formation so entities become selectable as ungrouped sprites.
@@ -102,7 +102,7 @@ test('selection bar groups ungrouped entities and can add to an existing group',
   }).toEqual(['e1', 'e2', 'e3']);
 });
 
-test('Ctrl/Cmd+Shift+G opens the Group… prompt (keyboard parity)', async ({ page, browserName }) => {
+test('Ctrl/Cmd+Shift+G opens the Group… prompt (keyboard parity) @critical @browser', async ({ page, browserName }) => {
   await dismissViewHint(page);
 
   // Ungroup the sample formation so entities become selectable as ungrouped sprites.

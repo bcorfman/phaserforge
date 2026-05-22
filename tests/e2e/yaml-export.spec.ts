@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('Save As YAML writes the current project YAML (download fallback)', async ({ page }) => {
+test('Save As YAML writes the current project YAML (download fallback) @smoke @browser', async ({ page }) => {
   await page.addInitScript(() => {
     const saved: any[] = [];
     (window as any).__YAML_SAVE_AS_TEST__ = { saved };

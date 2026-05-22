@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
 });
 
-test('Scene Graph: multi-select sprites and drag into a formation to add members', async ({ page }) => {
+test('Scene Graph: multi-select sprites and drag into a formation to add members @critical @browser', async ({ page }) => {
   // Expand formation members and remove two members (become ungrouped sprites).
   await page.getByTestId('toggle-group-g-enemies').click();
   await page.getByTestId('group-member-remove-g-enemies-e1').click();
@@ -65,7 +65,7 @@ test('Scene Graph: multi-select sprites and drag into a formation to add members
   });
 });
 
-test('Scene Graph: drag formation member into Sprites dropzone to remove from group', async ({ page }) => {
+test('Scene Graph: drag formation member into Sprites dropzone to remove from group @critical @browser', async ({ page }) => {
   await page.getByTestId('toggle-group-g-enemies').click();
   await expect(page.getByTestId('group-member-g-enemies-e3')).toBeVisible();
 

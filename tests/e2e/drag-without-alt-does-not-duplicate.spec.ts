@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('dragging a sprite without Alt does not duplicate (even if Alt was previously stuck)', async ({ page }) => {
+test('dragging a sprite without Alt does not duplicate (even if Alt was previously stuck) @browser @regression', async ({ page }) => {
   const e1RectBeforeTap = await getEntityWorldRect(page, 'e1');
   const e1WorldCenter = { x: (e1RectBeforeTap.minX + e1RectBeforeTap.maxX) / 2, y: (e1RectBeforeTap.minY + e1RectBeforeTap.maxY) / 2 };
   await tapWorld(page, e1WorldCenter);

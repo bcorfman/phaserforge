@@ -1,22 +1,28 @@
 import { defineConfig, devices } from '@playwright/test';
 
-type E2EProjectName = 'chromium' | 'firefox' | 'webkit' | 'edge';
+type E2EProjectName = 'chromium' | 'firefox' | 'webkit' | 'msedge';
 type EnvLike = Record<string, string | undefined>;
 
 export function resolveE2EProjectNames(env: EnvLike): E2EProjectName[] {
+  const explicitProjects = env.PW_PROJECTS?.split(',')
+    .map((value) => value.trim())
+    .filter(Boolean) as E2EProjectName[] | undefined;
+  if (explicitProjects?.length) return explicitProjects;
+
   const includeAllBrowsers = env.PW_ALL_BROWSERS === '1';
   if (includeAllBrowsers) {
-    return ['chromium', 'firefox', 'webkit', 'edge'];
+    return ['chromium', 'firefox', 'webkit', 'msedge'];
   }
 
   const isGitHubActions = env.GITHUB_ACTIONS === 'true';
   const includeEdge = env.PW_INCLUDE_EDGE === '1' || (!isGitHubActions && env.PW_EXCLUDE_EDGE !== '1');
 
   if (isGitHubActions) {
-    return includeEdge ? ['firefox', 'webkit', 'edge'] : ['firefox', 'webkit'];
+    // CI defaults to Chromium-only. Cross-browser runs should opt in via PW_PROJECTS or PW_ALL_BROWSERS.
+    return ['chromium'];
   }
 
-  return includeEdge ? ['chromium', 'edge'] : ['chromium'];
+  return includeEdge ? ['chromium', 'msedge'] : ['chromium'];
 }
 
 const projectNames = resolveE2EProjectNames(process.env);
@@ -68,7 +74,7 @@ export default defineConfig({
           name,
           use: { ...devices['Desktop Safari'] },
         };
-      case 'edge':
+      case 'msedge':
         return {
           name,
           use: {

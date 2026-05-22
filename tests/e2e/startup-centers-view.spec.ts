@@ -3,7 +3,7 @@ import { createEmptyProject } from '../../src/model/emptyProject';
 import { getCenteredCameraScroll, getFitZoom } from '../../src/editor/viewport';
 import { dismissViewHint, getSceneSnapshot, getState, seedProject } from './helpers';
 
-test('startup centers the editor viewport', async ({ page }) => {
+test('startup centers the editor viewport @critical', async ({ page }) => {
   await seedProject(page, createEmptyProject());
   await dismissViewHint(page);
 

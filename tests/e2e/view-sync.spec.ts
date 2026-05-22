@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getSceneSnapshot, gotoStudio, seedSampleScene, worldToClient, getState } from './helpers';
 
-test('Edit and Preview preserve camera view state', async ({ page }) => {
+test('Edit and Preview preserve camera view state @critical', async ({ page }) => {
   await seedSampleScene(page);
   await dismissViewHint(page);
 

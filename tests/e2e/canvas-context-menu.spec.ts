@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
 });
 
-test('right-click does not open a canvas context menu (selection actions are on the selection bar)', async ({ page }) => {
+test('right-click does not open a canvas context menu (selection actions are on the selection bar) @browser', async ({ page }) => {
   await dismissViewHint(page);
 
   const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
@@ -16,7 +16,7 @@ test('right-click does not open a canvas context menu (selection actions are on 
   await expect(page.getByTestId('canvas-context-menu')).toHaveCount(0);
 });
 
-test('context menu routes layout conversion through the inspector (no nested submenu)', async ({ page }) => {
+test('context menu routes layout conversion through the inspector (no nested submenu) @browser', async ({ page }) => {
   await dismissViewHint(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
 
@@ -29,7 +29,7 @@ test('context menu routes layout conversion through the inspector (no nested sub
   await expect(page.getByTestId('layout-type-select')).toBeVisible();
 });
 
-test('top-right selection actions are not shown (selection actions are near-cursor only)', async ({ page }) => {
+test('top-right selection actions are not shown (selection actions are near-cursor only) @critical', async ({ page }) => {
   await dismissViewHint(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expect(page.getByTestId('canvas-selection-actions-top-right')).toHaveCount(0);
