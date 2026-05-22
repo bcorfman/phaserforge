@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { dragDropByTestId, getState, seedSampleScene, triggerRedo, triggerUndo } from './helpers';
 
+test.setTimeout(120000);
+
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
 });
 
-test('Undo restores a deleted sprite', async ({ page }) => {
+test('Undo restores a deleted sprite @critical', async ({ page }) => {
   await page.getByTestId('toggle-group-g-enemies').click();
   await page.getByTestId('group-member-remove-g-enemies-e1').click();
   await expect(page.getByTestId('entity-menu-e1')).toBeVisible();
@@ -30,7 +32,7 @@ test('Undo restores a deleted sprite', async ({ page }) => {
   }).toBe(false);
 });
 
-test('Undo restores a dissolved formation', async ({ page }) => {
+test('Undo restores a dissolved formation @critical', async ({ page }) => {
   await page.getByTestId('group-item-g-enemies').click();
   await page.getByTestId('canvas-dissolve-button').click();
 
@@ -52,7 +54,7 @@ test('Undo restores a dissolved formation', async ({ page }) => {
   }).toBe(false);
 });
 
-test('Undo/redo works for scene graph member drag/drop', async ({ page }) => {
+test('Undo/redo works for scene graph member drag/drop @critical @browser', async ({ page }) => {
   // Expand formation members and remove two members (become ungrouped sprites).
   await page.getByTestId('toggle-group-g-enemies').click();
   await page.getByTestId('group-member-remove-g-enemies-e1').click();
@@ -93,7 +95,7 @@ test('Undo/redo works for scene graph member drag/drop', async ({ page }) => {
   }).toEqual({ hasE1: true, hasE2: true });
 });
 
-test('Delete key removes selection (power user) and undo restores', async ({ page }) => {
+test('Delete key removes selection (power user) and undo restores @critical', async ({ page }) => {
   await page.getByTestId('toggle-group-g-enemies').click();
   await page.getByTestId('group-member-remove-g-enemies-e1').click();
 

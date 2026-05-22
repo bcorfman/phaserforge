@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { clickCanvasAt, dismissViewHint, getSceneSnapshot, getState, seedProject, tapWorld, worldToClient } from './helpers';
 
-test('Edit mode: base scene ghost renders but is non-interactive', async ({ page }) => {
+test('Edit mode: base scene ghost renders but is non-interactive @browser', async ({ page }) => {
   await seedProject(page, {
     id: 'project-ghost',
     assets: { images: {}, spriteSheets: {}, fonts: {} },

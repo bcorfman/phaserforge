@@ -5,7 +5,7 @@ import { dismissViewHint, dispatchAction, dragAssetToCanvas, dropAssetAtClientPo
 test.describe('Assets dock', () => {
   test.describe.configure({ timeout: 120000 });
 
-  test('imports an image and drags to canvas to create an entity with asset ref', async ({ page }) => {
+  test('imports an image and drags to canvas to create an entity with asset ref @critical @browser', async ({ page }) => {
     await seedProject(page, createEmptyProject());
     await dismissViewHint(page);
     await openSceneScope(page);
@@ -55,7 +55,7 @@ test.describe('Assets dock', () => {
     expect(created.scaleY ?? 1).toBe(1);
   });
 
-  test('dragging an image asset onto the canvas preserves the current viewport', async ({ page }) => {
+  test('dragging an image asset onto the canvas preserves the current viewport @critical @browser', async ({ page }) => {
     await seedProject(page, createEmptyProject());
     await dismissViewHint(page);
     await openSceneScope(page);
@@ -95,7 +95,7 @@ test.describe('Assets dock', () => {
     }).toBeLessThanOrEqual(5);
   });
 
-  test('dragging an image asset onto an existing sprite replaces its asset', async ({ page }, testInfo) => {
+  test('dragging an image asset onto an existing sprite replaces its asset @critical @browser', async ({ page }, testInfo) => {
     await seedProject(page, createEmptyProject());
     await dismissViewHint(page);
     await openSceneScope(page);
@@ -235,7 +235,7 @@ test.describe('Assets dock', () => {
       .toEqual({ assetId: 'meteor-large', entityCount: entityCountBeforeReplace });
   });
 
-  test('imports audio by path and assigns it to scene music via drop', async ({ page }) => {
+  test('imports audio by path and assigns it to scene music via drop @critical @browser', async ({ page }) => {
     await seedProject(page, createEmptyProject());
     await dismissViewHint(page);
     await openSceneScope(page);

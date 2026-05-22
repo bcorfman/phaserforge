@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('after resizing the world, zoom can increase until the world frame nearly fills the viewport', async ({ page }) => {
+test('after resizing the world, zoom can increase until the world frame nearly fills the viewport @browser', async ({ page }) => {
   await page.getByTestId('world-width-input').fill('200');
   await page.getByTestId('world-width-input').press('Enter');
   await page.getByTestId('world-height-input').fill('150');

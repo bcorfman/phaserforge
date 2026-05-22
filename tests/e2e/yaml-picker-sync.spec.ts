@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('Open/Save As YAML share the same picker start directory (startIn handle)', async ({ page }) => {
+test('Open/Save As YAML share the same picker start directory (startIn handle) @browser @regression', async ({ page }) => {
   const yaml = serializeProjectToYaml(sampleProject);
   await page.addInitScript((sceneYaml) => {
     const openHandle: any = {

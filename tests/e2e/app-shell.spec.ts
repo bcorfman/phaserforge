@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('boots empty by default and loads scenes', async ({ page }) => {
+test('boots empty by default and loads scenes @smoke', async ({ page }) => {
   await gotoStudio(page);
   await expect(page.getByTestId('toolbar')).toBeVisible();
   await expect(page.getByTestId('add-background-button')).toHaveCount(0);
@@ -21,6 +21,7 @@ test('boots empty by default and loads scenes', async ({ page }) => {
   await expect(page.getByTestId('entity-list')).toBeVisible();
   await expect(page.getByTestId('inspector')).toBeVisible();
   await expect(page.getByRole('main', { name: 'Viewport' })).toBeVisible();
+  await expect(page.locator('canvas')).toBeVisible();
   await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Sprites' })).toBeVisible();
   await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Formations' })).toBeVisible();
   await expect(page.getByTestId('entity-list').getByRole('heading', { name: 'Actions' })).toBeHidden();
@@ -36,7 +37,7 @@ test('boots empty by default and loads scenes', async ({ page }) => {
   await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');
 });
 
-test('updates startup mode and persists the last YAML-backed scene across reloads', async ({ page }) => {
+test('updates startup mode and persists the last YAML-backed scene across reloads @critical', async ({ page }) => {
   await seedSampleScene(page, { once: true });
   await gotoStudio(page);
   await waitForSampleScene(page);
@@ -65,7 +66,7 @@ test('updates startup mode and persists the last YAML-backed scene across reload
   await waitForEmptyScene(page);
 });
 
-test('imports embedded sprites and spritesheets into the scene', async ({ page }) => {
+test('imports embedded sprites and spritesheets into the scene @critical', async ({ page }) => {
   await gotoStudio(page);
   await openSceneScope(page);
 
@@ -93,7 +94,7 @@ test('imports embedded sprites and spritesheets into the scene', async ({ page }
   }).toBe(1);
 });
 
-test('removes an imported sprite from the scene graph', async ({ page }) => {
+test('removes an imported sprite from the scene graph @critical', async ({ page }) => {
   await gotoStudio(page);
   await openSceneScope(page);
   const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
@@ -115,7 +116,7 @@ test('removes an imported sprite from the scene graph', async ({ page }) => {
   }).toEqual([]);
 });
 
-test('uses medium global sizing scale', async ({ page }) => {
+test('uses medium global sizing scale @critical', async ({ page }) => {
   await gotoStudio(page);
 
   const uiScale = await page.evaluate(() => {
@@ -129,7 +130,7 @@ test('uses medium global sizing scale', async ({ page }) => {
   expect(rootFontSize).toBeGreaterThan(14);
 });
 
-test('toggles theme modes and persists preference', async ({ page }) => {
+test('toggles theme modes and persists preference @critical', async ({ page }) => {
   await gotoStudio(page);
 
   await page.getByTestId('theme-mode-dark').click();
@@ -143,7 +144,7 @@ test('toggles theme modes and persists preference', async ({ page }) => {
   await expect.poll(async () => page.evaluate(() => document.documentElement.hasAttribute('data-theme'))).toBe(false);
 });
 
-test('side panes avoid horizontal overflow', async ({ page }) => {
+test('side panes avoid horizontal overflow @critical', async ({ page }) => {
   await seedSampleScene(page);
   await gotoStudio(page);
   await waitForSampleScene(page);

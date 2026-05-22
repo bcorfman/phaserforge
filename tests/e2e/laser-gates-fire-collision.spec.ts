@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
 
-test('Laser Gates MVP: base player can fire into active wave and collisions detect overlap enter', async ({ page }) => {
+test('Laser Gates MVP: base player can fire into active wave and collisions detect overlap enter @slow', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
     assets: { images: {}, spriteSheets: {}, fonts: {} },

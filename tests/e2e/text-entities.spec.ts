@@ -26,7 +26,7 @@ test.beforeEach(async ({ page }) => {
   await page.reload();
 });
 
-test('creates a text entity, edits it, and round-trips via YAML', async ({ page }) => {
+test('creates a text entity, edits it, and round-trips via YAML @critical', async ({ page }) => {
   await gotoStudio(page);
   await dismissViewHint(page);
 

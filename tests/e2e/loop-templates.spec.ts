@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('Loops category expands templates into repeat scaffolds', async ({ page }) => {
+test('Loops category expands templates into repeat scaffolds @critical', async ({ page }) => {
   const rect = await getEntityWorldRect(page, 'e1');
   const fromWorld = { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 };
   await tapWorld(page, fromWorld);
@@ -37,4 +37,3 @@ test('Loops category expands templates into repeat scaffolds', async ({ page }) 
     return { hasRepeat, callCount };
   }).toEqual({ hasRepeat: true, callCount: 2 });
 });
-

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { expectSelection, getGroupFrameVisible, getGroupLabelVisible, seedSampleScene, selectGroupInSceneGraph } from './helpers';
 
-test('Formation frames only render when the formation is selected', async ({ page }) => {
+test('Formation frames only render when the formation is selected @browser', async ({ page }) => {
   await seedSampleScene(page);
 
   await expectSelection(page, { kind: 'none' });

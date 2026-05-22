@@ -6,7 +6,7 @@ if (process.env.PW_ALL_BROWSERS === '1') {
   test.setTimeout(120000);
 }
 
-test('Play mode: mouse-driven entity motion respects axis locks', async ({ page }) => {
+test('Play mode: mouse-driven entity motion respects axis locks @browser', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
     assets: { images: {}, spriteSheets: {}, fonts: {} },

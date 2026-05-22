@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { seedSampleScene } from './helpers';
 
-test('Formation members align with formation label', async ({ page }) => {
+test('Formation members align with formation label @critical', async ({ page }) => {
   await seedSampleScene(page);
 
   const chevron = page.getByTestId('toggle-group-g-enemies');

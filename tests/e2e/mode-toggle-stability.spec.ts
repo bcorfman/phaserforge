@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, getState, seedProject } from './helpers';
 
-test('Preview → Edit → Preview keeps rendering (no blank canvas)', async ({ page }) => {
+test('Preview → Edit → Preview keeps rendering (no blank canvas) @smoke @browser', async ({ page }) => {
   const pageErrors: Error[] = [];
   page.on('pageerror', (err) => pageErrors.push(err));
 

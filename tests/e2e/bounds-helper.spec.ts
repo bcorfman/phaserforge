@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('Bounds Helper auto-fills from target and applies computed bounds', async ({ page }) => {
+test('Bounds Helper auto-fills from target and applies computed bounds @critical', async ({ page }) => {
   await page.getByTestId('scene-item-scene-1').click().catch(() => {});
   await selectGroupInSceneGraph(page, 'g-enemies');
   // Open a group-targeted MoveUntil attachment with BoundsHit enabled.
