@@ -1,9 +1,29 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getState, seedSampleScene } from './helpers';
+import { dismissViewHint, getState, seedProject } from './helpers';
 
 test('create a second scene, switch scenes, and preserve per-scene edits', async ({ page }) => {
   test.setTimeout(120000);
-  await seedSampleScene(page);
+  await seedProject(page, {
+    id: 'project-scenes-switching',
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
+    audio: { sounds: {} },
+    inputMaps: {},
+    scenes: {
+      'scene-1': {
+        id: 'scene-1',
+        world: { width: 1024, height: 768 },
+        entities: {
+          e1: { id: 'e1', x: 220, y: 140, width: 28, height: 20 },
+        },
+        groups: {},
+        attachments: {},
+        behaviors: {},
+        actions: {},
+        conditions: {},
+      },
+    },
+    initialSceneId: 'scene-1',
+  });
   await dismissViewHint(page);
 
   const state1 = await getState<{ currentSceneId?: string; scene?: { entities?: Record<string, unknown> } }>(page);

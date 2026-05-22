@@ -1567,6 +1567,17 @@ html[data-theme='dark'] .phaser-frame {
   margin-left: 0.65rem;
 }
 
+.inspector-field-disabled {
+  opacity: 0.55;
+}
+
+.inspector-field-disabled input,
+.inspector-field-disabled select,
+.inspector-field-disabled textarea,
+.inspector-field-disabled button {
+  pointer-events: none;
+}
+
 .inspector-grid-2 .field.field-checkbox > span {
   flex-basis: auto;
 }

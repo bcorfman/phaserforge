@@ -184,6 +184,7 @@ export type EditorAction =
   | { type: 'toggle-base-scene'; sceneId: Id }
   | { type: 'update-scene-world'; width: number; height: number }
   | { type: 'update-entity'; id: Id; next: EntitySpec }
+  | { type: 'patch-entities'; entityIds: Id[]; patch: Partial<EntitySpec> }
   | { type: 'import-entities'; drafts: ImportedEntityDraft[] }
   | { type: 'update-group'; id: Id; next: GroupSpec }
   | { type: 'create-attachment'; target: TargetRef; presetId: string; init?: Partial<AttachmentSpec> }
@@ -2250,6 +2251,32 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           [action.id]: nextEntity,
         },
       }, true);
+    }
+    case 'patch-entities': {
+      const scene = getActiveScene(state);
+      if (!Array.isArray(action.entityIds) || action.entityIds.length === 0) return state;
+
+      let changed = false;
+      const entities = { ...scene.entities };
+      const patchKeys = Object.keys(action.patch ?? {}) as Array<keyof EntitySpec>;
+      for (const id of action.entityIds) {
+        const prev = entities[id];
+        if (!prev) continue;
+        let willChange = false;
+        for (const key of patchKeys) {
+          if ((prev as any)[key] !== (action.patch as any)[key]) {
+            willChange = true;
+            break;
+          }
+        }
+        if (!willChange) continue;
+        const next = { ...prev, ...action.patch };
+        entities[id] = next;
+        changed = true;
+      }
+
+      if (!changed) return state;
+      return withScene(state, { ...scene, entities } as GameSceneSpec, true);
     }
     case 'import-entities':
       return importEntities(state, action.drafts);

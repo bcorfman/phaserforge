@@ -770,6 +770,26 @@ export class EditorScene extends Phaser.Scene {
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry, vars: this.varsService });
     this.referenceCompiled = referenceSceneSpec ? compileScene(referenceSceneSpec, { opRegistry: this.opRegistry, vars: this.varsService }) : undefined;
 
+    // Initialize the camera view immediately; it does not depend on textures/sprites being ready.
+    // Deferring this until after async texture loading can cause transient mismatches during mode switches.
+    if (this.pendingViewState) {
+      const world = getSceneWorld(sceneSpec);
+      const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
+      const nextZoom = clampZoom(this.pendingViewState.zoom, maxZoom);
+      this.currentZoom = nextZoom;
+      this.cameras.main.setZoom(nextZoom);
+      // Preserve the captured scroll exactly; `applyScroll` will clamp using the current viewport.
+      this.applyScroll(this.pendingViewState.scrollX, this.pendingViewState.scrollY);
+      this.pendingViewState = undefined;
+      this.hasInitializedView = true;
+      this.emitViewState();
+    } else if (!this.hasInitializedView) {
+      this.fitView();
+      this.hasInitializedView = true;
+    } else {
+      this.applyZoom(this.currentZoom);
+    }
+
     void this.ensureAssetTextures(project, referenceSceneSpec ? [sceneSpec, referenceSceneSpec] : [sceneSpec]).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
       if (referenceSceneSpec && this.referenceCompiled) {
@@ -786,23 +806,6 @@ export class EditorScene extends Phaser.Scene {
       this.drawWorldFrame(sceneSpec);
       this.refreshBoundsOverlay(sceneSpec);
       this.applySelectionStyles();
-      if (this.pendingViewState) {
-        const world = getSceneWorld(sceneSpec);
-        const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
-        const nextZoom = clampZoom(this.pendingViewState.zoom, maxZoom);
-        this.currentZoom = nextZoom;
-        this.cameras.main.setZoom(nextZoom);
-        // Preserve the captured scroll exactly; `applyScroll` will clamp using the current viewport.
-        this.applyScroll(this.pendingViewState.scrollX, this.pendingViewState.scrollY);
-        this.pendingViewState = undefined;
-        this.hasInitializedView = true;
-        this.emitViewState();
-      } else if (!this.hasInitializedView) {
-        this.fitView();
-        this.hasInitializedView = true;
-      } else {
-        this.applyZoom(this.currentZoom);
-      }
       if (mode === 'play') {
         this.compiled.startAll();
       }

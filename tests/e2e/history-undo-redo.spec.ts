@@ -64,6 +64,11 @@ test('Undo/redo works for scene graph member drag/drop', async ({ page }) => {
   await page.getByTestId('ungrouped-entity-e2').click();
   await page.keyboard.up('Shift');
 
+  await expect.poll(async () => {
+    const state = await getState<{ selection?: unknown }>(page);
+    return state.selection;
+  }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
+
   // Drag the selection onto the formation row to add.
   await dragDropByTestId(page, 'ungrouped-entity-e1', 'group-item-g-enemies');
 
