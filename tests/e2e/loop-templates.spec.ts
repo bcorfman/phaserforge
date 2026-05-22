@@ -37,3 +37,24 @@ test('Loops category expands templates into repeat scaffolds @critical', async (
     return { hasRepeat, callCount };
   }).toEqual({ hasRepeat: true, callCount: 2 });
 });
+
+test('Loop templates work for legacy OnSceneStart (no __legacy__ eventId) @critical', async ({ page }) => {
+  const rect = await getEntityWorldRect(page, 'e1');
+  const fromWorld = { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 };
+  await tapWorld(page, fromWorld);
+
+  await page.getByText('Actions/Events').scrollIntoViewIfNeeded();
+  await page.getByTestId('event-add-open').click();
+  await page.getByTestId('action-library-cat-loops').click();
+  await page.getByTestId('action-library-add-loops:intro_then_repeat').click();
+
+  await expect.poll(async () => {
+    const state = await getState<any>(page);
+    const atts = Object.values(state.scene?.attachments ?? {}).filter((a: any) => a?.target?.type === 'entity' && a?.target?.entityId === 'e1');
+    const legacyEventIdCount = atts.filter((a: any) => a?.eventId === '__legacy__').length;
+    const noEventIdAtts = atts.filter((a: any) => (a?.eventId ?? undefined) === undefined);
+    const hasRepeat = noEventIdAtts.some((a: any) => a?.presetId === 'Repeat');
+    const callCount = noEventIdAtts.filter((a: any) => a?.presetId === 'Call').length;
+    return { legacyEventIdCount, hasRepeat, callCount };
+  }).toEqual({ legacyEventIdCount: 0, hasRepeat: true, callCount: 2 });
+});

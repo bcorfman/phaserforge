@@ -50,5 +50,42 @@ describe('loop templates', () => {
     expect((repeat as any).children).toEqual([(child as any).id]);
     expect(next.selection).toEqual({ kind: 'attachment', id: (intro as any).id });
   });
-});
 
+  it('does not treat __legacy__ as a real event id', () => {
+    let now = 2000;
+    vi.spyOn(Date, 'now').mockImplementation(() => (now += 1));
+
+    const state = initState();
+    const sceneId = state.currentSceneId;
+    const scene = state.project.scenes[sceneId];
+    const seeded = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [sceneId]: {
+            ...scene,
+            entities: { e1: { id: 'e1', x: 0, y: 0, width: 10, height: 10 } },
+            groups: {},
+            attachments: {},
+            eventBlocks: {},
+          },
+        },
+      },
+      currentSceneId: sceneId,
+    };
+
+    const next = reducer(seeded as any, {
+      type: 'apply-loop-template',
+      templateId: 'loops:intro_then_repeat',
+      target: { type: 'entity', entityId: 'e1' },
+      eventId: '__legacy__',
+    } as any);
+
+    const nextScene = sceneOf(next);
+    const atts = Object.values(nextScene.attachments ?? {}) as any[];
+    expect(atts).toHaveLength(3);
+    expect(atts.every((a) => (a.eventId ?? undefined) === undefined)).toBe(true);
+  });
+});
