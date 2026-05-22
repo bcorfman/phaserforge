@@ -107,6 +107,7 @@ Playwright E2E specs are tagged in the test title:
 
 Suggested commands:
 
+- Local GUI-change smoke (what `npm dev test:e2e` means in this repo): `npm run test:e2e -- --project=chromium --grep @smoke`
 - Local fast loop: `npx playwright test --project=chromium --grep @smoke`
 - PR default: `npx playwright test --project=chromium --grep "@smoke|@critical"`
 - PR cross-browser risk set: `npx playwright test --project=firefox --project=webkit --project=msedge --grep "@smoke|@browser"`
