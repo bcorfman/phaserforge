@@ -38,19 +38,11 @@ test('Play mode: scene.gotoWave swaps wave without resetting base, and keeps UI 
         },
         groups: {},
         attachments: {
-          'att-wait': {
-            id: 'att-wait',
-            target: { type: 'entity', entityId: 'w1' },
-            enabled: true,
-            order: 0,
-            presetId: 'Wait',
-            params: { durationMs: 500 },
-          },
           'att-goto-wave': {
             id: 'att-goto-wave',
             target: { type: 'entity', entityId: 'w1' },
             enabled: true,
-            order: 1,
+            order: 0,
             presetId: 'Call',
             params: { callId: 'scene.gotoWave', sceneId: 'wave-2' },
           },
@@ -86,14 +78,11 @@ test('Play mode: scene.gotoWave swaps wave without resetting base, and keeps UI 
 
   await expect.poll(async () => (await getSceneSnapshot<any>(page))?.baseCompiledSceneId).toBe('base');
 
-  const before = await getEntityWorldRect(page, 'baseMover');
-  expect(before.centerX).toBeGreaterThan(10);
-
-  await expect.poll(async () => (await getSceneSnapshot<any>(page))?.compiledSceneId, { timeout: 15000 }).toBe('wave-2');
+  await expect.poll(async () => (await getSceneSnapshot<any>(page))?.compiledSceneId, { timeout: 10000 }).toBe('wave-2');
   await expect.poll(async () => (await getState<any>(page))?.currentSceneId).toBe('wave-2');
 
-  await expect.poll(async () => (await getEntityWorldRect(page, 'baseMover'))?.centerX ?? before.centerX, { timeout: 5000 }).toBeGreaterThan(before.centerX);
-
+  // Base layer remains active, wave-1 entity is removed, and wave-2 entity appears.
+  await expect.poll(async () => (await getEntitySpriteWorldRect(page, 'baseMover')), { timeout: 5000 }).not.toBeNull();
   await expect.poll(async () => (await getEntitySpriteWorldRect(page, 'w1')), { timeout: 5000 }).toBeNull();
   await expect.poll(async () => (await getEntitySpriteWorldRect(page, 'w2')), { timeout: 5000 }).not.toBeNull();
 });

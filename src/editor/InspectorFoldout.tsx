@@ -7,6 +7,7 @@ type FoldoutMap = Record<string, boolean>;
 
 function loadFoldoutMap(): FoldoutMap {
   if (typeof window === 'undefined') return {};
+  if (!('localStorage' in window) || !window.localStorage) return {};
   const raw = window.localStorage.getItem(INSPECTOR_FOLDOUTS_STORAGE_KEY);
   if (!raw) return {};
   try {
@@ -24,6 +25,7 @@ function loadFoldoutMap(): FoldoutMap {
 
 function saveFoldoutMap(map: FoldoutMap) {
   if (typeof window === 'undefined') return;
+  if (!('localStorage' in window) || !window.localStorage) return;
   try {
     window.localStorage.setItem(INSPECTOR_FOLDOUTS_STORAGE_KEY, YAML.stringify(map));
   } catch {
