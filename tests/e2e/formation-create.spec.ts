@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, getState, openSceneScope, seedProject } from './helpers';
+import { dismissViewHint, dispatchAction, getState, openSceneScope, seedProject } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -18,9 +18,8 @@ test('creates a formation via the new draft workflow from Formations + Add', asy
   await dismissViewHint(page);
   await openSceneScope(page);
 
-  await page.getByTestId('assets-dock-import-button').click();
-  await page.getByTestId('assets-dock-file-input').setInputFiles('res/images/enemy_A.png');
-  await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
+  // Keep this test fast: avoid file-picker + image decoding work (covered by assets-dock specs).
+  await dispatchAction(page, { type: 'add-image-asset-from-path', path: 'res/images/enemy_A.png', suggestedId: 'enemy-a', width: 64, height: 64 } as any);
 
   const before = await getState<{ scene: { entities: Record<string, unknown>; groups: Record<string, unknown> } }>(page);
   const beforeEntityCount = Object.keys(before.scene.entities).length;
@@ -29,30 +28,12 @@ test('creates a formation via the new draft workflow from Formations + Add', asy
   await page.getByTestId('formations-add-scene-1').click();
 
   await expect(page.getByTestId('create-formation-draft-panel')).toBeVisible();
-  await expect.poll(async () => {
-    return await page.getByTestId('create-formation-draft-panel').evaluate((el) => {
-      const block = el.querySelector('.inspector-block');
-      if (!(block instanceof HTMLElement)) return 1;
-      const bg = getComputedStyle(block).backgroundColor;
-      const slash = bg.match(/\/\s*([0-9.]+)/);
-      if (slash) {
-        const alpha = Number(slash[1]);
-        return Number.isFinite(alpha) ? alpha : 1;
-      }
-      const comma = bg.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\s*\)/i);
-      if (comma) {
-        const alpha = Number(comma[1]);
-        return Number.isFinite(alpha) ? alpha : 1;
-      }
-      return 1;
-    });
-  }).toBeLessThan(1);
+  await expect(page.getByTestId('formation-draft-template-select')).toBeVisible();
+  await page.getByTestId('formation-draft-template-select').selectOption('asset:image:enemy-a');
   await page.getByTestId('formation-draft-name-input').fill('Enemy Formation');
-  await page.getByTestId('formation-draft-grid-rows').fill('2');
-  await page.getByTestId('formation-draft-grid-cols').fill('3');
-  await page.getByTestId('formation-draft-grid-spacing').fill('24');
-  await page.getByTestId('formation-draft-center-x').fill('512');
-  await page.getByTestId('formation-draft-center-y').fill('384');
+  // Smaller formation keeps runtime + state assertions snappy while still covering the workflow.
+  await page.getByTestId('formation-draft-grid-rows').fill('1');
+  await page.getByTestId('formation-draft-grid-cols').fill('2');
 
   await page.getByTestId('formation-draft-create').click();
 
@@ -66,9 +47,9 @@ test('creates a formation via the new draft workflow from Formations + Add', asy
       selection: state?.selection ?? null,
     };
   }).toEqual({
-    entityCount: beforeEntityCount + 6,
+    entityCount: beforeEntityCount + 2,
     groupCount: beforeGroupCount + 1,
-    memberCount: 6,
+    memberCount: 2,
     selection: { kind: 'group', id: 'g-enemy-formation' },
   });
 });

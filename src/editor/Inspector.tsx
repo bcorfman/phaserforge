@@ -14,6 +14,7 @@ import { ValidatedNumberInput, ValidatedNumberTextInput, ValidatedOptionalNumber
 import { parseCallArgsJson } from './callArgsJson';
 import { TriggerZoneInspector } from './TriggerZoneInspector';
 import { SceneInspectorPanel } from './SceneInspectorPanel';
+import { MultiEntityInspector } from './MultiEntityInspector';
 import {
   displayPixelsFromBaseAndScale,
   maintainAspectDisplayHeight,
@@ -64,6 +65,30 @@ export function Inspector() {
   const scene = state.project.scenes[state.currentSceneId];
   const { selection, interaction } = state;
   const [pinDuringDrag, setPinDuringDrag] = useState(false);
+
+  const multiAssetOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: Array<{ key: string; label: string; asset?: SpriteAssetSpec }> = [];
+    for (const candidate of Object.values(scene.entities)) {
+      if (!candidate.asset) continue;
+      const asset = candidate.asset;
+      const key = asset.source.kind === 'asset'
+        ? `asset:${asset.source.assetId}`
+        : asset.source.kind === 'path'
+          ? `path:${asset.source.path}`
+          : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const label = asset.source.kind === 'asset'
+        ? `asset:${asset.source.assetId}`
+        : asset.source.kind === 'path'
+          ? (asset.source.path.split('/').pop() ?? asset.source.path)
+          : (asset.source.originalName ?? 'embedded');
+      options.push({ key, label });
+    }
+    options.sort((a, b) => a.label.localeCompare(b.label));
+    return options;
+  }, [scene.entities]);
 
   const updateGroup = (next: GroupSpec) =>
     dispatch({ type: 'update-group', id: next.id, next });
@@ -217,18 +242,13 @@ export function Inspector() {
       );
     } else if (selection.kind === 'entities') {
       content = (
-        <div className="inspector-block" data-testid="multi-selection-instructions">
-          <div className="inspector-title">Selection</div>
-          <div className="inspector-row">
-            Select sprites by clicking them on the canvas or in the Scene Graph.
-          </div>
-          <div className="inspector-row">
-            Clear selection by clicking empty canvas.
-          </div>
-          <div className="inspector-row">
-            To create a formation from multiple sprites, use the on-canvas selection bar “Group…” action.
-          </div>
-        </div>
+        <MultiEntityInspector
+          entityIds={selection.ids}
+          scene={scene}
+          dispatch={dispatch}
+          disabled={state.mode !== 'edit'}
+          assetOptions={multiAssetOptions}
+        />
       );
     } else {
       content = (

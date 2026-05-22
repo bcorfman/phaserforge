@@ -3,6 +3,9 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number; centerX?: number; centerY?: number };
@@ -12,14 +15,62 @@ type AssetDragPayload = { assetKind: 'image' | 'spritesheet' | 'audio' | 'font';
 const IS_CI = Boolean(process.env.CI);
 // Keep boot attempts bounded so helper-level retries can complete within the per-test timeout.
 // When running multiple browsers locally, the shared web server can be slower to respond.
-const APP_BOOT_TIMEOUT_MS = IS_CI ? 60000 : process.env.PW_ALL_BROWSERS === '1' ? 10000 : 20000;
-// Local runs can still be resource constrained (e.g. 3 workers + fresh Vite server per run),
-// so keep navigation/scene timeouts a bit more forgiving to avoid false negatives.
-const NAVIGATE_TIMEOUT_MS = IS_CI ? 45000 : process.env.PW_ALL_BROWSERS === '1' ? 10000 : 30000;
+const APP_BOOT_TIMEOUT_MS = IS_CI ? 60000 : process.env.PW_ALL_BROWSERS === '1' ? 10000 : 5000;
+// Local runs can still be resource constrained (e.g. 3 workers + fresh Vite server per run). However, a long
+// navigation timeout can turn transient server contention into a single-test "hang" that looks like a 45s+ slow test.
+// Prefer faster retries over a single long attempt.
+const NAVIGATE_TIMEOUT_MS = IS_CI ? 30000 : process.env.PW_ALL_BROWSERS === '1' ? 10000 : 5000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 60000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 
 const seededSampleContexts = new WeakSet<object>();
+
+const BOOT_MUTEX_PATH = path.join(os.tmpdir(), 'phaseractions-studio-e2e-boot.lock');
+const BOOT_MUTEX_STALE_MS = 20_000;
+const BOOT_MUTEX_WAIT_MS = 5_000;
+
+async function withBootMutex<T>(fn: () => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  let acquired = false;
+  const tryAcquire = async () => {
+    await fs.writeFile(BOOT_MUTEX_PATH, JSON.stringify({ pid: process.pid, startedAt: Date.now() }), { flag: 'wx' });
+  };
+
+  while (true) {
+    try {
+      await tryAcquire();
+      acquired = true;
+      break;
+    } catch {
+      // Stale lock recovery.
+      try {
+        const raw = await fs.readFile(BOOT_MUTEX_PATH, 'utf8');
+        const parsed = JSON.parse(raw) as { startedAt?: number } | null;
+        const lockAge = typeof parsed?.startedAt === 'number' ? Date.now() - parsed.startedAt : Number.POSITIVE_INFINITY;
+        if (lockAge > BOOT_MUTEX_STALE_MS) {
+          await fs.unlink(BOOT_MUTEX_PATH).catch(() => {});
+          continue;
+        }
+      } catch {
+        // If the lock disappeared between read and now, retry acquire quickly.
+      }
+      // Wait briefly and retry.
+      if (Date.now() - startedAt > BOOT_MUTEX_WAIT_MS) {
+        // Fallback: do not block the test on the mutex; proceed without it.
+        return await fn();
+      }
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  }
+
+  try {
+    return await fn();
+  } finally {
+    if (acquired) {
+      await fs.unlink(BOOT_MUTEX_PATH).catch(() => {});
+    }
+  }
+}
 
 export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean }): Promise<void> {
   // Keep helper calls bounded under the per-test timeout (60s local, 120s CI).
@@ -45,7 +96,9 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      await bootOnce();
+      // Serialise the boot/navigation phase across workers to avoid rare Vite + browser contention
+      // that can turn into 45s+ "slow tests" even when the assertions are fast.
+      await withBootMutex(bootOnce);
       lastError = undefined;
       break;
     } catch (error) {
@@ -55,6 +108,13 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
         await page.reload({ waitUntil: 'domcontentloaded', timeout: NAVIGATE_TIMEOUT_MS });
       } catch {
         // Ignore reload errors and let the next boot attempt try a fresh navigation.
+      }
+      // Edge can occasionally land on chrome-error://chromewebdata/ after a failed navigation.
+      // Resetting to about:blank helps ensure the next attempt isn't "interrupted by another navigation".
+      try {
+        await page.goto('about:blank', { waitUntil: 'domcontentloaded', timeout: 5000 });
+      } catch {
+        // ignore
       }
     }
   }
@@ -71,22 +131,29 @@ export async function seedSampleScene(page: Page, options: { once?: boolean } = 
     seededSampleContexts.add(contextKey);
     await page.addInitScript(
       ([sceneYaml, seedOnce]) => {
+        let storage: Storage;
+        try {
+          storage = window.localStorage;
+        } catch {
+          // Some transient documents (e.g. about:blank during recovery navigations) do not allow localStorage access.
+          return;
+        }
         const sentinelKey = 'phaseractions.testSeeded.v1';
         const uiResetKey = 'phaseractions.testUiReset.v1';
-        if (seedOnce && window.localStorage.getItem(sentinelKey)) return;
-        if (seedOnce) window.localStorage.setItem(sentinelKey, '1');
+        if (seedOnce && storage.getItem(sentinelKey)) return;
+        if (seedOnce) storage.setItem(sentinelKey, '1');
 
         // Tests must be isolated by default: reset the persisted authored project before boot.
-        window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
-        if (!window.localStorage.getItem(uiResetKey)) {
-          window.localStorage.setItem(uiResetKey, '1');
-          window.localStorage.removeItem('phaseractions.leftPaneWidth.v1');
-          window.localStorage.removeItem('phaseractions.assetsDockHeight.v1');
-          window.localStorage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
+        storage.removeItem('phaseractions.inspectorFoldouts.v1');
+        if (!storage.getItem(uiResetKey)) {
+          storage.setItem(uiResetKey, '1');
+          storage.removeItem('phaseractions.leftPaneWidth.v1');
+          storage.removeItem('phaseractions.assetsDockHeight.v1');
+          storage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
         }
-        window.localStorage.setItem('phaseractions.showHitboxOverlay.v1', '1');
-        window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
-        window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
+        storage.setItem('phaseractions.showHitboxOverlay.v1', '1');
+        storage.setItem('phaseractions.projectYaml.v1', sceneYaml);
+        storage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
       },
       [yaml, Boolean(options.once)]
     );
@@ -98,18 +165,24 @@ export async function seedSampleScene(page: Page, options: { once?: boolean } = 
 export async function seedProject(page: Page, project: any): Promise<void> {
   const yaml = serializeProjectToYaml(project);
   await page.addInitScript((sceneYaml) => {
+    let storage: Storage;
+    try {
+      storage = window.localStorage;
+    } catch {
+      return;
+    }
     const uiResetKey = 'phaseractions.testUiReset.v1';
     // Keep tests deterministic by clearing persisted UI state tied to previous runs.
-    window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
-    if (!window.localStorage.getItem(uiResetKey)) {
-      window.localStorage.setItem(uiResetKey, '1');
-      window.localStorage.removeItem('phaseractions.leftPaneWidth.v1');
-      window.localStorage.removeItem('phaseractions.assetsDockHeight.v1');
-      window.localStorage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
+    storage.removeItem('phaseractions.inspectorFoldouts.v1');
+    if (!storage.getItem(uiResetKey)) {
+      storage.setItem(uiResetKey, '1');
+      storage.removeItem('phaseractions.leftPaneWidth.v1');
+      storage.removeItem('phaseractions.assetsDockHeight.v1');
+      storage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
     }
-    window.localStorage.setItem('phaseractions.showHitboxOverlay.v1', '1');
-    window.localStorage.setItem('phaseractions.projectYaml.v1', sceneYaml);
-    window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
+    storage.setItem('phaseractions.showHitboxOverlay.v1', '1');
+    storage.setItem('phaseractions.projectYaml.v1', sceneYaml);
+    storage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
   }, yaml);
   await gotoStudio(page, { forceNavigate: true });
 }
@@ -465,32 +538,36 @@ export async function dragDropByTestId(
   options: { targetYFraction?: number } = {}
 ): Promise<void> {
   const targetYFraction = options.targetYFraction ?? 0.75;
+  const source = page.getByTestId(sourceTestId);
+  const target = page.getByTestId(targetTestId);
+  await expect(source).toBeVisible();
+  await expect(target).toBeVisible();
+  await source.scrollIntoViewIfNeeded();
+  await target.scrollIntoViewIfNeeded();
+
+  // Prefer a deterministic synthetic HTML5 drag/drop here. Some list items used as drag sources
+  // are not marked draggable, so Playwright's drag emulation can "succeed" without firing drop logic.
   await page.evaluate(
     ([sourceId, targetId, yFraction]) => {
-      const source = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
-      const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
-      if (!source) throw new Error(`dragDropByTestId: missing source ${sourceId}`);
-      if (!target) throw new Error(`dragDropByTestId: missing target ${targetId}`);
-
-      source.scrollIntoView({ block: 'center', inline: 'center' });
-      target.scrollIntoView({ block: 'center', inline: 'center' });
+      const sourceEl = document.querySelector(`[data-testid="${sourceId}"]`) as HTMLElement | null;
+      const targetEl = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
+      if (!sourceEl) throw new Error(`dragDropByTestId: missing source ${sourceId}`);
+      if (!targetEl) throw new Error(`dragDropByTestId: missing target ${targetId}`);
 
       const dataTransfer = new DataTransfer();
-      const rect = target.getBoundingClientRect();
+      const rect = targetEl.getBoundingClientRect();
       const clientX = rect.left + rect.width * 0.5;
       const clientY = rect.top + rect.height * yFraction;
 
       const fire = (el: Element, type: string) => {
-        el.dispatchEvent(
-          new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY })
-        );
+        el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }));
       };
 
-      fire(source, 'dragstart');
-      fire(target, 'dragenter');
-      fire(target, 'dragover');
-      fire(target, 'drop');
-      fire(source, 'dragend');
+      fire(sourceEl, 'dragstart');
+      fire(targetEl, 'dragenter');
+      fire(targetEl, 'dragover');
+      fire(targetEl, 'drop');
+      fire(sourceEl, 'dragend');
     },
     [sourceTestId, targetTestId, targetYFraction]
   );

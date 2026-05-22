@@ -1,11 +1,32 @@
 import { expect, test } from '@playwright/test';
-import { getEntityWorldRect, getSceneSnapshot, getState, seedSampleScene } from './helpers';
+import { dismissViewHint, getEntityWorldRect, getSceneSnapshot, getState, seedProject } from './helpers';
 
 test('Preview → Edit → Preview keeps rendering (no blank canvas)', async ({ page }) => {
   const pageErrors: Error[] = [];
   page.on('pageerror', (err) => pageErrors.push(err));
 
-  await seedSampleScene(page);
+  await seedProject(page, {
+    id: 'project-mode-toggle-stability',
+    assets: { images: {}, spriteSheets: {}, fonts: {} },
+    audio: { sounds: {} },
+    inputMaps: {},
+    scenes: {
+      'scene-1': {
+        id: 'scene-1',
+        world: { width: 1024, height: 768 },
+        entities: {
+          e1: { id: 'e1', x: 220, y: 140, width: 28, height: 20 },
+        },
+        groups: {},
+        attachments: {},
+        behaviors: {},
+        actions: {},
+        conditions: {},
+      },
+    },
+    initialSceneId: 'scene-1',
+  });
+  await dismissViewHint(page);
 
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('play');
@@ -26,4 +47,3 @@ test('Preview → Edit → Preview keeps rendering (no blank canvas)', async ({ 
 
   expect(pageErrors).toEqual([]);
 });
-
