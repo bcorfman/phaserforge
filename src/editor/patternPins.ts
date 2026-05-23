@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'phaseractions.pinnedPatternIds.v1';
+const STORAGE_KEY = 'phaserforge.pinnedPatternIds.v1';
 
 function hasWindow(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';

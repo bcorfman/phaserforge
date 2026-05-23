@@ -39,7 +39,7 @@ describe('EventsPanel Action Library drawer', () => {
   it('opens drawer, toggles pin, and picks an action', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     installMockLocalStorage();
-    window.localStorage.removeItem('phaseractions.pinnedActionTypes.v1');
+    window.localStorage.removeItem('phaserforge.pinnedActionTypes.v1');
 
     const onAddAttachment = vi.fn();
     const container = document.createElement('div');

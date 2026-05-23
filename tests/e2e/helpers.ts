@@ -25,7 +25,7 @@ const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 
 const seededSampleContexts = new WeakSet<object>();
 
-const BOOT_MUTEX_PATH = path.join(os.tmpdir(), 'phaseractions-studio-e2e-boot.lock');
+const BOOT_MUTEX_PATH = path.join(os.tmpdir(), 'phaserforge-e2e-boot.lock');
 const BOOT_MUTEX_STALE_MS = 20_000;
 const BOOT_MUTEX_WAIT_MS = 5_000;
 
@@ -138,22 +138,22 @@ export async function seedSampleScene(page: Page, options: { once?: boolean } = 
           // Some transient documents (e.g. about:blank during recovery navigations) do not allow localStorage access.
           return;
         }
-        const sentinelKey = 'phaseractions.testSeeded.v1';
-        const uiResetKey = 'phaseractions.testUiReset.v1';
+        const sentinelKey = 'phaserforge.testSeeded.v1';
+        const uiResetKey = 'phaserforge.testUiReset.v1';
         if (seedOnce && storage.getItem(sentinelKey)) return;
         if (seedOnce) storage.setItem(sentinelKey, '1');
 
         // Tests must be isolated by default: reset the persisted authored project before boot.
-        storage.removeItem('phaseractions.inspectorFoldouts.v1');
+        storage.removeItem('phaserforge.inspectorFoldouts.v1');
         if (!storage.getItem(uiResetKey)) {
           storage.setItem(uiResetKey, '1');
-          storage.removeItem('phaseractions.leftPaneWidth.v1');
-          storage.removeItem('phaseractions.assetsDockHeight.v1');
-          storage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
+          storage.removeItem('phaserforge.leftPaneWidth.v1');
+          storage.removeItem('phaserforge.assetsDockHeight.v1');
+          storage.removeItem('phaserforge.assetsDockShowThumbnails.v1');
         }
-        storage.setItem('phaseractions.showHitboxOverlay.v1', '1');
-        storage.setItem('phaseractions.projectYaml.v1', sceneYaml);
-        storage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
+        storage.setItem('phaserforge.showHitboxOverlay.v1', '1');
+        storage.setItem('phaserforge.projectYaml.v1', sceneYaml);
+        storage.setItem('phaserforge.startupMode.v1', 'reload_last_yaml');
       },
       [yaml, Boolean(options.once)]
     );
@@ -171,18 +171,18 @@ export async function seedProject(page: Page, project: any): Promise<void> {
     } catch {
       return;
     }
-    const uiResetKey = 'phaseractions.testUiReset.v1';
+    const uiResetKey = 'phaserforge.testUiReset.v1';
     // Keep tests deterministic by clearing persisted UI state tied to previous runs.
-    storage.removeItem('phaseractions.inspectorFoldouts.v1');
+    storage.removeItem('phaserforge.inspectorFoldouts.v1');
     if (!storage.getItem(uiResetKey)) {
       storage.setItem(uiResetKey, '1');
-      storage.removeItem('phaseractions.leftPaneWidth.v1');
-      storage.removeItem('phaseractions.assetsDockHeight.v1');
-      storage.removeItem('phaseractions.assetsDockShowThumbnails.v1');
+      storage.removeItem('phaserforge.leftPaneWidth.v1');
+      storage.removeItem('phaserforge.assetsDockHeight.v1');
+      storage.removeItem('phaserforge.assetsDockShowThumbnails.v1');
     }
-    storage.setItem('phaseractions.showHitboxOverlay.v1', '1');
-    storage.setItem('phaseractions.projectYaml.v1', sceneYaml);
-    storage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
+    storage.setItem('phaserforge.showHitboxOverlay.v1', '1');
+    storage.setItem('phaserforge.projectYaml.v1', sceneYaml);
+    storage.setItem('phaserforge.startupMode.v1', 'reload_last_yaml');
   }, yaml);
   await gotoStudio(page, { forceNavigate: true });
 }
@@ -666,7 +666,7 @@ export async function dropAssetAtClientPoint(
 ): Promise<void> {
   await page.evaluate(
     ([nextPayload, targetId, point]) => {
-      const ASSET_DRAG_MIME = 'application/x-phaseractions-studio-asset';
+      const ASSET_DRAG_MIME = 'application/x-phaserforge-asset';
       const target = document.querySelector(`[data-testid="${targetId}"]`) as HTMLElement | null;
       if (!target) throw new Error(`dropAssetAtClientPoint: missing target ${targetId}`);
 

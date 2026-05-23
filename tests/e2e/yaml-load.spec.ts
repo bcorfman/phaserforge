@@ -9,11 +9,11 @@ import { sampleProject } from '../../src/model/sampleProject';
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
-    window.localStorage.removeItem('phaseractions.projectYaml.v1');
-    window.localStorage.removeItem('phaseractions.startupMode.v1');
-    window.localStorage.removeItem('phaseractions.themeMode.v1');
-    window.localStorage.removeItem('phaseractions.uiScale.v1');
-    window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
+    window.localStorage.removeItem('phaserforge.projectYaml.v1');
+    window.localStorage.removeItem('phaserforge.startupMode.v1');
+    window.localStorage.removeItem('phaserforge.themeMode.v1');
+    window.localStorage.removeItem('phaserforge.uiScale.v1');
+    window.localStorage.removeItem('phaserforge.inspectorFoldouts.v1');
   });
 });
 
@@ -30,7 +30,7 @@ test('Open YAML (viewbar) opens a picker and loads the chosen file, then shows a
   await expect(page.getByTestId('yaml-open-file-input')).toHaveCount(1);
 
   const fixtureName = 'fixture.yaml';
-  const tmpPath = path.join(os.tmpdir(), `phaseractions-load-${Date.now()}-${fixtureName}`);
+  const tmpPath = path.join(os.tmpdir(), `phaserforge-load-${Date.now()}-${fixtureName}`);
   fs.writeFileSync(tmpPath, serializeProjectToYaml(sampleProject), 'utf8');
   await page.setInputFiles('[data-testid="yaml-open-file-input"]', tmpPath);
 

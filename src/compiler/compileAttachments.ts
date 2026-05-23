@@ -129,7 +129,7 @@ function compileCallAttachment(attachment: AttachmentSpec, ctx: CompileContext):
   };
   return new Call(() => {
     if (!opRegistry) {
-      console.warn(`[phaseractions] Missing opRegistry for Call ${callId}`);
+      console.warn(`[phaserforge] Missing opRegistry for Call ${callId}`);
       return;
     }
     opRegistry.invoke(callId, spec, ctx);
@@ -142,7 +142,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
   const buildCallback = (callId: string | undefined): (() => void) | undefined => {
     if (!callId) return undefined;
     if (!opRegistry) {
-      console.warn(`[phaseractions] Missing opRegistry for callback ${callId}`);
+      console.warn(`[phaserforge] Missing opRegistry for callback ${callId}`);
       return undefined;
     }
     const spec: CallActionSpec = {
@@ -370,7 +370,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
   if (presetId === 'InputDrive') {
     const input = ctx.options?.input;
     if (!input) {
-      console.warn('[phaseractions] InputDrive requires CompileOptions.input');
+      console.warn('[phaserforge] InputDrive requires CompileOptions.input');
       return new Sequence([]);
     }
     const speedX = Number(attachment.params?.speedX ?? attachment.params?.speed ?? 0);
@@ -397,7 +397,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const input = ctx.options?.input;
     const spawnEntity = ctx.options?.runtime?.spawnEntity;
     if (!input || !spawnEntity) {
-      console.warn('[phaseractions] InputFire requires CompileOptions.input and CompileOptions.runtime.spawnEntity');
+      console.warn('[phaserforge] InputFire requires CompileOptions.input and CompileOptions.runtime.spawnEntity');
       return new Sequence([]);
     }
     const fireActionId = typeof attachment.params?.fireActionId === 'string' ? String(attachment.params.fireActionId) : '';

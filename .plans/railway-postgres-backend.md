@@ -31,8 +31,8 @@ The backend must support the studio UI mockup direction:
 ## Platform: Railway + Postgres
 
 ### Railway resources
-- **Service:** `phaseractions-api` (Node runtime)
-- **Database:** Railway Postgres plugin attached to `phaseractions-api`
+- **Service:** `phaserforge-api` (Node runtime)
+- **Database:** Railway Postgres plugin attached to `phaserforge-api`
 
 ### Deployment method (match ZorkDemo)
 ZorkDemo deploys its backend from **GitHub Actions** using the **Railway CLI** (`railway up`) with a `RAILWAY_TOKEN` secret and a `RAILWAY_SERVICE` variable. This project should use the same approach:
