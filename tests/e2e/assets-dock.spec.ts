@@ -24,7 +24,7 @@ test.describe('Assets dock', () => {
     await expect
       .poll(async () => {
         importedMeta = await page.evaluate(() => {
-          const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+          const state: any = (window as any).__PHASER_FORGE_TEST__?.getState?.();
           const asset = state?.project?.assets?.images?.['enemy-a'];
           return { width: asset?.width ?? null, height: asset?.height ?? null };
         });
@@ -44,7 +44,7 @@ test.describe('Assets dock', () => {
     }).toBe(1);
 
     const created = await page.evaluate(() => {
-      const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+      const state: any = (window as any).__PHASER_FORGE_TEST__?.getState?.();
       const entities = state?.scene?.entities ?? {};
       return Object.values(entities).find((e: any) => e?.asset?.source?.kind === 'asset' && e?.asset?.source?.assetId === 'enemy-a') ?? null;
     });
@@ -110,7 +110,7 @@ test.describe('Assets dock', () => {
     }).toBe(true);
 
     const beforeEntityIds = await page.evaluate(() => {
-      const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+      const state: any = (window as any).__PHASER_FORGE_TEST__?.getState?.();
       return Object.keys(state?.scene?.entities ?? {});
     });
 
@@ -124,7 +124,7 @@ test.describe('Assets dock', () => {
     }).toBe(1);
 
     const createdEntityId = await page.evaluate((existingIds) => {
-      const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+      const state: any = (window as any).__PHASER_FORGE_TEST__?.getState?.();
       const ids = Object.keys(state?.scene?.entities ?? {});
       const added = ids.filter((id) => !(existingIds as string[]).includes(id));
       return added[0] ?? null;
@@ -145,7 +145,7 @@ test.describe('Assets dock', () => {
     }).toBe(true);
 
     const entityCountBeforeReplace = await page.evaluate(() => {
-      const state: any = (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.getState?.();
+      const state: any = (window as any).__PHASER_FORGE_TEST__?.getState?.();
       return Object.keys(state?.scene?.entities ?? {}).length;
     });
 

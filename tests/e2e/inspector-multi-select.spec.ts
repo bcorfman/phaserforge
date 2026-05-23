@@ -31,8 +31,8 @@ test('multi-select inspector disables non-applicable fields and bulk-edits scale
   // Clear selection and multi-select two ungrouped entities.
   await tapWorld(page, { x: -9999, y: -9999 });
 
-  const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
-  const e1 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1') ?? null) as any);
+  const e2 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e2') ?? null) as any);
+  const e1 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e1') ?? null) as any);
   if (!e1 || !e2) throw new Error('Entity rects unavailable');
   await dragWorld(page, { x: e1.minX - 30, y: e1.minY - 30 }, { x: e2.maxX + 5, y: e2.maxY + 5 });
 

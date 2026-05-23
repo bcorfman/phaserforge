@@ -115,7 +115,7 @@ function getSceneBridge(): SceneBridge | null {
 function ensureBridge(): void {
   if (!isBridgeEnabled() || typeof window === 'undefined') return;
 
-  window.__PHASER_ACTIONS_STUDIO_TEST__ = {
+  window.__PHASER_FORGE_TEST__ = {
     isEnabled: true,
     clearStoredScene() {
       window.localStorage.removeItem(PROJECT_STORAGE_KEY);

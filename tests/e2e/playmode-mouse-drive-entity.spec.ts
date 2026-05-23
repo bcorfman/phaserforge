@@ -46,7 +46,7 @@ test('Play mode: mouse-driven entity motion respects axis locks @browser', async
   const startY = Math.round(start.centerY);
 
   // Use the test bridge to deterministically place the pointer (avoids flaky headless mousemove behavior).
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setPointerWorld({ x: 200, y: 10 }));
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setPointerWorld({ x: 200, y: 10 }));
   await expect.poll(async () => {
     const snap = await getSceneSnapshot<any>(page);
     return typeof snap?.input?.pointer?.worldX === 'number' ? Math.round(snap.input.pointer.worldX) : null;
@@ -57,7 +57,7 @@ test('Play mode: mouse-driven entity motion respects axis locks @browser', async
     return { x: Math.round(rect?.centerX ?? 0), y: Math.round(rect?.centerY ?? 0) };
   }).toEqual({ x: 200, y: startY } as any);
 
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setPointerWorld({ x: 360, y: 10 }));
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setPointerWorld({ x: 360, y: 10 }));
   await expect.poll(async () => {
     const rect = await getEntityWorldRect(page, 'e1');
     return { x: Math.round(rect?.centerX ?? 0), y: Math.round(rect?.centerY ?? 0) };

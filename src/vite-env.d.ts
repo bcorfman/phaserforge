@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
-type PhaserActionsStudioPoint = { x: number; y: number };
-type PhaserActionsStudioRect = {
+type PhaserForgePoint = { x: number; y: number };
+type PhaserForgeRect = {
   minX: number;
   minY: number;
   maxX: number;
@@ -10,7 +10,7 @@ type PhaserActionsStudioRect = {
   centerY?: number;
 };
 
-interface PhaserActionsStudioTestBridge {
+interface PhaserForgeTestBridge {
   isEnabled: boolean;
   clearStoredScene(): void;
   getState(): unknown;
@@ -19,22 +19,22 @@ interface PhaserActionsStudioTestBridge {
   setMode(mode: 'edit' | 'play'): void;
   isSceneReady(): boolean;
   getSceneSnapshot(): unknown;
-  getEntityWorldRect(id: string): PhaserActionsStudioRect | null;
-  getEntitySpriteWorldRect(id: string): PhaserActionsStudioRect | null;
-  getGroupWorldBounds(id: string): PhaserActionsStudioRect | null;
+  getEntityWorldRect(id: string): PhaserForgeRect | null;
+  getEntitySpriteWorldRect(id: string): PhaserForgeRect | null;
+  getGroupWorldBounds(id: string): PhaserForgeRect | null;
   getGroupFrameVisible(id: string): boolean | null;
   getGroupLabelVisible(id: string): boolean | null;
   getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
-  getEditableBoundsRect(): PhaserActionsStudioRect | null;
+  getEditableBoundsRect(): PhaserForgeRect | null;
   hitTestAtClientPoint(clientX: number, clientY: number): { kind: 'none' | 'entity' | 'group'; id?: string };
-  worldToClient(point: PhaserActionsStudioPoint): PhaserActionsStudioPoint | null;
-  setPointerWorld(point: PhaserActionsStudioPoint): void;
+  worldToClient(point: PhaserForgePoint): PhaserForgePoint | null;
+  setPointerWorld(point: PhaserForgePoint): void;
   pointerDownEntity(entityId: string): void;
-  tapWorld(point: PhaserActionsStudioPoint, options?: { additive?: boolean }): void;
-  dragWorld(start: PhaserActionsStudioPoint, end: PhaserActionsStudioPoint): void;
-  duplicateEntities(entityIds: string[], delta: PhaserActionsStudioPoint): void;
-  dragBoundsHandle(handle: string, delta: PhaserActionsStudioPoint): void;
-  panByScreenDelta(delta: PhaserActionsStudioPoint): void;
+  tapWorld(point: PhaserForgePoint, options?: { additive?: boolean }): void;
+  dragWorld(start: PhaserForgePoint, end: PhaserForgePoint): void;
+  duplicateEntities(entityIds: string[], delta: PhaserForgePoint): void;
+  dragBoundsHandle(handle: string, delta: PhaserForgePoint): void;
+  panByScreenDelta(delta: PhaserForgePoint): void;
   undo(): void;
   redo(): void;
   resetScene(): void;
@@ -42,5 +42,5 @@ interface PhaserActionsStudioTestBridge {
 }
 
 interface Window {
-  __PHASER_ACTIONS_STUDIO_TEST__?: PhaserActionsStudioTestBridge;
+  __PHASER_FORGE_TEST__?: PhaserForgeTestBridge;
 }

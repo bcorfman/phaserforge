@@ -26,7 +26,7 @@ test('Play mode: hide OS cursor option applies to game canvas @browser', async (
   });
 
   await dismissViewHint(page);
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setMode?.('play'));
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect
     .poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey, { timeout: 5000 })
     .toBe('GameScene');

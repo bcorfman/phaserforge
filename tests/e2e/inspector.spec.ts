@@ -344,7 +344,7 @@ test('reassigns a sprite asset from another sprite via the inspector @critical',
   }).toBe(true);
 
   const { entityAId } = await page.evaluate(([aId, bId]) => {
-    const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene?: { entities?: Record<string, any> } } | null;
+    const state = window.__PHASER_FORGE_TEST__?.getState() as { scene?: { entities?: Record<string, any> } } | null;
     const entities = state?.scene?.entities ?? {};
     const find = (assetId: string) => Object.entries(entities)
       .filter(([, entity]) => entity?.asset?.source?.kind === 'asset' && entity.asset.source.assetId === assetId)
@@ -392,17 +392,17 @@ test('assigns a group MoveUntil action to imported sprites and runs it in play m
   await page.getByTestId('attachment-velocity-x-input').fill('120');
 
   const firstMemberId = await page.evaluate(() => {
-    const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { groups: Record<string, { name?: string; members: string[] }> } } | null;
+    const state = window.__PHASER_FORGE_TEST__?.getState() as { scene: { groups: Record<string, { name?: string; members: string[] }> } } | null;
     const createdGroup = state ? Object.values(state.scene.groups).find((group) => group.name === 'Formation 1') : undefined;
     return createdGroup?.members[0] ?? null;
   });
   if (!firstMemberId) throw new Error('First member id unavailable');
 
-  const before = await page.evaluate((memberId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(memberId), firstMemberId);
+  const before = await page.evaluate((memberId) => window.__PHASER_FORGE_TEST__?.getEntityWorldRect(memberId), firstMemberId);
   await page.getByTestId('toggle-mode-button').click();
 
   await expect.poll(async () => {
-    const rect = await page.evaluate((memberId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(memberId), firstMemberId);
+    const rect = await page.evaluate((memberId) => window.__PHASER_FORGE_TEST__?.getEntityWorldRect(memberId), firstMemberId);
     return rect?.centerX;
   }).not.toBe(before?.centerX);
 });
@@ -410,7 +410,7 @@ test('assigns a group MoveUntil action to imported sprites and runs it in play m
 test('preview uses edited move velocity and bounce behavior @critical', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('attachment-open-att-move-right').click();
-  const before = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1')?.centerX ?? null);
+  const before = await page.evaluate(() => window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e1')?.centerX ?? null);
   if (before === null) throw new Error('Entity rect unavailable');
 
   await page.getByTestId('attachment-velocity-x-input').fill('800');
@@ -418,9 +418,9 @@ test('preview uses edited move velocity and bounce behavior @critical', async ({
   await page.getByTestId('attachment-bounds-max-x-input').fill(String(Math.round(before + 20)));
   await page.getByTestId('attachment-bounds-behavior-select').selectOption('bounce');
 
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setMode?.('play'));
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect
-    .poll(async () => (await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getSceneSnapshot?.() as any))?.sceneKey, { timeout: 5000 })
+    .poll(async () => (await page.evaluate(() => window.__PHASER_FORGE_TEST__?.getSceneSnapshot?.() as any))?.sceneKey, { timeout: 5000 })
     .toBe('GameScene');
 
   let maxX = before;
@@ -431,7 +431,7 @@ test('preview uses edited move velocity and bounce behavior @critical', async ({
   await expect
     .poll(
       async () => {
-        const x = await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1')?.centerX ?? null);
+        const x = await page.evaluate(() => window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e1')?.centerX ?? null);
         if (typeof x !== 'number') return { sawIncrease, sawDecreaseAfterIncrease };
         if (x > maxX + 2) {
           maxX = x;
@@ -496,7 +496,7 @@ test('preview bounce reaches configured bounds edge before reversing @critical',
 
     for (let i = 0; i < 240; i += 1) {
       await nextFrame();
-      const rect = window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntitySpriteWorldRect(id) as { minX: number; maxX: number; centerX?: number } | null;
+      const rect = window.__PHASER_FORGE_TEST__?.getEntitySpriteWorldRect(id) as { minX: number; maxX: number; centerX?: number } | null;
       if (!rect) continue;
       const centerX = rect.centerX ?? (rect.minX + rect.maxX) / 2;
       if (Number.isFinite(rect.maxX)) maxMaxX = Math.max(maxMaxX, rect.maxX);
@@ -532,7 +532,7 @@ test('preview applies wrap behavior for an imported sprite move action @critical
   await page.getByTestId('event-add-open').click();
   await page.getByTestId('action-library-add-MoveUntil').click();
 
-  const before = await page.evaluate((id) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(id), entityId);
+  const before = await page.evaluate((id) => window.__PHASER_FORGE_TEST__?.getEntityWorldRect(id), entityId);
   if (!before?.centerX) throw new Error('Imported entity rect unavailable');
 
   await page.getByTestId('attachment-velocity-x-input').fill('300');
@@ -542,7 +542,7 @@ test('preview applies wrap behavior for an imported sprite move action @critical
   await page.getByTestId('toggle-mode-button').click();
 
   await expect.poll(async () => {
-    const rect = await page.evaluate((id) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(id), entityId);
+    const rect = await page.evaluate((id) => window.__PHASER_FORGE_TEST__?.getEntityWorldRect(id), entityId);
     return rect?.centerX;
   }).toBeLessThan(before.centerX - 1);
 });

@@ -49,8 +49,8 @@ test('clicking empty canvas clears selection @critical', async ({ page }) => {
 test('marquee selects multiple entities by click-dragging empty canvas @critical @browser', async ({ page }) => {
   await dismissViewHint(page);
 
-  const e1 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1') ?? null) as any);
-  const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
+  const e1 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e1') ?? null) as any);
+  const e2 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e2') ?? null) as any);
   if (!e1 || !e2) throw new Error('Entity rects unavailable');
 
   await dragWorld(page, { x: e1.minX - 30, y: e1.minY - 30 }, { x: e2.maxX + 5, y: e2.maxY + 5 });
@@ -67,7 +67,7 @@ test('shift-click additively selects entities on the canvas @critical @browser',
   await tapWorld(page, { x: 220, y: 140 });
   await expectSelection(page, { kind: 'entity', id: 'e1' });
 
-  const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
+  const e2 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e2') ?? null) as any);
   if (!e2) throw new Error('Entity rect unavailable');
   await tapWorld(page, { x: e2.centerX, y: e2.centerY }, { additive: true });
 
