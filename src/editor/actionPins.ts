@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'phaseractions.pinnedActionTypes.v1';
+const STORAGE_KEY = 'phaserforge.pinnedActionTypes.v1';
 
 function hasWindow(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';

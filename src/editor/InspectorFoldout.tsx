@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import YAML from 'yaml';
 
-const INSPECTOR_FOLDOUTS_STORAGE_KEY = 'phaseractions.inspectorFoldouts.v1';
+const INSPECTOR_FOLDOUTS_STORAGE_KEY = 'phaserforge.inspectorFoldouts.v1';
 
 type FoldoutMap = Record<string, boolean>;
 

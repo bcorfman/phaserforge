@@ -51,24 +51,24 @@ export function createStubRuntimeServices(overrides: Partial<RuntimeServices> = 
   const stub: RuntimeServices = {
     scene: {
       goto: (sceneId) => {
-        console.warn(`[phaseractions] SceneService.goto stub invoked (sceneId=${sceneId})`);
+        console.warn(`[phaserforge] SceneService.goto stub invoked (sceneId=${sceneId})`);
       },
     },
     audio: {
-      playMusic: (assetId) => console.warn(`[phaseractions] AudioService.playMusic stub invoked (assetId=${assetId})`),
-      stopMusic: () => console.warn('[phaseractions] AudioService.stopMusic stub invoked'),
-      playSfx: (assetId) => console.warn(`[phaseractions] AudioService.playSfx stub invoked (assetId=${assetId})`),
-      applySceneAudio: () => console.warn('[phaseractions] AudioService.applySceneAudio stub invoked'),
+      playMusic: (assetId) => console.warn(`[phaserforge] AudioService.playMusic stub invoked (assetId=${assetId})`),
+      stopMusic: () => console.warn('[phaserforge] AudioService.stopMusic stub invoked'),
+      playSfx: (assetId) => console.warn(`[phaserforge] AudioService.playSfx stub invoked (assetId=${assetId})`),
+      applySceneAudio: () => console.warn('[phaserforge] AudioService.applySceneAudio stub invoked'),
       getSnapshot: () => ({ musicAssetId: undefined, ambienceAssetIds: [] }),
-      stopAll: () => console.warn('[phaseractions] AudioService.stopAll stub invoked'),
+      stopAll: () => console.warn('[phaserforge] AudioService.stopAll stub invoked'),
     },
     input: {
-      setActiveMaps: () => console.warn('[phaseractions] InputService.setActiveMaps stub invoked'),
-      handleKeyDown: () => console.warn('[phaseractions] InputService.handleKeyDown stub invoked'),
-      handleKeyUp: () => console.warn('[phaseractions] InputService.handleKeyUp stub invoked'),
-      handleMouseDown: () => console.warn('[phaseractions] InputService.handleMouseDown stub invoked'),
-      handleMouseUp: () => console.warn('[phaseractions] InputService.handleMouseUp stub invoked'),
-      update: () => console.warn('[phaseractions] InputService.update stub invoked'),
+      setActiveMaps: () => console.warn('[phaserforge] InputService.setActiveMaps stub invoked'),
+      handleKeyDown: () => console.warn('[phaserforge] InputService.handleKeyDown stub invoked'),
+      handleKeyUp: () => console.warn('[phaserforge] InputService.handleKeyUp stub invoked'),
+      handleMouseDown: () => console.warn('[phaserforge] InputService.handleMouseDown stub invoked'),
+      handleMouseUp: () => console.warn('[phaserforge] InputService.handleMouseUp stub invoked'),
+      update: () => console.warn('[phaserforge] InputService.update stub invoked'),
       getActionState: () => ({ pressed: false, held: false, released: false }),
       getSnapshot: () => ({}),
     },

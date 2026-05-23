@@ -43,7 +43,7 @@
 
     <!-- tabs row -->
     <rect class="tab" x="18" y="14" width="230" height="34" rx="10"/>
-    <text class="t" x="34" y="37">phaseractions-studio</text>
+    <text class="t" x="34" y="37">phaserforge</text>
     <circle cx="1266" cy="31" r="6" fill="#ff6b6b" opacity="0.9"/>
     <circle cx="1246" cy="31" r="6" fill="#ffb86b" opacity="0.9"/>
     <circle cx="1226" cy="31" r="6" fill="#2be4a7" opacity="0.9"/>

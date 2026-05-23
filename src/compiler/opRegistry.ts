@@ -32,7 +32,7 @@ export class OpRegistry {
     }
     const handler = this.handlers.get(opId);
     if (!handler) {
-      console.warn(`[phaseractions] Missing op handler for ${opId}`);
+      console.warn(`[phaserforge] Missing op handler for ${opId}`);
       return;
     }
     try {
@@ -43,7 +43,7 @@ export class OpRegistry {
       if (this.debugErrors.length > 20) {
         this.debugErrors.splice(0, this.debugErrors.length - 20);
       }
-      console.error(`[phaseractions] Op handler threw for ${opId}: ${message}`);
+      console.error(`[phaserforge] Op handler threw for ${opId}: ${message}`);
     }
   }
 }

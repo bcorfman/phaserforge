@@ -17,11 +17,11 @@ test.beforeEach(async ({ page }) => {
 
   await page.goto('/');
   await page.evaluate(() => {
-    window.localStorage.removeItem('phaseractions.projectYaml.v1');
-    window.localStorage.removeItem('phaseractions.startupMode.v1');
-    window.localStorage.removeItem('phaseractions.themeMode.v1');
-    window.localStorage.removeItem('phaseractions.uiScale.v1');
-    window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
+    window.localStorage.removeItem('phaserforge.projectYaml.v1');
+    window.localStorage.removeItem('phaserforge.startupMode.v1');
+    window.localStorage.removeItem('phaserforge.themeMode.v1');
+    window.localStorage.removeItem('phaserforge.uiScale.v1');
+    window.localStorage.removeItem('phaserforge.inspectorFoldouts.v1');
   });
   await page.reload();
 });
@@ -43,8 +43,8 @@ test('creates a text entity, edits it, and round-trips via YAML @critical', asyn
   expect(typeof savedYaml).toBe('string');
 
   await page.evaluate((yaml) => {
-    window.localStorage.setItem('phaseractions.projectYaml.v1', String(yaml));
-    window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
+    window.localStorage.setItem('phaserforge.projectYaml.v1', String(yaml));
+    window.localStorage.setItem('phaserforge.startupMode.v1', 'reload_last_yaml');
   }, savedYaml);
 
   await gotoStudio(page, { forceNavigate: true });

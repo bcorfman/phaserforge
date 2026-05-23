@@ -45,13 +45,13 @@ import { buildDefaultDraftParams, type FormationDraftSpec, type FormationTemplat
 import { measureTextEntityPixels, resolveTextEntityDefaults, resolveTextFontFamily } from './textEntity';
 import { allocDuplicateName } from './duplicateNaming';
 
-export const PROJECT_STORAGE_KEY = 'phaseractions.projectYaml.v1';
-export const SCENE_STORAGE_KEY_V1 = 'phaseractions.sceneYaml.v1';
-export const SCENE_STORAGE_KEY = 'phaseractions.sceneYaml.v2';
-export const STARTUP_MODE_STORAGE_KEY = 'phaseractions.startupMode.v1';
-export const THEME_MODE_STORAGE_KEY = 'phaseractions.themeMode.v1';
-export const UI_SCALE_STORAGE_KEY = 'phaseractions.uiScale.v1';
-export const SHOW_HITBOX_OVERLAY_STORAGE_KEY = 'phaseractions.showHitboxOverlay.v1';
+export const PROJECT_STORAGE_KEY = 'phaserforge.projectYaml.v1';
+export const SCENE_STORAGE_KEY_V1 = 'phaserforge.sceneYaml.v1';
+export const SCENE_STORAGE_KEY = 'phaserforge.sceneYaml.v2';
+export const STARTUP_MODE_STORAGE_KEY = 'phaserforge.startupMode.v1';
+export const THEME_MODE_STORAGE_KEY = 'phaserforge.themeMode.v1';
+export const UI_SCALE_STORAGE_KEY = 'phaserforge.uiScale.v1';
+export const SHOW_HITBOX_OVERLAY_STORAGE_KEY = 'phaserforge.showHitboxOverlay.v1';
 export const DEFAULT_UI_SCALE = 0.95;
 
 export type ThemeMode = 'system' | 'light' | 'dark';
