@@ -172,6 +172,7 @@ export type EditorAction =
   | { type: 'set-error'; error?: string }
   | { type: 'set-status'; message?: string; expiresAt?: number }
   | { type: 'export-yaml' }
+  | { type: 'mark-saved' }
   | { type: 'load-yaml' }
   | { type: 'load-yaml-text'; text: string; sourceLabel: string }
   | { type: 'reset-scene' }
@@ -1057,6 +1058,8 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       return { ...state, statusMessage: action.message, statusExpiresAt: action.expiresAt };
     case 'export-yaml':
       return { ...state, yamlText: serializeProjectToYaml(state.project), error: undefined };
+    case 'mark-saved':
+      return { ...state, dirty: false, error: undefined };
     case 'load-yaml': {
       try {
         const parsed = parseProjectYaml(state.yamlText);

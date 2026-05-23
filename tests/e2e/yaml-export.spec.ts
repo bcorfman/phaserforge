@@ -35,6 +35,13 @@ test('Save As YAML writes the current project YAML (download fallback) @smoke @b
   await gotoStudio(page);
   await dismissViewHint(page);
 
+  // Make a deterministic change so the toolbar shows "Unsaved", then ensure saving clears it.
+  await page.evaluate(() => {
+    (window as any).__PHASER_FORGE_TEST__?.dispatch?.({ type: 'create-text-entity' });
+  });
+  await expect.poll(async () => (await getState<{ dirty: boolean }>(page)).dirty).toBe(true);
+  await expect(page.getByTestId('dirty-badge')).toBeVisible();
+
   const expectedYaml = serializeProjectToYaml((await getState<{ project: any }>(page)).project);
   await page.getByTestId('yaml-save-as-button').click();
 
@@ -43,4 +50,7 @@ test('Save As YAML writes the current project YAML (download fallback) @smoke @b
   }).toBe(1);
   const saved = await page.evaluate(() => (window as any).__YAML_SAVE_AS_TEST__?.saved?.[0] ?? null);
   expect(saved).toBe(expectedYaml);
+
+  await expect.poll(async () => (await getState<{ dirty: boolean }>(page)).dirty).toBe(false);
+  await expect(page.getByTestId('dirty-badge')).toBeHidden();
 });
