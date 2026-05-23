@@ -95,4 +95,45 @@ test.describe('Sidebar layout', () => {
     if (!persisted) throw new Error('Left pane bounding box unavailable after reload');
     expect(persisted.width).toBeGreaterThan(before.width + 40);
   });
+
+  test('resizes the inspector sidebar width and persists across reloads @critical @browser', async ({ page, browserName }) => {
+    test.skip(browserName === 'firefox', 'Pointer capture drag semantics are flaky in Firefox in this suite');
+
+    await page.setViewportSize({ width: 1400, height: 980 });
+    await seedProject(page, createEmptyProject());
+    await dismissViewHint(page);
+    await openSceneScope(page);
+
+    const splitter = page.getByTestId('right-pane-splitter');
+    const pane = page.getByTestId('inspector-pane');
+
+    await expect(pane).toBeVisible({ timeout: 10000 });
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(300);
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeLessThan(800);
+    const before = await pane.boundingBox();
+    if (!before) throw new Error('Inspector pane bounding box unavailable');
+
+    const splitBox = await splitter.boundingBox();
+    if (!splitBox) throw new Error('Right pane splitter bounding box unavailable');
+
+    await page.mouse.move(splitBox.x + splitBox.width / 2, splitBox.y + splitBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(splitBox.x + splitBox.width / 2 - 120, splitBox.y + splitBox.height / 2);
+    await page.mouse.up();
+
+    const after = await pane.boundingBox();
+    if (!after) throw new Error('Inspector pane bounding box unavailable after resize');
+    expect(after.width).toBeGreaterThan(before.width + 40);
+
+    await page.reload();
+    await gotoStudio(page);
+    await dismissViewHint(page);
+    await openSceneScope(page);
+    await expect(pane).toBeVisible({ timeout: 10000 });
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(300);
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeLessThan(800);
+    const persisted = await pane.boundingBox();
+    if (!persisted) throw new Error('Inspector pane bounding box unavailable after reload');
+    expect(persisted.width).toBeGreaterThan(before.width + 40);
+  });
 });

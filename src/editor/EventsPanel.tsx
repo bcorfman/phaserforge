@@ -524,9 +524,44 @@ function EventBlockCard({
 
   const renderAttachmentRow = (
     attachment: any,
-    opts: { disableDrag: boolean; parentAttachmentId: Id | undefined }
-  ) => (
+    opts: {
+      disableDrag: boolean;
+      parentAttachmentId: Id | undefined;
+      repeat?: { hasChildren: boolean; collapsed: boolean; onToggleCollapsed: () => void };
+    }
+  ) => {
+    const isPlaceholderCall = attachment.presetId === 'Call' && (attachment.condition?.type ?? 'Instant') === 'Instant';
+    const hasExplicitName = typeof attachment.name === 'string' && attachment.name.trim().length > 0;
+    const nameLooksGenerated =
+      !hasExplicitName
+      || attachment.name === attachment.id
+      || String(attachment.name).startsWith('att-')
+      || String(attachment.name).startsWith('tmp-');
+
+    const title =
+      attachment.presetId === 'Repeat' && nameLooksGenerated
+        ? 'Repeat'
+        : (attachment.name ?? attachment.id);
+
+    const subtitle = isPlaceholderCall ? 'Call (placeholder)' : String(attachment.presetId ?? '');
+
+    return (
     <div key={attachment.id} className="member-row">
+      {attachment.presetId === 'Repeat' && opts.repeat?.hasChildren ? (
+        <button
+          aria-label={opts.repeat.collapsed ? 'Expand loop' : 'Collapse loop'}
+          className="scene-graph-button scene-graph-chevron"
+          data-testid={`attachment-repeat-toggle-${attachment.id}`}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            opts.repeat.onToggleCollapsed();
+          }}
+        >
+          {opts.repeat.collapsed ? '▸' : '▾'}
+        </button>
+      ) : null}
       <input
         aria-label={`Select attachment ${attachment.id}`}
         checked={selectedAttachmentIds.has(attachment.id)}
@@ -558,7 +593,15 @@ function EventBlockCard({
         type="button"
         onClick={() => onSelectAttachment(attachment.id)}
       >
-        {attachment.name ?? attachment.id} · {attachment.presetId}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, textAlign: 'left' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700 }}>
+            <span>{title}</span>
+            {attachment.presetId === 'Repeat' ? <span className="steps-loop-pill">Loop</span> : null}
+          </div>
+          <div className="muted" style={{ fontSize: 12 }}>
+            {subtitle}
+          </div>
+        </div>
       </button>
       <button
         aria-label={`More options for step ${attachment.name ?? attachment.id}`}
@@ -576,7 +619,8 @@ function EventBlockCard({
         ⋯
       </button>
     </div>
-  );
+    );
+  };
 
   const triggerType = trigger.type ?? 'start';
   const triggerEdge = trigger.edge ?? (triggerType === 'visible' ? 'shown' : triggerType === 'input_action' ? 'pressed' : undefined);
@@ -944,34 +988,13 @@ function EventBlockCard({
         {(() => {
           const renderRows = (parentAttachmentId: Id | undefined, depth: number): JSX.Element[] => {
             const rows = buildAttachedActionRowsForTargetAndEvent(scene, target, eventIdForRows, parentAttachmentId);
-            return rows.flatMap((row, rowIndex) => {
+            return rows.flatMap((row) => {
               if (row.kind === 'attachment') {
                 const attachment: any = row.attachment;
                 const isRepeat = attachment.presetId === 'Repeat' && Array.isArray(attachment.children) && attachment.children.length > 0;
-                const childRows = isRepeat ? renderRows(attachment.id, depth + 1) : [];
+                const isCollapsed = isRepeat ? collapsedRepeats.has(attachment.id) : false;
                 const base = (
                   <div key={attachment.id} style={{ paddingLeft: depth * 18 }}>
-                    {isRepeat ? (
-                      <div className="member-row">
-                        <button className="tag-button" type="button" onClick={() => toggleRepeatCollapsed(attachment.id)}>
-                          {collapsedRepeats.has(attachment.id) ? '▸' : '▾'} Repeat
-                        </button>
-                        <span className="muted" style={{ marginLeft: 8 }}>Add child:</span>
-                        {supportedPresetEntries
-                          .filter((entry) => entry.type !== 'Repeat')
-                          .slice(0, 3)
-                          .map((entry) => (
-                            <button
-                              key={`add-child-${attachment.id}-${entry.type}`}
-                              className="tag-button"
-                              type="button"
-                              onClick={() => onAddAttachment(entry.type, { eventId: block.id, parentAttachmentId: attachment.id })}
-                            >
-                              + {entry.displayName}
-                            </button>
-                          ))}
-                      </div>
-                    ) : null}
                     <div
                       data-testid={`attachment-dropzone-${attachment.id}`}
                       onDragOver={(e) => {
@@ -1001,13 +1024,52 @@ function EventBlockCard({
                       {renderAttachmentRow(attachment, {
                         disableDrag: false,
                         parentAttachmentId,
+                        repeat: isRepeat
+                          ? {
+                              hasChildren: true,
+                              collapsed: isCollapsed,
+                              onToggleCollapsed: () => toggleRepeatCollapsed(attachment.id),
+                            }
+                          : undefined,
                       })}
                     </div>
                   </div>
                 );
-                if (!isRepeat) return [base];
-                if (collapsedRepeats.has(attachment.id)) return [base];
-                return [base, ...childRows];
+                if (!isRepeat || isCollapsed) return [base];
+
+                const addChildRow = (
+                  <div key={`${attachment.id}__add_child`} className="member-row steps-child-controls">
+                    <span className="muted">Add child:</span>
+                    {supportedPresetEntries
+                      .filter((entry) => entry.type !== 'Repeat')
+                      .slice(0, 3)
+                      .map((entry) => (
+                        <button
+                          key={`add-child-${attachment.id}-${entry.type}`}
+                          className="tag-button"
+                          type="button"
+                          onClick={() => onAddAttachment(entry.type, { eventId: block.id, parentAttachmentId: attachment.id })}
+                        >
+                          + {entry.displayName}
+                        </button>
+                      ))}
+                  </div>
+                );
+
+                const childRows = renderRows(attachment.id, 0);
+                return [
+                  base,
+                  <div
+                    key={`${attachment.id}__children`}
+                    className="steps-children-wrap"
+                    data-testid={`steps-children-wrap-${attachment.id}`}
+                    style={{ marginLeft: (depth + 1) * 18 }}
+                  >
+                    <div className="steps-children-line" aria-hidden />
+                    {addChildRow}
+                    {childRows}
+                  </div>,
+                ];
               }
 
               const isExpanded = expandedParallelGroups.has(row.groupId);
