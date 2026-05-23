@@ -24,5 +24,6 @@ dist-ssr
 *.sw?
 .phaserforge*
 .serena/
+.codegraph/
 playwright-report/
 test-results/

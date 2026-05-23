@@ -2833,24 +2833,22 @@ function AttachmentInspector({
               onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
             />
           </label>
-          <div className="inspector-grid-2">
-            <label className="field field-wide-label">
-              <span>Start Progress</span>
-              <ValidatedNumberInput
-                aria-label="Wave Start Progress"
-                value={Number(params.startProgress ?? 0)}
-                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, startProgress: next } })}
-              />
-            </label>
-            <label className="field">
-              <span>End Progress</span>
-              <ValidatedNumberInput
-                aria-label="Wave End Progress"
-                value={Number(params.endProgress ?? 1)}
-                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, endProgress: next } })}
-              />
-            </label>
-          </div>
+          <label className="field field-wide-label">
+            <span>Start Progress</span>
+            <ValidatedNumberInput
+              aria-label="Wave Start Progress"
+              value={Number(params.startProgress ?? 0)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, startProgress: next } })}
+            />
+          </label>
+          <label className="field field-wide-label">
+            <span>End Progress</span>
+            <ValidatedNumberInput
+              aria-label="Wave End Progress"
+              value={Number(params.endProgress ?? 1)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, endProgress: next } })}
+            />
+          </label>
         </InspectorFoldout>
       )}
 
