@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { formatActionDisplayName, formatActionTypeTag } from './actionFormatting';
 
 export type ActionLibraryEntry = { type: string; displayName: string; category?: string };
 export type PatternLibraryEntry = { id: string; name: string };
@@ -11,24 +12,6 @@ function titleCase(input: string): string {
     .filter(Boolean)
     .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
-}
-
-function formatActionDisplayName(entry: ActionLibraryEntry): string {
-  const name = (entry.displayName ?? '').trim();
-  if (!name) return name;
-  if ((entry.category ?? '') === 'movement' && name.endsWith(' Pattern')) {
-    return name.slice(0, -' Pattern'.length).trim();
-  }
-  return name;
-}
-
-function formatActionTypeTag(entry: ActionLibraryEntry): string {
-  const type = (entry.type ?? '').trim();
-  if (!type) return type;
-  if ((entry.category ?? '') === 'movement' && type.endsWith('Pattern')) {
-    return type.slice(0, -'Pattern'.length).trim();
-  }
-  return type;
 }
 
 export function ActionLibraryDrawer({

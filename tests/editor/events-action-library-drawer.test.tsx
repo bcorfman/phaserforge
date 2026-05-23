@@ -36,6 +36,83 @@ const registry = {
 };
 
 describe('EventsPanel Action Library drawer', () => {
+  it('does not prefix step rows with Step N', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await React.act(async () => {
+      root.render(
+        <EventsPanel
+          project={sampleProject}
+          scene={sampleScene}
+          target={{ type: 'group', groupId: 'g-enemies' }}
+          selectedAttachmentId={undefined}
+          registry={registry as any}
+          onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={() => {}}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
+          onRemoveAttachment={() => {}}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
+        />
+      );
+    });
+
+    expect(container.textContent).not.toContain('Step 1');
+    expect(container.textContent).not.toContain('Step 2');
+  });
+
+  it('shows loop affordances for Repeat steps with children', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await React.act(async () => {
+      root.render(
+        <EventsPanel
+          project={sampleProject}
+          scene={sampleScene}
+          target={{ type: 'group', groupId: 'g-enemies' }}
+          selectedAttachmentId={undefined}
+          registry={registry as any}
+          onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={() => {}}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
+          onRemoveAttachment={() => {}}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
+        />
+      );
+    });
+
+    expect(container.querySelector('[data-testid="attachment-repeat-toggle-att-loop"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="steps-children-wrap-att-loop"]')).not.toBeNull();
+    expect(container.textContent).toContain('Loop');
+  });
+
   it('opens drawer, toggles pin, and picks an action', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     installMockLocalStorage();
