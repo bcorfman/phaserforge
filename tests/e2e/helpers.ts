@@ -368,6 +368,53 @@ export async function hitTestAtClientPoint(
   >;
 }
 
+export async function findEmptyCanvasClientPoint(page: Page, preferredWorldPoint: Point): Promise<Point> {
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const rect = await canvas.boundingBox();
+  if (!rect || rect.width === 0 || rect.height === 0) throw new Error('Canvas bounding box unavailable');
+
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+  const clampToCanvas = (p: Point): Point => ({
+    x: clamp(p.x, rect.x + 1, rect.x + rect.width - 1),
+    y: clamp(p.y, rect.y + 1, rect.y + rect.height - 1),
+  });
+
+  const base = clampToCanvas(await worldToClient(page, preferredWorldPoint));
+  const jitter = [
+    { dx: 0, dy: 0 },
+    { dx: 12, dy: 0 },
+    { dx: -12, dy: 0 },
+    { dx: 0, dy: 12 },
+    { dx: 0, dy: -12 },
+    { dx: 20, dy: 20 },
+    { dx: -20, dy: -20 },
+    { dx: 30, dy: -15 },
+    { dx: -30, dy: 15 },
+  ];
+
+  const fractionCandidates: Array<{ x: number; y: number }> = [
+    { x: 0.02, y: 0.02 },
+    { x: 0.98, y: 0.02 },
+    { x: 0.02, y: 0.98 },
+    { x: 0.98, y: 0.98 },
+    { x: 0.5, y: 0.02 },
+    { x: 0.5, y: 0.98 },
+  ];
+
+  const candidates: Point[] = [
+    ...jitter.map(({ dx, dy }) => clampToCanvas({ x: base.x + dx, y: base.y + dy })),
+    ...(await Promise.all(fractionCandidates.map((f) => canvasClientPoint(page, f)))),
+  ];
+
+  for (const p of candidates) {
+    const hit = await hitTestAtClientPoint(page, p);
+    if (hit?.kind === 'none') return p;
+  }
+
+  throw new Error(`Failed to find empty canvas point near ${JSON.stringify(preferredWorldPoint)}`);
+}
+
 export async function getEntityWorldRect(page: Page, id: string): Promise<Rect> {
   return page.evaluate((entityId) => window.__PHASER_FORGE_TEST__?.getEntityWorldRect(entityId), id) as Promise<Rect>;
 }

@@ -6,6 +6,7 @@ import {
   dragOnCanvas,
   dragWorld,
   expectSelection,
+  findEmptyCanvasClientPoint,
   getEditableBoundsRect,
   getSceneSnapshot,
   getState,
@@ -40,7 +41,7 @@ test('clicking empty canvas clears selection @critical', async ({ page }) => {
   await tapWorld(page, { x: 220, y: 140 });
   await expectSelection(page, { kind: 'entity', id: 'e1' });
 
-  const emptyPoint = await worldToClient(page, { x: 20, y: 20 });
+  const emptyPoint = await findEmptyCanvasClientPoint(page, { x: 20, y: 20 });
   await clickCanvasAt(page, emptyPoint);
 
   await expectSelection(page, { kind: 'none' });
