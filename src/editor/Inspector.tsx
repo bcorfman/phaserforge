@@ -152,6 +152,13 @@ export function Inspector() {
           state.registry,
           (next) => dispatch({ type: 'update-attachment', id: next.id, next }),
           () => dispatch({ type: 'remove-attachment', id: attachment.id }),
+          () => {
+            if (attachment.target.type === 'entity') {
+              dispatch({ type: 'select', selection: { kind: 'entity', id: attachment.target.entityId } });
+              return;
+            }
+            dispatch({ type: 'select', selection: { kind: 'group', id: attachment.target.groupId } });
+          },
         )
         : <div className="muted">Action not found.</div>;
     } else if (selection.kind === 'group') {
@@ -1783,6 +1790,7 @@ export function renderAttachmentInspector(
   registry: EditorRegistryConfig,
   onUpdate: (next: AttachmentSpec) => void,
   onRemove: () => void,
+  onBackToActionsEvents?: () => void,
 ) {
   return (
     <AttachmentInspector
@@ -1792,6 +1800,7 @@ export function renderAttachmentInspector(
       registry={registry}
       onUpdate={onUpdate}
       onRemove={onRemove}
+      onBackToActionsEvents={onBackToActionsEvents}
     />
   );
 }
@@ -1803,6 +1812,7 @@ function AttachmentInspector({
   registry,
   onUpdate,
   onRemove,
+  onBackToActionsEvents,
 }: {
   attachment: AttachmentSpec;
   project: ProjectSpec;
@@ -1810,6 +1820,7 @@ function AttachmentInspector({
   registry: EditorRegistryConfig;
   onUpdate: (next: AttachmentSpec) => void;
   onRemove: () => void;
+  onBackToActionsEvents?: () => void;
 }) {
   const targetLabel =
     attachment.target.type === 'entity'
@@ -1901,7 +1912,22 @@ function AttachmentInspector({
 
   return (
     <div className="inspector-block" data-testid="attachment-inspector">
-      <div className="inspector-title">{attachment.name ?? attachment.id}</div>
+      <div className="inspector-title-row">
+        <div className="inspector-title-actions">
+          {onBackToActionsEvents && (
+            <button
+              className="button button-compact"
+              data-testid="attachment-back-button"
+              type="button"
+              aria-label="Back to Actions/Events"
+              onClick={onBackToActionsEvents}
+            >
+              ← Back
+            </button>
+          )}
+        </div>
+        <div className="inspector-title">{attachment.name ?? attachment.id}</div>
+      </div>
       <div className="inspector-row">Attached to: {targetLabel}</div>
       <InspectorFoldout
         title="General"
@@ -2833,24 +2859,22 @@ function AttachmentInspector({
               onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
             />
           </label>
-          <div className="inspector-grid-2">
-            <label className="field field-wide-label">
-              <span>Start Progress</span>
-              <ValidatedNumberInput
-                aria-label="Wave Start Progress"
-                value={Number(params.startProgress ?? 0)}
-                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, startProgress: next } })}
-              />
-            </label>
-            <label className="field">
-              <span>End Progress</span>
-              <ValidatedNumberInput
-                aria-label="Wave End Progress"
-                value={Number(params.endProgress ?? 1)}
-                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, endProgress: next } })}
-              />
-            </label>
-          </div>
+          <label className="field field-wide-label">
+            <span>Start Progress</span>
+            <ValidatedNumberInput
+              aria-label="Wave Start Progress"
+              value={Number(params.startProgress ?? 0)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, startProgress: next } })}
+            />
+          </label>
+          <label className="field field-wide-label">
+            <span>End Progress</span>
+            <ValidatedNumberInput
+              aria-label="Wave End Progress"
+              value={Number(params.endProgress ?? 1)}
+              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, endProgress: next } })}
+            />
+          </label>
         </InspectorFoldout>
       )}
 
