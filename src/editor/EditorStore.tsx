@@ -2361,9 +2361,22 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     }
     case 'remove-attachment': {
       const scene = getActiveScene(state);
+      const removed = scene.attachments[action.id];
       const nextScene = removeAttachment(scene, action.id);
       if (nextScene === scene) return state;
-      return withScene({ ...state, selection: { kind: 'none' } }, nextScene as GameSceneSpec, true, { kind: 'none' });
+
+      let selection: Selection = state.selection;
+      if (selection.kind === 'attachment') {
+        const stillExists = Boolean((nextScene.attachments as any)?.[selection.id]);
+        if (!stillExists && removed) {
+          selection =
+            removed.target.type === 'entity'
+              ? { kind: 'entity', id: removed.target.entityId }
+              : { kind: 'group', id: removed.target.groupId };
+        }
+      }
+
+      return withScene({ ...state, selection }, nextScene as GameSceneSpec, true, selection);
     }
     case 'move-attachment': {
       const scene = getActiveScene(state);
