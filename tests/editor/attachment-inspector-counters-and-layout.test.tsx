@@ -17,7 +17,35 @@ function baseProject(): any {
 }
 
 describe('Attachment inspector UI', () => {
-  it('marks WavePattern Start Progress field as wide-label', () => {
+  it('renders a back button when provided by the caller', () => {
+    const scene = baseScene();
+    const project = baseProject();
+    const attachment: any = {
+      id: 'att-back-1',
+      target: { type: 'entity', entityId: 'e1' },
+      presetId: 'WavePattern',
+      enabled: true,
+      order: 0,
+      params: {},
+    };
+
+    const markup = renderToStaticMarkup(
+      renderAttachmentInspector(
+        attachment,
+        project,
+        scene,
+        { arrange: [], actions: [], conditions: [] },
+        () => {},
+        () => {},
+        () => {}
+      )
+    );
+
+    expect(markup).toContain('data-testid="attachment-back-button"');
+    expect(markup).toContain('Back to Actions/Events');
+  });
+
+  it('stacks WavePattern progress fields as wide-label rows', () => {
     const scene = baseScene();
     const project = baseProject();
     const attachment: any = {
@@ -41,7 +69,10 @@ describe('Attachment inspector UI', () => {
     );
 
     expect(markup).toContain('Start Progress');
+    expect(markup).toContain('End Progress');
     expect(markup).toContain('field-wide-label');
+    expect(markup).not.toContain('inspector-grid-2"><label class="field field-wide-label"><span>Start Progress');
+    expect(markup).not.toContain('inspector-grid-2"><label class="field field-wide-label"><span>End Progress');
   });
 
   it('shows helpful empty-state text when no counters exist', () => {

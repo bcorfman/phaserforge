@@ -65,3 +65,15 @@ If an established style would be violated but the user may benefit from a simple
 If a workflow is added/removed/meaningfully altered, update:
 - `.plans/editor-workflows-inventory.md`
 - `.plans/ux-checklist-workflow-simplification.md` (only if decisions/checklist need updating)
+
+## PhaserForge code navigation rule
+For PhaserForge architecture work, use Serena first to locate and inspect relevant symbols before reading whole files.
+
+Common targets:
+- Phaser scene/editor classes
+- action graph / behavior graph code
+- serialization/deserialization logic
+- command, selection, drag/drop, and undo/redo systems
+- integration points between the visual editor and runtime actions
+
+Do not scan the repo broadly first. Use Serena to identify the smallest relevant set of files and symbols, then read those files as needed.

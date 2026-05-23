@@ -140,6 +140,68 @@ describe('EditorStore reducer', () => {
     }
   });
 
+  it('keeps the current sprite selection when deleting an action attachment', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+    const sceneId = state.currentSceneId;
+
+    const attachment: any = {
+      id: 'att-entity-1',
+      name: 'Test Action',
+      order: 0,
+      target: { type: 'entity', entityId: 'e1' },
+      enabled: true,
+      presetId: 'Wait',
+      params: { durationMs: 1 },
+    };
+
+    const withAttachment = {
+      ...state,
+      selection: { kind: 'entity', id: 'e1' },
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [sceneId]: { ...scene, attachments: { ...(scene.attachments ?? {}), [attachment.id]: attachment } },
+        },
+      },
+    };
+
+    const next = reducer(withAttachment as any, { type: 'remove-attachment', id: attachment.id } as any);
+    expect(next.selection).toEqual({ kind: 'entity', id: 'e1' });
+  });
+
+  it('returns to the parent sprite when deleting the currently-selected action attachment', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+    const sceneId = state.currentSceneId;
+
+    const attachment: any = {
+      id: 'att-entity-2',
+      name: 'Selected Action',
+      order: 0,
+      target: { type: 'entity', entityId: 'e1' },
+      enabled: true,
+      presetId: 'Wait',
+      params: { durationMs: 1 },
+    };
+
+    const withAttachmentSelected = {
+      ...state,
+      selection: { kind: 'attachment', id: attachment.id },
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [sceneId]: { ...scene, attachments: { ...(scene.attachments ?? {}), [attachment.id]: attachment } },
+        },
+      },
+    };
+
+    const next = reducer(withAttachmentSelected as any, { type: 'remove-attachment', id: attachment.id } as any);
+    expect(next.selection).toEqual({ kind: 'entity', id: 'e1' });
+  });
+
   it('suffixes name-based group ids when a collision exists', () => {
     const state = seededState();
 
