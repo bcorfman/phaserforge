@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AttachmentSpec, AttachmentTriggerSpec, EditorRegistryConfig, EventBlockSpec, Id, ParamSpec, PatternSpec, ProjectSpec, SceneSpec, TargetRef } from '../model/types';
-import { type AttachedActionRow, buildAttachedActionRowsForTargetAndEvent } from './attachmentCommands';
+import { getAttachmentsForTargetAndEvent, type AttachedActionRow, buildAttachedActionRowsForTargetAndEvent } from './attachmentCommands';
 import { getTargetLabel } from './attachmentCommands';
 import { ActionLibraryDrawer } from './ActionLibraryDrawer';
 import { loadPinnedActionTypes, togglePinnedActionType } from './actionPins';
@@ -398,6 +398,7 @@ function EventBlockCard({
   const [pinnedTypes, setPinnedTypes] = useState<Set<string>>(() => new Set(loadPinnedActionTypes()));
   const [pinnedPatternIds, setPinnedPatternIds] = useState<Set<string>>(() => new Set(loadPinnedPatternIds()));
   const [drawerAnchorRect, setDrawerAnchorRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [pendingInsert, setPendingInsert] = useState<{ kind: 'above' | 'below' | 'child'; anchorAttachmentId: Id } | null>(null);
   const [draggingRow, setDraggingRow] = useState<{ kind: 'attachment' | 'parallel-group'; id: string; parentAttachmentId: Id | undefined } | null>(null);
   const [applyPatternPrompt, setApplyPatternPrompt] = useState<{
     patternId: Id;
@@ -409,6 +410,7 @@ function EventBlockCard({
   } | null>(null);
   const [overflowMenu, setOverflowMenu] = useState<{ kind: 'attachment'; attachmentId: Id } | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [menuAnchorRect, setMenuAnchorRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const menuRootRef = useRef<HTMLDivElement | null>(null);
   const addButtonRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
@@ -418,6 +420,7 @@ function EventBlockCard({
       if (!root) return;
       if (event.target instanceof Node && root.contains(event.target)) return;
       setOverflowMenu(null);
+      setMenuAnchorRect(null);
     };
     window.addEventListener('pointerdown', onPointerDown, true);
     return () => window.removeEventListener('pointerdown', onPointerDown, true);
@@ -561,7 +564,16 @@ function EventBlockCard({
         >
           {opts.repeat.collapsed ? '▸' : '▾'}
         </button>
-      ) : null}
+      ) : (
+        <span
+          aria-hidden
+          className="scene-graph-button scene-graph-chevron"
+          data-testid={`attachment-repeat-spacer-${attachment.id}`}
+          style={{ visibility: 'hidden' }}
+        >
+          ▸
+        </span>
+      )}
       <input
         aria-label={`Select attachment ${attachment.id}`}
         checked={selectedAttachmentIds.has(attachment.id)}
@@ -613,6 +625,7 @@ function EventBlockCard({
           event.stopPropagation();
           const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
           setMenuPosition({ x: Math.min(rect.left, window.innerWidth - 220), y: rect.bottom + 6 });
+          setMenuAnchorRect({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
           setOverflowMenu({ kind: 'attachment', attachmentId: attachment.id });
         }}
       >
@@ -645,6 +658,43 @@ function EventBlockCard({
     [project.patterns]
   );
 
+  const buildDefaultAddInit = (): Partial<AttachmentSpec> => ({
+    ...(typeof eventIdForRows === 'string' && eventIdForRows.length > 0 ? { eventId: eventIdForRows } : {}),
+  });
+
+  const buildInsertInit = (): Partial<AttachmentSpec> => {
+    if (!pendingInsert) return buildDefaultAddInit();
+    const anchor = scene.attachments?.[pendingInsert.anchorAttachmentId];
+    if (!anchor) return buildDefaultAddInit();
+    const anchorEventId = typeof anchor.eventId === 'string' && anchor.eventId.length > 0 ? anchor.eventId : undefined;
+    const parentAttachmentId = anchor.parentAttachmentId ?? undefined;
+
+    if (pendingInsert.kind === 'child') {
+      return {
+        ...(anchorEventId ? { eventId: anchorEventId } : {}),
+        parentAttachmentId: anchor.id,
+      };
+    }
+
+    const siblings = getAttachmentsForTargetAndEvent(scene, target, anchorEventId).filter(
+      (a) => (a.parentAttachmentId ?? undefined) === (parentAttachmentId ?? undefined)
+    );
+    const anchorIndex = siblings.findIndex((a) => a.id === anchor.id);
+    const anchorOrder = siblings[anchorIndex]?.order ?? anchorIndex;
+
+    if (pendingInsert.kind === 'above') {
+      const prev = anchorIndex > 0 ? siblings[anchorIndex - 1] : undefined;
+      const prevOrder = prev ? (prev.order ?? anchorOrder - 1) : anchorOrder - 1;
+      const order = prev ? (prevOrder + anchorOrder) / 2 : anchorOrder - 1;
+      return { ...(anchorEventId ? { eventId: anchorEventId } : {}), parentAttachmentId, order };
+    }
+
+    const next = anchorIndex >= 0 && anchorIndex + 1 < siblings.length ? siblings[anchorIndex + 1] : undefined;
+    const nextOrder = next ? (next.order ?? anchorOrder + 1) : anchorOrder + 1;
+    const order = next ? (anchorOrder + nextOrder) / 2 : anchorOrder + 1;
+    return { ...(anchorEventId ? { eventId: anchorEventId } : {}), parentAttachmentId, order };
+  };
+
   const pickPreset = (presetId: string) => {
     if (presetId.startsWith('loops:')) {
       if (presetId === 'loops:repeat_with_children') {
@@ -655,12 +705,14 @@ function EventBlockCard({
         onApplyLoopTemplate(presetId as any, eventIdForRows);
       }
       setDrawerOpen(false);
+      setPendingInsert(null);
       return;
     }
-    const init: Partial<AttachmentSpec> = { eventId: block.id };
+    const init: Partial<AttachmentSpec> = pendingInsert ? buildInsertInit() : buildDefaultAddInit();
     if (presetId === 'Call') init.condition = { type: 'Instant' } as any;
     onAddAttachment(presetId, init);
     setDrawerOpen(false);
+    setPendingInsert(null);
   };
 
   return (
@@ -759,21 +811,24 @@ function EventBlockCard({
       <div className="panel-heading-row">
         <div className="panel-heading" />
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1 }}>
-          <button
-            ref={addButtonRef}
-            className={`button button-compact ${drawerOpen ? 'active' : ''}`}
-            type="button"
-            data-testid={hideEventControls ? 'event-add-open' : `event-add-open-${block.id}`}
-            onClick={() => {
-              setPinnedTypes(new Set(loadPinnedActionTypes()));
-              setPinnedPatternIds(new Set(loadPinnedPatternIds()));
-              const rect = addButtonRef.current?.getBoundingClientRect();
-              if (rect) setDrawerAnchorRect({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
-              setDrawerOpen(true);
-            }}
-          >
-            + Add Action ▾
-          </button>
+          {rootRows.length === 0 ? (
+            <button
+              ref={addButtonRef}
+              className={`button button-compact ${drawerOpen ? 'active' : ''}`}
+              type="button"
+              data-testid={hideEventControls ? 'event-add-open' : `event-add-open-${block.id}`}
+              onClick={() => {
+                setPendingInsert(null);
+                setPinnedTypes(new Set(loadPinnedActionTypes()));
+                setPinnedPatternIds(new Set(loadPinnedPatternIds()));
+                const rect = addButtonRef.current?.getBoundingClientRect();
+                if (rect) setDrawerAnchorRect({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+                setDrawerOpen(true);
+              }}
+            >
+              + Add Action ▾
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -943,13 +998,18 @@ function EventBlockCard({
             }
             setApplyPatternPrompt({ patternId: pattern.id, bindings: initial });
             setDrawerOpen(false);
+            setPendingInsert(null);
             return;
           }
           onApplyPattern(pattern.id, eventIdForRows, {});
           setDrawerOpen(false);
+          setPendingInsert(null);
         }}
         anchorRect={drawerAnchorRect}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          setPendingInsert(null);
+        }}
       />
 
       <div className="panel-heading">Steps</div>
@@ -1037,25 +1097,6 @@ function EventBlockCard({
                 );
                 if (!isRepeat || isCollapsed) return [base];
 
-                const addChildRow = (
-                  <div key={`${attachment.id}__add_child`} className="member-row steps-child-controls">
-                    <span className="muted">Add child:</span>
-                    {supportedPresetEntries
-                      .filter((entry) => entry.type !== 'Repeat')
-                      .slice(0, 3)
-                      .map((entry) => (
-                        <button
-                          key={`add-child-${attachment.id}-${entry.type}`}
-                          className="tag-button"
-                          type="button"
-                          onClick={() => onAddAttachment(entry.type, { eventId: block.id, parentAttachmentId: attachment.id })}
-                        >
-                          + {entry.displayName}
-                        </button>
-                      ))}
-                  </div>
-                );
-
                 const childRows = renderRows(attachment.id, 0);
                 return [
                   base,
@@ -1066,7 +1107,6 @@ function EventBlockCard({
                     style={{ marginLeft: (depth + 1) * 18 }}
                   >
                     <div className="steps-children-line" aria-hidden />
-                    {addChildRow}
                     {childRows}
                   </div>,
                 ];
@@ -1171,9 +1211,59 @@ function EventBlockCard({
                 onClick={() => {
                   onSelectAttachment(overflowMenu.attachmentId);
                   setOverflowMenu(null);
+                  setMenuAnchorRect(null);
                 }}
               >
                 Open
+              </button>
+              <div className="scene-graph-menu-divider" />
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid={`attachment-menu-add-above-${overflowMenu.attachmentId}`}
+                onClick={() => {
+                  setPendingInsert({ kind: 'above', anchorAttachmentId: overflowMenu.attachmentId });
+                  setPinnedTypes(new Set(loadPinnedActionTypes()));
+                  setPinnedPatternIds(new Set(loadPinnedPatternIds()));
+                  if (menuAnchorRect) setDrawerAnchorRect(menuAnchorRect);
+                  setDrawerOpen(true);
+                  setOverflowMenu(null);
+                  setMenuAnchorRect(null);
+                }}
+              >
+                + Add Action Above ...
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid={`attachment-menu-add-below-${overflowMenu.attachmentId}`}
+                onClick={() => {
+                  setPendingInsert({ kind: 'below', anchorAttachmentId: overflowMenu.attachmentId });
+                  setPinnedTypes(new Set(loadPinnedActionTypes()));
+                  setPinnedPatternIds(new Set(loadPinnedPatternIds()));
+                  if (menuAnchorRect) setDrawerAnchorRect(menuAnchorRect);
+                  setDrawerOpen(true);
+                  setOverflowMenu(null);
+                  setMenuAnchorRect(null);
+                }}
+              >
+                + Add Action Below ...
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid={`attachment-menu-add-child-${overflowMenu.attachmentId}`}
+                onClick={() => {
+                  setPendingInsert({ kind: 'child', anchorAttachmentId: overflowMenu.attachmentId });
+                  setPinnedTypes(new Set(loadPinnedActionTypes()));
+                  setPinnedPatternIds(new Set(loadPinnedPatternIds()));
+                  if (menuAnchorRect) setDrawerAnchorRect(menuAnchorRect);
+                  setDrawerOpen(true);
+                  setOverflowMenu(null);
+                  setMenuAnchorRect(null);
+                }}
+              >
+                + Add Child Action...
               </button>
               <div className="scene-graph-menu-divider" />
               <button
@@ -1183,6 +1273,7 @@ function EventBlockCard({
                 onClick={() => {
                   onRemoveAttachment(overflowMenu.attachmentId);
                   setOverflowMenu(null);
+                  setMenuAnchorRect(null);
                 }}
               >
                 Remove…
