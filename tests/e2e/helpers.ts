@@ -521,6 +521,10 @@ export async function clickCanvasAt(
   const x = clamp(point.x, rect.x + 1, rect.x + rect.width - 1);
   const y = clamp(point.y, rect.y + 1, rect.y + rect.height - 1);
 
+  // Ensure Phaser's pointer position updates reliably across browsers before the click sequence.
+  // Some browser/project combos can occasionally miss the intended target if the pointer never moved.
+  await page.mouse.move(x, y);
+
   // Prefer clicking the canvas element directly (vs `page.mouse.click` at a page coordinate) so
   // transient overlays/tooltips can’t intercept the click in CI layouts.
   await canvas.click({
