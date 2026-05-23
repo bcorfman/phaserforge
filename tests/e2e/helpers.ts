@@ -86,7 +86,7 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
   const bootOnce = async () => {
     // Explicit timeouts make failures deterministic (instead of hanging until the overall test timeout).
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: NAVIGATE_TIMEOUT_MS });
-    await page.waitForFunction(() => Boolean(window.__PHASER_ACTIONS_STUDIO_TEST__?.isEnabled), { timeout: APP_BOOT_TIMEOUT_MS });
+    await page.waitForFunction(() => Boolean(window.__PHASER_FORGE_TEST__?.isEnabled), { timeout: APP_BOOT_TIMEOUT_MS });
     await expect(page.getByTestId('app-root')).toBeVisible({ timeout: APP_BOOT_TIMEOUT_MS });
   };
 
@@ -188,7 +188,7 @@ export async function seedProject(page: Page, project: any): Promise<void> {
 }
 
 export async function waitForSceneReady(page: Page): Promise<void> {
-  await page.waitForFunction(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.isSceneReady?.(), { timeout: SCENE_READY_TIMEOUT_MS });
+  await page.waitForFunction(() => window.__PHASER_FORGE_TEST__?.isSceneReady?.(), { timeout: SCENE_READY_TIMEOUT_MS });
   await expect(page.locator('#game-container canvas')).toBeVisible({ timeout: SCENE_READY_TIMEOUT_MS });
 }
 
@@ -327,20 +327,20 @@ export async function dragAssetToCanvas(
 }
 
 export async function getState<T = any>(page: Page): Promise<T> {
-  return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getState()) as Promise<T>;
+  return page.evaluate(() => window.__PHASER_FORGE_TEST__?.getState()) as Promise<T>;
 }
 
 export async function reloadRuntime(page: Page): Promise<void> {
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.reloadRuntime?.());
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.reloadRuntime?.());
   await waitForSceneReady(page);
 }
 
 export async function dispatchAction(page: Page, action: unknown): Promise<void> {
-  await page.evaluate((nextAction) => window.__PHASER_ACTIONS_STUDIO_TEST__?.dispatch?.(nextAction), action);
+  await page.evaluate((nextAction) => window.__PHASER_FORGE_TEST__?.dispatch?.(nextAction), action);
 }
 
 export async function resetScene(page: Page): Promise<void> {
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.resetScene?.());
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.resetScene?.());
   await expect.poll(async () => {
     const state = await getState<{ scene?: { entities?: Record<string, unknown>; groups?: Record<string, unknown> } } | null>(page);
     return {
@@ -356,48 +356,48 @@ export async function resetScene(page: Page): Promise<void> {
 }
 
 export async function getSceneSnapshot<T = any>(page: Page): Promise<T> {
-  return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getSceneSnapshot()) as Promise<T>;
+  return page.evaluate(() => window.__PHASER_FORGE_TEST__?.getSceneSnapshot()) as Promise<T>;
 }
 
 export async function hitTestAtClientPoint(
   page: Page,
   point: Point
 ): Promise<{ kind: 'none' | 'entity' | 'group'; id?: string } | null> {
-  return page.evaluate(([p]) => (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.hitTestAtClientPoint?.(p.x, p.y) ?? null, [point]) as Promise<
+  return page.evaluate(([p]) => (window as any).__PHASER_FORGE_TEST__?.hitTestAtClientPoint?.(p.x, p.y) ?? null, [point]) as Promise<
     { kind: 'none' | 'entity' | 'group'; id?: string } | null
   >;
 }
 
 export async function getEntityWorldRect(page: Page, id: string): Promise<Rect> {
-  return page.evaluate((entityId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect(entityId), id) as Promise<Rect>;
+  return page.evaluate((entityId) => window.__PHASER_FORGE_TEST__?.getEntityWorldRect(entityId), id) as Promise<Rect>;
 }
 
 export async function getEntitySpriteWorldRect(page: Page, id: string): Promise<Rect> {
-  return page.evaluate((entityId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntitySpriteWorldRect(entityId), id) as Promise<Rect>;
+  return page.evaluate((entityId) => window.__PHASER_FORGE_TEST__?.getEntitySpriteWorldRect(entityId), id) as Promise<Rect>;
 }
 
 export async function getGroupWorldBounds(page: Page, id: string): Promise<Rect> {
-  return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getGroupWorldBounds(groupId), id) as Promise<Rect>;
+  return page.evaluate((groupId) => window.__PHASER_FORGE_TEST__?.getGroupWorldBounds(groupId), id) as Promise<Rect>;
 }
 
 export async function getGroupFrameVisible(page: Page, id: string): Promise<boolean | null> {
-  return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getGroupFrameVisible(groupId), id) as Promise<boolean | null>;
+  return page.evaluate((groupId) => window.__PHASER_FORGE_TEST__?.getGroupFrameVisible(groupId), id) as Promise<boolean | null>;
 }
 
 export async function getGroupLabelVisible(page: Page, id: string): Promise<boolean | null> {
-  return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getGroupLabelVisible(groupId), id) as Promise<boolean | null>;
+  return page.evaluate((groupId) => window.__PHASER_FORGE_TEST__?.getGroupLabelVisible(groupId), id) as Promise<boolean | null>;
 }
 
 export async function getFormationPhysicsGroupInfo(page: Page, id: string): Promise<{ memberCount: number } | null> {
-  return page.evaluate((groupId) => window.__PHASER_ACTIONS_STUDIO_TEST__?.getFormationPhysicsGroupInfo(groupId), id) as Promise<{ memberCount: number } | null>;
+  return page.evaluate((groupId) => window.__PHASER_FORGE_TEST__?.getFormationPhysicsGroupInfo(groupId), id) as Promise<{ memberCount: number } | null>;
 }
 
 export async function getEditableBoundsRect(page: Page): Promise<Rect> {
-  return page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.getEditableBoundsRect()) as Promise<Rect>;
+  return page.evaluate(() => window.__PHASER_FORGE_TEST__?.getEditableBoundsRect()) as Promise<Rect>;
 }
 
 export async function worldToClient(page: Page, point: Point): Promise<Point> {
-  const result = await page.evaluate((worldPoint) => window.__PHASER_ACTIONS_STUDIO_TEST__?.worldToClient(worldPoint), point);
+  const result = await page.evaluate((worldPoint) => window.__PHASER_FORGE_TEST__?.worldToClient(worldPoint), point);
   if (!result || typeof (result as any).x !== 'number' || typeof (result as any).y !== 'number') {
     throw new Error(`worldToClient returned null/invalid for ${JSON.stringify(point)}`);
   }
@@ -517,18 +517,18 @@ export async function canvasClientPoint(page: Page, fraction: { x: number; y: nu
 }
 
 export async function tapWorld(page: Page, point: Point, options?: { additive?: boolean }): Promise<void> {
-  await page.evaluate(([worldPoint, nextOptions]) => window.__PHASER_ACTIONS_STUDIO_TEST__?.tapWorld(worldPoint, nextOptions), [
+  await page.evaluate(([worldPoint, nextOptions]) => window.__PHASER_FORGE_TEST__?.tapWorld(worldPoint, nextOptions), [
     point,
     options ?? {},
   ]);
 }
 
 export async function dragWorld(page: Page, start: Point, end: Point): Promise<void> {
-  await page.evaluate(([from, to]) => window.__PHASER_ACTIONS_STUDIO_TEST__?.dragWorld(from, to), [start, end]);
+  await page.evaluate(([from, to]) => window.__PHASER_FORGE_TEST__?.dragWorld(from, to), [start, end]);
 }
 
 export async function dragBoundsHandle(page: Page, handle: string, delta: Point): Promise<void> {
-  await page.evaluate(([nextHandle, nextDelta]) => window.__PHASER_ACTIONS_STUDIO_TEST__?.dragBoundsHandle(nextHandle, nextDelta), [handle, delta]);
+  await page.evaluate(([nextHandle, nextDelta]) => window.__PHASER_FORGE_TEST__?.dragBoundsHandle(nextHandle, nextDelta), [handle, delta]);
 }
 
 export async function dragDropByTestId(
@@ -732,7 +732,7 @@ export async function dropAssetOnTestId(
 }
 
 export async function panByScreenDelta(page: Page, delta: Point): Promise<void> {
-  await page.evaluate((nextDelta) => window.__PHASER_ACTIONS_STUDIO_TEST__?.panByScreenDelta(nextDelta), delta);
+  await page.evaluate((nextDelta) => window.__PHASER_FORGE_TEST__?.panByScreenDelta(nextDelta), delta);
 }
 
 export async function expectSelection(page: Page, expected: Record<string, unknown>): Promise<void> {
@@ -776,9 +776,9 @@ export async function dispatchShortcut(
 }
 
 export async function triggerUndo(page: Page): Promise<void> {
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.undo());
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.undo());
 }
 
 export async function triggerRedo(page: Page): Promise<void> {
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.redo());
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.redo());
 }

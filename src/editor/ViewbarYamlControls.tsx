@@ -52,7 +52,7 @@ export function ViewbarYamlControls() {
     input.value = '';
     // Headless browsers (notably Firefox) can crash when attempting to open a native file chooser.
     // In tests we set files via Playwright on the hidden input, so avoid opening the chooser.
-    if ((window as any).__PHASER_ACTIONS_STUDIO_TEST__?.isEnabled) return;
+    if ((window as any).__PHASER_FORGE_TEST__?.isEnabled) return;
     input.click();
   };
 

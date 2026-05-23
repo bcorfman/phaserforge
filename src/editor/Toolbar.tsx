@@ -8,7 +8,7 @@ export function Toolbar() {
       <div className="toolbar-left">
         <p className="toolbar-kicker">Browser Editor</p>
         <div className="toolbar-title-row">
-          <h1 className="brand">PhaserActions Studio</h1>
+          <h1 className="brand">PhaserForge</h1>
           {state.dirty && <span className="badge" data-testid="dirty-badge">Unsaved</span>}
         </div>
         <p className="toolbar-summary">

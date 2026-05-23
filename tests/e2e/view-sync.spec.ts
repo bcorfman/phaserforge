@@ -22,7 +22,7 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
   const editPoint = await worldToClient(page, anchorWorld);
   expect(editPoint).toBeTruthy();
 
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setMode?.('play'));
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('play');
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
   await expect.poll(async () => (await getSceneSnapshot<{ ready?: boolean }>(page))?.ready).toBe(true);

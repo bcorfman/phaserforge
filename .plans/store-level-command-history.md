@@ -84,7 +84,7 @@ Behavior:
 - [x] Keep the visual layout exactly as the Phase 3 mockups (Undo/Redo/Snap/Mode in-canvas overlay).
 
 ### D) Test bridge + existing tests compatibility
-- [x] Update `src/testing/testBridge.ts` so `window.__PHASER_ACTIONS_STUDIO_TEST__.undo()` / `redo()` triggers Store-level undo/redo (not Phaser scene methods).
+- [x] Update `src/testing/testBridge.ts` so `window.__PHASER_FORGE_TEST__.undo()` / `redo()` triggers Store-level undo/redo (not Phaser scene methods).
   - [x] Add `registerUndoRedoHandlers({undo, redo})` called from `AppShell`.
 - [x] Update/extend Playwright tests:
   - [x] Ensure Undo/Redo works for:
