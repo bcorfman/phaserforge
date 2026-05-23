@@ -91,6 +91,19 @@ describe('EditorStore reducer', () => {
     expect(next.error).toBeUndefined();
   });
 
+  it('clears the dirty flag after a successful save', () => {
+    const state = {
+      ...seededState(),
+      dirty: true,
+      error: 'previous error',
+    };
+
+    const next = reducer(state, { type: 'mark-saved' } as any);
+
+    expect(next.dirty).toBe(false);
+    expect(next.error).toBeUndefined();
+  });
+
   it('creates group from arrange preset with a name-based id and clones template sprites', () => {
     const state = seededState();
     const scene = sceneOf(state);

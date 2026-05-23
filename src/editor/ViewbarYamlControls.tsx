@@ -78,6 +78,7 @@ export function ViewbarYamlControls() {
     }
     try {
       await writeTextToHandle(handle, serializeProjectToYaml(state.project));
+      dispatch({ type: 'mark-saved' });
       dispatch({ type: 'set-status', message: `Saved YAML: ${getYamlFileSourceLabel() ?? 'file'}`, expiresAt: Date.now() + 4000 });
     } catch (err) {
       dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to save YAML' });
@@ -92,9 +93,11 @@ export function ViewbarYamlControls() {
         setYamlPickerStartIn(result.handle);
         setYamlFileHandle(result.handle);
         setYamlFileSourceLabel(getYamlFileSourceLabel() ?? 'scene.yaml');
+        dispatch({ type: 'mark-saved' });
         dispatch({ type: 'set-status', message: 'Saved YAML', expiresAt: Date.now() + 4000 });
       } else {
         setYamlFileHandle(undefined);
+        dispatch({ type: 'mark-saved' });
         dispatch({ type: 'set-status', message: 'Downloaded YAML', expiresAt: Date.now() + 4000 });
       }
     } catch (err) {
