@@ -88,4 +88,47 @@ describe('loop templates', () => {
     expect(atts).toHaveLength(3);
     expect(atts.every((a) => (a.eventId ?? undefined) === undefined)).toBe(true);
   });
+
+  it('expands repeat_with_children into a repeat with N seeded children', () => {
+    let now = 3000;
+    vi.spyOn(Date, 'now').mockImplementation(() => (now += 1));
+
+    const state = initState();
+    const sceneId = state.currentSceneId;
+    const scene = state.project.scenes[sceneId];
+    const seeded = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [sceneId]: {
+            ...scene,
+            entities: { e1: { id: 'e1', x: 0, y: 0, width: 10, height: 10 } },
+            groups: {},
+            attachments: {},
+            eventBlocks: { ev1: { id: 'ev1', target: { type: 'entity', entityId: 'e1' }, trigger: { type: 'start' } } as any },
+          },
+        },
+      },
+      currentSceneId: sceneId,
+    };
+
+    const next = reducer(seeded as any, {
+      type: 'apply-loop-template',
+      templateId: 'loops:repeat_with_children',
+      target: { type: 'entity', entityId: 'e1' },
+      eventId: 'ev1',
+      opts: { childCount: 2, childPresetId: 'Call' },
+    } as any);
+
+    const nextScene = sceneOf(next);
+    const atts = Object.values(nextScene.attachments ?? {}) as any[];
+    const repeat = atts.find((a) => a.presetId === 'Repeat');
+    expect(repeat).toBeTruthy();
+    const children = atts.filter((a) => a.parentAttachmentId === repeat.id);
+    expect(children).toHaveLength(2);
+    expect(children.every((a) => a.presetId === 'Call')).toBe(true);
+    expect(children.every((a) => a.condition?.type === 'Instant')).toBe(true);
+  });
 });
