@@ -111,6 +111,19 @@ describe('EventsPanel Action Library drawer', () => {
     expect(container.querySelector('[data-testid="attachment-repeat-toggle-att-loop"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="steps-children-wrap-att-loop"]')).not.toBeNull();
     expect(container.textContent).toContain('Loop');
+    expect(container.textContent).not.toContain('Add child:');
+
+    const childrenWrap = container.querySelector('[data-testid="steps-children-wrap-att-loop"]') as HTMLElement | null;
+    expect(childrenWrap).not.toBeNull();
+    expect(childrenWrap!.getAttribute('style') ?? '').toContain('margin-left: 18px');
+
+    const childDropzone = container.querySelector('[data-testid="attachment-dropzone-att-move-right"]') as HTMLElement | null;
+    expect(childDropzone).not.toBeNull();
+    // Child rows should have a small indent relative to their parent (via the children wrapper),
+    // not an additional whole "depth" indent on the row itself.
+    expect(childDropzone!.parentElement?.getAttribute('style') ?? '').not.toContain('padding-left: 18px');
+    // Child rows should still reserve the loop chevron column so their text doesn't align with the parent.
+    expect(childDropzone!.querySelector('[data-testid="attachment-repeat-spacer-att-move-right"]')).not.toBeNull();
   });
 
   it('opens drawer, toggles pin, and picks an action', async () => {
@@ -124,11 +137,12 @@ describe('EventsPanel Action Library drawer', () => {
     document.body.appendChild(container);
     const root = createRoot(container);
 
+    const emptyStepsScene = { ...sampleScene, attachments: {} };
     await React.act(async () => {
       root.render(
         <EventsPanel
           project={sampleProject}
-          scene={sampleScene}
+          scene={emptyStepsScene as any}
           target={{ type: 'group', groupId: 'g-enemies' }}
           selectedAttachmentId={undefined}
           registry={registry as any}
@@ -181,9 +195,19 @@ describe('EventsPanel Action Library drawer', () => {
     expect(onAddAttachment).toHaveBeenCalledWith('Wait', expect.objectContaining({ eventId: undefined }));
   });
 
-  it('strips Pattern suffix from movement actions in the drawer', async () => {
+  it('adds actions above/below/child from the row overflow menu', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     installMockLocalStorage();
+
+    const onAddAttachment = vi.fn();
+    const simpleScene = {
+      ...sampleScene,
+      attachments: {
+        'att-a': { id: 'att-a', target: { type: 'group', groupId: 'g-enemies' }, presetId: 'Wait', enabled: true, order: 0 },
+        'att-b': { id: 'att-b', target: { type: 'group', groupId: 'g-enemies' }, presetId: 'Call', enabled: true, order: 1 },
+        'att-parent': { id: 'att-parent', target: { type: 'group', groupId: 'g-enemies' }, presetId: 'Repeat', enabled: true, order: 2, children: [] },
+      },
+    };
 
     const container = document.createElement('div');
     document.body.appendChild(container);
@@ -193,11 +217,106 @@ describe('EventsPanel Action Library drawer', () => {
       root.render(
         <EventsPanel
           project={sampleProject}
-          scene={sampleScene}
+          scene={simpleScene as any}
           target={{ type: 'group', groupId: 'g-enemies' }}
           selectedAttachmentId={undefined}
           registry={registry as any}
           onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={onAddAttachment}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
+          onRemoveAttachment={() => {}}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
+        />
+      );
+    });
+
+    // Add Below
+    const menuA = container.querySelector('[data-testid="attachment-menu-att-a"]') as HTMLButtonElement | null;
+    expect(menuA).not.toBeNull();
+    await React.act(async () => {
+      menuA!.click();
+    });
+
+    const addBelowA = container.querySelector('[data-testid="attachment-menu-add-below-att-a"]') as HTMLButtonElement | null;
+    expect(addBelowA).not.toBeNull();
+    await React.act(async () => {
+      addBelowA!.click();
+    });
+    expect(container.querySelector('[data-testid="action-library"]')).not.toBeNull();
+
+    const addWait = container.querySelector('[data-testid="action-library-add-Wait"]') as HTMLElement | null;
+    expect(addWait).not.toBeNull();
+    await React.act(async () => {
+      addWait!.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    });
+    expect(onAddAttachment).toHaveBeenCalledWith('Wait', expect.objectContaining({ eventId: undefined, order: 0.5 }));
+
+    // Add Above
+    onAddAttachment.mockClear();
+    const menuB = container.querySelector('[data-testid="attachment-menu-att-b"]') as HTMLButtonElement | null;
+    expect(menuB).not.toBeNull();
+    await React.act(async () => {
+      menuB!.click();
+    });
+    const addAboveB = container.querySelector('[data-testid="attachment-menu-add-above-att-b"]') as HTMLButtonElement | null;
+    expect(addAboveB).not.toBeNull();
+    await React.act(async () => {
+      addAboveB!.click();
+    });
+    const addCall = container.querySelector('[data-testid="action-library-add-Call"]') as HTMLElement | null;
+    expect(addCall).not.toBeNull();
+    await React.act(async () => {
+      addCall!.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    });
+    expect(onAddAttachment).toHaveBeenCalledWith('Call', expect.objectContaining({ eventId: undefined, order: 0.5 }));
+
+    // Add Child
+    onAddAttachment.mockClear();
+    const menuParent = container.querySelector('[data-testid="attachment-menu-att-parent"]') as HTMLButtonElement | null;
+    expect(menuParent).not.toBeNull();
+    await React.act(async () => {
+      menuParent!.click();
+    });
+    const addChild = container.querySelector('[data-testid="attachment-menu-add-child-att-parent"]') as HTMLButtonElement | null;
+    expect(addChild).not.toBeNull();
+    await React.act(async () => {
+      addChild!.click();
+    });
+    const addEmitEvent = container.querySelector('[data-testid="action-library-add-EmitEvent"]') as HTMLElement | null;
+    expect(addEmitEvent).not.toBeNull();
+    await React.act(async () => {
+      addEmitEvent!.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    });
+    expect(onAddAttachment).toHaveBeenCalledWith('EmitEvent', expect.objectContaining({ eventId: undefined, parentAttachmentId: 'att-parent' }));
+  });
+
+	  it('strips Pattern suffix from movement actions in the drawer', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+	    const emptyStepsScene = { ...sampleScene, attachments: {} };
+	    await React.act(async () => {
+	      root.render(
+	        <EventsPanel
+	          project={sampleProject}
+	          scene={emptyStepsScene as any}
+	          target={{ type: 'group', groupId: 'g-enemies' }}
+	          selectedAttachmentId={undefined}
+	          registry={registry as any}
+	          onCreateEventBlock={() => {}}
           onUpdateEventBlock={() => {}}
           onRemoveEventBlock={() => {}}
           onAddAttachment={() => {}}
@@ -307,7 +426,7 @@ describe('EventsPanel Action Library drawer', () => {
     expect(container.querySelector('[data-testid="attachment-open-att-wait-right"]')).not.toBeNull();
   });
 
-  it('opens Repeat with Children prompt and applies template with opts', async () => {
+	  it('opens Repeat with Children prompt and applies template with opts', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     installMockLocalStorage();
 
@@ -316,15 +435,16 @@ describe('EventsPanel Action Library drawer', () => {
     document.body.appendChild(container);
     const root = createRoot(container);
 
-    await React.act(async () => {
-      root.render(
-        <EventsPanel
-          project={sampleProject}
-          scene={sampleScene}
-          target={{ type: 'group', groupId: 'g-enemies' }}
-          selectedAttachmentId={undefined}
-          registry={registry as any}
-          onCreateEventBlock={() => {}}
+	    const emptyStepsScene = { ...sampleScene, attachments: {} };
+	    await React.act(async () => {
+	      root.render(
+	        <EventsPanel
+	          project={sampleProject}
+	          scene={emptyStepsScene as any}
+	          target={{ type: 'group', groupId: 'g-enemies' }}
+	          selectedAttachmentId={undefined}
+	          registry={registry as any}
+	          onCreateEventBlock={() => {}}
           onUpdateEventBlock={() => {}}
           onRemoveEventBlock={() => {}}
           onAddAttachment={() => {}}
