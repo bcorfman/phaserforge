@@ -419,7 +419,7 @@ function AppShell() {
     const storage: any = (globalThis as any).localStorage;
     const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaserforge.rightPaneWidth.v1') : null;
     const parsed = raw == null ? NaN : Number(raw);
-    return Number.isFinite(parsed) ? Math.max(340, Math.min(520, parsed)) : 380;
+    return Number.isFinite(parsed) ? Math.max(340, Math.min(1040, parsed)) : 380;
   });
 
   useEffect(() => {
@@ -468,7 +468,7 @@ function AppShell() {
     const delta = clientX - drag.startX;
     const desired = drag.startWidth - delta;
     const minWidth = 340;
-    const maxWidth = 520;
+    const maxWidth = 1040;
     const clamped = Math.max(minWidth, Math.min(maxWidth, desired));
     if (bodyRect && bodyRect.width > 0) {
       const minCanvas = 480;
