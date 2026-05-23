@@ -99,7 +99,7 @@ test.describe('Sidebar layout', () => {
   test('resizes the inspector sidebar width and persists across reloads @critical @browser', async ({ page, browserName }) => {
     test.skip(browserName === 'firefox', 'Pointer capture drag semantics are flaky in Firefox in this suite');
 
-    await page.setViewportSize({ width: 1400, height: 980 });
+    await page.setViewportSize({ width: 2200, height: 980 });
     await seedProject(page, createEmptyProject());
     await dismissViewHint(page);
     await openSceneScope(page);
@@ -118,12 +118,12 @@ test.describe('Sidebar layout', () => {
 
     await page.mouse.move(splitBox.x + splitBox.width / 2, splitBox.y + splitBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(splitBox.x + splitBox.width / 2 - 120, splitBox.y + splitBox.height / 2);
+    await page.mouse.move(splitBox.x + splitBox.width / 2 - 520, splitBox.y + splitBox.height / 2);
     await page.mouse.up();
 
     const after = await pane.boundingBox();
     if (!after) throw new Error('Inspector pane bounding box unavailable after resize');
-    expect(after.width).toBeGreaterThan(before.width + 40);
+    expect(after.width).toBeGreaterThan(before.width + 220);
 
     await page.reload();
     await gotoStudio(page);
@@ -131,9 +131,9 @@ test.describe('Sidebar layout', () => {
     await openSceneScope(page);
     await expect(pane).toBeVisible({ timeout: 10000 });
     await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(300);
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeLessThan(800);
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeLessThan(1400);
     const persisted = await pane.boundingBox();
     if (!persisted) throw new Error('Inspector pane bounding box unavailable after reload');
-    expect(persisted.width).toBeGreaterThan(before.width + 40);
+    expect(persisted.width).toBeGreaterThan(before.width + 220);
   });
 });
