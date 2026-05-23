@@ -49,7 +49,7 @@ test('Play mode: entering a trigger zone emits an enter event in the snapshot @s
 
   // Drive the entity into the trigger zone deterministically via the test bridge
   // (headless mouse events can be flaky in Firefox).
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setPointerWorld({ x: 460, y: 200 }));
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setPointerWorld({ x: 460, y: 200 }));
 
   await expect.poll(async () => {
     const rect = await getEntityWorldRect(page, 'e1');

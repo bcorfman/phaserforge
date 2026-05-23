@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 test('right-click does not open a canvas context menu (selection actions are on the selection bar) @browser', async ({ page }) => {
   await dismissViewHint(page);
 
-  const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
+  const e2 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e2') ?? null) as any);
   if (!e2) throw new Error('Entity rect unavailable');
   const point = await worldToClient(page, { x: e2.centerX, y: e2.centerY });
   await page.mouse.click(point.x, point.y, { button: 'right' });

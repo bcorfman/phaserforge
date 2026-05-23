@@ -3,7 +3,7 @@ name: Deploy Backend (Railway)
 on:
   workflow_run:
     workflows:
-      - PhaserActions CI
+      - PhaserForge CI
     types:
       - completed
   workflow_dispatch:

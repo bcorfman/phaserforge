@@ -50,7 +50,7 @@ test('alt-drag duplicates a selected sprite @critical @browser', async ({ page }
   // Use the test bridge to keep this deterministic in headless Firefox.
   const fromWorld = { x: rect.centerX ?? (rect.minX + rect.maxX) / 2, y: rect.centerY ?? (rect.minY + rect.maxY) / 2 };
   await tapWorld(page, fromWorld);
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.duplicateEntities(['e1'], { x: 80, y: 0 }));
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.duplicateEntities(['e1'], { x: 80, y: 0 }));
 
   await expect.poll(async () => {
     const state = await getState<{

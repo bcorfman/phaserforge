@@ -14,10 +14,10 @@ describe('testBridge mode helpers', () => {
       }) as any;
     registerAppStateGetter(getState);
 
-    expect(window.__PHASER_ACTIONS_STUDIO_TEST__?.isEnabled).toBe(true);
-    expect(typeof window.__PHASER_ACTIONS_STUDIO_TEST__?.setMode).toBe('function');
+    expect(window.__PHASER_FORGE_TEST__?.isEnabled).toBe(true);
+    expect(typeof window.__PHASER_FORGE_TEST__?.setMode).toBe('function');
 
-    window.__PHASER_ACTIONS_STUDIO_TEST__?.setMode?.('play');
+    window.__PHASER_FORGE_TEST__?.setMode?.('play');
     expect(handler).toHaveBeenCalledTimes(1);
 
     unregisterAppStateGetter(getState);
