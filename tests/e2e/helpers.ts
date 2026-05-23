@@ -521,10 +521,13 @@ export async function clickCanvasAt(
   const x = clamp(point.x, rect.x + 1, rect.x + rect.width - 1);
   const y = clamp(point.y, rect.y + 1, rect.y + rect.height - 1);
 
-  await page.mouse.move(x, y);
-  await page.mouse.click(x, y, {
+  // Prefer clicking the canvas element directly (vs `page.mouse.click` at a page coordinate) so
+  // transient overlays/tooltips can’t intercept the click in CI layouts.
+  await canvas.click({
+    position: { x: x - rect.x, y: y - rect.y },
     button: options.button ?? 'left',
     modifiers: options.modifiers,
+    force: true,
   });
 }
 
