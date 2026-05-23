@@ -49,7 +49,7 @@ export class BootScene extends Phaser.Scene {
       const args = (action as any).args ?? {};
       const sceneId = typeof args.sceneId === 'string' ? args.sceneId : '';
       if (!sceneId) {
-        console.warn('[phaseractions] scene.goto missing sceneId');
+        console.warn('[phaserforge] scene.goto missing sceneId');
         return;
       }
       const transitionRaw = typeof args.transition === 'string' ? args.transition : 'fade';
@@ -72,11 +72,11 @@ export class BootScene extends Phaser.Scene {
       const args = (action as any).args ?? {};
       const sceneId = typeof args.sceneId === 'string' ? args.sceneId : '';
       if (!sceneId) {
-        console.warn('[phaseractions] scene.gotoWave missing sceneId');
+        console.warn('[phaserforge] scene.gotoWave missing sceneId');
         return;
       }
       if (!project.scenes[sceneId]) {
-        console.warn(`[phaseractions] scene.gotoWave target scene not found: ${sceneId}`);
+        console.warn(`[phaserforge] scene.gotoWave target scene not found: ${sceneId}`);
         return;
       }
 
@@ -88,7 +88,7 @@ export class BootScene extends Phaser.Scene {
       const args = (action as any).args ?? {};
       const assetId = typeof args.assetId === 'string' ? args.assetId : '';
       if (!assetId) {
-        console.warn('[phaseractions] audio.play_sfx missing assetId');
+        console.warn('[phaserforge] audio.play_sfx missing assetId');
         return;
       }
       const volumeRaw = typeof args.volume === 'number' ? args.volume : Number(args.volume);
@@ -101,7 +101,7 @@ export class BootScene extends Phaser.Scene {
       const explicitId = typeof args.entityId === 'string' ? args.entityId : '';
       const target = (action as any).target ?? (explicitId ? { type: 'entity', entityId: explicitId } : undefined);
       if (!target) {
-        console.warn('[phaseractions] entity.destroy missing target');
+        console.warn('[phaserforge] entity.destroy missing target');
         return;
       }
       const resolved = resolveTarget(target, ctx.targets);
@@ -282,11 +282,11 @@ export class BootScene extends Phaser.Scene {
     if (this.mode !== 'play') return;
 
     if (!sceneId) {
-      console.warn('[phaseractions] scene.goto missing sceneId');
+      console.warn('[phaserforge] scene.goto missing sceneId');
       return;
     }
     if (!this.project.scenes[sceneId]) {
-      console.warn(`[phaseractions] scene.goto target scene not found: ${sceneId}`);
+      console.warn(`[phaserforge] scene.goto target scene not found: ${sceneId}`);
       return;
     }
 

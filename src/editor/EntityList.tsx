@@ -7,8 +7,8 @@ import { InputMapsPanel } from './InputMapsPanel';
 import type { Id, TriggerZoneSpec } from '../model/types';
 import { AssetsDock } from './AssetsDock';
 
-const ENTITY_DRAG_MIME = 'application/x-phaseractions-studio-entity-ids';
-const ASSETS_DOCK_HEIGHT_STORAGE_KEY = 'phaseractions.assetsDockHeight.v1';
+const ENTITY_DRAG_MIME = 'application/x-phaserforge-entity-ids';
+const ASSETS_DOCK_HEIGHT_STORAGE_KEY = 'phaserforge.assetsDockHeight.v1';
 
 function isSelected(selection: Selection, kind: Selection['kind'], id: string): boolean {
   if (selection.kind === 'entities') {

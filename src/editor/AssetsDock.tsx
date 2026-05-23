@@ -63,7 +63,7 @@ export function AssetsDock({
   const [search, setSearch] = useState('');
   const [showImageThumbnails, setShowImageThumbnails] = useState(() => {
     const storage: any = (globalThis as any).localStorage;
-    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaseractions.assetsDockShowThumbnails.v1') : null;
+    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaserforge.assetsDockShowThumbnails.v1') : null;
     if (raw === '0') return false;
     if (raw === '1') return true;
     return true;
@@ -88,7 +88,7 @@ export function AssetsDock({
 
   useEffect(() => {
     const storage: any = (globalThis as any).localStorage;
-    if (typeof storage?.setItem === 'function') storage.setItem('phaseractions.assetsDockShowThumbnails.v1', showImageThumbnails ? '1' : '0');
+    if (typeof storage?.setItem === 'function') storage.setItem('phaserforge.assetsDockShowThumbnails.v1', showImageThumbnails ? '1' : '0');
   }, [showImageThumbnails]);
 
   const normalizedSearch = search.trim().toLowerCase();

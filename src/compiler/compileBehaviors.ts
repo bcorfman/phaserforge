@@ -95,7 +95,7 @@ function instantiateAction(
       const opRegistry = ctx.options?.opRegistry;
       return new Call(() => {
         if (!opRegistry) {
-          console.warn(`[phaseractions] Missing opRegistry for Call ${action.callId}`);
+          console.warn(`[phaserforge] Missing opRegistry for Call ${action.callId}`);
           return;
         }
         opRegistry.invoke(action.callId, action, ctx);

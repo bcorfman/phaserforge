@@ -52,7 +52,7 @@ Two export modes (toggle; default = File assets):
 
 ### Free Hosting: GitHub Pages (doc-driven)
 Publish steps the studio links to (no GitHub API automation in v1):
-1) Create a new GitHub repo (public recommended for free Pages), e.g. `my-phaseractions-demo`.
+1) Create a new GitHub repo (public recommended for free Pages), e.g. `my-phaserforge-demo`.
 2) Unzip the exported demo ZIP and commit the contents to the repo root (or `docs/`).
 3) In GitHub repo settings → Pages:
    - Source: “Deploy from a branch”

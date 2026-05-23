@@ -14,7 +14,7 @@ const app = createApp({ settings, ...(repositories ? { repositories } : {}) });
 
 app.listen(port, () => {
   // eslint-disable-next-line no-console
-  console.log(`phaseractions api listening on http://localhost:${port}`);
+  console.log(`phaserforge api listening on http://localhost:${port}`);
 });
 
 process.on('SIGTERM', () => {

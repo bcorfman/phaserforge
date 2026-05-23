@@ -34,10 +34,10 @@ describe('actionPins', () => {
 
   it('returns empty when storage is empty or invalid JSON', async () => {
     const pins = await import('../../src/editor/actionPins');
-    window.localStorage.removeItem('phaseractions.pinnedActionTypes.v1');
+    window.localStorage.removeItem('phaserforge.pinnedActionTypes.v1');
     expect(pins.loadPinnedActionTypes()).toEqual([]);
 
-    window.localStorage.setItem('phaseractions.pinnedActionTypes.v1', '{not json');
+    window.localStorage.setItem('phaserforge.pinnedActionTypes.v1', '{not json');
     expect(pins.loadPinnedActionTypes()).toEqual([]);
   });
 
@@ -49,7 +49,7 @@ describe('actionPins', () => {
 
   it('toggles pin on/off and persists', async () => {
     const pins = await import('../../src/editor/actionPins');
-    window.localStorage.removeItem('phaseractions.pinnedActionTypes.v1');
+    window.localStorage.removeItem('phaserforge.pinnedActionTypes.v1');
 
     expect(pins.togglePinnedActionType('MoveUntil')).toEqual(['MoveUntil']);
     expect(pins.loadPinnedActionTypes()).toEqual(['MoveUntil']);

@@ -45,7 +45,7 @@ import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridg
 import { resolvePointerModifier } from './inputModifiers';
 import { getPreferredTextResolution } from './textResolution';
 
-const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
+const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
 const REFERENCE_GHOST_ALPHA_MULTIPLIER = 0.35;
 const REFERENCE_GHOST_DEPTH_OFFSET = -10_000;
 

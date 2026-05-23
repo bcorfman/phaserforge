@@ -19,7 +19,7 @@ import { createTriggerCompileContext, executeTriggerScripts } from '../runtime/t
 import { executeCollisionScripts } from '../runtime/collisions/collisionScripts';
 import type { TriggerZoneSpec } from '../model/types';
 
-const PLACEHOLDER_TEXTURE_KEY = '__phaseractions-studio:placeholder-1x1';
+const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
 
 type PhysicsObject =
   | Phaser.Types.Physics.Arcade.ImageWithDynamicBody
@@ -1075,7 +1075,7 @@ export class GameScene extends Phaser.Scene {
     const templateSpec = params.sceneSpec.entities?.[templateId] as any;
     const templateRuntime = (compiled.entities as any)[templateId];
     if (!templateSpec || !templateRuntime) {
-      console.warn(`[phaseractions] spawnEntity missing template entity: ${templateId}`);
+      console.warn(`[phaserforge] spawnEntity missing template entity: ${templateId}`);
       this.lastSpawnError = `missing template entity: ${templateId}`;
       return undefined;
     }

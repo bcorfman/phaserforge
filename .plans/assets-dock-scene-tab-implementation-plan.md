@@ -59,7 +59,7 @@ Implement the UX shown in `ux-idea-g2…svg`:
 
 - In `src/editor/EntityList.tsx` (Scene tab sidebar):
   - Render **Scene Tree (top)** + **Assets Dock (bottom)** with a draggable splitter.
-  - Persist splitter height in `localStorage` (e.g. `phaseractions.assetsDockHeight.v1`) with min/max clamps.
+  - Persist splitter height in `localStorage` (e.g. `phaserforge.assetsDockHeight.v1`) with min/max clamps.
 - Assets Dock UI:
   - Search box, type filter pills: Images / Audio / Fonts.
   - List items show:
