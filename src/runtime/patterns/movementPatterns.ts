@@ -65,12 +65,12 @@ export function buildWaveOffset(opts: {
   }
 
   const span = endProgress - startProgress;
-  const fullOffset = (p: number): [number, number] => {
-    const tri = 1 - Math.abs(1 - 2 * p);
-    const dx = length * tri;
-    const dy = -amplitude * Math.sin(Math.PI * tri);
-    return [dx, dy];
-  };
+	  const fullOffset = (p: number): [number, number] => {
+	    const tri = 1 - Math.abs(1 - 2 * p);
+	    const dx = length * tri;
+	    const dy = amplitude * Math.sin(Math.PI * tri);
+	    return [dx, dy];
+	  };
 
   const [baseDx, baseDy] = fullOffset(startProgress);
 

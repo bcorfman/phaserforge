@@ -42,6 +42,7 @@ describe('EventsPanel Action Library drawer', () => {
     window.localStorage.removeItem('phaserforge.pinnedActionTypes.v1');
 
     const onAddAttachment = vi.fn();
+    const onApplyLoopTemplate = vi.fn();
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -67,6 +68,7 @@ describe('EventsPanel Action Library drawer', () => {
           onMoveParallelGroup={() => {}}
           onCreatePatternFromAttachments={() => {}}
           onApplyPattern={() => {}}
+          onApplyLoopTemplate={onApplyLoopTemplate as any}
         />
       );
     });
@@ -131,6 +133,7 @@ describe('EventsPanel Action Library drawer', () => {
           onMoveParallelGroup={() => {}}
           onCreatePatternFromAttachments={() => {}}
           onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
         />
       );
     });
@@ -181,6 +184,7 @@ describe('EventsPanel Action Library drawer', () => {
           onMoveParallelGroup={() => {}}
           onCreatePatternFromAttachments={() => {}}
           onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
         />
       );
     });
@@ -217,12 +221,81 @@ describe('EventsPanel Action Library drawer', () => {
           onMoveParallelGroup={() => {}}
           onCreatePatternFromAttachments={() => {}}
           onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
         />
       );
     });
 
     // The mockup removed the inline filter box; ensure steps still render.
     expect(container.querySelector('[data-testid="attachment-open-att-wait-right"]')).not.toBeNull();
+  });
+
+  it('opens Repeat with Children prompt and applies template with opts', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const onApplyLoopTemplate = vi.fn();
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await React.act(async () => {
+      root.render(
+        <EventsPanel
+          project={sampleProject}
+          scene={sampleScene}
+          target={{ type: 'group', groupId: 'g-enemies' }}
+          selectedAttachmentId={undefined}
+          registry={registry as any}
+          onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={() => {}}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
+          onRemoveAttachment={() => {}}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+          onApplyLoopTemplate={onApplyLoopTemplate as any}
+        />
+      );
+    });
+
+    const openButton = container.querySelector('[data-testid="event-add-open"]') as HTMLButtonElement | null;
+    expect(openButton).not.toBeNull();
+    await React.act(async () => {
+      openButton!.click();
+    });
+
+    const loopsTab = container.querySelector('[data-testid="action-library-cat-loops"]') as HTMLButtonElement | null;
+    expect(loopsTab).not.toBeNull();
+    await React.act(async () => {
+      loopsTab!.click();
+    });
+
+    const addRepeatWithChildren = container.querySelector('[data-testid="action-library-add-loops:repeat_with_children"]') as HTMLElement | null;
+    expect(addRepeatWithChildren).not.toBeNull();
+    await React.act(async () => {
+      addRepeatWithChildren!.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.querySelector('[data-testid="repeat-with-children-prompt"]')).not.toBeNull();
+
+    const createBtn = container.querySelector('[data-testid="repeat-children-create"]') as HTMLButtonElement | null;
+    expect(createBtn).not.toBeNull();
+    await React.act(async () => {
+      createBtn!.click();
+    });
+
+    expect(onApplyLoopTemplate).toHaveBeenCalledWith(
+      'loops:repeat_with_children',
+      undefined,
+      expect.objectContaining({ childCount: 2 })
+    );
   });
 
   it('removes a step via the overflow menu (ellipsis button)', async () => {
@@ -255,6 +328,7 @@ describe('EventsPanel Action Library drawer', () => {
           onMoveParallelGroup={() => {}}
           onCreatePatternFromAttachments={() => {}}
           onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
         />
       );
     });
@@ -306,6 +380,7 @@ describe('EventsPanel Action Library drawer', () => {
           onMoveParallelGroup={() => {}}
           onCreatePatternFromAttachments={() => {}}
           onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
         />
       );
     });

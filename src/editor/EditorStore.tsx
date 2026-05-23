@@ -201,7 +201,18 @@ export type EditorAction =
   | { type: 'remove-event-block'; id: Id }
   | { type: 'create-pattern-from-attachments'; attachmentIds: Id[]; name?: string }
   | { type: 'apply-pattern'; patternId: Id; target: TargetRef; eventId?: Id; bindings: Record<Id, unknown> }
-  | { type: 'apply-loop-template'; templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown'; target: TargetRef; eventId?: Id }
+  | {
+    type: 'apply-loop-template';
+    templateId:
+      | 'loops:intro_then_repeat'
+      | 'loops:repeat_n_times'
+      | 'loops:repeat_until_condition'
+      | 'loops:repeat_with_cooldown'
+      | 'loops:repeat_with_children';
+    target: TargetRef;
+    eventId?: Id;
+    opts?: { childCount: number; childPresetId: string };
+  }
   | { type: 'create-counter'; scope: 'global' | 'scene'; id?: Id }
   | { type: 'update-counter'; id: Id; next: CounterSpec }
   | { type: 'remove-counter'; id: Id }
@@ -2345,6 +2356,17 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         const repeatId = create('Repeat', {});
         placeholder('Repeat step', { parentAttachmentId: repeatId });
         create('Wait', { parentAttachmentId: repeatId, params: { durationMs: 250 } });
+        selectId = repeatId;
+      } else if (action.templateId === 'loops:repeat_with_children') {
+        const repeatId = create('Repeat', {});
+        const rawCount = Number(action.opts?.childCount ?? 2);
+        const childCount = Math.max(1, Math.min(32, Number.isFinite(rawCount) ? rawCount : 2));
+        const childPresetId = typeof action.opts?.childPresetId === 'string' && action.opts.childPresetId.trim().length > 0 ? action.opts.childPresetId : 'Call';
+        for (let i = 0; i < childCount; i += 1) {
+          const name = childCount === 1 ? 'Child' : `Child ${i + 1}`;
+          if (childPresetId === 'Call') placeholder(name, { parentAttachmentId: repeatId });
+          else create(childPresetId, { parentAttachmentId: repeatId, name });
+        }
         selectId = repeatId;
       } else {
         return state;
