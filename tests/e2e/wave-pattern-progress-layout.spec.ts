@@ -38,5 +38,20 @@ test('Wave Pattern progress labels are not visually truncated @smoke @browser', 
   const endIsTruncated = await endLabel.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
   expect(startIsTruncated).toBe(false);
   expect(endIsTruncated).toBe(false);
-});
 
+  const startInput = page.getByLabel('Wave Start Progress');
+  const endInput = page.getByLabel('Wave End Progress');
+  await expect(startInput).toBeVisible();
+  await expect(endInput).toBeVisible();
+
+  const startBox = await startInput.boundingBox();
+  const endBox = await endInput.boundingBox();
+  expect(startBox).not.toBeNull();
+  expect(endBox).not.toBeNull();
+  if (!startBox || !endBox) return;
+
+  // Ensure the fields are stacked vertically (separate lines) so the inputs have room.
+  expect(endBox.y).toBeGreaterThan(startBox.y + 10);
+  expect(startBox.width).toBeGreaterThan(60);
+  expect(endBox.width).toBeGreaterThan(60);
+});
