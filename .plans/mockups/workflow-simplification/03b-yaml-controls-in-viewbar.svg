@@ -53,7 +53,7 @@
 
     <!-- toolbar left -->
     <text class="muted" x="46" y="92">Browser Editor</text>
-    <text class="h" x="46" y="126">PhaserActions Studio</text>
+    <text class="h" x="46" y="126">PhaserForge</text>
     <rect class="badge" x="262" y="108" width="86" height="24" rx="999"/>
     <text class="badgeText" x="284" y="124">Unsaved</text>
     <text class="muted" x="46" y="154">Move entities on the canvas, tune formations in the inspector, and round-trip YAML without leaving the editor.</text>

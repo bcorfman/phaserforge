@@ -32,7 +32,7 @@ test('Play mode: semantic input actions update from keyboard events (bridge snap
   });
 
   await dismissViewHint(page);
-  await page.evaluate(() => (window as any).__PHASER_ACTIONS_STUDIO_TEST__?.setMode?.('play'));
+  await page.evaluate(() => (window as any).__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey, { timeout: 15000 }).toBe('GameScene');
 
   // Ensure the runtime scene receives keyboard events consistently across browsers.

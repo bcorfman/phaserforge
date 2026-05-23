@@ -31,8 +31,8 @@ test('Play mode: clicking an entity records a runtime click snapshot @browser', 
   // Headless Firefox/WebKit can be flaky about delivering DOM pointer events into Phaser.
   // Use the test bridge to deterministically simulate the entity pointerdown.
   await page.evaluate(() => {
-    window.__PHASER_ACTIONS_STUDIO_TEST__?.setPointerWorld({ x: 120, y: 120 });
-    window.__PHASER_ACTIONS_STUDIO_TEST__?.pointerDownEntity('e1');
+    window.__PHASER_FORGE_TEST__?.setPointerWorld({ x: 120, y: 120 });
+    window.__PHASER_FORGE_TEST__?.pointerDownEntity('e1');
   });
 
   await expect.poll(async () => {

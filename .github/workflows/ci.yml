@@ -1,4 +1,4 @@
-name: PhaserActions CI
+name: PhaserForge CI
 
 on:
   push:

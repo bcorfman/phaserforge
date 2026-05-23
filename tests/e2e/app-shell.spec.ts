@@ -101,7 +101,7 @@ test('removes an imported sprite from the scene graph @critical', async ({ page 
   await dragAssetToCanvas(page, 'image', assetId);
 
   const entityId = await page.evaluate(() => {
-    const state = window.__PHASER_ACTIONS_STUDIO_TEST__?.getState() as { scene: { entities: Record<string, unknown> } } | null;
+    const state = window.__PHASER_FORGE_TEST__?.getState() as { scene: { entities: Record<string, unknown> } } | null;
     return state ? Object.keys(state.scene.entities)[0] : null;
   });
   if (!entityId) throw new Error('Imported entity id unavailable');

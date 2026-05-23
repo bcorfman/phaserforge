@@ -34,8 +34,8 @@ test('selection bar groups ungrouped entities and can add to an existing group @
   await tapWorld(page, { x: -9999, y: -9999 });
   await expectSelection(page, { kind: 'none' });
 
-  const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
-  const e1 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1') ?? null) as any);
+  const e2 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e2') ?? null) as any);
+  const e1 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e1') ?? null) as any);
   if (!e1 || !e2) throw new Error('Entity rects unavailable');
   await dragWorld(page, { x: e1.minX - 30, y: e1.minY - 30 }, { x: e2.maxX + 5, y: e2.maxY + 5 });
 
@@ -82,7 +82,7 @@ test('selection bar groups ungrouped entities and can add to an existing group @
   await tapWorld(page, { x: -9999, y: -9999 });
   await expectSelection(page, { kind: 'none' });
 
-  const e3 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e3') ?? null) as any);
+  const e3 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e3') ?? null) as any);
   if (!e2 || !e3) throw new Error('Entity rects unavailable');
   await dragWorld(page, { x: e2.minX - 30, y: e2.minY - 30 }, { x: e3.maxX + 5, y: e3.maxY + 5 });
 
@@ -118,8 +118,8 @@ test('Ctrl/Cmd+Shift+G opens the Group… prompt (keyboard parity) @critical @br
   await tapWorld(page, { x: -9999, y: -9999 });
   await expectSelection(page, { kind: 'none' });
 
-  const e2 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e2') ?? null) as any);
-  const e1 = await page.evaluate(() => (window.__PHASER_ACTIONS_STUDIO_TEST__?.getEntityWorldRect('e1') ?? null) as any);
+  const e2 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e2') ?? null) as any);
+  const e1 = await page.evaluate(() => (window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e1') ?? null) as any);
   if (!e1 || !e2) throw new Error('Entity rects unavailable');
   await dragWorld(page, { x: e1.minX - 30, y: e1.minY - 30 }, { x: e2.maxX + 5, y: e2.maxY + 5 });
 

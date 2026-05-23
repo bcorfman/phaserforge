@@ -55,7 +55,7 @@ test('Play mode: scene.goto switches runtime scene without changing editor curre
   await expect.poll(async () => (await getState<{ currentSceneId?: string }>(page))?.currentSceneId).toBe('scene-1');
 
   // Prefer the test bridge so the mode toggle is deterministic across browsers under load.
-  await page.evaluate(() => window.__PHASER_ACTIONS_STUDIO_TEST__?.setMode?.('play'));
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('play');
   await expect(page.getByTestId('scene-item-scene-2')).toBeDisabled({ timeout: 10000 });
 
