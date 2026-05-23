@@ -17,6 +17,34 @@ function baseProject(): any {
 }
 
 describe('Attachment inspector UI', () => {
+  it('renders a back button when provided by the caller', () => {
+    const scene = baseScene();
+    const project = baseProject();
+    const attachment: any = {
+      id: 'att-back-1',
+      target: { type: 'entity', entityId: 'e1' },
+      presetId: 'WavePattern',
+      enabled: true,
+      order: 0,
+      params: {},
+    };
+
+    const markup = renderToStaticMarkup(
+      renderAttachmentInspector(
+        attachment,
+        project,
+        scene,
+        { arrange: [], actions: [], conditions: [] },
+        () => {},
+        () => {},
+        () => {}
+      )
+    );
+
+    expect(markup).toContain('data-testid="attachment-back-button"');
+    expect(markup).toContain('Back to Actions/Events');
+  });
+
   it('stacks WavePattern progress fields as wide-label rows', () => {
     const scene = baseScene();
     const project = baseProject();
