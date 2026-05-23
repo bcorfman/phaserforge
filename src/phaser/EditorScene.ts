@@ -84,7 +84,11 @@ export class EditorScene extends Phaser.Scene {
   private formationDraftGraphics?: Phaser.GameObjects.Graphics;
   private formationDraftHandle?: Phaser.GameObjects.Arc;
   private formationDraftActive = false;
-  private pendingDrag?: { startPoint: { x: number; y: number }; hitResult: HitTestResult };
+  private pendingDrag?: {
+    startClient: { x: number; y: number };
+    startWorld: { x: number; y: number };
+    hitResult: HitTestResult;
+  };
   private gridEnabled = false;
   private gridSize = 8;
   private marqueeGraphics?: Phaser.GameObjects.Graphics;
@@ -1529,16 +1533,18 @@ export class EditorScene extends Phaser.Scene {
     if (hitResult.kind === 'none') {
       // Start marquee selection on empty canvas click
       this.pendingDrag = {
-        startPoint: { x: worldPoint.x, y: worldPoint.y },
-        hitResult
+        startClient: { x: pointer.x, y: pointer.y },
+        startWorld: { x: worldPoint.x, y: worldPoint.y },
+        hitResult,
       };
       return;
     }
 
     // Store pending drag info for entity/group/bounds
     this.pendingDrag = {
-      startPoint: { x: worldPoint.x, y: worldPoint.y },
-      hitResult
+      startClient: { x: pointer.x, y: pointer.y },
+      startWorld: { x: worldPoint.x, y: worldPoint.y },
+      hitResult,
     };
   }
 
@@ -1568,7 +1574,9 @@ export class EditorScene extends Phaser.Scene {
 
     // Handle pending drag (drag threshold)
     if (this.pendingDrag && !this.dragState) {
-      if (hasExceededDragThreshold(this.pendingDrag.startPoint, worldPoint)) {
+      // Drag thresholds are defined in screen pixels; use pointer (client) coordinates here.
+      // Using world coordinates makes the effective threshold depend on camera zoom.
+      if (hasExceededDragThreshold(this.pendingDrag.startClient, { x: pointer.x, y: pointer.y })) {
         const altKey = resolvePointerModifier(pointer.event, 'altKey', this.isAltDown);
         // Start actual drag
         const { hitResult } = this.pendingDrag;
@@ -1576,8 +1584,8 @@ export class EditorScene extends Phaser.Scene {
           // Start marquee selection
           this.dragState = {
             kind: 'marquee',
-            startX: this.pendingDrag.startPoint.x,
-            startY: this.pendingDrag.startPoint.y,
+            startX: this.pendingDrag.startWorld.x,
+            startY: this.pendingDrag.startWorld.y,
             hasMoved: false
           };
           // Create marquee rectangle
