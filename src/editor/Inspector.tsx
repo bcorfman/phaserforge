@@ -187,8 +187,8 @@ export function Inspector() {
           onApplyPattern={(patternId, eventId, bindings) =>
             dispatch({ type: 'apply-pattern', patternId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}), bindings })
           }
-          onApplyLoopTemplate={(templateId, eventId) =>
-            dispatch({ type: 'apply-loop-template', templateId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}) } as any)
+          onApplyLoopTemplate={(templateId, eventId, opts) =>
+            dispatch({ type: 'apply-loop-template', templateId, target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}), ...(opts ? { opts } : {}) } as any)
           }
           onSelectMember={(id) => dispatch({ type: 'select', selection: { kind: 'entity', id } })}
           onRemoveMember={(entityId) => dispatch({ type: 'remove-entity-from-group', groupId: group.id, entityId })}
@@ -227,7 +227,8 @@ export function Inspector() {
           onMoveParallelAttachmentGroup: (groupId, direction, eventId) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'entity', entityId: entity.id }, groupId, direction, ...(eventId ? { eventId } : {}) }),
           onCreatePatternFromAttachments: (attachmentIds, name) => dispatch({ type: 'create-pattern-from-attachments', attachmentIds, ...(name ? { name } : {}) }),
           onApplyPattern: (patternId, eventId, bindings) => dispatch({ type: 'apply-pattern', patternId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}), bindings }),
-          onApplyLoopTemplate: (templateId, eventId) => dispatch({ type: 'apply-loop-template', templateId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}) } as any),
+          onApplyLoopTemplate: (templateId, eventId, opts) =>
+            dispatch({ type: 'apply-loop-template', templateId, target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}), ...(opts ? { opts } : {}) } as any),
           onSetEntitiesAsset: (entityIds, asset) => dispatch({ type: 'set-entities-asset', entityIds, asset }),
           onRasterizeTextEntity: (entityId) => dispatch({ type: 'rasterize-text-entity-to-sprite', entityId } as any),
         })
@@ -317,7 +318,16 @@ export function renderEntityInspector(
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
     onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
     onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
-    onApplyLoopTemplate?: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
+    onApplyLoopTemplate?: (
+      templateId:
+        | 'loops:intro_then_repeat'
+        | 'loops:repeat_n_times'
+        | 'loops:repeat_until_condition'
+        | 'loops:repeat_with_cooldown'
+        | 'loops:repeat_with_children',
+      eventId: Id | undefined,
+      opts?: { childCount: number; childPresetId: string }
+    ) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
     onRasterizeTextEntity?: (entityId: Id) => void;
   }
@@ -350,7 +360,16 @@ function EntityInspector({
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
     onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
     onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
-    onApplyLoopTemplate?: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
+    onApplyLoopTemplate?: (
+      templateId:
+        | 'loops:intro_then_repeat'
+        | 'loops:repeat_n_times'
+        | 'loops:repeat_until_condition'
+        | 'loops:repeat_with_cooldown'
+        | 'loops:repeat_with_children',
+      eventId: Id | undefined,
+      opts?: { childCount: number; childPresetId: string }
+    ) => void;
     onSetEntitiesAsset?: (entityIds: string[], asset?: SpriteAssetSpec) => void;
     onRasterizeTextEntity?: (entityId: Id) => void;
   };
@@ -1208,7 +1227,16 @@ function GroupInspector({
   onRemoveEventBlock: (id: Id) => void;
   onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
   onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
-  onApplyLoopTemplate: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
+  onApplyLoopTemplate: (
+    templateId:
+      | 'loops:intro_then_repeat'
+      | 'loops:repeat_n_times'
+      | 'loops:repeat_until_condition'
+      | 'loops:repeat_with_cooldown'
+      | 'loops:repeat_with_children',
+    eventId: Id | undefined,
+    opts?: { childCount: number; childPresetId: string }
+  ) => void;
   onSelectMember: (id: string) => void;
   onRemoveMember: (id: string) => void;
   onUpdateGroup: (next: GroupSpec) => void;
@@ -1408,7 +1436,16 @@ export function renderGroupInspector(
     onRemoveEventBlock: (id: Id) => void;
     onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
     onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
-    onApplyLoopTemplate: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
+    onApplyLoopTemplate: (
+      templateId:
+        | 'loops:intro_then_repeat'
+        | 'loops:repeat_n_times'
+        | 'loops:repeat_until_condition'
+        | 'loops:repeat_with_cooldown'
+        | 'loops:repeat_with_children',
+      eventId: Id | undefined,
+      opts?: { childCount: number; childPresetId: string }
+    ) => void;
     onSelectMember: (id: string) => void;
     onRemoveMember: (id: string) => void;
     onUpdateGroup: (next: GroupSpec) => void;

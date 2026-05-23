@@ -148,7 +148,7 @@ describe('Group inspector', () => {
       })
     );
 
-    expect(markup).toContain('Selected');
+    expect(markup).toContain('data-selected="true"');
   });
 
   it('renders paired layout parameters on the same row in the layout inspector', () => {
