@@ -1,0 +1,90 @@
+name: PhaserForge CI / E2E (PR)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-pr-chromium:
+    name: E2E PR Chromium (shard ${{ matrix.shard }}/${{ matrix.shards }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+        shards: [2]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E Tests
+        env:
+          PW_PROJECTS: chromium
+        run: npm run test:e2e -- --project=chromium --grep "@smoke|@critical" --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
+
+      - name: Upload Playwright Artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-pr-chromium-${{ matrix.shard }}-of-${{ matrix.shards }}
+          path: |
+            playwright-report
+            test-results
+
+  e2e-pr-cross-browser:
+    name: E2E PR Cross-browser (shard ${{ matrix.shard }}/${{ matrix.shards }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+        shards: [2]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        # `msedge` project uses the Chromium engine unless PW_EDGE_CHANNEL is set.
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: E2E Tests
+        env:
+          PW_PROJECTS: firefox,webkit,msedge
+        run: npm run test:e2e -- --project=firefox --project=webkit --project=msedge --grep "@smoke|@browser" --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
+
+      - name: Upload Playwright Artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-pr-cross-${{ matrix.shard }}-of-${{ matrix.shards }}
+          path: |
+            playwright-report
+            test-results
+
