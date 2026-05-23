@@ -66,11 +66,25 @@ Use Loop Templates to avoid manual nesting:
   - Intro step: **Wave** with `amplitude=30`, `length=80`, `velocity=80`, `startProgress=0.75`, `endProgress=1`
   - Repeat step: **Wave** with `amplitude=30`, `length=80`, `velocity=80`, `startProgress=0`, `endProgress=1`
 
+### How to build “Repeat with N children”
+
+Several patterns below say “Add **Repeat** with X children”. Use the Loop Template that scaffolds a Repeat container with a chosen number of child steps:
+
+- `+ Add…` → **Loops** → **Repeat with Children…**
+  - Choose **Children** = N
+  - Choose **Child Type** (you can edit each child afterwards)
+  - Leave Repeat **Count** blank for an infinite loop (matching `repeat(...)` in `pattern_demo.py`)
+
 ### Zigzag
 
-- Add **Repeat** with two children:
-  - **Zigzag**: `width=30`, `height=15`, `velocity=100`, `segments=5`
-  - **Zigzag**: `width=-30`, `height=-15`, `velocity=100`, `segments=5`
+- `+ Add…` → **Loops** → **Repeat with Children…**
+  - Children = `2`
+  - Child Type = **Zigzag Pattern**
+- Configure the two Zigzag children:
+  - Child 1: `width=30`, `height=-15`, `velocity=100`, `segments=5` (Phaser Y+ is down; negative height moves up, matching Arcade demo)
+  - Child 2: `width=-30`, `height=15`, `velocity=100`, `segments=5`
+- Add a **Move Until** step *before* the Repeat to center the zigzag under the label
+  - **Move Until**: `velocityX=-15`, `velocityY=-30`, Condition: **Elapsed Time** `= 1000ms`
 
 ### Figure-8
 

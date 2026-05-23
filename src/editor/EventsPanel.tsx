@@ -85,7 +85,16 @@ export function EventsPanel({
   onMoveParallelGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
   onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
   onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
-  onApplyLoopTemplate: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
+  onApplyLoopTemplate: (
+    templateId:
+      | 'loops:intro_then_repeat'
+      | 'loops:repeat_n_times'
+      | 'loops:repeat_until_condition'
+      | 'loops:repeat_with_cooldown'
+      | 'loops:repeat_with_children',
+    eventId: Id | undefined,
+    opts?: { childCount: number; childPresetId: string }
+  ) => void;
 }) {
   const [tab, setTab] = useState<'blocks' | 'map'>('blocks');
   const eventBlocks = useMemo(() => {
@@ -104,6 +113,7 @@ export function EventsPanel({
       { type: 'loops:repeat_n_times', displayName: 'Repeat N times…', category: 'loops' },
       { type: 'loops:repeat_until_condition', displayName: 'Repeat until Condition…', category: 'loops' },
       { type: 'loops:repeat_with_cooldown', displayName: 'Repeat with Cooldown…', category: 'loops' },
+      { type: 'loops:repeat_with_children', displayName: 'Repeat with Children…', category: 'loops' },
     ] as any),
     []
   );
@@ -364,7 +374,16 @@ function EventBlockCard({
   onMoveParallelGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
   onCreatePatternFromAttachments: (attachmentIds: Id[], name?: string) => void;
   onApplyPattern: (patternId: Id, eventId: Id | undefined, bindings: Record<Id, unknown>) => void;
-  onApplyLoopTemplate: (templateId: 'loops:intro_then_repeat' | 'loops:repeat_n_times' | 'loops:repeat_until_condition' | 'loops:repeat_with_cooldown', eventId: Id | undefined) => void;
+  onApplyLoopTemplate: (
+    templateId:
+      | 'loops:intro_then_repeat'
+      | 'loops:repeat_n_times'
+      | 'loops:repeat_until_condition'
+      | 'loops:repeat_with_cooldown'
+      | 'loops:repeat_with_children',
+    eventId: Id | undefined,
+    opts?: { childCount: number; childPresetId: string }
+  ) => void;
   hideEventControls?: boolean;
   eventIdForRows: Id | undefined;
 }) {
@@ -383,6 +402,10 @@ function EventBlockCard({
   const [applyPatternPrompt, setApplyPatternPrompt] = useState<{
     patternId: Id;
     bindings: Record<Id, string | boolean>;
+  } | null>(null);
+  const [repeatWithChildrenPrompt, setRepeatWithChildrenPrompt] = useState<{
+    childCount: string;
+    childPresetId: string;
   } | null>(null);
   const [overflowMenu, setOverflowMenu] = useState<{ kind: 'attachment'; attachmentId: Id } | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
@@ -501,7 +524,6 @@ function EventBlockCard({
 
   const renderAttachmentRow = (
     attachment: any,
-    indexLabel: string,
     opts: { disableDrag: boolean; parentAttachmentId: Id | undefined }
   ) => (
     <div key={attachment.id} className="member-row">
@@ -531,10 +553,12 @@ function EventBlockCard({
       <button
         className="list-item"
         data-testid={`attachment-open-${attachment.id}`}
+        data-selected={selectedAttachmentId === attachment.id ? 'true' : undefined}
+        aria-current={selectedAttachmentId === attachment.id ? 'true' : undefined}
         type="button"
         onClick={() => onSelectAttachment(attachment.id)}
       >
-        {selectedAttachmentId === attachment.id ? 'Selected' : indexLabel} · {attachment.name ?? attachment.id} · {attachment.presetId}
+        {attachment.name ?? attachment.id} · {attachment.presetId}
       </button>
       <button
         aria-label={`More options for step ${attachment.name ?? attachment.id}`}
@@ -579,7 +603,13 @@ function EventBlockCard({
 
   const pickPreset = (presetId: string) => {
     if (presetId.startsWith('loops:')) {
-      onApplyLoopTemplate(presetId as any, eventIdForRows);
+      if (presetId === 'loops:repeat_with_children') {
+        const nonLoopEntries = supportedPresetEntries.filter((e) => !e.type.startsWith('loops:'));
+        const defaultPreset = nonLoopEntries.find((e) => e.type === 'Call')?.type ?? (nonLoopEntries[0]?.type ?? 'Call');
+        setRepeatWithChildrenPrompt({ childCount: '2', childPresetId: defaultPreset });
+      } else {
+        onApplyLoopTemplate(presetId as any, eventIdForRows);
+      }
       setDrawerOpen(false);
       return;
     }
@@ -787,6 +817,59 @@ function EventBlockCard({
               </div>
             )}
 
+            {repeatWithChildrenPrompt && (
+              <div className="inspector-block" data-testid="repeat-with-children-prompt" style={{ marginTop: 10 }}>
+                <div className="panel-heading">Repeat with Children…</div>
+                <div className="inspector-row">Creates a Repeat container and seeds child steps inside it. Edit each child afterwards.</div>
+                <div className="inspector-grid-2">
+                  <label className="field">
+                    <span>Children</span>
+                    <input
+                      aria-label="Repeat Children Count"
+                      data-testid="repeat-children-count"
+                      type="number"
+                      min={1}
+                      max={32}
+                      value={repeatWithChildrenPrompt.childCount}
+                      onChange={(e) =>
+                        setRepeatWithChildrenPrompt((prev) => prev ? ({ ...prev, childCount: e.target.value }) : prev)
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Child Type</span>
+                    <select
+                      aria-label="Repeat Child Preset"
+                      data-testid="repeat-children-preset"
+                      value={repeatWithChildrenPrompt.childPresetId}
+                      onChange={(e) =>
+                        setRepeatWithChildrenPrompt((prev) => prev ? ({ ...prev, childPresetId: e.target.value }) : prev)
+                      }
+                    >
+                      {supportedPresetEntries
+                        .filter((entry) => !entry.type.startsWith('loops:'))
+                        .map((entry) => (
+                          <option key={entry.type} value={entry.type}>{entry.displayName}</option>
+                        ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="inspector-row" style={{ gap: 10 }}>
+                  <button className="button" type="button" data-testid="repeat-children-create" onClick={() => {
+                    const parsed = Number(repeatWithChildrenPrompt.childCount);
+                    const childCount = Math.max(1, Math.min(32, Number.isFinite(parsed) ? parsed : 0));
+                    onApplyLoopTemplate('loops:repeat_with_children', eventIdForRows, { childCount, childPresetId: repeatWithChildrenPrompt.childPresetId });
+                    setRepeatWithChildrenPrompt(null);
+                  }}>
+                    Create
+                  </button>
+                  <button className="button" type="button" data-testid="repeat-children-cancel" onClick={() => setRepeatWithChildrenPrompt(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Patterns are now in the Action Library drawer as a Category. */}
           </>
         );
@@ -865,7 +948,6 @@ function EventBlockCard({
               if (row.kind === 'attachment') {
                 const attachment: any = row.attachment;
                 const isRepeat = attachment.presetId === 'Repeat' && Array.isArray(attachment.children) && attachment.children.length > 0;
-                const indexLabel = `Step ${rowIndex + 1}`;
                 const childRows = isRepeat ? renderRows(attachment.id, depth + 1) : [];
                 const base = (
                   <div key={attachment.id} style={{ paddingLeft: depth * 18 }}>
@@ -916,7 +998,7 @@ function EventBlockCard({
                         onReorderAttachments({ target, eventId: eventIdForRows, parentAttachmentId, orderedAttachmentIds });
                       }}
                     >
-                      {renderAttachmentRow(attachment, indexLabel, {
+                      {renderAttachmentRow(attachment, {
                         disableDrag: false,
                         parentAttachmentId,
                       })}

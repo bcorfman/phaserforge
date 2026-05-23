@@ -12,12 +12,18 @@ describe('movement pattern helpers (detail)', () => {
     expect(dy).toBeCloseTo(18, 6);
   });
 
-  test('wave full cycle snaps to origin', () => {
-    const offsetFn = buildWaveOffset({ amplitude: 20, length: 60, startProgress: 0, endProgress: 1 });
-    const [dx, dy] = offsetFn(1);
-    expect(dx).toBeCloseTo(0, 6);
-    expect(dy).toBeCloseTo(0, 6);
-  });
+	 test('wave full cycle snaps to origin', () => {
+	   const offsetFn = buildWaveOffset({ amplitude: 20, length: 60, startProgress: 0, endProgress: 1 });
+	   const [dx, dy] = offsetFn(1);
+	   expect(dx).toBeCloseTo(0, 6);
+	   expect(dy).toBeCloseTo(0, 6);
+	 });
+
+	 test('wave dips downward for positive amplitude (Phaser y+ is down)', () => {
+	   const offsetFn = buildWaveOffset({ amplitude: 20, length: 60, startProgress: 0, endProgress: 1 });
+	   const [_dx, dy] = offsetFn(0.25);
+	   expect(dy).toBeGreaterThan(0);
+	 });
 
   test('wave partial cycle preserves offset', () => {
     const offsetFn = buildWaveOffset({ amplitude: 15, length: 40, startProgress: 0.5, endProgress: 0.75 });
