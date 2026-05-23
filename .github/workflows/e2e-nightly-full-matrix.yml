@@ -1,0 +1,56 @@
+name: PhaserForge CI / E2E (Full Matrix)
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-nightly-full-matrix:
+    name: E2E Full Matrix (shard ${{ matrix.shard }}/${{ matrix.shards }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shards: [8]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        # `msedge` project uses the Chromium engine unless PW_EDGE_CHANNEL is set.
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: E2E Tests
+        env:
+          PW_PROJECTS: chromium,firefox,webkit,msedge
+        run: npm run test:e2e -- --project=chromium --project=firefox --project=webkit --project=msedge --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
+
+      - name: Upload Playwright Artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-full-matrix-${{ matrix.shard }}-of-${{ matrix.shards }}
+          path: |
+            playwright-report
+            test-results
+

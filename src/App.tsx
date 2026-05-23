@@ -406,12 +406,20 @@ function AppShell() {
 
   const appBodyRef = useRef<HTMLDivElement | null>(null);
   const leftPaneDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const rightPaneDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [leftPaneMouseDragging, setLeftPaneMouseDragging] = useState(false);
+  const [rightPaneMouseDragging, setRightPaneMouseDragging] = useState(false);
   const [leftPaneWidth, setLeftPaneWidth] = useState(() => {
     const storage: any = (globalThis as any).localStorage;
     const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaserforge.leftPaneWidth.v1') : null;
     const parsed = raw == null ? NaN : Number(raw);
     return Number.isFinite(parsed) ? Math.max(240, Math.min(520, parsed)) : 300;
+  });
+  const [rightPaneWidth, setRightPaneWidth] = useState(() => {
+    const storage: any = (globalThis as any).localStorage;
+    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaserforge.rightPaneWidth.v1') : null;
+    const parsed = raw == null ? NaN : Number(raw);
+    return Number.isFinite(parsed) ? Math.max(340, Math.min(520, parsed)) : 380;
   });
 
   useEffect(() => {
@@ -419,8 +427,17 @@ function AppShell() {
     if (typeof storage?.setItem === 'function') storage.setItem('phaserforge.leftPaneWidth.v1', String(leftPaneWidth));
   }, [leftPaneWidth]);
 
+  useEffect(() => {
+    const storage: any = (globalThis as any).localStorage;
+    if (typeof storage?.setItem === 'function') storage.setItem('phaserforge.rightPaneWidth.v1', String(rightPaneWidth));
+  }, [rightPaneWidth]);
+
   const startLeftPaneDrag = (clientX: number) => {
     leftPaneDragRef.current = { startX: clientX, startWidth: leftPaneWidth };
+  };
+
+  const startRightPaneDrag = (clientX: number) => {
+    rightPaneDragRef.current = { startX: clientX, startWidth: rightPaneWidth };
   };
 
   const updateLeftPaneDrag = (clientX: number) => {
@@ -435,8 +452,7 @@ function AppShell() {
     const clamped = Math.max(minWidth, Math.min(maxWidth, desired));
     if (bodyRect && bodyRect.width > 0) {
       const minCanvas = 480;
-      const rightMin = 340;
-      const available = bodyRect.width - 12 - rightMin - minCanvas;
+      const available = bodyRect.width - 24 - rightPaneWidth - minCanvas;
       const maxByCanvas = Math.max(minWidth, Math.min(maxWidth, available));
       setLeftPaneWidth(Math.max(minWidth, Math.min(maxByCanvas, clamped)));
       return;
@@ -444,8 +460,32 @@ function AppShell() {
     setLeftPaneWidth(clamped);
   };
 
+  const updateRightPaneDrag = (clientX: number) => {
+    const drag = rightPaneDragRef.current;
+    if (!drag) return;
+    const body = appBodyRef.current;
+    const bodyRect = body?.getBoundingClientRect();
+    const delta = clientX - drag.startX;
+    const desired = drag.startWidth - delta;
+    const minWidth = 340;
+    const maxWidth = 520;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, desired));
+    if (bodyRect && bodyRect.width > 0) {
+      const minCanvas = 480;
+      const available = bodyRect.width - 24 - leftPaneWidth - minCanvas;
+      const maxByCanvas = Math.max(minWidth, Math.min(maxWidth, available));
+      setRightPaneWidth(Math.max(minWidth, Math.min(maxByCanvas, clamped)));
+      return;
+    }
+    setRightPaneWidth(clamped);
+  };
+
   const endLeftPaneDrag = () => {
     leftPaneDragRef.current = null;
+  };
+
+  const endRightPaneDrag = () => {
+    rightPaneDragRef.current = null;
   };
 
   useEffect(() => {
@@ -466,6 +506,24 @@ function AppShell() {
     };
   }, [leftPaneMouseDragging]);
 
+  useEffect(() => {
+    const onMouseMove = (event: MouseEvent) => updateRightPaneDrag(event.clientX);
+    const onMouseUp = () => {
+      if (!rightPaneMouseDragging) return;
+      setRightPaneMouseDragging(false);
+      endRightPaneDrag();
+    };
+
+    if (!rightPaneMouseDragging) return;
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [rightPaneMouseDragging]);
+
   return (
     <div className="app-root" data-testid="app-root">
       <Toolbar />
@@ -473,7 +531,7 @@ function AppShell() {
         ref={appBodyRef}
         className="app-body"
         style={{
-          gridTemplateColumns: `${leftPaneWidth}px 12px minmax(0, 1fr) minmax(340px, clamp(340px, 23vw, 440px))`,
+          gridTemplateColumns: `${leftPaneWidth}px 12px minmax(0, 1fr) 12px ${rightPaneWidth}px`,
           gap: 0,
         }}
       >
@@ -627,6 +685,28 @@ function AppShell() {
             }} />
           </div>
         </main>
+        <div
+          className="pane-splitter-vertical"
+          data-testid="right-pane-splitter"
+          role="separator"
+          aria-orientation="vertical"
+          onPointerDown={(event) => {
+            startRightPaneDrag(event.clientX);
+            (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            updateRightPaneDrag(event.clientX);
+          }}
+          onPointerUp={() => {
+            endRightPaneDrag();
+          }}
+          onMouseDown={(event) => {
+            // WebKit can be flaky with Pointer Events on synthetic drags; keep a mouse fallback for e2e and real users.
+            if (event.button !== 0) return;
+            startRightPaneDrag(event.clientX);
+            setRightPaneMouseDragging(true);
+          }}
+        />
         <aside className="pane pane-right" data-testid="inspector-pane">
           <InspectorPane />
         </aside>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { formatActionDisplayName } from './actionFormatting';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
 import { inferGroupGridLayout } from './formationLayout';
@@ -2107,7 +2108,9 @@ function AttachmentInspector({
             }}
           >
             {supportedPresets.map((entry) => (
-              <option key={entry.type} value={entry.type}>{entry.displayName}</option>
+              <option key={entry.type} value={entry.type}>
+                {formatActionDisplayName(entry as any)}
+              </option>
             ))}
           </select>
         </label>
