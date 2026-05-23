@@ -362,4 +362,4 @@ This approach keeps the editor decoupled from `arcadeactions` changes, requiring
 
 **Further Considerations** (if applicable, 1-3 items)
 
-1. How to generate config automatically? Manually update the config file when new classes are added to phaseractions-studio. Consider a separate build script if needed for maintenance.
+1. How to generate config automatically? Manually update the config file when new classes are added to phaserforge. Consider a separate build script if needed for maintenance.

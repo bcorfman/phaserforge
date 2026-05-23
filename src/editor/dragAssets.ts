@@ -1,7 +1,7 @@
 import type { Id } from '../model/types';
 import type { AssetKind } from './assetReferences';
 
-export const ASSET_DRAG_MIME = 'application/x-phaseractions-studio-asset';
+export const ASSET_DRAG_MIME = 'application/x-phaserforge-asset';
 
 export function hasDraggedAsset(dataTransfer: DataTransfer | null): boolean {
   if (!dataTransfer) return false;

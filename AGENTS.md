@@ -1,4 +1,4 @@
-# AGENTS.md for phaseractions-studio
+# AGENTS.md for phaserforge
 
 ## Project Guidelines
 
@@ -31,7 +31,7 @@ When addressing an E2E failure:
 - If a direct product fix has been attempted and has failed to eliminate the flake **more than twice**, the agent **MUST redesign the test** to be less brittle (and keep coverage meaningful).
 
 ### ArcadeActions Reference Only
-The `arcadeactions` directory is for reference only. Do not modify or add files to it. Use it to understand formations, actions, and arrange functions, but all changes must stay within `phaseractions-studio`. For expandability, rely on external config files and editor-side logic.
+The `arcadeactions` directory is for reference only. Do not modify or add files to it. Use it to understand formations, actions, and arrange functions, but all changes must stay within `phaserforge`. For expandability, rely on external config files and editor-side logic.
 
 ### Playwright Workers Default (Do Not Change)
 Do not change the default Playwright worker count in `playwright.config.ts`. The default must remain `3` (overridable only via `PW_WORKERS`).

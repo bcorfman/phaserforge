@@ -35,9 +35,9 @@ test('background layers render in both edit and play mode @browser', async ({ pa
 
   const yaml = serializeProjectToYaml(project as any);
   await page.addInitScript(([projectYaml]) => {
-    window.localStorage.removeItem('phaseractions.inspectorFoldouts.v1');
-    window.localStorage.setItem('phaseractions.projectYaml.v1', projectYaml);
-    window.localStorage.setItem('phaseractions.startupMode.v1', 'reload_last_yaml');
+    window.localStorage.removeItem('phaserforge.inspectorFoldouts.v1');
+    window.localStorage.setItem('phaserforge.projectYaml.v1', projectYaml);
+    window.localStorage.setItem('phaserforge.startupMode.v1', 'reload_last_yaml');
   }, [yaml]);
 
   await gotoStudio(page);

@@ -1,8 +1,8 @@
-# PhaserActions Studio
+# PhaserForge
 
-Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bcorfman/phaseractions-studio)
+Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bcorfman/phaserforge)
 
-**PhaserActions Studio** is a gameplay behavior editor for Phaser that targets the real bottleneck in experienced teams: **orchestration**.
+**PhaserForge** is a gameplay behavior editor for Phaser that targets the real bottleneck in experienced teams: **orchestration**.
 
 You already know how to write movement, firing, and collisions. What slows you down is everything *between* those ideas and a shippable result: timers, flags, ad-hoc state machines, event ordering bugs, copy/paste drift, and the constant cost of “just one more exception” in `update()`.
 

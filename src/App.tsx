@@ -409,14 +409,14 @@ function AppShell() {
   const [leftPaneMouseDragging, setLeftPaneMouseDragging] = useState(false);
   const [leftPaneWidth, setLeftPaneWidth] = useState(() => {
     const storage: any = (globalThis as any).localStorage;
-    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaseractions.leftPaneWidth.v1') : null;
+    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaserforge.leftPaneWidth.v1') : null;
     const parsed = raw == null ? NaN : Number(raw);
     return Number.isFinite(parsed) ? Math.max(240, Math.min(520, parsed)) : 300;
   });
 
   useEffect(() => {
     const storage: any = (globalThis as any).localStorage;
-    if (typeof storage?.setItem === 'function') storage.setItem('phaseractions.leftPaneWidth.v1', String(leftPaneWidth));
+    if (typeof storage?.setItem === 'function') storage.setItem('phaserforge.leftPaneWidth.v1', String(leftPaneWidth));
   }, [leftPaneWidth]);
 
   const startLeftPaneDrag = (clientX: number) => {

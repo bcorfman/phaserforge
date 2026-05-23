@@ -149,7 +149,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
       headers: {
         accept: 'application/vnd.github+json',
         authorization: `Bearer ${accessToken}`,
-        'user-agent': 'phaseractions-studio',
+        'user-agent': 'phaserforge',
       },
     });
     if (!userRes.ok) {
@@ -166,7 +166,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
       headers: {
         accept: 'application/vnd.github+json',
         authorization: `Bearer ${accessToken}`,
-        'user-agent': 'phaseractions-studio',
+        'user-agent': 'phaserforge',
       },
     });
     if (!emailRes.ok) {

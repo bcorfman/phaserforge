@@ -20,7 +20,7 @@ All phases should be TDD-driven:
 Make the editor capable of owning a project with multiple scenes, without changing core entity/group/attachment editing semantics.
 
 ### Decisions (locked)
-- [x] Persistence is **project YAML only** (authoritative key `phaseractions.projectYaml.v1`).
+- [x] Persistence is **project YAML only** (authoritative key `phaserforge.projectYaml.v1`).
 
 ### Required model additions
 - [x] Add `ProjectSpec`:
