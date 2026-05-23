@@ -2337,24 +2337,26 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       };
 
       if (action.templateId === 'loops:intro_then_repeat') {
-        const introId = placeholder('Intro step');
+        placeholder('Intro');
         const repeatId = create('Repeat', {});
-        const childId = placeholder('Repeat step', { parentAttachmentId: repeatId });
+        const childId = placeholder('Loop body', { parentAttachmentId: repeatId });
         void childId;
-        selectId = introId;
+        // Don't auto-select the intro placeholder; users typically want to stay
+        // at the OnSceneStart steps level after inserting a template.
+        selectId = undefined;
       } else if (action.templateId === 'loops:repeat_n_times') {
         const repeatId = create('Repeat', { params: { count: 3 } });
-        placeholder('Repeat step', { parentAttachmentId: repeatId });
+        placeholder('Loop body', { parentAttachmentId: repeatId });
         selectId = repeatId;
       } else if (action.templateId === 'loops:repeat_until_condition') {
         const repeatId = create('Repeat', {
           condition: { type: 'BoundsHit', bounds: { minX: 0, minY: 0, maxX: 1024, maxY: 768 }, mode: 'any', behavior: 'stop' } as any,
         });
-        placeholder('Repeat step', { parentAttachmentId: repeatId });
+        placeholder('Loop body', { parentAttachmentId: repeatId });
         selectId = repeatId;
       } else if (action.templateId === 'loops:repeat_with_cooldown') {
         const repeatId = create('Repeat', {});
-        placeholder('Repeat step', { parentAttachmentId: repeatId });
+        placeholder('Loop body', { parentAttachmentId: repeatId });
         create('Wait', { parentAttachmentId: repeatId, params: { durationMs: 250 } });
         selectId = repeatId;
       } else if (action.templateId === 'loops:repeat_with_children') {

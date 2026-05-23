@@ -41,14 +41,15 @@ describe('loop templates', () => {
     const nextScene = sceneOf(next);
     const atts = Object.values(nextScene.attachments ?? {});
     expect(atts).toHaveLength(3);
-    const intro = atts.find((a: any) => a.name === 'Intro step');
+    const intro = atts.find((a: any) => a.name === 'Intro');
     const repeat = atts.find((a: any) => a.presetId === 'Repeat');
     const child = atts.find((a: any) => a.parentAttachmentId === (repeat as any)?.id);
     expect(intro).toBeTruthy();
     expect(repeat).toBeTruthy();
     expect(child).toBeTruthy();
+    expect((child as any).name).toBe('Loop body');
     expect((repeat as any).children).toEqual([(child as any).id]);
-    expect(next.selection).toEqual({ kind: 'attachment', id: (intro as any).id });
+    expect(next.selection).toEqual((seeded as any).selection);
   });
 
   it('does not treat __legacy__ as a real event id', () => {
