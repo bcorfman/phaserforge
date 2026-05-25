@@ -485,14 +485,6 @@ export function EntityListView({
     setIsDragActive(false);
   };
 
-  const handleDropOnSprites = (event: React.DragEvent) => {
-    event.preventDefault();
-    const ids = readDragEntityIds(event.dataTransfer);
-    if (!ids || ids.length === 0) return;
-    dispatch({ type: 'remove-entities-from-groups', entityIds: ids });
-    setDragOverSprites(false);
-  };
-
   return (
     <div
       ref={rootRef}
@@ -554,7 +546,20 @@ export function EntityListView({
               const summary = summarizeSceneGroups(sceneForRow);
 	                  const groupsForRow = summary.groups;
 	              const ungroupedForRow = summary.ungroupedEntities;
-	              const ungroupedSpritesForRow = ungroupedForRow.filter((entity) => !entity.text);
+	              const spriteOrder = Array.isArray((sceneForRow as any).spriteOrder)
+	                ? ((sceneForRow as any).spriteOrder as string[]).filter((id) => typeof id === 'string')
+	                : [];
+	              const spriteIndex = new Map<string, number>();
+	              spriteOrder.forEach((id, i) => spriteIndex.set(id, i));
+	              const ungroupedSpritesForRow = ungroupedForRow
+	                .filter((entity) => !entity.text)
+	                .slice()
+	                .sort((a, b) => {
+	                  const ia = spriteIndex.has(a.id) ? (spriteIndex.get(a.id) ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
+	                  const ib = spriteIndex.has(b.id) ? (spriteIndex.get(b.id) ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
+	                  if (ia !== ib) return ia - ib;
+	                  return String(a.name ?? a.id).localeCompare(String(b.name ?? b.id));
+	                });
 	              const ungroupedTextForRow = ungroupedForRow.filter((entity) => Boolean(entity.text));
 	              const zonesForRow = (sceneForRow.triggers ?? []) as TriggerZoneSpec[];
 
@@ -566,6 +571,23 @@ export function EntityListView({
                 const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
                 setMenuPosition({ x: Math.min(rect.left, window.innerWidth - 220), y: rect.bottom + 6 });
                 setMenuOpen(next);
+              };
+
+              const reorderSpritesInList = (draggedIdsRaw: string[], insertIndex: number | undefined) => {
+                const draggedIds = Array.isArray(draggedIdsRaw) ? draggedIdsRaw.filter((id) => typeof id === 'string') : [];
+                if (draggedIds.length === 0) return;
+                const spriteIds = ungroupedSpritesForRow.map((e) => e.id);
+                const filtered = spriteIds.filter((id) => !draggedIds.includes(id));
+                const clampedIndex = typeof insertIndex === 'number'
+                  ? Math.max(0, Math.min(Math.floor(insertIndex), filtered.length))
+                  : filtered.length;
+                const nextOrder = [
+                  ...filtered.slice(0, clampedIndex),
+                  ...draggedIds,
+                  ...filtered.slice(clampedIndex),
+                ];
+                dispatch({ type: 'remove-entities-from-groups', entityIds: draggedIds });
+                dispatch({ type: 'reorder-sprite-order', orderedEntityIds: nextOrder });
               };
 
                   return (
@@ -657,7 +679,11 @@ export function EntityListView({
                         }}
                         onDrop={(e) => {
                           if (sceneId !== currentSceneId) return;
-                          handleDropOnSprites(e);
+                          e.preventDefault();
+                          const ids = readDragEntityIds(e.dataTransfer);
+                          if (!ids || ids.length === 0) return;
+                          dispatch({ type: 'remove-entities-from-groups', entityIds: ids });
+                          setDragOverSprites(false);
                         }}
 	                      >
 	                        {ungroupedSpritesForRow.length === 0 ? (
@@ -683,6 +709,23 @@ export function EntityListView({
                                   onDragStart={(e) => {
                                     if (sceneId !== currentSceneId) return;
                                     handleEntityDragStart(entity.id, e);
+                                  }}
+                                  onDragOver={(e) => {
+                                    if (sceneId !== currentSceneId) return;
+                                    e.preventDefault();
+                                  }}
+                                  onDrop={(e) => {
+                                    if (sceneId !== currentSceneId) return;
+                                    e.preventDefault();
+                                    const ids = readDragEntityIds(e.dataTransfer);
+                                    if (!ids || ids.length === 0) return;
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                    const index = ungroupedSpritesForRow.findIndex((it) => it.id === entity.id);
+                                    const midpoint = rect.top + rect.height / 2;
+                                    const clientY = typeof e.clientY === 'number' && Number.isFinite(e.clientY) ? e.clientY : (midpoint - 1);
+                                    const insertIndex = clientY < midpoint ? index : index + 1;
+                                    reorderSpritesInList(ids, Math.max(0, insertIndex));
+                                    handleDragEnd();
                                   }}
                                   onDragEnd={handleDragEnd}
                                   onClick={(e) => {

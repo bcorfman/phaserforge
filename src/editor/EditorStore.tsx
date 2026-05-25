@@ -32,6 +32,7 @@ import {
   makeAttachmentsParallel,
   moveAttachmentWithinTarget,
   moveParallelGroupWithinTarget,
+  nestAttachmentsUnderRepeat,
   reorderAttachmentsWithinTargetAndEvent,
   removeAttachment,
   ungroupParallelAttachments,
@@ -193,9 +194,11 @@ export type EditorAction =
   | { type: 'remove-attachment'; id: Id }
   | { type: 'move-attachment'; id: Id; direction: 'up' | 'down' }
   | { type: 'reorder-attachments'; target: TargetRef; eventId?: Id; parentAttachmentId?: Id; orderedAttachmentIds: Id[] }
+  | { type: 'nest-attachments-under-repeat'; target: TargetRef; eventId?: Id; repeatId: Id; attachmentIds: Id[] }
   | { type: 'make-attachments-parallel'; target: TargetRef; ids: Id[] }
   | { type: 'ungroup-parallel-attachments'; target: TargetRef; groupId: string; eventId?: Id }
   | { type: 'move-parallel-attachment-group'; target: TargetRef; groupId: string; direction: 'up' | 'down'; eventId?: Id }
+  | { type: 'reorder-sprite-order'; orderedEntityIds: Id[] }
   | { type: 'create-event-block'; target: TargetRef; name?: string; trigger?: AttachmentTriggerSpec }
   | { type: 'update-event-block'; id: Id; next: EventBlockSpec }
   | { type: 'remove-event-block'; id: Id }
@@ -475,13 +478,44 @@ function withScene(
   selection: Selection = state.selection,
   expandedGroups: Record<Id, boolean> = state.expandedGroups
 ): EditorState {
+  const syncSpriteOrder = (input: GameSceneSpec): GameSceneSpec => {
+    const current = Array.isArray((input as any).spriteOrder) ? ((input as any).spriteOrder as any[]) : [];
+    const order: Id[] = current.filter((id) => typeof id === 'string' && input.entities?.[id] && !(input.entities[id] as any)?.text);
+
+    const present = new Set(order);
+    const missing = Object.values(input.entities ?? {})
+      .filter((e) => e && typeof e.id === 'string' && !(e as any).text && !present.has(e.id))
+      .slice()
+      .sort((a, b) => {
+        const da = typeof a.depth === 'number' && Number.isFinite(a.depth) ? a.depth : 0;
+        const db = typeof b.depth === 'number' && Number.isFinite(b.depth) ? b.depth : 0;
+        if (da !== db) return da - db;
+        return String(a.name ?? a.id).localeCompare(String(b.name ?? b.id));
+      })
+      .map((e) => e.id);
+
+    const nextOrder = [...order, ...missing];
+    if (nextOrder.length === 0) {
+      const { spriteOrder: _removed, ...rest } = input as any;
+      void _removed;
+      return rest as GameSceneSpec;
+    }
+    const unchanged =
+      Array.isArray((input as any).spriteOrder)
+      && (input as any).spriteOrder.length === nextOrder.length
+      && (input as any).spriteOrder.every((id: any, i: number) => id === nextOrder[i]);
+    if (unchanged) return input;
+    return { ...(input as any), spriteOrder: nextOrder } as GameSceneSpec;
+  };
+
+  const nextScene = syncSpriteOrder(scene);
   return {
     ...state,
     project: {
       ...state.project,
       scenes: {
         ...state.project.scenes,
-        [state.currentSceneId]: scene,
+        [state.currentSceneId]: nextScene,
       },
     },
     selection,
@@ -2414,6 +2448,12 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       if (nextScene === scene) return state;
       return withScene(state, nextScene as GameSceneSpec, true);
     }
+    case 'nest-attachments-under-repeat': {
+      const scene = getActiveScene(state);
+      const nextScene = nestAttachmentsUnderRepeat(scene, { repeatId: action.repeatId, attachmentIds: action.attachmentIds });
+      if (nextScene === scene) return state;
+      return withScene(state, nextScene as GameSceneSpec, true);
+    }
     case 'make-attachments-parallel': {
       const scene = getActiveScene(state);
       const { scene: nextScene } = makeAttachmentsParallel(scene, action.target, action.ids);
@@ -3121,6 +3161,34 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         expandedGroups: syncExpandedGroupsToScene(state.expandedGroups, nextScene),
         pendingGroupRestore: undefined,
       };
+    }
+    case 'reorder-sprite-order': {
+      const scene = getActiveScene(state);
+      const inputIds = Array.isArray(action.orderedEntityIds) ? action.orderedEntityIds : [];
+      if (inputIds.length < 2) return state;
+
+      const seen = new Set<Id>();
+      const ids: Id[] = [];
+      for (const id of inputIds) {
+        if (typeof id !== 'string' || id.length === 0) continue;
+        const entity = scene.entities[id];
+        if (!entity) continue;
+        if ((entity as any).text) continue;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        ids.push(id);
+      }
+      if (ids.length < 2) return state;
+
+      const remaining = Object.values(scene.entities ?? {})
+        .filter((e) => e && typeof e.id === 'string' && !(e as any).text && !seen.has(e.id))
+        .map((e) => e.id);
+
+      const nextOrder = [...ids, ...remaining];
+      const prevOrder = Array.isArray((scene as any).spriteOrder) ? (scene as any).spriteOrder : [];
+      const unchanged = prevOrder.length === nextOrder.length && prevOrder.every((id: any, i: number) => id === nextOrder[i]);
+      if (unchanged) return state;
+      return withScene(state, { ...(scene as any), spriteOrder: nextOrder } as GameSceneSpec, true, state.selection);
     }
     case 'remove-scene-graph-item': {
       const scene = getActiveScene(state);

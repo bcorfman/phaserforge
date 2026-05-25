@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import type { AttachmentSpec, AttachmentTriggerSpec, EditorRegistryConfig, EventBlockSpec, Id, ParamSpec, PatternSpec, ProjectSpec, SceneSpec, TargetRef } from '../model/types';
 import { getAttachmentsForTargetAndEvent, type AttachedActionRow, buildAttachedActionRowsForTargetAndEvent } from './attachmentCommands';
 import { getTargetLabel } from './attachmentCommands';
@@ -61,6 +61,7 @@ export function EventsPanel({
   onSelectAttachment,
   onMoveAttachment,
   onReorderAttachments,
+  onNestAttachmentsUnderRepeat,
   onRemoveAttachment,
   onMakeParallel,
   onUngroupParallel,
@@ -81,6 +82,7 @@ export function EventsPanel({
   onSelectAttachment: (attachmentId: Id) => void;
   onMoveAttachment: (attachmentId: Id, direction: 'up' | 'down') => void;
   onReorderAttachments: (opts: { target: TargetRef; eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
+  onNestAttachmentsUnderRepeat: (opts: { target: TargetRef; eventId: Id | undefined; repeatId: Id; attachmentIds: Id[] }) => void;
   onRemoveAttachment: (attachmentId: Id) => void;
   onMakeParallel: (attachmentIds: Id[]) => void;
   onUngroupParallel: (groupId: string, eventId?: Id) => void;
@@ -185,6 +187,7 @@ export function EventsPanel({
         onSelectAttachment={onSelectAttachment}
         onMoveAttachment={onMoveAttachment}
         onReorderAttachments={(opts) => onReorderAttachments({ ...opts, eventId: undefined })}
+        onNestAttachmentsUnderRepeat={(opts) => onNestAttachmentsUnderRepeat({ ...opts, eventId: undefined })}
         onRemoveAttachment={onRemoveAttachment}
         onMakeParallel={onMakeParallel}
         onUngroupParallel={(groupId) => onUngroupParallel(groupId, undefined)}
@@ -196,7 +199,6 @@ export function EventsPanel({
         eventIdForRows={undefined}
       />
 
-      {eventBlocks.length === 0 && <div className="muted">No custom events yet. Add an event to start building event-driven behaviors.</div>}
       {eventBlocks.map((block) => (
         <EventBlockCard
           key={block.id}
@@ -213,6 +215,7 @@ export function EventsPanel({
           onSelectAttachment={onSelectAttachment}
           onMoveAttachment={onMoveAttachment}
           onReorderAttachments={onReorderAttachments}
+          onNestAttachmentsUnderRepeat={onNestAttachmentsUnderRepeat}
           onRemoveAttachment={onRemoveAttachment}
           onMakeParallel={onMakeParallel}
           onUngroupParallel={onUngroupParallel}
@@ -347,6 +350,7 @@ function EventBlockCard({
   onSelectAttachment,
   onMoveAttachment,
   onReorderAttachments,
+  onNestAttachmentsUnderRepeat,
   onRemoveAttachment,
   onMakeParallel,
   onUngroupParallel,
@@ -370,6 +374,7 @@ function EventBlockCard({
   onSelectAttachment: (attachmentId: Id) => void;
   onMoveAttachment: (attachmentId: Id, direction: 'up' | 'down') => void;
   onReorderAttachments: (opts: { target: TargetRef; eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
+  onNestAttachmentsUnderRepeat: (opts: { target: TargetRef; eventId: Id | undefined; repeatId: Id; attachmentIds: Id[] }) => void;
   onRemoveAttachment: (attachmentId: Id) => void;
   onMakeParallel: (attachmentIds: Id[]) => void;
   onUngroupParallel: (groupId: string, eventId?: Id) => void;
@@ -401,7 +406,12 @@ function EventBlockCard({
   const [pinnedPatternIds, setPinnedPatternIds] = useState<Set<string>>(() => new Set(loadPinnedPatternIds()));
   const [drawerAnchorRect, setDrawerAnchorRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const [pendingInsert, setPendingInsert] = useState<{ kind: 'above' | 'below' | 'child'; anchorAttachmentId: Id } | null>(null);
-  const [draggingRow, setDraggingRow] = useState<{ kind: 'attachment' | 'parallel-group'; id: string; parentAttachmentId: Id | undefined } | null>(null);
+  const [draggingRow, setDraggingRow] = useState<{
+    kind: 'attachment' | 'parallel-group';
+    id: string;
+    parentAttachmentId: Id | undefined;
+    draggedAttachmentIds?: Id[];
+  } | null>(null);
   const [applyPatternPrompt, setApplyPatternPrompt] = useState<{
     patternId: Id;
     bindings: Record<Id, string | boolean>;
@@ -527,14 +537,14 @@ function EventBlockCard({
     clearSelection();
   };
 
-  const renderAttachmentRow = (
-    attachment: any,
-    opts: {
-      disableDrag: boolean;
-      parentAttachmentId: Id | undefined;
-      repeat?: { hasChildren: boolean; collapsed: boolean; onToggleCollapsed: () => void };
-    }
-  ) => {
+	  const renderAttachmentRow = (
+	    attachment: any,
+	    opts: {
+	      disableDrag: boolean;
+	      parentAttachmentId: Id | undefined;
+	      repeat?: { hasChildren: boolean; collapsed: boolean; onToggleCollapsed: () => void };
+	    }
+	  ) => {
     const isPlaceholderCall = attachment.presetId === 'Call' && (attachment.condition?.type ?? 'Instant') === 'Instant';
     const hasExplicitName = typeof attachment.name === 'string' && attachment.name.trim().length > 0;
     const nameLooksGenerated =
@@ -582,31 +592,69 @@ function EventBlockCard({
         onChange={() => toggleSelected(attachment.id)}
         type="checkbox"
       />
-      <button
-        aria-label="Reorder step"
-        className="scene-graph-button"
-        data-testid={`attachment-drag-${attachment.id}`}
-        disabled={opts.disableDrag}
-        draggable={!opts.disableDrag}
-        type="button"
-        onDragStart={(e) => {
-          setDraggingRow({ kind: 'attachment', id: attachment.id, parentAttachmentId: opts.parentAttachmentId });
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', attachment.id);
-        }}
-        onDragEnd={() => setDraggingRow(null)}
-        title={opts.disableDrag ? 'Drag disabled' : 'Drag to reorder'}
+	      <button
+	        aria-label="Reorder step"
+	        className="scene-graph-button"
+	        data-testid={`attachment-drag-${attachment.id}`}
+	        disabled={opts.disableDrag}
+	        draggable={!opts.disableDrag}
+	        type="button"
+	        onDragStart={(e) => {
+	          const draggedAttachmentIds =
+	            selectedParallelGroupId
+	              ? [attachment.id]
+	              : selectedAttachmentIds.has(attachment.id) && selectedAttachmentIds.size > 0
+	                ? Array.from(selectedAttachmentIds)
+	                : [attachment.id];
+	          setDraggingRow({ kind: 'attachment', id: attachment.id, parentAttachmentId: opts.parentAttachmentId, draggedAttachmentIds });
+	          e.dataTransfer.effectAllowed = 'move';
+	          e.dataTransfer.setData('text/plain', attachment.id);
+	        }}
+	        onDragEnd={() => setDraggingRow(null)}
+	        title={opts.disableDrag ? 'Drag disabled' : 'Drag to reorder'}
       >
         ⋮⋮
       </button>
-      <button
-        className="list-item"
-        data-testid={`attachment-open-${attachment.id}`}
-        data-selected={selectedAttachmentId === attachment.id ? 'true' : undefined}
-        aria-current={selectedAttachmentId === attachment.id ? 'true' : undefined}
-        type="button"
-        onClick={() => onSelectAttachment(attachment.id)}
-      >
+	      <button
+	        className="list-item"
+	        data-testid={`attachment-open-${attachment.id}`}
+	        {...(attachment.presetId === 'Repeat'
+	          ? {
+	              onDragOver: (e: DragEvent) => {
+	                if (!draggingRow) return;
+	                if (draggingRow.kind !== 'attachment') return;
+	                if (draggingRow.parentAttachmentId !== opts.parentAttachmentId) return;
+	                const dragged = draggingRow.draggedAttachmentIds ?? [draggingRow.id];
+	                if (dragged.includes(attachment.id)) return;
+	                e.preventDefault();
+	                e.dataTransfer.dropEffect = 'move';
+	              },
+	              onDrop: (e: DragEvent) => {
+	                if (!draggingRow) return;
+	                if (draggingRow.kind !== 'attachment') return;
+	                if (draggingRow.parentAttachmentId !== opts.parentAttachmentId) return;
+	                const dragged = draggingRow.draggedAttachmentIds ?? [draggingRow.id];
+	                if (dragged.includes(attachment.id)) return;
+	                e.preventDefault();
+	                onNestAttachmentsUnderRepeat({ target, eventId: eventIdForRows, repeatId: attachment.id, attachmentIds: dragged });
+	                setCollapsedRepeats((prev) => {
+	                  if (!prev.has(attachment.id)) return prev;
+	                  const next = new Set(prev);
+	                  next.delete(attachment.id);
+	                  return next;
+	                });
+	                clearSelection();
+	                setDraggingRow(null);
+	              },
+	            }
+	          : {})}
+	        data-nest-target={attachment.presetId === 'Repeat' ? 'true' : undefined}
+	        aria-label={attachment.presetId === 'Repeat' ? `Nest under Repeat ${attachment.id}` : undefined}
+	        data-selected={selectedAttachmentId === attachment.id ? 'true' : undefined}
+	        aria-current={selectedAttachmentId === attachment.id ? 'true' : undefined}
+	        type="button"
+	        onClick={() => onSelectAttachment(attachment.id)}
+	      >
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, textAlign: 'left' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700 }}>
             <span>{title}</span>

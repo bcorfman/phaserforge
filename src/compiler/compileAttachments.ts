@@ -263,29 +263,32 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const offsetFn = buildZigzagOffset({ width, height, segments });
     return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: false });
   }
-  if (presetId === 'SpiralPattern') {
-    const maxRadius = Number(attachment.params?.maxRadius ?? 60);
-    const revolutions = Number(attachment.params?.revolutions ?? 2);
-    const velocity = Number(attachment.params?.velocity ?? 80);
-    const direction = attachment.params?.direction === 'inward' ? 'inward' : 'outward';
-    const targetRef = targetOverride ?? attachment.target;
-    const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
-    const durationMs = estimateSpiralDurationMs({ maxRadius, revolutions, velocity });
-    const offsetFn = buildSpiralOffset({ maxRadius, revolutions, direction });
-    return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: true, rotationOffsetDeg: 0 });
-  }
-  if (presetId === 'FigureEightPattern') {
-    const width = Number(attachment.params?.width ?? 80);
-    const height = Number(attachment.params?.height ?? 60);
-    const velocity = Number(attachment.params?.velocity ?? 100);
-    const targetRef = targetOverride ?? attachment.target;
-    const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
-    const durationMs = estimateFigureEightDurationMs({ width, height, velocity });
-    const offsetFn = buildFigureEightOffset({ width, height }).offsetFn;
-    return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: true, rotationOffsetDeg: 0 });
-  }
+	  if (presetId === 'SpiralPattern') {
+	    const maxRadius = Number(attachment.params?.maxRadius ?? 60);
+	    const revolutions = Number(attachment.params?.revolutions ?? 2);
+	    const velocity = Number(attachment.params?.velocity ?? 80);
+	    const direction = attachment.params?.direction === 'inward' ? 'inward' : 'outward';
+	    const flipX = attachment.params?.flipX === true ? true : undefined;
+	    const flipY = attachment.params?.flipY === true ? true : undefined;
+	    const targetRef = targetOverride ?? attachment.target;
+	    const target = resolveTarget(targetRef, ctx.targets);
+	    const condition = instantiateInlineCondition(attachment.condition, ctx);
+	    const durationMs = estimateSpiralDurationMs({ maxRadius, revolutions, velocity });
+	    const offsetFn = buildSpiralOffset({ maxRadius, revolutions, direction });
+	    return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: true, rotationOffsetDeg: 0, flipX, flipY });
+	  }
+	  if (presetId === 'FigureEightPattern') {
+	    const width = Number(attachment.params?.width ?? 80);
+	    const height = Number(attachment.params?.height ?? 60);
+	    const velocity = Number(attachment.params?.velocity ?? 100);
+	    const rotateWithPath = attachment.params?.rotateWithPath !== false;
+	    const targetRef = targetOverride ?? attachment.target;
+	    const target = resolveTarget(targetRef, ctx.targets);
+	    const condition = instantiateInlineCondition(attachment.condition, ctx);
+	    const durationMs = estimateFigureEightDurationMs({ width, height, velocity });
+	    const offsetFn = buildFigureEightOffset({ width, height }).offsetFn;
+	    return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath, rotationOffsetDeg: 0 });
+	  }
   if (presetId === 'OrbitPattern') {
     const radius = Number(attachment.params?.radius ?? 50);
     const velocity = Number(attachment.params?.velocity ?? 100);

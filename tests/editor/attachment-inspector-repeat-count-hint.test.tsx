@@ -34,11 +34,11 @@ describe('Attachment inspector Repeat', () => {
         attachment,
         project,
         scene,
-        {
-          arrange: [],
-          conditions: [],
-          actions: [{ type: 'Repeat', displayName: 'Repeat', category: 'flow', implemented: true }],
-        } as any,
+	        {
+	          arrange: [],
+	          conditions: [],
+	          actions: [{ type: 'Repeat', displayName: 'Repeat', category: 'loops', implemented: true }],
+	        } as any,
         () => {},
         () => {}
       )
@@ -48,4 +48,3 @@ describe('Attachment inspector Repeat', () => {
     expect(markup).toContain('Leave blank for an infinite loop');
   });
 });
-
