@@ -196,6 +196,10 @@ export function createAttachment(
       scope: target.type === 'group' ? 'group-extents' : 'member-any',
       behavior: 'limit',
     };
+  } else if (presetId === 'MoveTo') {
+    baseDefaults.params = { x: 0, y: 0 };
+  } else if (presetId === 'MoveBy') {
+    baseDefaults.params = { dx: 0, dy: 0 };
   } else if (presetId === 'Wait') {
     baseDefaults.params = { durationMs: 100 };
   } else if (presetId === 'Call') {
