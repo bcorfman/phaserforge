@@ -83,8 +83,8 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
 - Configure the two Zigzag children:
   - Child 1: `width=30`, `height=-15`, `velocity=100`, `segments=5` (Phaser Y+ is down; negative height moves up, matching Arcade demo)
   - Child 2: `width=-30`, `height=15`, `velocity=100`, `segments=5`
-- Add a **Move Until** step *before* the Repeat to center the zigzag under the label
-  - **Move Until**: `velocityX=-15`, `velocityY=-30`, Condition: **Elapsed Time** `= 1000ms`
+- Add a **Move By** step *before* the Repeat (this matches `pattern_demo.py`’s instant offset)
+  - **Move By**: `dx=-15`, `dy=-30`
 
 ### Figure-8
 
@@ -93,9 +93,11 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
 
 ### Orbit
 
+- Add a **Move To** step *before* the Repeat to place the sprite on the orbit path (matches `pattern_demo.py`’s instant reposition):
+  - **Move To**: `x = (homeX + radius)`, `y = homeY`
+  - For the demo’s default Orbit ship placement (`homeX=650`, `homeY=450`, `radius=50`): set `x=700`, `y=450`.
 - Add **Repeat** with one child:
   - **Orbit**: `radius=50`, `velocity=100`, `clockwise=true`, `centerMode=home`
-- Note: unlike ArcadeActions, you do not need a pre-step to move the sprite to the orbit edge; Orbit starts on the right edge if centered.
 
 ### Spiral
 

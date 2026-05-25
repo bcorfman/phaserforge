@@ -1866,6 +1866,8 @@ function AttachmentInspector({
       : (scene.groups[attachment.target.groupId]?.name ?? attachment.target.groupId);
   const supportedPresetIds = new Set([
     'MoveUntil',
+    'MoveTo',
+    'MoveBy',
     'MoveXUntil',
     'MoveYUntil',
     'WavePattern',
@@ -2017,6 +2019,14 @@ function AttachmentInspector({
               const base: AttachmentSpec = { ...attachment, presetId: nextType, params: {}, condition: undefined };
               if (nextType === 'MoveUntil') {
                 onUpdate({ ...base, params: { velocityX: 0, velocityY: 0 }, condition: ensureBoundsCondition() });
+                return;
+              }
+              if (nextType === 'MoveTo') {
+                onUpdate({ ...base, params: { x: 0, y: 0 }, condition: undefined });
+                return;
+              }
+              if (nextType === 'MoveBy') {
+                onUpdate({ ...base, params: { dx: 0, dy: 0 }, condition: undefined });
                 return;
               }
               if (nextType === 'MoveXUntil') {
@@ -2584,6 +2594,64 @@ function AttachmentInspector({
               }}
             />
           </InspectorFoldout>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'MoveTo' && (
+        <InspectorFoldout
+          title="Move To"
+          open={foldouts.isOpen('attachment.moveto', true)}
+          onToggle={() => foldouts.toggle('attachment.moveto', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>X</span>
+              <ValidatedNumberInput
+                aria-label="Move To X"
+                data-testid="attachment-moveto-x-input"
+                value={Number(params.x ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, x: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Y</span>
+              <ValidatedNumberInput
+                aria-label="Move To Y"
+                data-testid="attachment-moveto-y-input"
+                value={Number(params.y ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, y: next } })}
+              />
+            </label>
+          </div>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'MoveBy' && (
+        <InspectorFoldout
+          title="Move By"
+          open={foldouts.isOpen('attachment.moveby', true)}
+          onToggle={() => foldouts.toggle('attachment.moveby', true)}
+        >
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>ΔX</span>
+              <ValidatedNumberInput
+                aria-label="Move By dx"
+                data-testid="attachment-moveby-dx-input"
+                value={Number(params.dx ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, dx: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>ΔY</span>
+              <ValidatedNumberInput
+                aria-label="Move By dy"
+                data-testid="attachment-moveby-dy-input"
+                value={Number(params.dy ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, dy: next } })}
+              />
+            </label>
+          </div>
         </InspectorFoldout>
       )}
 
@@ -3388,6 +3456,9 @@ function AttachmentInspector({
 	              }}
 	            />
 	          </label>
+            <div className="inspector-row muted" data-testid="attachment-repeat-count-hint">
+              Leave blank for an infinite loop.
+            </div>
         </InspectorFoldout>
       )}
 

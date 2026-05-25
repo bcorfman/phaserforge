@@ -8,6 +8,8 @@ import { loadPinnedPatternIds, togglePinnedPatternId } from './patternPins';
 
 const SUPPORTED_PRESETS = new Set([
   'MoveUntil',
+  'MoveTo',
+  'MoveBy',
   'MoveXUntil',
   'MoveYUntil',
   'WavePattern',
