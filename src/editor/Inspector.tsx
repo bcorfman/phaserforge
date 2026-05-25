@@ -8,7 +8,7 @@ import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { AttachmentSpec, AttachmentTriggerSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { resolveTextEntityDefaults } from './textEntity';
-import { computeEdgeSafeBounds } from './boundsHelper';
+import { boundsToCenterSpan, computeEdgeSafeBounds, computeTargetAabb } from './boundsHelper';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedNumberTextInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
@@ -180,6 +180,9 @@ export function Inspector() {
           onReorderAttachments={({ eventId, parentAttachmentId, orderedAttachmentIds }) =>
             dispatch({ type: 'reorder-attachments', target: { type: 'group', groupId: group.id }, eventId, parentAttachmentId, orderedAttachmentIds })
           }
+          onNestAttachmentsUnderRepeat={({ eventId, repeatId, attachmentIds }) =>
+            dispatch({ type: 'nest-attachments-under-repeat', target: { type: 'group', groupId: group.id }, ...(eventId ? { eventId } : {}), repeatId, attachmentIds })
+          }
           onRemoveAttachment={(id) => dispatch({ type: 'remove-attachment', id })}
           onMakeParallelAttachments={(ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'group', groupId: group.id }, ids })}
           onUngroupParallelAttachments={(groupId, eventId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'group', groupId: group.id }, groupId, ...(eventId ? { eventId } : {}) })}
@@ -219,10 +222,12 @@ export function Inspector() {
           onRemoveEventBlock: (id) => dispatch({ type: 'remove-event-block', id }),
           onAddAttachment: (presetId, init) => dispatch({ type: 'create-attachment', target: { type: 'entity', entityId: entity.id }, presetId, init }),
           onSelectAttachment: (id) => dispatch({ type: 'select', selection: { kind: 'attachment', id } }),
-          onMoveAttachment: (id, direction) => dispatch({ type: 'move-attachment', id, direction }),
-          onReorderAttachments: ({ eventId, parentAttachmentId, orderedAttachmentIds }) =>
-            dispatch({ type: 'reorder-attachments', target: { type: 'entity', entityId: entity.id }, eventId, parentAttachmentId, orderedAttachmentIds }),
-          onRemoveAttachment: (id) => dispatch({ type: 'remove-attachment', id }),
+	          onMoveAttachment: (id, direction) => dispatch({ type: 'move-attachment', id, direction }),
+	          onReorderAttachments: ({ eventId, parentAttachmentId, orderedAttachmentIds }) =>
+	            dispatch({ type: 'reorder-attachments', target: { type: 'entity', entityId: entity.id }, eventId, parentAttachmentId, orderedAttachmentIds }),
+	          onNestAttachmentsUnderRepeat: ({ eventId, repeatId, attachmentIds }) =>
+	            dispatch({ type: 'nest-attachments-under-repeat', target: { type: 'entity', entityId: entity.id }, ...(eventId ? { eventId } : {}), repeatId, attachmentIds }),
+	          onRemoveAttachment: (id) => dispatch({ type: 'remove-attachment', id }),
           onMakeParallelAttachments: (ids) => dispatch({ type: 'make-attachments-parallel', target: { type: 'entity', entityId: entity.id }, ids }),
           onUngroupParallelAttachments: (groupId, eventId) => dispatch({ type: 'ungroup-parallel-attachments', target: { type: 'entity', entityId: entity.id }, groupId, ...(eventId ? { eventId } : {}) }),
           onMoveParallelAttachmentGroup: (groupId, direction, eventId) => dispatch({ type: 'move-parallel-attachment-group', target: { type: 'entity', entityId: entity.id }, groupId, direction, ...(eventId ? { eventId } : {}) }),
@@ -354,8 +359,9 @@ function EntityInspector({
     onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
-    onReorderAttachments: (opts: { eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
-    onRemoveAttachment: (id: string) => void;
+	    onReorderAttachments: (opts: { eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
+	    onNestAttachmentsUnderRepeat: (opts: { eventId: Id | undefined; repeatId: Id; attachmentIds: Id[] }) => void;
+	    onRemoveAttachment: (id: string) => void;
     onMakeParallelAttachments: (ids: Id[]) => void;
     onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
@@ -1147,7 +1153,7 @@ function EntityInspector({
           )}
         </InspectorFoldout>
       )}
-	      {actionProps && !isTextEntity && (
+      {actionProps && !isTextEntity && (
 	        <InspectorFoldout
 	          title="Actions/Events"
 	          open={foldouts.isOpen('entity.actions', true)}
@@ -1165,6 +1171,7 @@ function EntityInspector({
             onSelectAttachment={actionProps.onSelectAttachment}
             onMoveAttachment={actionProps.onMoveAttachment}
             onReorderAttachments={actionProps.onReorderAttachments}
+            onNestAttachmentsUnderRepeat={actionProps.onNestAttachmentsUnderRepeat}
             onRemoveAttachment={actionProps.onRemoveAttachment}
             onMakeParallel={actionProps.onMakeParallelAttachments}
             onUngroupParallel={actionProps.onUngroupParallelAttachments}
@@ -1189,6 +1196,8 @@ function GroupInspector({
   onAddAttachment,
   onSelectAttachment,
   onMoveAttachment,
+  onReorderAttachments,
+  onNestAttachmentsUnderRepeat,
   onRemoveAttachment,
   onMakeParallelAttachments,
   onUngroupParallelAttachments,
@@ -1219,6 +1228,8 @@ function GroupInspector({
   onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
   onSelectAttachment: (id: string) => void;
   onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
+  onReorderAttachments: (opts: { eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
+  onNestAttachmentsUnderRepeat: (opts: { eventId: Id | undefined; repeatId: Id; attachmentIds: Id[] }) => void;
   onRemoveAttachment: (id: string) => void;
   onMakeParallelAttachments: (ids: Id[]) => void;
   onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
@@ -1376,16 +1387,18 @@ function GroupInspector({
   };
 
   return (
-    renderGroupInspector(group, project, scene, {
-      registry,
-      selectedAttachmentId,
-      onAddAttachment,
-      onSelectAttachment,
-      onMoveAttachment,
-      onRemoveAttachment,
-      onMakeParallelAttachments,
-      onUngroupParallelAttachments,
-      onMoveParallelAttachmentGroup,
+	    renderGroupInspector(group, project, scene, {
+	      registry,
+	      selectedAttachmentId,
+	      onAddAttachment,
+	      onSelectAttachment,
+	      onMoveAttachment,
+	      onReorderAttachments,
+	      onNestAttachmentsUnderRepeat,
+	      onRemoveAttachment,
+	      onMakeParallelAttachments,
+	      onUngroupParallelAttachments,
+	      onMoveParallelAttachmentGroup,
       onCreateEventBlock,
       onUpdateEventBlock,
       onRemoveEventBlock,
@@ -1421,14 +1434,15 @@ export function renderGroupInspector(
   group: GroupSpec,
   project: ProjectSpec,
   scene: SceneSpec,
-  handlers: {
-    registry: EditorRegistryConfig;
-    selectedAttachmentId?: string;
-    onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
-    onSelectAttachment: (id: string) => void;
-    onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
-    onReorderAttachments: (opts: { eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
-    onRemoveAttachment: (id: string) => void;
+	  handlers: {
+	    registry: EditorRegistryConfig;
+	    selectedAttachmentId?: string;
+	    onAddAttachment: (presetId: string, init?: Partial<AttachmentSpec>) => void;
+	    onSelectAttachment: (id: string) => void;
+	    onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
+	    onReorderAttachments: (opts: { eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
+	    onNestAttachmentsUnderRepeat: (opts: { eventId: Id | undefined; repeatId: Id; attachmentIds: Id[] }) => void;
+	    onRemoveAttachment: (id: string) => void;
     onMakeParallelAttachments: (ids: Id[]) => void;
     onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
     onMoveParallelAttachmentGroup: (groupId: string, direction: 'up' | 'down', eventId?: Id) => void;
@@ -1707,10 +1721,11 @@ export function renderGroupInspector(
           onRemoveEventBlock={handlers.onRemoveEventBlock}
           onAddAttachment={(presetId, init) => handlers.onAddAttachment(presetId, init)}
           onSelectAttachment={handlers.onSelectAttachment}
-          onMoveAttachment={handlers.onMoveAttachment}
-          onReorderAttachments={handlers.onReorderAttachments}
-          onRemoveAttachment={handlers.onRemoveAttachment}
-          onMakeParallel={handlers.onMakeParallelAttachments}
+	          onMoveAttachment={handlers.onMoveAttachment}
+	          onReorderAttachments={handlers.onReorderAttachments}
+	          onNestAttachmentsUnderRepeat={handlers.onNestAttachmentsUnderRepeat}
+	          onRemoveAttachment={handlers.onRemoveAttachment}
+	          onMakeParallel={handlers.onMakeParallelAttachments}
           onUngroupParallel={handlers.onUngroupParallelAttachments}
           onMoveParallelGroup={handlers.onMoveParallelAttachmentGroup}
           onCreatePatternFromAttachments={handlers.onCreatePatternFromAttachments}
@@ -1897,6 +1912,13 @@ function AttachmentInspector({
   const isSceneGoto = callId === 'scene.goto';
   const [advancedArgsText, setAdvancedArgsText] = useState('');
   const [advancedArgsError, setAdvancedArgsError] = useState<string | null>(null);
+  const [bounceBoundsMode, setBounceBoundsMode] = useState<'minmax' | 'centerspan'>('minmax');
+  const [bounceBoundsCx, setBounceBoundsCx] = useState(0);
+  const [bounceBoundsCy, setBounceBoundsCy] = useState(0);
+  const [bounceBoundsXSpan, setBounceBoundsXSpan] = useState(0);
+  const [bounceBoundsYSpan, setBounceBoundsYSpan] = useState(0);
+  const [bounceBoundsHalfW, setBounceBoundsHalfW] = useState(0);
+  const [bounceBoundsHalfH, setBounceBoundsHalfH] = useState(0);
 
   useEffect(() => {
     if (attachment.presetId !== 'Call') return;
@@ -1910,6 +1932,34 @@ function AttachmentInspector({
     setAdvancedArgsError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attachment.id, attachment.presetId, isSceneGoto]);
+
+  useEffect(() => {
+    setBounceBoundsMode('minmax');
+    setBounceBoundsXSpan(0);
+    setBounceBoundsYSpan(0);
+    setBounceBoundsHalfW(0);
+    setBounceBoundsHalfH(0);
+    if (attachment.target.type === 'entity') {
+      setBounceBoundsCx(Math.round(scene.entities[attachment.target.entityId]?.x ?? 0));
+      setBounceBoundsCy(Math.round(scene.entities[attachment.target.entityId]?.y ?? 0));
+    } else if (attachment.target.type === 'group') {
+      const group = scene.groups[attachment.target.groupId];
+      const members = group?.members ?? [];
+      if (members.length === 0) {
+        setBounceBoundsCx(0);
+        setBounceBoundsCy(0);
+      } else {
+        const sx = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
+        const sy = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
+        setBounceBoundsCx(Math.round(sx / members.length));
+        setBounceBoundsCy(Math.round(sy / members.length));
+      }
+    } else {
+      setBounceBoundsCx(0);
+      setBounceBoundsCy(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachment.id]);
 
   const ensureBoundsCondition = (): InlineBoundsHitConditionSpec => {
     if (attachment.condition?.type === 'BoundsHit') return attachment.condition;
@@ -2106,14 +2156,26 @@ function AttachmentInspector({
                 onUpdate({ ...base, params: { radius: 50, velocity: 100, clockwise: true, centerMode: 'current' } });
                 return;
               }
-              if (nextType === 'BouncePattern') {
-                onUpdate({ ...base, params: { axis: 'both', velocityX: 120, velocityY: 60 }, condition: { ...ensureBoundsCondition(), behavior: 'bounce' } as any });
-                return;
-              }
-              if (nextType === 'PatrolPattern') {
-                onUpdate({ ...base, params: { axis: 'x', velocityX: 120, velocityY: 0 }, condition: { ...ensureBoundsCondition(), behavior: 'bounce' } as any });
-                return;
-              }
+	              if (nextType === 'BouncePattern') {
+	                const ensured = ensureBoundsCondition();
+	                const bounds = computeTargetAabb(scene as any, base.target as any) ?? ensured.bounds;
+	                onUpdate({
+	                  ...base,
+	                  params: { axis: 'both', velocityX: 120, velocityY: 60 },
+	                  condition: { ...ensured, bounds, behavior: 'bounce' } as any,
+	                });
+	                return;
+	              }
+	              if (nextType === 'PatrolPattern') {
+	                const ensured = ensureBoundsCondition();
+	                const bounds = computeTargetAabb(scene as any, base.target as any) ?? ensured.bounds;
+	                onUpdate({
+	                  ...base,
+	                  params: { axis: 'x', velocityX: 120, velocityY: 0 },
+	                  condition: { ...ensured, bounds, behavior: 'bounce' } as any,
+	                });
+	                return;
+	              }
               onUpdate(base);
             }}
           >
@@ -3031,47 +3093,56 @@ function AttachmentInspector({
         </InspectorFoldout>
       )}
 
-      {attachment.presetId === 'FigureEightPattern' && (
-        <InspectorFoldout
-          title="Figure-8 Pattern"
-          open={foldouts.isOpen('attachment.figureeightpattern', true)}
-          onToggle={() => foldouts.toggle('attachment.figureeightpattern', true)}
-        >
-          <div className="inspector-grid-2">
-            <label className="field">
-              <span>Width</span>
-              <ValidatedNumberInput
-                aria-label="Figure-8 Width"
-                value={Number(params.width ?? 80)}
-                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, width: next } })}
-              />
-            </label>
-            <label className="field">
-              <span>Height</span>
-              <ValidatedNumberInput
-                aria-label="Figure-8 Height"
-                value={Number(params.height ?? 60)}
-                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, height: next } })}
-              />
-            </label>
-          </div>
-          <label className="field">
-            <span>Velocity</span>
-            <ValidatedNumberInput
-              aria-label="Figure-8 Velocity"
-              value={Number(params.velocity ?? 100)}
-              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
-            />
-          </label>
-        </InspectorFoldout>
-      )}
+	      {attachment.presetId === 'FigureEightPattern' && (
+	        <InspectorFoldout
+	          title="Figure-8 Pattern"
+	          open={foldouts.isOpen('attachment.figureeightpattern', true)}
+	          onToggle={() => foldouts.toggle('attachment.figureeightpattern', true)}
+	        >
+	          <div className="inspector-grid-2">
+	            <label className="field">
+	              <span>Width</span>
+	              <ValidatedNumberInput
+	                aria-label="Figure-8 Width"
+	                value={Number(params.width ?? 80)}
+	                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, width: next } })}
+	              />
+	            </label>
+	            <label className="field">
+	              <span>Height</span>
+	              <ValidatedNumberInput
+	                aria-label="Figure-8 Height"
+	                value={Number(params.height ?? 60)}
+	                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, height: next } })}
+	              />
+	            </label>
+	          </div>
+	          <label className="field">
+	            <span>Velocity</span>
+	            <ValidatedNumberInput
+	              aria-label="Figure-8 Velocity"
+	              value={Number(params.velocity ?? 100)}
+	              onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
+	            />
+	          </label>
+	          <label className="field">
+	            <span>Rotate With Path</span>
+	            <input
+	              aria-label="Figure-8 Rotate With Path"
+	              type="checkbox"
+	              checked={params.rotateWithPath !== false}
+	              onChange={(e) => onUpdate({ ...attachment, params: { ...params, rotateWithPath: e.target.checked } })}
+	            />
+	          </label>
+	        </InspectorFoldout>
+	      )}
 
-      {attachment.presetId === 'SpiralPattern' && (
-        <InspectorFoldout
-          title="Spiral Pattern"
-          open={foldouts.isOpen('attachment.spiralpattern', true)}
-          onToggle={() => foldouts.toggle('attachment.spiralpattern', true)}
-        >
+	      {attachment.presetId === 'SpiralPattern' && (
+	        <InspectorFoldout
+	          title="Spiral Pattern"
+	          open={foldouts.isOpen('attachment.spiralpattern', true)}
+	          onToggle={() => foldouts.toggle('attachment.spiralpattern', true)}
+	        >
           <div className="inspector-grid-2">
             <label className="field">
               <span>Max Radius</span>
@@ -3098,19 +3169,39 @@ function AttachmentInspector({
               onCommit={(next) => onUpdate({ ...attachment, params: { ...params, velocity: next } })}
             />
           </label>
-          <label className="field">
-            <span>Direction</span>
-            <select
-              aria-label="Spiral Direction"
-              value={String(params.direction ?? 'outward')}
-              onChange={(e) => onUpdate({ ...attachment, params: { ...params, direction: e.target.value } })}
-            >
-              <option value="outward">Outward</option>
-              <option value="inward">Inward</option>
-            </select>
-          </label>
-        </InspectorFoldout>
-      )}
+	          <label className="field">
+	            <span>Direction</span>
+	            <select
+	              aria-label="Spiral Direction"
+	              value={String(params.direction ?? 'outward')}
+	              onChange={(e) => onUpdate({ ...attachment, params: { ...params, direction: e.target.value } })}
+	            >
+	              <option value="outward">Outward</option>
+	              <option value="inward">Inward</option>
+	            </select>
+	          </label>
+	          <div className="inspector-grid-2">
+	            <label className="field">
+	              <span>Flip X</span>
+	              <input
+	                aria-label="Spiral Flip X"
+	                type="checkbox"
+	                checked={params.flipX === true}
+	                onChange={(e) => onUpdate({ ...attachment, params: { ...params, flipX: e.target.checked ? true : undefined } })}
+	              />
+	            </label>
+	            <label className="field">
+	              <span>Flip Y</span>
+	              <input
+	                aria-label="Spiral Flip Y"
+	                type="checkbox"
+	                checked={params.flipY === true}
+	                onChange={(e) => onUpdate({ ...attachment, params: { ...params, flipY: e.target.checked ? true : undefined } })}
+	              />
+	            </label>
+	          </div>
+	        </InspectorFoldout>
+	      )}
 
       {attachment.presetId === 'OrbitPattern' && (
         <InspectorFoldout
@@ -3197,71 +3288,192 @@ function AttachmentInspector({
               />
             </label>
           </div>
-          <InspectorFoldout
-            title="Bounds"
-            open={foldouts.isOpen('attachment.bouncepattern.bounds', true)}
-            onToggle={() => foldouts.toggle('attachment.bouncepattern.bounds', true)}
-          >
-            <label className="field">
-              <span>Enabled</span>
-              <input
-                aria-label="Enabled"
-                type="checkbox"
-                checked={Boolean(boundsCondition)}
-                onChange={(e) =>
-                  onUpdate({ ...attachment, condition: e.target.checked ? { ...ensureBoundsCondition(), behavior: 'bounce' } as any : undefined })
-                }
-              />
-            </label>
-            {boundsCondition && (
-              <>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Min X</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Min X"
-                      value={boundsCondition.bounds.minX}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next }, behavior: 'bounce' } as any })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Max X</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Max X"
-                      value={boundsCondition.bounds.maxX}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next }, behavior: 'bounce' } as any })
-                      }
-                    />
-                  </label>
+        </InspectorFoldout>
+      )}
+
+      {(attachment.presetId === 'BouncePattern' || attachment.presetId === 'PatrolPattern') && (
+        <InspectorFoldout
+          title="Bounds"
+          open={foldouts.isOpen('attachment.bouncepattern.bounds', true)}
+          onToggle={() => foldouts.toggle('attachment.bouncepattern.bounds', true)}
+        >
+          <label className="field">
+            <span>Enabled</span>
+            <input
+              aria-label="Enabled"
+              type="checkbox"
+              checked={Boolean(boundsCondition)}
+              onChange={(e) =>
+                onUpdate({
+                  ...attachment,
+                  condition: e.target.checked
+                    ? (() => {
+                        const ensured = ensureBoundsCondition();
+                        const bounds = computeTargetAabb(scene as any, attachment.target as any) ?? ensured.bounds;
+                        return { ...ensured, bounds, behavior: 'bounce' } as any;
+                      })()
+                    : undefined,
+                })
+              }
+            />
+          </label>
+          {boundsCondition && (
+            <>
+              <div className="inspector-row inspector-inline-buttons" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ opacity: 0.85, fontWeight: 600 }}>Edit mode</div>
+                  <button
+                    type="button"
+                    className={`button button-compact ${bounceBoundsMode === 'minmax' ? 'active' : ''}`}
+                    onClick={() => setBounceBoundsMode('minmax')}
+                  >
+                    Min/Max
+                  </button>
+                  <button
+                    type="button"
+                    className={`button button-compact ${bounceBoundsMode === 'centerspan' ? 'active' : ''}`}
+                    onClick={() => {
+                      if (bounceBoundsMode === 'centerspan') return;
+                      const next = boundsToCenterSpan({ bounds: boundsCondition.bounds, halfW: bounceBoundsHalfW, halfH: bounceBoundsHalfH });
+                      setBounceBoundsCx(Math.round(next.cx));
+                      setBounceBoundsCy(Math.round(next.cy));
+                      setBounceBoundsXSpan(Math.round(next.xSpan));
+                      setBounceBoundsYSpan(Math.round(next.ySpan));
+                      setBounceBoundsMode('centerspan');
+                    }}
+                  >
+                    Center/Span
+                  </button>
                 </div>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Min Y</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Min Y"
-                      value={boundsCondition.bounds.minY}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next }, behavior: 'bounce' } as any })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Max Y</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Max Y"
-                      value={boundsCondition.bounds.maxY}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next }, behavior: 'bounce' } as any })
-                      }
-                    />
-                  </label>
-                </div>
-              </>
-            )}
-          </InspectorFoldout>
+              </div>
+
+              {bounceBoundsMode === 'minmax' ? (
+                <>
+                  <div className="inspector-grid-2">
+                    <label className="field">
+                      <span>Min X</span>
+                      <ValidatedNumberInput
+                        aria-label="Bounds Min X"
+                        value={boundsCondition.bounds.minX}
+                        onCommit={(next) =>
+                          onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next }, behavior: 'bounce' } as any })
+                        }
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Max X</span>
+                      <ValidatedNumberInput
+                        aria-label="Bounds Max X"
+                        value={boundsCondition.bounds.maxX}
+                        onCommit={(next) =>
+                          onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next }, behavior: 'bounce' } as any })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="inspector-grid-2">
+                    <label className="field">
+                      <span>Min Y</span>
+                      <ValidatedNumberInput
+                        aria-label="Bounds Min Y"
+                        value={boundsCondition.bounds.minY}
+                        onCommit={(next) =>
+                          onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next }, behavior: 'bounce' } as any })
+                        }
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Max Y</span>
+                      <ValidatedNumberInput
+                        aria-label="Bounds Max Y"
+                        value={boundsCondition.bounds.maxY}
+                        onCommit={(next) =>
+                          onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next }, behavior: 'bounce' } as any })
+                        }
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="inspector-grid-2">
+                    <label className="field">
+                      <span>Center X</span>
+                      <ValidatedNumberInput aria-label="Bounds Helper Center X" value={bounceBoundsCx} onCommit={setBounceBoundsCx} />
+                    </label>
+                    <label className="field">
+                      <span>Center Y</span>
+                      <ValidatedNumberInput aria-label="Bounds Helper Center Y" value={bounceBoundsCy} onCommit={setBounceBoundsCy} />
+                    </label>
+                  </div>
+                  <div className="inspector-grid-2">
+                    <label className="field">
+                      <span>± X Span</span>
+                      <ValidatedNumberInput aria-label="Bounds Helper X Span" min={0} value={bounceBoundsXSpan} onCommit={setBounceBoundsXSpan} />
+                    </label>
+                    <label className="field">
+                      <span>± Y Span</span>
+                      <ValidatedNumberInput aria-label="Bounds Helper Y Span" min={0} value={bounceBoundsYSpan} onCommit={setBounceBoundsYSpan} />
+                    </label>
+                  </div>
+                  <div className="inspector-row inspector-inline-buttons">
+                    <button
+                      className="button"
+                      type="button"
+                      onClick={() => {
+                        const autoTarget =
+                          attachment.target.type === 'entity'
+                            ? { type: 'entity' as const, id: attachment.target.entityId }
+                            : attachment.target.type === 'group'
+                              ? { type: 'group' as const, id: attachment.target.groupId }
+                              : undefined;
+                        if (!autoTarget?.id) return;
+                        void import('../phaser/EventBus')
+                          .then(({ getActiveScene }) => {
+                            const scene = getActiveScene() as any;
+                            const rect =
+                              autoTarget.type === 'group'
+                                ? scene?.getGroupWorldBounds?.(autoTarget.id)
+                                : scene?.getEntityWorldRect?.(autoTarget.id);
+                            if (!rect) return;
+                            const w = Math.max(0, Number(rect.maxX) - Number(rect.minX));
+                            const h = Math.max(0, Number(rect.maxY) - Number(rect.minY));
+                            setBounceBoundsHalfW(Math.round(w / 2));
+                            setBounceBoundsHalfH(Math.round(h / 2));
+                            const centerX = Number(rect.centerX ?? (Number(rect.minX) + Number(rect.maxX)) / 2);
+                            const centerY = Number(rect.centerY ?? (Number(rect.minY) + Number(rect.maxY)) / 2);
+                            if (Number.isFinite(centerX) && Number.isFinite(centerY)) {
+                              setBounceBoundsCx(Math.round(centerX));
+                              setBounceBoundsCy(Math.round(centerY));
+                            }
+                          })
+                          .catch(() => {});
+                      }}
+                    >
+                      Auto from selection
+                    </button>
+                    <button
+                      className="button"
+                      type="button"
+                      onClick={() => {
+                        const computed = computeEdgeSafeBounds({
+                          cx: bounceBoundsCx,
+                          cy: bounceBoundsCy,
+                          xSpan: bounceBoundsXSpan,
+                          ySpan: bounceBoundsYSpan,
+                          halfW: bounceBoundsHalfW,
+                          halfH: bounceBoundsHalfH,
+                        });
+                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: computed, behavior: 'bounce' } as any });
+                      }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </InspectorFoldout>
       )}
 

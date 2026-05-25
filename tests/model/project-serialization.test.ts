@@ -146,4 +146,26 @@ describe('project YAML serialization', () => {
 
     expect(() => parseProjectYaml(yaml)).toThrow(/baseSceneId references unknown scene/);
   });
+
+  it('round-trips scene spriteOrder (manual Sprites list order)', () => {
+    const project = {
+      id: 'project-1',
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
+      audio: { sounds: {} },
+      inputMaps: {},
+      scenes: {
+        'scene-1': {
+          ...sampleScene,
+          spriteOrder: ['e2', 'e1'],
+        },
+      },
+      initialSceneId: 'scene-1',
+      patterns: {},
+    } as any;
+
+    const yaml = serializeProjectToYaml(project);
+    expect(yaml).toMatch(/\n\s+spriteOrder:\n/);
+    const parsed = parseProjectYaml(yaml);
+    expect((parsed.scenes as any)['scene-1'].spriteOrder).toEqual(['e2', 'e1']);
+  });
 });

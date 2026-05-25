@@ -105,11 +105,15 @@ function buildAttachmentsFromLegacy(scene: SceneSpec): Record<string, Attachment
 
 export function migrateSceneSpec(raw: unknown): SceneSpec {
   const parsed = (raw && typeof raw === 'object') ? (raw as any) : {};
+  const spriteOrder = Array.isArray(parsed.spriteOrder)
+    ? parsed.spriteOrder.filter((id: any) => typeof id === 'string' && id.length > 0)
+    : undefined;
   const base: SceneSpec = {
     id: String(parsed.id ?? 'scene-1'),
     world: parsed.world,
     entities: coerceRecord(parsed.entities),
     groups: coerceRecord(parsed.groups),
+    ...(spriteOrder && spriteOrder.length > 0 ? { spriteOrder } : {}),
     attachments: coerceRecord(parsed.attachments),
     ...(parsed.eventBlocks !== undefined ? { eventBlocks: coerceRecord(parsed.eventBlocks) } : {}),
     behaviors: coerceRecord(parsed.behaviors),

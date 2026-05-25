@@ -25,6 +25,27 @@ describe('attachment commands', () => {
     }
   });
 
+  it('creates Bounce/Patrol attachments with default bounds sized to the target (not the world)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-13T00:00:00.000Z'));
+    const { scene: nextBounce, attachmentId: bounceId } = createAttachment(sampleScene, { type: 'entity', entityId: 'e1' }, 'BouncePattern');
+    const { scene: nextPatrol, attachmentId: patrolId } = createAttachment(sampleScene, { type: 'entity', entityId: 'e1' }, 'PatrolPattern');
+    vi.useRealTimers();
+
+    const e1 = sampleScene.entities.e1;
+    const expected = { minX: e1.x - e1.width / 2, maxX: e1.x + e1.width / 2, minY: e1.y - e1.height / 2, maxY: e1.y + e1.height / 2 };
+
+    for (const [scene, id] of [[nextBounce, bounceId], [nextPatrol, patrolId]] as const) {
+      const att = scene.attachments[id];
+      expect(att.target).toEqual({ type: 'entity', entityId: 'e1' });
+      expect(att.condition?.type).toBe('BoundsHit');
+      if (att.condition?.type === 'BoundsHit') {
+        expect(att.condition.bounds).toEqual(expected);
+        expect(att.condition.behavior).toBe('bounce');
+      }
+    }
+  });
+
   it('moves attachments up/down within their target list', () => {
     const movedUp = moveAttachmentWithinTarget(sampleScene, 'att-drop-right', 'up');
     const list = Object.values(movedUp.attachments)

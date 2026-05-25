@@ -245,7 +245,7 @@ actions:
     implemented: true
   - type: Repeat
     displayName: Repeat
-    category: flow
+    category: loops
     targetKinds: [entity, group]
     implemented: true
   - type: BlinkUntil

@@ -19,6 +19,11 @@ export interface SceneSpec {
   entities: Record<Id, EntitySpec>;
   groups: Record<Id, GroupSpec>;
   /**
+   * Editor-only ordering for the Sprites list in the Scene Graph (Entity List).
+   * This does not affect rendering; render order is controlled by `entity.depth`.
+   */
+  spriteOrder?: Id[];
+  /**
    * Attached actions/presets applied to entities or formations.
    * This is the primary authoring model moving forward.
    */

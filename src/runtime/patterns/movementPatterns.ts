@@ -105,9 +105,20 @@ export function buildSpiralOffset(opts: { maxRadius: number; revolutions: number
 
   return (t: number): [number, number] => {
     const clamped = Math.max(0, Math.min(1, t));
-    const r = direction === 'inward' ? (1 - clamped) * maxRadius : clamped * maxRadius;
-    const angle = clamped * revolutions * 2 * Math.PI;
-    return [r * Math.cos(angle), r * Math.sin(angle)];
+    const outwardAt = (p: number): [number, number] => {
+      const radius = p * maxRadius;
+      const angle = p * revolutions * 2 * Math.PI;
+      return [radius * Math.cos(angle), radius * Math.sin(angle)];
+    };
+
+    if (direction === 'outward') return outwardAt(clamped);
+
+    // Inward should perfectly retrace the outward spiral back to the origin.
+    // For our relative-offset representation, this means returning outward(1 - t) offset
+    // relative to the position at t=0 (which is outward(1)).
+    const [baseX, baseY] = outwardAt(1);
+    const [x, y] = outwardAt(1 - clamped);
+    return [x - baseX, y - baseY];
   };
 }
 
