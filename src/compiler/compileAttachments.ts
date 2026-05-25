@@ -9,6 +9,8 @@ import { Parallel } from '../runtime/actions/Parallel';
 import { EmitEvent } from '../runtime/actions/EmitEvent';
 import { InputDrive } from '../runtime/actions/InputDrive';
 import { InputFire } from '../runtime/actions/InputFire';
+import { MoveBy } from '../runtime/actions/MoveBy';
+import { MoveTo } from '../runtime/actions/MoveTo';
 import { MoveXUntil } from '../runtime/actions/MoveXUntil';
 import { MoveYUntil } from '../runtime/actions/MoveYUntil';
 import { BlinkUntil } from '../runtime/actions/BlinkUntil';
@@ -221,6 +223,20 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const target = resolveTarget(targetRef, ctx.targets);
     const condition = instantiateInlineCondition(attachment.condition, ctx);
     return new MoveUntil(target, { x: velocityX, y: velocityY }, condition);
+  }
+  if (presetId === 'MoveTo') {
+    const x = Number(attachment.params?.x ?? 0);
+    const y = Number(attachment.params?.y ?? 0);
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    return new MoveTo(target, { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 });
+  }
+  if (presetId === 'MoveBy') {
+    const dx = Number(attachment.params?.dx ?? 0);
+    const dy = Number(attachment.params?.dy ?? 0);
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    return new MoveBy(target, { dx: Number.isFinite(dx) ? dx : 0, dy: Number.isFinite(dy) ? dy : 0 });
   }
   if (presetId === 'WavePattern') {
     const amplitude = Number(attachment.params?.amplitude ?? 30);

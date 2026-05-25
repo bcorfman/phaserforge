@@ -124,6 +124,28 @@ actions:
     propertyTargets:
       - { key: x, type: number, tweenable: true, affectsBounds: true }
       - { key: y, type: number, tweenable: true, affectsBounds: true }
+  - type: MoveTo
+    displayName: Move To
+    category: movement
+    targetKinds: [entity, group]
+    implemented: true
+    propertyTargets:
+      - { key: x, type: number, tweenable: true, affectsBounds: true }
+      - { key: y, type: number, tweenable: true, affectsBounds: true }
+    parameters:
+      - { name: x, type: number, default: 0 }
+      - { name: y, type: number, default: 0 }
+  - type: MoveBy
+    displayName: Move By
+    category: movement
+    targetKinds: [entity, group]
+    implemented: true
+    propertyTargets:
+      - { key: x, type: number, tweenable: true, affectsBounds: true }
+      - { key: y, type: number, tweenable: true, affectsBounds: true }
+    parameters:
+      - { name: dx, type: number, default: 0 }
+      - { name: dy, type: number, default: 0 }
   - type: MoveXUntil
     displayName: Move X Until
     category: movement
