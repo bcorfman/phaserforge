@@ -1738,128 +1738,132 @@ export function renderGroupInspector(
   );
 }
 
-function BoundsHelperPanel({
-  enabled,
-  autoTarget,
-  defaultCenter,
-  onApply,
+function BoundsMinMaxCenterSpanEditor({
+  bounds,
+  resetKey,
+  onCommitBounds,
+  minMax,
+  testIdPrefix,
 }: {
-  enabled: boolean;
-  autoTarget?: { type: 'entity' | 'group'; id: string };
-  defaultCenter: { x: number; y: number };
-  onApply: (bounds: { minX: number; maxX: number; minY: number; maxY: number }) => void;
+  bounds: { minX: number; minY: number; maxX: number; maxY: number };
+  resetKey: string;
+  onCommitBounds: (next: { minX: number; minY: number; maxX: number; maxY: number }) => void;
+  minMax: ReactNode;
+  testIdPrefix?: string;
 }) {
-  const [cx, setCx] = useState(() => Math.round(defaultCenter.x));
-  const [cy, setCy] = useState(() => Math.round(defaultCenter.y));
+  const [mode, setMode] = useState<'minmax' | 'centerspan'>('minmax');
+  const [cx, setCx] = useState(0);
+  const [cy, setCy] = useState(0);
   const [xSpan, setXSpan] = useState(0);
   const [ySpan, setYSpan] = useState(0);
-  const [halfW, setHalfW] = useState(0);
-  const [halfH, setHalfH] = useState(0);
-  const [baseline, setBaseline] = useState(() => ({
-    cx: Math.round(defaultCenter.x),
-    cy: Math.round(defaultCenter.y),
-    xSpan: 0,
-    ySpan: 0,
-    halfW: 0,
-    halfH: 0,
-  }));
 
   useEffect(() => {
-    const nextCx = Math.round(defaultCenter.x);
-    const nextCy = Math.round(defaultCenter.y);
-    setCx(nextCx);
-    setCy(nextCy);
-    setBaseline((prev) => ({ ...prev, cx: nextCx, cy: nextCy }));
-  }, [defaultCenter.x, defaultCenter.y]);
+    setMode('minmax');
+  }, [resetKey]);
 
-  const dirty =
-    cx !== baseline.cx ||
-    cy !== baseline.cy ||
-    xSpan !== baseline.xSpan ||
-    ySpan !== baseline.ySpan ||
-    halfW !== baseline.halfW ||
-    halfH !== baseline.halfH;
+  useEffect(() => {
+    if (mode !== 'centerspan') return;
+    const left = Math.min(Number(bounds.minX), Number(bounds.maxX));
+    const right = Math.max(Number(bounds.minX), Number(bounds.maxX));
+    const top = Math.min(Number(bounds.minY), Number(bounds.maxY));
+    const bottom = Math.max(Number(bounds.minY), Number(bounds.maxY));
+    setCx(Math.round((left + right) / 2));
+    setCy(Math.round((top + bottom) / 2));
+    setXSpan(Math.round((right - left) / 2));
+    setYSpan(Math.round((bottom - top) / 2));
+  }, [bounds.maxX, bounds.maxY, bounds.minX, bounds.minY, mode]);
 
-  const autoFromSelection = () => {
-    if (!autoTarget?.id) return;
-    void import('../phaser/EventBus').then(({ getActiveScene }) => {
-      const scene = getActiveScene() as any;
-      const rect = autoTarget.type === 'group'
-        ? scene?.getGroupWorldBounds?.(autoTarget.id)
-        : scene?.getEntityWorldRect?.(autoTarget.id);
-      if (!rect) return;
-      const w = Math.max(0, Number(rect.maxX) - Number(rect.minX));
-      const h = Math.max(0, Number(rect.maxY) - Number(rect.minY));
-      const nextHalfW = Math.round(w / 2);
-      const nextHalfH = Math.round(h / 2);
-      setHalfW(nextHalfW);
-      setHalfH(nextHalfH);
-      const centerX = Number(rect.centerX ?? (Number(rect.minX) + Number(rect.maxX)) / 2);
-      const centerY = Number(rect.centerY ?? (Number(rect.minY) + Number(rect.maxY)) / 2);
-      if (Number.isFinite(centerX) && Number.isFinite(centerY)) {
-        const nextCx = Math.round(centerX);
-        const nextCy = Math.round(centerY);
-        setCx(nextCx);
-        setCy(nextCy);
-        setBaseline((prev) => ({ ...prev, cx: nextCx, cy: nextCy, halfW: nextHalfW, halfH: nextHalfH }));
-      } else {
-        setBaseline((prev) => ({ ...prev, halfW: nextHalfW, halfH: nextHalfH }));
-      }
-    }).catch(() => {});
+  const commitCenterSpan = (next: Partial<{ cx: number; cy: number; xSpan: number; ySpan: number }>) => {
+    const computed = computeEdgeSafeBounds({
+      cx: next.cx ?? cx,
+      cy: next.cy ?? cy,
+      xSpan: next.xSpan ?? xSpan,
+      ySpan: next.ySpan ?? ySpan,
+      halfW: 0,
+      halfH: 0,
+    });
+    onCommitBounds(computed);
   };
 
   return (
-    <div className="inspector-block" style={{ padding: 10, marginTop: 10 }}>
-      <div className="inspector-row" style={{ marginBottom: 6, fontWeight: 700 }}>Bounds Helper</div>
-      <div className="inspector-grid-2">
-        <label className="field">
-          <span>Center X</span>
-          <ValidatedNumberInput aria-label="Bounds Helper Center X" data-testid="bounds-helper-cx" value={cx} onCommit={setCx} />
-        </label>
-        <label className="field">
-          <span>Center Y</span>
-          <ValidatedNumberInput aria-label="Bounds Helper Center Y" data-testid="bounds-helper-cy" value={cy} onCommit={setCy} />
-        </label>
+    <>
+      <div className="inspector-row inspector-inline-buttons" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ opacity: 0.85, fontWeight: 600 }}>Edit mode</div>
+          <button type="button" className={`button button-compact ${mode === 'minmax' ? 'active' : ''}`} onClick={() => setMode('minmax')}>
+            Min/Max
+          </button>
+          <button
+            type="button"
+            className={`button button-compact ${mode === 'centerspan' ? 'active' : ''}`}
+            onClick={() => setMode('centerspan')}
+          >
+            Center/Span
+          </button>
+        </div>
       </div>
-      <div className="inspector-grid-2">
-        <label className="field">
-          <span>± X Span</span>
-          <ValidatedNumberInput aria-label="Bounds Helper X Span" data-testid="bounds-helper-xspan" min={0} value={xSpan} onCommit={setXSpan} />
-        </label>
-        <label className="field">
-          <span>± Y Span</span>
-          <ValidatedNumberInput aria-label="Bounds Helper Y Span" data-testid="bounds-helper-yspan" min={0} value={ySpan} onCommit={setYSpan} />
-        </label>
-      </div>
-      <div className="inspector-grid-2">
-        <label className="field">
-          <span>Half W</span>
-          <ValidatedNumberInput aria-label="Bounds Helper Half W" data-testid="bounds-helper-halfw" min={0} value={halfW} onCommit={setHalfW} />
-        </label>
-        <label className="field">
-          <span>Half H</span>
-          <ValidatedNumberInput aria-label="Bounds Helper Half H" data-testid="bounds-helper-halfh" min={0} value={halfH} onCommit={setHalfH} />
-        </label>
-      </div>
-      <div className="inspector-row inspector-inline-buttons">
-        <button className="button" type="button" data-testid="bounds-helper-auto" onClick={autoFromSelection}>
-          Auto from selection
-        </button>
-        <button
-          className="button"
-          type="button"
-          data-testid="bounds-helper-apply"
-          disabled={!enabled || !dirty}
-          onClick={() => {
-            const computed = computeEdgeSafeBounds({ cx, cy, xSpan, ySpan, halfW, halfH });
-            onApply(computed);
-            setBaseline({ cx, cy, xSpan, ySpan, halfW, halfH });
-          }}
-        >
-          Apply to BoundsHit
-        </button>
-      </div>
-    </div>
+
+      {mode === 'minmax' ? (
+        <>{minMax}</>
+      ) : (
+        <>
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Center X</span>
+              <ValidatedNumberInput
+                aria-label="Bounds Center X"
+                data-testid={testIdPrefix ? `${testIdPrefix}-centerspan-cx` : undefined}
+                value={cx}
+                onCommit={(next) => {
+                  setCx(next);
+                  commitCenterSpan({ cx: next });
+                }}
+              />
+            </label>
+            <label className="field">
+              <span>Center Y</span>
+              <ValidatedNumberInput
+                aria-label="Bounds Center Y"
+                data-testid={testIdPrefix ? `${testIdPrefix}-centerspan-cy` : undefined}
+                value={cy}
+                onCommit={(next) => {
+                  setCy(next);
+                  commitCenterSpan({ cy: next });
+                }}
+              />
+            </label>
+          </div>
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>± X Span</span>
+              <ValidatedNumberInput
+                aria-label="Bounds Center X Span"
+                data-testid={testIdPrefix ? `${testIdPrefix}-centerspan-xspan` : undefined}
+                min={0}
+                value={xSpan}
+                onCommit={(next) => {
+                  setXSpan(next);
+                  commitCenterSpan({ xSpan: next });
+                }}
+              />
+            </label>
+            <label className="field">
+              <span>± Y Span</span>
+              <ValidatedNumberInput
+                aria-label="Bounds Center Y Span"
+                data-testid={testIdPrefix ? `${testIdPrefix}-centerspan-yspan` : undefined}
+                min={0}
+                value={ySpan}
+                onCommit={(next) => {
+                  setYSpan(next);
+                  commitCenterSpan({ ySpan: next });
+                }}
+              />
+            </label>
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
@@ -2371,99 +2375,71 @@ function AttachmentInspector({
                 <option value="wrap">Wrap</option>
               </select>
             </label>
-            <div className="inspector-grid-2">
-              <label className="field">
-                <span>Min X</span>
-                <ValidatedNumberInput
-                  aria-label="Bounds Min X"
-                  value={attachment.condition.bounds.minX}
-                  onCommit={(next) =>
-                    onUpdate({
-                      ...attachment,
-                      condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, minX: next } } as any,
-                    })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Min Y</span>
-                <ValidatedNumberInput
-                  aria-label="Bounds Min Y"
-                  value={attachment.condition.bounds.minY}
-                  onCommit={(next) =>
-                    onUpdate({
-                      ...attachment,
-                      condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, minY: next } } as any,
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <div className="inspector-grid-2">
-              <label className="field">
-                <span>Max X</span>
-                <ValidatedNumberInput
-                  aria-label="Bounds Max X"
-                  value={attachment.condition.bounds.maxX}
-                  onCommit={(next) =>
-                    onUpdate({
-                      ...attachment,
-                      condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, maxX: next } } as any,
-                    })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Max Y</span>
-                <ValidatedNumberInput
-                  aria-label="Bounds Max Y"
-                  value={attachment.condition.bounds.maxY}
-                  onCommit={(next) =>
-                    onUpdate({
-                      ...attachment,
-                      condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, maxY: next } } as any,
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <BoundsHelperPanel
-              enabled
-              autoTarget={
-                attachment.target.type === 'entity'
-                  ? { type: 'entity', id: attachment.target.entityId }
-                  : attachment.target.type === 'group'
-                    ? { type: 'group', id: attachment.target.groupId }
-                    : undefined
+            <BoundsMinMaxCenterSpanEditor
+              bounds={attachment.condition.bounds}
+              resetKey={`${attachment.id}:until-bounds`}
+              testIdPrefix="until-bounds"
+              onCommitBounds={(next) => onUpdate({ ...attachment, condition: { ...attachment.condition, bounds: next } as any })}
+              minMax={
+                <>
+                  <div className="inspector-grid-2">
+                    <label className="field">
+                      <span>Min X</span>
+                      <ValidatedNumberInput
+                        aria-label="Bounds Min X"
+                        value={attachment.condition.bounds.minX}
+                        onCommit={(next) =>
+                          onUpdate({
+                            ...attachment,
+                            condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, minX: next } } as any,
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Min Y</span>
+                      <ValidatedNumberInput
+                        aria-label="Bounds Min Y"
+                        value={attachment.condition.bounds.minY}
+                        onCommit={(next) =>
+                          onUpdate({
+                            ...attachment,
+                            condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, minY: next } } as any,
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="inspector-grid-2">
+                    <label className="field">
+                      <span>Max X</span>
+                      <ValidatedNumberInput
+                        aria-label="Bounds Max X"
+                        value={attachment.condition.bounds.maxX}
+                        onCommit={(next) =>
+                          onUpdate({
+                            ...attachment,
+                            condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, maxX: next } } as any,
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Max Y</span>
+                      <ValidatedNumberInput
+                        aria-label="Bounds Max Y"
+                        value={attachment.condition.bounds.maxY}
+                        onCommit={(next) =>
+                          onUpdate({
+                            ...attachment,
+                            condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, maxY: next } } as any,
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                </>
               }
-              defaultCenter={{
-                x: attachment.target.type === 'entity'
-                  ? (scene.entities[attachment.target.entityId]?.x ?? 0)
-                  : attachment.target.type === 'group'
-                    ? (() => {
-                        const group = scene.groups[attachment.target.groupId];
-                        const members = group?.members ?? [];
-                        if (members.length === 0) return 0;
-                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
-                        return sum / members.length;
-                      })()
-                    : 0,
-                y: attachment.target.type === 'entity'
-                  ? (scene.entities[attachment.target.entityId]?.y ?? 0)
-                  : attachment.target.type === 'group'
-                    ? (() => {
-                        const group = scene.groups[attachment.target.groupId];
-                        const members = group?.members ?? [];
-                        if (members.length === 0) return 0;
-                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
-                        return sum / members.length;
-                      })()
-                    : 0,
-              }}
-              onApply={(computed) => {
-                const ensured = ensureBoundsCondition();
-                onUpdate({ ...attachment, condition: { ...ensured, ...attachment.condition, bounds: computed } as any });
-              }}
             />
           </InspectorFoldout>
         )}
@@ -2612,94 +2588,65 @@ function AttachmentInspector({
                     <option value="wrap">Wrap</option>
                   </select>
                 </label>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Min X</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Min X"
-                      data-testid="attachment-bounds-min-x-input"
-                      value={boundsCondition.bounds.minX}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Min Y</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Min Y"
-                      data-testid="attachment-bounds-min-y-input"
-                      value={boundsCondition.bounds.minY}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } })
-                      }
-                    />
-                  </label>
-                </div>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Max X</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Max X"
-                      data-testid="attachment-bounds-max-x-input"
-                      value={boundsCondition.bounds.maxX}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Max Y</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Max Y"
-                      data-testid="attachment-bounds-max-y-input"
-                      value={boundsCondition.bounds.maxY}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
-                      }
-                    />
-                  </label>
-                </div>
+                <BoundsMinMaxCenterSpanEditor
+                  bounds={boundsCondition.bounds}
+                  resetKey={`${attachment.id}:moveuntil-bounds`}
+                  onCommitBounds={(next) => onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: next } as any })}
+                  minMax={
+                    <>
+                      <div className="inspector-grid-2">
+                        <label className="field">
+                          <span>Min X</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Min X"
+                            data-testid="attachment-bounds-min-x-input"
+                            value={boundsCondition.bounds.minX}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span>Min Y</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Min Y"
+                            data-testid="attachment-bounds-min-y-input"
+                            value={boundsCondition.bounds.minY}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } })
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="inspector-grid-2">
+                        <label className="field">
+                          <span>Max X</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Max X"
+                            data-testid="attachment-bounds-max-x-input"
+                            value={boundsCondition.bounds.maxX}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span>Max Y</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Max Y"
+                            data-testid="attachment-bounds-max-y-input"
+                            value={boundsCondition.bounds.maxY}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
+                            }
+                          />
+                        </label>
+                      </div>
+                    </>
+                  }
+                />
               </>
             )}
-            <BoundsHelperPanel
-              enabled={Boolean(boundsCondition)}
-              autoTarget={
-                attachment.target.type === 'entity'
-                  ? { type: 'entity', id: attachment.target.entityId }
-                  : attachment.target.type === 'group'
-                    ? { type: 'group', id: attachment.target.groupId }
-                    : undefined
-              }
-              defaultCenter={{
-                x: attachment.target.type === 'entity'
-                  ? (scene.entities[attachment.target.entityId]?.x ?? 0)
-                  : attachment.target.type === 'group'
-                    ? (() => {
-                        const group = scene.groups[attachment.target.groupId];
-                        const members = group?.members ?? [];
-                        if (members.length === 0) return 0;
-                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
-                        return sum / members.length;
-                      })()
-                    : 0,
-                y: attachment.target.type === 'entity'
-                  ? (scene.entities[attachment.target.entityId]?.y ?? 0)
-                  : attachment.target.type === 'group'
-                    ? (() => {
-                        const group = scene.groups[attachment.target.groupId];
-                        const members = group?.members ?? [];
-                        if (members.length === 0) return 0;
-                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
-                        return sum / members.length;
-                      })()
-                    : 0,
-              }}
-              onApply={(computed) => {
-                const ensured = ensureBoundsCondition();
-                onUpdate({ ...attachment, condition: { ...ensured, bounds: computed } as any });
-              }}
-            />
           </InspectorFoldout>
         </InspectorFoldout>
       )}
@@ -2810,94 +2757,65 @@ function AttachmentInspector({
                     <option value="wrap">Wrap</option>
                   </select>
                 </label>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Min X</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Min X"
-                      data-testid="attachment-movexuntil-bounds-min-x-input"
-                      value={boundsCondition.bounds.minX}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Max X</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Max X"
-                      data-testid="attachment-movexuntil-bounds-max-x-input"
-                      value={boundsCondition.bounds.maxX}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } })
-                      }
-                    />
-                  </label>
-                </div>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Min Y</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Min Y"
-                      data-testid="attachment-movexuntil-bounds-min-y-input"
-                      value={boundsCondition.bounds.minY}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Max Y</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Max Y"
-                      data-testid="attachment-movexuntil-bounds-max-y-input"
-                      value={boundsCondition.bounds.maxY}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
-                      }
-                    />
-                  </label>
-                </div>
+                <BoundsMinMaxCenterSpanEditor
+                  bounds={boundsCondition.bounds}
+                  resetKey={`${attachment.id}:movexuntil-bounds`}
+                  onCommitBounds={(next) => onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: next } as any })}
+                  minMax={
+                    <>
+                      <div className="inspector-grid-2">
+                        <label className="field">
+                          <span>Min X</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Min X"
+                            data-testid="attachment-movexuntil-bounds-min-x-input"
+                            value={boundsCondition.bounds.minX}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span>Max X</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Max X"
+                            data-testid="attachment-movexuntil-bounds-max-x-input"
+                            value={boundsCondition.bounds.maxX}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } })
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="inspector-grid-2">
+                        <label className="field">
+                          <span>Min Y</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Min Y"
+                            data-testid="attachment-movexuntil-bounds-min-y-input"
+                            value={boundsCondition.bounds.minY}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span>Max Y</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Max Y"
+                            data-testid="attachment-movexuntil-bounds-max-y-input"
+                            value={boundsCondition.bounds.maxY}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
+                            }
+                          />
+                        </label>
+                      </div>
+                    </>
+                  }
+                />
               </>
             )}
-            <BoundsHelperPanel
-              enabled={Boolean(boundsCondition)}
-              autoTarget={
-                attachment.target.type === 'entity'
-                  ? { type: 'entity', id: attachment.target.entityId }
-                  : attachment.target.type === 'group'
-                    ? { type: 'group', id: attachment.target.groupId }
-                    : undefined
-              }
-              defaultCenter={{
-                x: attachment.target.type === 'entity'
-                  ? (scene.entities[attachment.target.entityId]?.x ?? 0)
-                  : attachment.target.type === 'group'
-                    ? (() => {
-                        const group = scene.groups[attachment.target.groupId];
-                        const members = group?.members ?? [];
-                        if (members.length === 0) return 0;
-                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
-                        return sum / members.length;
-                      })()
-                    : 0,
-                y: attachment.target.type === 'entity'
-                  ? (scene.entities[attachment.target.entityId]?.y ?? 0)
-                  : attachment.target.type === 'group'
-                    ? (() => {
-                        const group = scene.groups[attachment.target.groupId];
-                        const members = group?.members ?? [];
-                        if (members.length === 0) return 0;
-                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
-                        return sum / members.length;
-                      })()
-                    : 0,
-              }}
-              onApply={(computed) => {
-                const ensured = ensureBoundsCondition();
-                onUpdate({ ...attachment, condition: { ...ensured, bounds: computed } as any });
-              }}
-            />
           </InspectorFoldout>
         </InspectorFoldout>
       )}
@@ -2950,94 +2868,65 @@ function AttachmentInspector({
                     <option value="wrap">Wrap</option>
                   </select>
                 </label>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Min X</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Min X"
-                      data-testid="attachment-moveyuntil-bounds-min-x-input"
-                      value={boundsCondition.bounds.minX}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Max X</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Max X"
-                      data-testid="attachment-moveyuntil-bounds-max-x-input"
-                      value={boundsCondition.bounds.maxX}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } })
-                      }
-                    />
-                  </label>
-                </div>
-                <div className="inspector-grid-2">
-                  <label className="field">
-                    <span>Min Y</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Min Y"
-                      data-testid="attachment-moveyuntil-bounds-min-y-input"
-                      value={boundsCondition.bounds.minY}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Max Y</span>
-                    <ValidatedNumberInput
-                      aria-label="Bounds Max Y"
-                      data-testid="attachment-moveyuntil-bounds-max-y-input"
-                      value={boundsCondition.bounds.maxY}
-                      onCommit={(next) =>
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
-                      }
-                    />
-                  </label>
-                </div>
+                <BoundsMinMaxCenterSpanEditor
+                  bounds={boundsCondition.bounds}
+                  resetKey={`${attachment.id}:moveyuntil-bounds`}
+                  onCommitBounds={(next) => onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: next } as any })}
+                  minMax={
+                    <>
+                      <div className="inspector-grid-2">
+                        <label className="field">
+                          <span>Min X</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Min X"
+                            data-testid="attachment-moveyuntil-bounds-min-x-input"
+                            value={boundsCondition.bounds.minX}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span>Max X</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Max X"
+                            data-testid="attachment-moveyuntil-bounds-max-x-input"
+                            value={boundsCondition.bounds.maxX}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } })
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="inspector-grid-2">
+                        <label className="field">
+                          <span>Min Y</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Min Y"
+                            data-testid="attachment-moveyuntil-bounds-min-y-input"
+                            value={boundsCondition.bounds.minY}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span>Max Y</span>
+                          <ValidatedNumberInput
+                            aria-label="Bounds Max Y"
+                            data-testid="attachment-moveyuntil-bounds-max-y-input"
+                            value={boundsCondition.bounds.maxY}
+                            onCommit={(next) =>
+                              onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } })
+                            }
+                          />
+                        </label>
+                      </div>
+                    </>
+                  }
+                />
               </>
             )}
-            <BoundsHelperPanel
-              enabled={Boolean(boundsCondition)}
-              autoTarget={
-                attachment.target.type === 'entity'
-                  ? { type: 'entity', id: attachment.target.entityId }
-                  : attachment.target.type === 'group'
-                    ? { type: 'group', id: attachment.target.groupId }
-                    : undefined
-              }
-              defaultCenter={{
-                x: attachment.target.type === 'entity'
-                  ? (scene.entities[attachment.target.entityId]?.x ?? 0)
-                  : attachment.target.type === 'group'
-                    ? (() => {
-                        const group = scene.groups[attachment.target.groupId];
-                        const members = group?.members ?? [];
-                        if (members.length === 0) return 0;
-                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
-                        return sum / members.length;
-                      })()
-                    : 0,
-                y: attachment.target.type === 'entity'
-                  ? (scene.entities[attachment.target.entityId]?.y ?? 0)
-                  : attachment.target.type === 'group'
-                    ? (() => {
-                        const group = scene.groups[attachment.target.groupId];
-                        const members = group?.members ?? [];
-                        if (members.length === 0) return 0;
-                        const sum = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
-                        return sum / members.length;
-                      })()
-                    : 0,
-              }}
-              onApply={(computed) => {
-                const ensured = ensureBoundsCondition();
-                onUpdate({ ...attachment, condition: { ...ensured, bounds: computed } as any });
-              }}
-            />
           </InspectorFoldout>
         </InspectorFoldout>
       )}
@@ -3500,48 +3389,6 @@ function AttachmentInspector({
                     </label>
                   </div>
                   <div className="inspector-row inspector-inline-buttons">
-                    <button
-                      className="button"
-                      type="button"
-                      onClick={() => {
-                        const autoTarget =
-                          attachment.target.type === 'entity'
-                            ? { type: 'entity' as const, id: attachment.target.entityId }
-                            : attachment.target.type === 'group'
-                              ? { type: 'group' as const, id: attachment.target.groupId }
-                              : undefined;
-                        if (!autoTarget?.id) return;
-                        void import('../phaser/EventBus')
-                          .then(({ getActiveScene }) => {
-                            const scene = getActiveScene() as any;
-                            const rect =
-                              autoTarget.type === 'group'
-                                ? scene?.getGroupWorldBounds?.(autoTarget.id)
-                                : scene?.getEntityWorldRect?.(autoTarget.id);
-                            if (!rect) return;
-                            const w = Math.max(0, Number(rect.maxX) - Number(rect.minX));
-                            const h = Math.max(0, Number(rect.maxY) - Number(rect.minY));
-                            const nextHalfW = Math.round(w / 2);
-                            const nextHalfH = Math.round(h / 2);
-                            setBounceBoundsHalfW(nextHalfW);
-                            setBounceBoundsHalfH(nextHalfH);
-                            const centerX = Number(rect.centerX ?? (Number(rect.minX) + Number(rect.maxX)) / 2);
-                            const centerY = Number(rect.centerY ?? (Number(rect.minY) + Number(rect.maxY)) / 2);
-                            if (Number.isFinite(centerX) && Number.isFinite(centerY)) {
-                              const nextCx = Math.round(centerX);
-                              const nextCy = Math.round(centerY);
-                              setBounceBoundsCx(nextCx);
-                              setBounceBoundsCy(nextCy);
-                              commitBounceBoundsCenterSpan({ cx: nextCx, cy: nextCy, halfW: nextHalfW, halfH: nextHalfH });
-                            } else {
-                              commitBounceBoundsCenterSpan({ halfW: nextHalfW, halfH: nextHalfH });
-                            }
-                          })
-                          .catch(() => {});
-                      }}
-                    >
-                      Auto from selection
-                    </button>
                   </div>
                 </>
               )}

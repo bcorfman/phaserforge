@@ -84,12 +84,13 @@ describe('Bounds panels', () => {
     );
 
     try {
-      const apply = document.querySelector('[data-testid="bounds-helper-apply"]') as HTMLButtonElement | null;
-      expect(apply).toBeTruthy();
-      expect(apply!.disabled).toBe(true);
+      const centerspan = Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Center/Span') as HTMLButtonElement | undefined;
+      expect(centerspan).toBeTruthy();
+      act(() => centerspan!.click());
 
-      await setNumberInputByTestId('bounds-helper-xspan', '10');
-      expect(apply!.disabled).toBe(false);
+      await setNumberInputByTestId('until-bounds-centerspan-xspan', '5');
+      const last = onUpdate.mock.calls.at(-1)?.[0];
+      expect(last?.condition?.bounds).toEqual({ minX: 15, minY: 20, maxX: 25, maxY: 40 });
     } finally {
       view.cleanup();
     }
