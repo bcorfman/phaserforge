@@ -114,8 +114,9 @@ describe('Bounds panels', () => {
       params: { velocityX: 120, velocityY: 60, axis: 'both' },
     };
 
+    const onUpdate = vi.fn();
     const view = renderIntoDom(
-      renderAttachmentInspector(attachment, project, scene, { arrange: [], actions: [], conditions: [] }, () => {}, () => {})
+      renderAttachmentInspector(attachment, project, scene, { arrange: [], actions: [], conditions: [] }, onUpdate, () => {})
     );
 
     try {
@@ -123,12 +124,12 @@ describe('Bounds panels', () => {
       expect(centerspan).toBeTruthy();
       act(() => centerspan!.click());
 
-      const apply = document.querySelector('[data-testid="bounce-bounds-centerspan-apply"]') as HTMLButtonElement | null;
-      expect(apply).toBeTruthy();
-      expect(apply!.disabled).toBe(true);
-
       await setNumberInputByTestId('bounce-bounds-helper-xspan', '25');
-      expect(apply!.disabled).toBe(false);
+      const apply = document.querySelector('[data-testid="bounce-bounds-centerspan-apply"]') as HTMLButtonElement | null;
+      expect(apply).toBeFalsy();
+
+      const last = onUpdate.mock.calls.at(-1)?.[0];
+      expect(last?.condition?.bounds).toEqual({ minX: 25, minY: 0, maxX: 75, maxY: 100 });
     } finally {
       view.cleanup();
     }
