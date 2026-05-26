@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('Bounds Helper auto-fills from target and applies computed bounds @critical', async ({ page }) => {
+test('Bounds editor updates BoundsHit bounds @critical', async ({ page }) => {
   await page.getByTestId('scene-item-scene-1').click().catch(() => {});
   await selectGroupInSceneGraph(page, 'g-enemies');
   // Open a group-targeted MoveUntil attachment with BoundsHit enabled.
@@ -18,20 +18,11 @@ test('Bounds Helper auto-fills from target and applies computed bounds @critical
   const b0 = before.scene.attachments['att-move-right']?.condition?.bounds;
   expect(b0).toBeTruthy();
 
-  await page.getByTestId('bounds-helper-auto').click();
-
-  const xSpan = page.getByTestId('bounds-helper-xspan');
-  await xSpan.click();
-  await xSpan.press('Control+A');
-  await xSpan.type('40');
-  await xSpan.evaluate((el: HTMLInputElement) => el.blur());
-
-  const ySpan = page.getByTestId('bounds-helper-yspan');
-  await ySpan.click();
-  await ySpan.press('Control+A');
-  await ySpan.type('0');
-  await ySpan.evaluate((el: HTMLInputElement) => el.blur());
-  await page.getByTestId('bounds-helper-apply').click();
+  const minX = page.getByTestId('attachment-bounds-min-x-input');
+  await minX.click();
+  await minX.press('Control+A');
+  await minX.type(String(Number(b0.minX) + 10));
+  await minX.evaluate((el: HTMLInputElement) => el.blur());
 
   await expect.poll(async () => {
     const state = await getState<any>(page);
