@@ -73,7 +73,7 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
 - `+ Add…` → **Loops** → **Repeat with Children…**
   - Choose **Children** = N
   - Choose **Child Type** (you can edit each child afterwards)
-  - Leave Repeat **Count** blank for an infinite loop (matching `repeat(...)` in `pattern_demo.py`)
+  - Leave Repeat **Count** blank for an infinite loop 
 
 ### Zigzag
 
@@ -83,7 +83,7 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
 - Configure the two Zigzag children:
   - Child 1: `width=30`, `height=-15`, `velocity=100`, `segments=5` (Phaser Y+ is down; negative height moves up, matching Arcade demo)
   - Child 2: `width=-30`, `height=15`, `velocity=100`, `segments=5`
-- Add a **Move By** step *before* the Repeat (this matches `pattern_demo.py`’s instant offset)
+- Add a **Move By** step *before* the Repeat 
   - **Move By**: `dx=-15`, `dy=-30`
 
 ### Figure-8
@@ -109,21 +109,26 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
 
 - Add **Bounce**:
   - `axis=both`, `velocityX=2`, `velocityY=1` (Arcade is px/frame; Studio uses px/sec—scale up/down if needed)
-- In the Bounds section, enable BoundsHit, then use **Bounds Helper (new)**:
-  - Center: auto-fill from selection (`cx=400`, `cy=450` if you matched the layout)
-  - Travel span: `±x = 60`, `±y = 40`
-  - Sprite size: **Auto from selection**
-  - Apply to BoundsHit
+- In the separate **Bounds** panel (sibling to “Bounce Pattern”), confirm **BoundsHit** is enabled (it defaults to the sprite bounds).
+- In **Bounds → Edit mode**, switch to **Center/Span**.
+- Use **Auto from selection** to fill center (and pull sprite size).
+- Set travel span:
+  - `± X Span = 60`
+  - `± Y Span = 40`
+- Click **Apply** (writes the computed values into Bounds Min/Max).
 
 ### Patrol
 
 - Add **Patrol**:
   - `axis=x`, `velocityX=2` (scale if needed)
-- Enable BoundsHit and use **Bounds Helper (new)**:
-  - Center: auto-fill from selection (`cx=600`, `cy=450` if you matched the layout)
-  - Travel span: `±x = 40`, `±y = 0`
-  - Sprite size: **Auto from selection**
-  - Apply to BoundsHit, then edit `minY=0`, `maxY=600` (Y doesn’t matter for x-only patrol, but keep it within world bounds)
+- In the separate **Bounds** panel (sibling to “Patrol Pattern”), confirm **BoundsHit** is enabled (it defaults to the sprite bounds).
+- In **Bounds → Edit mode**, switch to **Center/Span**.
+- Use **Auto from selection** to fill center (and pull sprite size).
+- Set travel span:
+  - `± X Span = 40`
+  - `± Y Span = 0`
+- Click **Apply** (writes the computed values into Bounds Min/Max).
+- Switch back to **Min/Max** and set `minY=0`, `maxY=600` (Y doesn’t matter for x-only patrol, but keep it within world bounds).
 
 ## 6. Quick sanity check
 

@@ -1096,4 +1096,38 @@ describe('EditorStore reducer', () => {
     expect(nextScene.entities.e2).toBeUndefined();
     expect(removedMulti.selection).toEqual({ kind: 'none' });
   });
+
+  it('reorders sprite list order when reorder-sprite-order is dispatched (does not change depths)', () => {
+    const state = seededState();
+    const scene = sceneOf(state);
+
+    const nextScene = {
+      ...scene,
+      groups: {},
+      entities: {
+        a: { id: 'a', x: 0, y: 0, width: 10, height: 10, depth: 1 },
+        b: { id: 'b', x: 0, y: 0, width: 10, height: 10, depth: 2 },
+        c: { id: 'c', x: 0, y: 0, width: 10, height: 10, depth: 3 },
+      },
+    } as any;
+
+    const seeded = {
+      ...state,
+      project: {
+        ...state.project,
+        scenes: {
+          ...state.project.scenes,
+          [state.currentSceneId]: nextScene,
+        },
+      },
+    };
+
+    const reordered = reducer(seeded as any, { type: 'reorder-sprite-order', orderedEntityIds: ['c', 'a', 'b'] } as any);
+
+    const updated = sceneOf(reordered as any);
+    expect(updated.spriteOrder).toEqual(['c', 'a', 'b']);
+    expect(updated.entities.c.depth).toBe(3);
+    expect(updated.entities.a.depth).toBe(1);
+    expect(updated.entities.b.depth).toBe(2);
+  });
 });

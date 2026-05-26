@@ -12,6 +12,8 @@ export class ParametricMotionUntil extends ActionBase {
   private readonly durationMs: number;
   private readonly rotateWithPath: boolean;
   private readonly rotationOffsetDeg: number;
+  private readonly flipXOverride?: boolean;
+  private readonly flipYOverride?: boolean;
   private readonly debug: boolean;
   private readonly debugThreshold: number;
   private readonly onStop?: () => void;
@@ -20,6 +22,7 @@ export class ParametricMotionUntil extends ActionBase {
   private elapsedMs = 0;
   private readonly origins = new Map<string, { x: number; y: number }>();
   private readonly prevOffsets = new Map<string, { dx: number; dy: number }>();
+  private readonly origFlips = new Map<string, { flipX: boolean; flipY: boolean }>();
 
   constructor(
     targets: RuntimeTarget | RuntimeEntity[],
@@ -29,6 +32,8 @@ export class ParametricMotionUntil extends ActionBase {
       durationMs: number;
       rotateWithPath?: boolean;
       rotationOffsetDeg?: number;
+      flipX?: boolean;
+      flipY?: boolean;
       debug?: boolean;
       debugThreshold?: number;
       onStop?: () => void;
@@ -41,6 +46,8 @@ export class ParametricMotionUntil extends ActionBase {
     this.durationMs = Math.max(0, Number(opts.durationMs ?? 0));
     this.rotateWithPath = Boolean(opts.rotateWithPath);
     this.rotationOffsetDeg = Number.isFinite(Number(opts.rotationOffsetDeg)) ? Number(opts.rotationOffsetDeg) : 0;
+    this.flipXOverride = typeof opts.flipX === 'boolean' ? opts.flipX : undefined;
+    this.flipYOverride = typeof opts.flipY === 'boolean' ? opts.flipY : undefined;
     this.debug = Boolean(opts.debug);
     this.debugThreshold = Number.isFinite(Number(opts.debugThreshold)) ? Number(opts.debugThreshold) : 250;
     this.onStop = opts.onStop;
@@ -56,11 +63,13 @@ export class ParametricMotionUntil extends ActionBase {
     this.elapsedMs = 0;
     this.origins.clear();
     this.prevOffsets.clear();
+    this.origFlips.clear();
     this.condition.reset();
 
     for (const member of flattenTarget(this.target)) {
       this.origins.set(member.id, { x: member.x, y: member.y });
       this.prevOffsets.set(member.id, { dx: 0, dy: 0 });
+      this.origFlips.set(member.id, { flipX: member.flipX ?? false, flipY: member.flipY ?? false });
     }
   }
 
@@ -78,6 +87,9 @@ export class ParametricMotionUntil extends ActionBase {
       const origin = this.origins.get(member.id) ?? { x: member.x, y: member.y };
       member.x = origin.x + dx;
       member.y = origin.y + dy;
+
+      if (this.flipXOverride !== undefined) member.flipX = this.flipXOverride;
+      if (this.flipYOverride !== undefined) member.flipY = this.flipYOverride;
 
       if (this.rotateWithPath) {
         const prev = this.prevOffsets.get(member.id) ?? { dx: 0, dy: 0 };
@@ -98,6 +110,16 @@ export class ParametricMotionUntil extends ActionBase {
     if (this.elapsedMs + 1e-9 >= this.durationMs || t >= 1 || this.condition.isMet(this.target)) {
       this.onStop?.();
       this.stop();
+    }
+  }
+
+  protected removeEffect(): void {
+    if (this.flipXOverride === undefined && this.flipYOverride === undefined) return;
+    for (const member of flattenTarget(this.target)) {
+      const prev = this.origFlips.get(member.id);
+      if (!prev) continue;
+      if (this.flipXOverride !== undefined) member.flipX = prev.flipX;
+      if (this.flipYOverride !== undefined) member.flipY = prev.flipY;
     }
   }
 }

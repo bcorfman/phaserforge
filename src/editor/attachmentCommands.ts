@@ -1,4 +1,5 @@
 import type { AttachmentSpec, Id, SceneSpec, TargetRef } from '../model/types';
+import { computeTargetAabb } from './boundsHelper';
 
 export function getAttachmentsForTarget(scene: SceneSpec, target: TargetRef): AttachmentSpec[] {
   const list = Object.values(scene.attachments).filter((a) => targetsEqual(a.target, target));
@@ -220,18 +221,20 @@ export function createAttachment(
     baseDefaults.params = { radius: 50, velocity: 100, clockwise: true, centerMode: 'current' };
   } else if (presetId === 'BouncePattern') {
     baseDefaults.params = { velocityX: 120, velocityY: 60, axis: 'both' };
+    const targetBounds = computeTargetAabb(scene as any, target as any);
     baseDefaults.condition = {
       type: 'BoundsHit',
-      bounds: { minX: 0, minY: 0, maxX: world.width, maxY: world.height },
+      bounds: targetBounds ?? { minX: 0, minY: 0, maxX: world.width, maxY: world.height },
       mode: 'any',
       scope: target.type === 'group' ? 'group-extents' : 'member-any',
       behavior: 'bounce',
     };
   } else if (presetId === 'PatrolPattern') {
     baseDefaults.params = { velocityX: 120, velocityY: 0, axis: 'x' };
+    const targetBounds = computeTargetAabb(scene as any, target as any);
     baseDefaults.condition = {
       type: 'BoundsHit',
-      bounds: { minX: 0, minY: 0, maxX: world.width, maxY: world.height },
+      bounds: targetBounds ?? { minX: 0, minY: 0, maxX: world.width, maxY: world.height },
       mode: 'any',
       scope: target.type === 'group' ? 'group-extents' : 'member-any',
       behavior: 'bounce',
@@ -463,6 +466,89 @@ export function reorderAttachmentsWithinTargetAndEvent(
     nextAttachments[id] = { ...attachment, order: i };
   }
 
+  return { ...scene, attachments: nextAttachments };
+}
+
+export function nestAttachmentsUnderRepeat(
+  scene: SceneSpec,
+  opts: { repeatId: Id; attachmentIds: Id[] }
+): SceneSpec {
+  const repeat = scene.attachments?.[opts.repeatId];
+  if (!repeat || repeat.presetId !== 'Repeat') return scene;
+
+  const uniqueIds = Array.from(new Set(opts.attachmentIds ?? [])).filter(Boolean);
+  if (uniqueIds.length === 0) return scene;
+
+  const isAncestorOf = (ancestorId: Id, childId: Id): boolean => {
+    const visited = new Set<Id>();
+    const stack: Id[] = [ancestorId];
+    while (stack.length > 0) {
+      const cur = stack.pop()!;
+      if (visited.has(cur)) continue;
+      visited.add(cur);
+      const a: any = scene.attachments?.[cur];
+      const children: Id[] = Array.isArray(a?.children) ? a.children.map(String) : [];
+      for (const c of children) {
+        if (c === childId) return true;
+        stack.push(c);
+      }
+    }
+    return false;
+  };
+
+  const repeatAny: any = repeat;
+  const existingChildren: Id[] = Array.isArray(repeatAny.children) ? repeatAny.children.map(String) : [];
+  const childSet = new Set(existingChildren);
+
+  const attachments = uniqueIds
+    .filter((id) => id !== repeat.id)
+    .filter((id) => !isAncestorOf(id, repeat.id))
+    .map((id) => scene.attachments?.[id])
+    .filter(Boolean) as AttachmentSpec[];
+
+  if (attachments.length === 0) return scene;
+  if (!attachments.every((a) => targetsEqual(a.target, repeat.target))) return scene;
+  const repeatEventId = typeof (repeat as any).eventId === 'string' ? (repeat as any).eventId : undefined;
+  if (!attachments.every((a) => (typeof (a as any).eventId === 'string' ? (a as any).eventId : undefined) === repeatEventId)) return scene;
+
+  // Preserve relative order from their current sibling ordering.
+  const sorted = [...attachments].sort((a, b) => {
+    const ao = a.order ?? 0;
+    const bo = b.order ?? 0;
+    if (ao !== bo) return ao - bo;
+    return a.id.localeCompare(b.id);
+  });
+
+  const nextAttachments: Record<Id, AttachmentSpec> = { ...scene.attachments };
+
+  // Remove from old parent's children list if necessary.
+  for (const a of sorted) {
+    const prevParentId = (a as any).parentAttachmentId as Id | undefined;
+    if (!prevParentId) continue;
+    const prevParent: any = nextAttachments[prevParentId];
+    if (!prevParent || prevParent.presetId !== 'Repeat' || !Array.isArray(prevParent.children)) continue;
+    const nextChildren = prevParent.children.map(String).filter((cid: string) => cid !== a.id);
+    nextAttachments[prevParentId] = { ...prevParent, children: nextChildren };
+  }
+
+  // Assign orders within the new parent.
+  const existingOrders = existingChildren
+    .map((id) => nextAttachments[id]?.order)
+    .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+  const baseOrder = existingOrders.length > 0 ? Math.max(...existingOrders) + 1 : 0;
+
+  const movedIds: Id[] = [];
+  for (let i = 0; i < sorted.length; i += 1) {
+    const a: any = sorted[i];
+    if (childSet.has(a.id)) continue;
+    childSet.add(a.id);
+    movedIds.push(a.id);
+    const { tag: _tag, ...rest } = a;
+    nextAttachments[a.id] = { ...(rest as any), parentAttachmentId: repeat.id, order: baseOrder + i } as any;
+  }
+
+  if (movedIds.length === 0) return scene;
+  nextAttachments[repeat.id] = { ...repeatAny, children: [...existingChildren, ...movedIds] };
   return { ...scene, attachments: nextAttachments };
 }
 

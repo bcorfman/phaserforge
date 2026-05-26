@@ -28,7 +28,7 @@ const registry = {
     { type: 'Wait', displayName: 'Wait', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'Call', displayName: 'Call', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'EmitEvent', displayName: 'Emit Event', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
-    { type: 'Repeat', displayName: 'Repeat', category: 'flow', targetKinds: ['entity', 'group'], implemented: true },
+    { type: 'Repeat', displayName: 'Repeat', category: 'loops', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'BlinkUntil', displayName: 'Blink Until', category: 'visual', targetKinds: ['entity', 'group'], implemented: true },
     { type: 'CycleFramesUntil', displayName: 'Cycle Frames Until', category: 'visual', targetKinds: ['entity', 'group'], implemented: true },
   ],
@@ -36,6 +36,45 @@ const registry = {
 };
 
 describe('EventsPanel Action Library drawer', () => {
+  it('does not show the empty-state custom events label', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await React.act(async () => {
+      root.render(
+        <EventsPanel
+          project={sampleProject}
+          scene={sampleScene}
+          target={{ type: 'group', groupId: 'g-enemies' }}
+          selectedAttachmentId={undefined}
+          registry={registry as any}
+          onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={() => {}}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
+          onRemoveAttachment={() => {}}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
+        />
+      );
+    });
+
+    expect(container.textContent).not.toContain('No custom events yet.');
+    expect(container.textContent).not.toContain('Add an event to start building event-driven behaviors.');
+  });
+
   it('does not prefix step rows with Step N', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     installMockLocalStorage();
@@ -59,6 +98,7 @@ describe('EventsPanel Action Library drawer', () => {
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
           onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
@@ -97,6 +137,7 @@ describe('EventsPanel Action Library drawer', () => {
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
           onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
@@ -153,6 +194,7 @@ describe('EventsPanel Action Library drawer', () => {
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
           onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
@@ -228,6 +270,7 @@ describe('EventsPanel Action Library drawer', () => {
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
           onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
@@ -299,7 +342,7 @@ describe('EventsPanel Action Library drawer', () => {
     expect(onAddAttachment).toHaveBeenCalledWith('EmitEvent', expect.objectContaining({ eventId: undefined, parentAttachmentId: 'att-parent' }));
   });
 
-	  it('strips Pattern suffix from movement actions in the drawer', async () => {
+  it('strips Pattern suffix from movement actions in the drawer', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     installMockLocalStorage();
 
@@ -323,6 +366,7 @@ describe('EventsPanel Action Library drawer', () => {
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
           onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
@@ -351,6 +395,53 @@ describe('EventsPanel Action Library drawer', () => {
     expect(container.textContent).not.toContain('WavePattern');
   });
 
+  it('hides the Patterns category when there are no patterns', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    installMockLocalStorage();
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const emptyStepsScene = { ...sampleScene, attachments: {} };
+    await React.act(async () => {
+      root.render(
+        <EventsPanel
+          project={sampleProject}
+          scene={emptyStepsScene as any}
+          target={{ type: 'group', groupId: 'g-enemies' }}
+          selectedAttachmentId={undefined}
+          registry={registry as any}
+          onCreateEventBlock={() => {}}
+          onUpdateEventBlock={() => {}}
+          onRemoveEventBlock={() => {}}
+          onAddAttachment={() => {}}
+          onSelectAttachment={() => {}}
+          onMoveAttachment={() => {}}
+          onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
+          onRemoveAttachment={() => {}}
+          onMakeParallel={() => {}}
+          onUngroupParallel={() => {}}
+          onMoveParallelGroup={() => {}}
+          onCreatePatternFromAttachments={() => {}}
+          onApplyPattern={() => {}}
+          onApplyLoopTemplate={() => {}}
+        />
+      );
+    });
+
+    const openButton = container.querySelector('[data-testid="event-add-open"]') as HTMLButtonElement | null;
+    expect(openButton).not.toBeNull();
+    await React.act(async () => {
+      openButton!.click();
+    });
+
+    const patternsTab = container.querySelector('[data-testid="action-library-cat-Patterns"]') as HTMLButtonElement | null;
+    expect(patternsTab).toBeNull();
+    expect(container.textContent).not.toContain('No patterns yet.');
+  });
+
   it('uses OnSceneStart label for start-trigger blocks', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     installMockLocalStorage();
@@ -374,6 +465,7 @@ describe('EventsPanel Action Library drawer', () => {
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
           onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
@@ -411,6 +503,7 @@ describe('EventsPanel Action Library drawer', () => {
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
           onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
@@ -451,6 +544,7 @@ describe('EventsPanel Action Library drawer', () => {
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
           onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
           onRemoveAttachment={() => {}}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}
@@ -519,6 +613,7 @@ describe('EventsPanel Action Library drawer', () => {
           onSelectAttachment={() => {}}
           onMoveAttachment={() => {}}
           onReorderAttachments={() => {}}
+          onNestAttachmentsUnderRepeat={() => {}}
           onRemoveAttachment={onRemoveAttachment}
           onMakeParallel={() => {}}
           onUngroupParallel={() => {}}

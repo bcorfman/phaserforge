@@ -47,6 +47,13 @@ export function ActionLibraryDrawer({
 }) {
   useEffect(() => {
     if (!open) return;
+    if (selectedCategory !== 'Patterns') return;
+    if ((patterns ?? []).length > 0) return;
+    onSelectCategory('All');
+  }, [onSelectCategory, open, patterns, selectedCategory]);
+
+  useEffect(() => {
+    if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -60,8 +67,9 @@ export function ActionLibraryDrawer({
       const cat = (a.category ?? '').trim();
       if (cat) set.add(cat);
     }
-    return ['All', 'Patterns', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
-  }, [actions]);
+    const hasPatterns = (patterns ?? []).length > 0;
+    return ['All', ...(hasPatterns ? (['Patterns'] as const) : []), ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [actions, patterns]);
 
   const filtered = useMemo(() => {
     if (selectedCategory === 'Patterns') return [];
