@@ -1946,14 +1946,6 @@ function AttachmentInspector({
   const [bounceBoundsYSpan, setBounceBoundsYSpan] = useState(0);
   const [bounceBoundsHalfW, setBounceBoundsHalfW] = useState(0);
   const [bounceBoundsHalfH, setBounceBoundsHalfH] = useState(0);
-  const [bounceBoundsBaseline, setBounceBoundsBaseline] = useState(() => ({
-    cx: 0,
-    cy: 0,
-    xSpan: 0,
-    ySpan: 0,
-    halfW: 0,
-    halfH: 0,
-  }));
 
   useEffect(() => {
     if (attachment.presetId !== 'Call') return;
@@ -1974,20 +1966,17 @@ function AttachmentInspector({
     setBounceBoundsYSpan(0);
     setBounceBoundsHalfW(0);
     setBounceBoundsHalfH(0);
-    setBounceBoundsBaseline({ cx: 0, cy: 0, xSpan: 0, ySpan: 0, halfW: 0, halfH: 0 });
     if (attachment.target.type === 'entity') {
       const nextCx = Math.round(scene.entities[attachment.target.entityId]?.x ?? 0);
       const nextCy = Math.round(scene.entities[attachment.target.entityId]?.y ?? 0);
       setBounceBoundsCx(nextCx);
       setBounceBoundsCy(nextCy);
-      setBounceBoundsBaseline((prev) => ({ ...prev, cx: nextCx, cy: nextCy }));
     } else if (attachment.target.type === 'group') {
       const group = scene.groups[attachment.target.groupId];
       const members = group?.members ?? [];
       if (members.length === 0) {
         setBounceBoundsCx(0);
         setBounceBoundsCy(0);
-        setBounceBoundsBaseline((prev) => ({ ...prev, cx: 0, cy: 0 }));
       } else {
         const sx = members.reduce((acc, id) => acc + (scene.entities[id]?.x ?? 0), 0);
         const sy = members.reduce((acc, id) => acc + (scene.entities[id]?.y ?? 0), 0);
@@ -1995,12 +1984,10 @@ function AttachmentInspector({
         const nextCy = Math.round(sy / members.length);
         setBounceBoundsCx(nextCx);
         setBounceBoundsCy(nextCy);
-        setBounceBoundsBaseline((prev) => ({ ...prev, cx: nextCx, cy: nextCy }));
       }
     } else {
       setBounceBoundsCx(0);
       setBounceBoundsCy(0);
-      setBounceBoundsBaseline((prev) => ({ ...prev, cx: 0, cy: 0 }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attachment.id]);
@@ -2044,13 +2031,19 @@ function AttachmentInspector({
     attachment.presetId === 'BouncePattern' ||
     attachment.presetId === 'PatrolPattern';
 
-  const bounceBoundsDirty =
-    bounceBoundsCx !== bounceBoundsBaseline.cx ||
-    bounceBoundsCy !== bounceBoundsBaseline.cy ||
-    bounceBoundsXSpan !== bounceBoundsBaseline.xSpan ||
-    bounceBoundsYSpan !== bounceBoundsBaseline.ySpan ||
-    bounceBoundsHalfW !== bounceBoundsBaseline.halfW ||
-    bounceBoundsHalfH !== bounceBoundsBaseline.halfH;
+  const commitBounceBoundsCenterSpan = (
+    next: Partial<{ cx: number; cy: number; xSpan: number; ySpan: number; halfW: number; halfH: number }>
+  ) => {
+    if (!boundsCondition) return;
+    const cx = next.cx ?? bounceBoundsCx;
+    const cy = next.cy ?? bounceBoundsCy;
+    const xSpan = next.xSpan ?? bounceBoundsXSpan;
+    const ySpan = next.ySpan ?? bounceBoundsYSpan;
+    const halfW = next.halfW ?? bounceBoundsHalfW;
+    const halfH = next.halfH ?? bounceBoundsHalfH;
+    const computed = computeEdgeSafeBounds({ cx, cy, xSpan, ySpan, halfW, halfH });
+    onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: computed, behavior: 'bounce' } as any });
+  };
 
   return (
     <div className="inspector-block" data-testid="attachment-inspector">
@@ -3395,7 +3388,6 @@ function AttachmentInspector({
                       setBounceBoundsCy(nextCy);
                       setBounceBoundsXSpan(nextXSpan);
                       setBounceBoundsYSpan(nextYSpan);
-                      setBounceBoundsBaseline((prev) => ({ ...prev, cx: nextCx, cy: nextCy, xSpan: nextXSpan, ySpan: nextYSpan }));
                       setBounceBoundsMode('centerspan');
                     }}
                   >
@@ -3460,7 +3452,10 @@ function AttachmentInspector({
                         aria-label="Bounds Helper Center X"
                         data-testid="bounce-bounds-helper-cx"
                         value={bounceBoundsCx}
-                        onCommit={setBounceBoundsCx}
+                        onCommit={(next) => {
+                          setBounceBoundsCx(next);
+                          commitBounceBoundsCenterSpan({ cx: next });
+                        }}
                       />
                     </label>
                     <label className="field">
@@ -3469,7 +3464,10 @@ function AttachmentInspector({
                         aria-label="Bounds Helper Center Y"
                         data-testid="bounce-bounds-helper-cy"
                         value={bounceBoundsCy}
-                        onCommit={setBounceBoundsCy}
+                        onCommit={(next) => {
+                          setBounceBoundsCy(next);
+                          commitBounceBoundsCenterSpan({ cy: next });
+                        }}
                       />
                     </label>
                   </div>
@@ -3481,7 +3479,10 @@ function AttachmentInspector({
                         data-testid="bounce-bounds-helper-xspan"
                         min={0}
                         value={bounceBoundsXSpan}
-                        onCommit={setBounceBoundsXSpan}
+                        onCommit={(next) => {
+                          setBounceBoundsXSpan(next);
+                          commitBounceBoundsCenterSpan({ xSpan: next });
+                        }}
                       />
                     </label>
                     <label className="field">
@@ -3491,7 +3492,10 @@ function AttachmentInspector({
                         data-testid="bounce-bounds-helper-yspan"
                         min={0}
                         value={bounceBoundsYSpan}
-                        onCommit={setBounceBoundsYSpan}
+                        onCommit={(next) => {
+                          setBounceBoundsYSpan(next);
+                          commitBounceBoundsCenterSpan({ ySpan: next });
+                        }}
                       />
                     </label>
                   </div>
@@ -3528,42 +3532,15 @@ function AttachmentInspector({
                               const nextCy = Math.round(centerY);
                               setBounceBoundsCx(nextCx);
                               setBounceBoundsCy(nextCy);
-                              setBounceBoundsBaseline((prev) => ({ ...prev, cx: nextCx, cy: nextCy, halfW: nextHalfW, halfH: nextHalfH }));
+                              commitBounceBoundsCenterSpan({ cx: nextCx, cy: nextCy, halfW: nextHalfW, halfH: nextHalfH });
                             } else {
-                              setBounceBoundsBaseline((prev) => ({ ...prev, halfW: nextHalfW, halfH: nextHalfH }));
+                              commitBounceBoundsCenterSpan({ halfW: nextHalfW, halfH: nextHalfH });
                             }
                           })
                           .catch(() => {});
                       }}
                     >
                       Auto from selection
-                    </button>
-                    <button
-                      className="button"
-                      data-testid="bounce-bounds-centerspan-apply"
-                      type="button"
-                      disabled={!bounceBoundsDirty}
-                      onClick={() => {
-                        const computed = computeEdgeSafeBounds({
-                          cx: bounceBoundsCx,
-                          cy: bounceBoundsCy,
-                          xSpan: bounceBoundsXSpan,
-                          ySpan: bounceBoundsYSpan,
-                          halfW: bounceBoundsHalfW,
-                          halfH: bounceBoundsHalfH,
-                        });
-                        onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: computed, behavior: 'bounce' } as any });
-                        setBounceBoundsBaseline({
-                          cx: bounceBoundsCx,
-                          cy: bounceBoundsCy,
-                          xSpan: bounceBoundsXSpan,
-                          ySpan: bounceBoundsYSpan,
-                          halfW: bounceBoundsHalfW,
-                          halfH: bounceBoundsHalfH,
-                        });
-                      }}
-                    >
-                      Apply
                     </button>
                   </div>
                 </>
