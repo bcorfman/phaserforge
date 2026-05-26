@@ -48,6 +48,8 @@ import { getPreferredTextResolution } from './textResolution';
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
 const REFERENCE_GHOST_ALPHA_MULTIPLIER = 0.35;
 const REFERENCE_GHOST_DEPTH_OFFSET = -10_000;
+const BOUNDS_OVERLAY_STROKE_COLOR = 0xf97316; // orange: distinct from world frame + selection frames
+const BOUNDS_OVERLAY_STROKE_ALPHA = 0.95;
 
 type PhysicsObject =
   | Phaser.Types.Physics.Arcade.ImageWithDynamicBody
@@ -1132,7 +1134,7 @@ export class EditorScene extends Phaser.Scene {
     // Update bounds graphics
     if (this.boundsGraphics) {
       this.boundsGraphics.clear();
-      this.boundsGraphics.lineStyle(2, 0x3b4f82, 1);
+      this.boundsGraphics.lineStyle(2, BOUNDS_OVERLAY_STROKE_COLOR, BOUNDS_OVERLAY_STROKE_ALPHA);
       this.boundsGraphics.strokeRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
     }
 
@@ -1159,7 +1161,7 @@ export class EditorScene extends Phaser.Scene {
     if (!boundsCondition) return;
     const bounds = boundsCondition.bounds;
     const graphics = this.add.graphics();
-    graphics.lineStyle(2, 0x3b4f82, 1);
+    graphics.lineStyle(2, BOUNDS_OVERLAY_STROKE_COLOR, BOUNDS_OVERLAY_STROKE_ALPHA);
     graphics.strokeRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
     this.boundsGraphics = graphics;
 

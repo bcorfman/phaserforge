@@ -108,7 +108,7 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
 ### Bounce
 
 - Add **Bounce**:
-  - `axis=both`, `velocityX=2`, `velocityY=1` (Arcade is px/frame; Studio uses px/sec—scale up/down if needed)
+  - `axis = both`, `velocityX = 100`, `velocityY = 60` 
 - In the separate **Bounds** panel (sibling to “Bounce Pattern”), confirm **BoundsHit** is enabled (it defaults to the sprite bounds).
 - In **Bounds → Edit mode**, switch to **Center/Span**.
 - Use **Auto from selection** to fill center (and pull sprite size).
@@ -120,7 +120,7 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
 ### Patrol
 
 - Add **Patrol**:
-  - `axis=x`, `velocityX=2` (scale if needed)
+  - `axis=x`, `velocityX=80` 
 - In the separate **Bounds** panel (sibling to “Patrol Pattern”), confirm **BoundsHit** is enabled (it defaults to the sprite bounds).
 - In **Bounds → Edit mode**, switch to **Center/Span**.
 - Use **Auto from selection** to fill center (and pull sprite size).
@@ -128,7 +128,7 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
   - `± X Span = 40`
   - `± Y Span = 0`
 - Click **Apply** (writes the computed values into Bounds Min/Max).
-- Switch back to **Min/Max** and set `minY=0`, `maxY=600` (Y doesn’t matter for x-only patrol, but keep it within world bounds).
+- Switch back to **Min/Max** and set `minY=400`, `maxY=500` (Y doesn’t matter for x-only patrol, but keep it within world bounds).
 
 ## 6. Quick sanity check
 
