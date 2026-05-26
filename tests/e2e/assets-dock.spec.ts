@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dispatchAction, dragAssetToCanvas, dropAssetAtClientPoint, dropAssetOnTestId, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, worldToClient } from './helpers';
+import { dismissViewHint, dispatchAction, dragAssetToCanvas, dragDropByTestIdAtClientPoint, dropAssetOnTestId, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test.describe.configure({ timeout: 120000 });
@@ -191,7 +191,9 @@ test.describe('Assets dock', () => {
           target: { kind: 'entity-sprite', sceneId, entityId: createdEntityId },
         } as any);
       } else {
-        await dropAssetAtClientPoint(page, { assetKind: 'image', assetId: 'meteor-large' }, 'game-container', clientPoint);
+        // Prefer a real drag gesture so Playwright supplies a stable `dataTransfer` payload across engines (Firefox
+        // can intermittently drop synthetic DragEvent `dataTransfer` in CI).
+        await dragDropByTestIdAtClientPoint(page, 'assets-dock-item-image-meteor-large', 'game-container', clientPoint);
       }
 
       try {
