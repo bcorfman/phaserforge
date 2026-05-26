@@ -9,5 +9,5 @@ export function getEditableBoundsConditionId(scene: SceneSpec, selection: Select
   if (selection.kind !== 'attachment') return undefined;
   const attachment = scene.attachments[selection.id];
   if (!attachment) return undefined;
-  return attachment.presetId === 'MoveUntil' && attachment.condition?.type === 'BoundsHit' ? attachment.id : undefined;
+  return attachment.condition?.type === 'BoundsHit' ? attachment.id : undefined;
 }

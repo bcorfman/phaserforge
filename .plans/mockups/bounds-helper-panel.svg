@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620">
+  <defs>
+    <style>
+      .bg { fill: #1e1f22; }
+      .panel { fill: #2b2d31; stroke: #3b3f45; stroke-width: 1; }
+      .title { font: 700 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #e8e8e8; }
+      .label { font: 600 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #cfcfcf; }
+      .hint { font: 500 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #a7abb3; }
+      .inputBg { fill: #1f2227; stroke: #3b3f45; stroke-width: 1; }
+      .inputText { font: 600 12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New"; fill: #e8e8e8; }
+      .button { fill: #3b3f45; stroke: #51565f; stroke-width: 1; }
+      .buttonPrimary { fill: #2f6feb; stroke: #4a86ff; stroke-width: 1; }
+      .buttonText { font: 700 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #f3f3f3; }
+      .buttonTextDark { font: 700 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #101318; }
+      .divider { stroke: #3b3f45; stroke-width: 1; }
+      .chip { fill: #1f2227; stroke: #3b3f45; stroke-width: 1; }
+      .chipActive { fill: #3b3f45; stroke: #6a707a; stroke-width: 1; }
+      .chipText { font: 700 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #e8e8e8; }
+    </style>
+  </defs>
+
+  <!-- Canvas background (for context) -->
+  <rect class="bg" x="0" y="0" width="980" height="620" rx="0" />
+
+  <!-- Inspector context (Bounce attachment portion) -->
+  <rect class="panel" x="40" y="40" width="900" height="540" rx="10" />
+  <text class="hint" x="64" y="78">Inspector ▸ Attachment ▸ Bounce</text>
+  <line class="divider" x1="60" y1="96" x2="920" y2="96" />
+
+  <!-- Bounce Pattern block -->
+  <rect class="panel" x="60" y="120" width="860" height="150" rx="10" />
+  <text class="title" x="84" y="156">Bounce Pattern</text>
+
+  <text class="label" x="84" y="194">Axis</text>
+  <rect class="inputBg" x="84" y="202" width="390" height="34" rx="8" />
+  <text class="inputText" x="98" y="224">Both</text>
+
+  <text class="label" x="530" y="194">Velocity X</text>
+  <rect class="inputBg" x="530" y="202" width="190" height="34" rx="8" />
+  <text class="inputText" x="544" y="224">120</text>
+
+  <text class="label" x="730" y="194">Velocity Y</text>
+  <rect class="inputBg" x="730" y="202" width="190" height="34" rx="8" />
+  <text class="inputText" x="744" y="224">60</text>
+
+  <!-- Bounds block -->
+  <rect class="panel" x="60" y="292" width="860" height="270" rx="10" />
+  <text class="title" x="84" y="328">Bounds (BoundsHit)</text>
+
+  <!-- Mode toggle -->
+  <text class="label" x="84" y="362">Edit mode</text>
+  <rect class="chip" x="170" y="345" width="120" height="30" rx="10" />
+  <text class="chipText" x="230" y="365" text-anchor="middle">Min/Max</text>
+
+  <rect class="chipActive" x="300" y="345" width="140" height="30" rx="10" />
+  <text class="chipText" x="370" y="365" text-anchor="middle">Center/Span</text>
+
+  <!-- Helper controls shown in Center/Span mode -->
+  <text class="label" x="84" y="406">Center X</text>
+  <rect class="inputBg" x="84" y="414" width="390" height="34" rx="8" />
+  <text class="inputText" x="98" y="436">400</text>
+
+  <text class="label" x="530" y="406">Center Y</text>
+  <rect class="inputBg" x="530" y="414" width="390" height="34" rx="8" />
+  <text class="inputText" x="544" y="436">450</text>
+
+  <text class="label" x="84" y="474">± X Span</text>
+  <rect class="inputBg" x="84" y="482" width="390" height="34" rx="8" />
+  <text class="inputText" x="98" y="504">60</text>
+
+  <text class="label" x="530" y="474">± Y Span</text>
+  <rect class="inputBg" x="530" y="482" width="390" height="34" rx="8" />
+  <text class="inputText" x="544" y="504">40</text>
+
+  <!-- Action buttons -->
+  <rect class="button" x="84" y="526" width="210" height="40" rx="10" />
+  <text class="buttonText" x="189" y="551" text-anchor="middle">Auto from selection</text>
+
+  <rect class="buttonPrimary" x="710" y="526" width="210" height="40" rx="10" />
+  <text class="buttonText" x="815" y="551" text-anchor="middle">Apply</text>
+
+  <!-- Annotation -->
+  <text class="hint" x="64" y="606">Mockup: Bounds panel has a mode toggle; Center/Span edits write through to Min/Max bounds.</text>
+</svg>
