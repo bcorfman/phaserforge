@@ -34,6 +34,16 @@ export type OAuthAccountRecord = {
   createdAt: string;
 };
 
+export type InviteRecord = {
+  id: string;
+  email: string;
+  tokenHash: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+  usedByUserId: string | null;
+};
+
 export type UserRecord = {
   id: string;
   email: string;
@@ -59,6 +69,14 @@ export type SessionRepository = {
   touchLastSeen(id: string, lastSeenAt: string): Promise<void>;
 };
 
+export type InviteRepository = {
+  findByTokenHash(tokenHash: string): Promise<InviteRecord | null>;
+  findUsableByTokenHash(tokenHash: string, nowIso: string): Promise<InviteRecord | null>;
+  findUsableByEmail(email: string, nowIso: string): Promise<InviteRecord | null>;
+  create(invite: InviteRecord): Promise<InviteRecord>;
+  markUsed(id: string, userId: string, usedAtIso: string): Promise<void>;
+};
+
 export type GameRepository = {
   listByUserId(userId: string): Promise<CloudGameMeta[]>;
   create(game: CloudGame): Promise<CloudGame>;
@@ -75,6 +93,7 @@ export type Repositories = {
   users: UserRepository;
   oauth: OAuthRepository;
   sessions: SessionRepository;
+  invites: InviteRepository;
   games: GameRepository;
 };
 
@@ -82,4 +101,3 @@ export type CreateAppOptions = {
   settings: Settings;
   repositories?: Repositories;
 };
-
