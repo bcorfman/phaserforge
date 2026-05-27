@@ -16,6 +16,7 @@ import { MoveYUntil } from '../runtime/actions/MoveYUntil';
 import { BlinkUntil } from '../runtime/actions/BlinkUntil';
 import { CallbackUntil } from '../runtime/actions/CallbackUntil';
 import { CycleFramesUntil } from '../runtime/actions/CycleFramesUntil';
+import { TweenUntil } from '../runtime/actions/TweenUntil';
 import { AddSelfToCollection } from '../runtime/actions/AddSelfToCollection';
 import { AddToCounter } from '../runtime/actions/AddToCounter';
 import { ClampCounter } from '../runtime/actions/ClampCounter';
@@ -237,6 +238,29 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
     return new MoveBy(target, { dx: Number.isFinite(dx) ? dx : 0, dy: Number.isFinite(dy) ? dy : 0 });
+  }
+  if (presetId === 'TweenUntil') {
+    const property = String(attachment.params?.property ?? 'x');
+    const fromRaw = String(attachment.params?.from ?? 'current');
+    const from = fromRaw === 'value' ? 'value' : 'current';
+    const startValue = typeof attachment.params?.startValue === 'number' ? attachment.params.startValue : Number(attachment.params?.startValue);
+    const endValue = Number(attachment.params?.endValue ?? 0);
+    const durationMs = Number(attachment.params?.durationMs ?? 250);
+    const easingRaw = String(attachment.params?.easing ?? 'linear');
+    const easing = easingRaw === 'easeIn' || easingRaw === 'easeOut' || easingRaw === 'easeInOut' ? easingRaw : 'linear';
+
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    return new TweenUntil(target, {
+      property,
+      from,
+      ...(Number.isFinite(startValue) ? { startValue } : {}),
+      endValue: Number.isFinite(endValue) ? endValue : 0,
+      durationMs: Number.isFinite(durationMs) ? durationMs : 0,
+      easing: easing as any,
+      condition,
+    });
   }
   if (presetId === 'WavePattern') {
     const amplitude = Number(attachment.params?.amplitude ?? 30);
