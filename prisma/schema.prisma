@@ -15,6 +15,7 @@ model User {
   oauthAccounts OAuthAccount[]
   sessions      Session[]
   games         Game[]
+  usedInvites   Invite[]      @relation("InviteUsedBy")
 }
 
 model OAuthAccount {
@@ -42,6 +43,21 @@ model Session {
 
   @@index([expiresAt])
   @@index([userId])
+}
+
+model Invite {
+  id           String   @id
+  email        String   @db.Citext
+  tokenHash    String   @unique
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  usedAt       DateTime?
+  usedByUserId String?
+
+  usedByUser User? @relation("InviteUsedBy", fields: [usedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([expiresAt])
 }
 
 model Game {

@@ -18,6 +18,7 @@ export function CloudAccountPanel({
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [inviteToken, setInviteToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [games, setGames] = useState<Array<{ id: string; title: string; updated_at: string }>>([]);
   const [selectedGameId, setSelectedGameId] = useState<string>('');
@@ -25,6 +26,14 @@ export function CloudAccountPanel({
   const [busy, setBusy] = useState(false);
 
   const githubEnabled = useMemo(() => true, []);
+  const githubStartHref = useMemo(() => {
+    const metaEnv = (import.meta as any)?.env as Record<string, unknown> | undefined;
+    const apiBase = typeof metaEnv?.VITE_API_BASE_URL === 'string' ? metaEnv.VITE_API_BASE_URL.trim() : '';
+    const baseUrl = typeof metaEnv?.BASE_URL === 'string' ? metaEnv.BASE_URL : '/';
+    if (!apiBase) return '/api/v1/auth/github/start?returnTo=/';
+    const normalized = apiBase.replace(/\/+$/, '');
+    return `${normalized}/api/v1/auth/github/start?returnTo=${encodeURIComponent(baseUrl)}`;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,11 +86,14 @@ export function CloudAccountPanel({
     setBusy(true);
     try {
       const csrf = await ensureCsrf();
-      const res = await signup(email, password, csrf);
+      const res = await signup(email, password, csrf, inviteToken.trim() || undefined);
       setUser(res.user);
       onStatus(`Signed in as ${res.user.email}`);
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Signup failed');
+      const msg = err instanceof Error ? err.message : 'Signup failed';
+      if (msg === 'invite_required') onError('Invite required to sign up.');
+      else if (msg === 'invite_invalid') onError('Invite code is invalid or expired.');
+      else onError(msg);
     } finally {
       setBusy(false);
     }
@@ -201,6 +213,10 @@ export function CloudAccountPanel({
               </button>
             </span>
           </label>
+          <label className="field">
+            <span>Invite code</span>
+            <input value={inviteToken} autoComplete="off" onChange={(e) => setInviteToken(e.target.value)} />
+          </label>
           <div className="cloud-auth-actions">
             <button className="button" type="button" disabled={busy} onClick={handleSignup}>
               Sign up
@@ -210,7 +226,7 @@ export function CloudAccountPanel({
             </button>
           </div>
           {githubEnabled && (
-            <a className="button cloud-github-button" href="/api/v1/auth/github/start?returnTo=/" aria-label="Log in with GitHub">
+            <a className="button cloud-github-button" href={githubStartHref} aria-label="Log in with GitHub">
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M12 2.5C6.75 2.5 2.5 6.75 2.5 12C2.5 16.3 5.37 19.92 9.33 21.22C9.8 21.31 9.98 21.02 9.98 20.78V19.1C7.33 19.68 6.77 18.03 6.77 18.03C6.33 16.93 5.68 16.64 5.68 16.64C4.8 16.05 5.75 16.06 5.75 16.06C6.72 16.13 7.23 17.06 7.23 17.06C8.08 18.52 9.49 18.1 10.05 17.85C10.14 17.22 10.39 16.79 10.67 16.54C8.55 16.3 6.33 15.48 6.33 11.5C6.33 10.36 6.73 9.43 7.4 8.7C7.29 8.46 6.94 7.5 7.5 6.2C7.5 6.2 8.35 5.93 9.98 7.03C10.78 6.81 11.64 6.7 12.5 6.7C13.36 6.7 14.22 6.81 15.02 7.03C16.65 5.93 17.5 6.2 17.5 6.2C18.06 7.5 17.71 8.46 17.6 8.7C18.27 9.43 18.67 10.36 18.67 11.5C18.67 15.49 16.44 16.29 14.31 16.53C14.67 16.85 15 17.48 15 18.45V20.78C15 21.02 15.18 21.32 15.66 21.22C19.63 19.92 22.5 16.3 22.5 12C22.5 6.75 18.25 2.5 13 2.5H12Z"

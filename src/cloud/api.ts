@@ -4,6 +4,20 @@ export type CloudGame = CloudGameMeta & { yaml: string };
 
 type Json = Record<string, unknown>;
 
+function getApiBaseUrl(): string | undefined {
+  const metaEnv = (import.meta as any)?.env as Record<string, unknown> | undefined;
+  const fromMeta = typeof metaEnv?.VITE_API_BASE_URL === 'string' ? metaEnv.VITE_API_BASE_URL : undefined;
+  const fromProcess =
+    typeof process !== 'undefined' && typeof process.env?.VITE_API_BASE_URL === 'string' ? process.env.VITE_API_BASE_URL : undefined;
+  const url = (fromMeta ?? fromProcess)?.trim();
+  return url ? url.replace(/\/+$/, '') : undefined;
+}
+
+function resolveApiUrl(path: string): string {
+  const base = getApiBaseUrl();
+  return base ? new URL(path, `${base}/`).toString() : path;
+}
+
 async function readJson(res: Response): Promise<Json> {
   const text = await res.text();
   try {
@@ -14,7 +28,8 @@ async function readJson(res: Response): Promise<Json> {
 }
 
 async function api<T extends Json>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(path, {
+  const url = resolveApiUrl(path);
+  const res = await fetch(url, {
     credentials: 'include',
     ...init,
     headers: {
@@ -38,11 +53,16 @@ export async function fetchCsrfToken(): Promise<string> {
   return json.csrfToken;
 }
 
-export async function signup(email: string, password: string, csrfToken: string): Promise<{ user: AuthUser }> {
+export async function signup(
+  email: string,
+  password: string,
+  csrfToken: string,
+  inviteToken?: string,
+): Promise<{ user: AuthUser }> {
   const json = await api<{ user: AuthUser }>('/api/v1/auth/signup', {
     method: 'POST',
     headers: { 'x-csrf-token': csrfToken },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, ...(inviteToken ? { inviteToken } : {}) }),
   });
   return json;
 }

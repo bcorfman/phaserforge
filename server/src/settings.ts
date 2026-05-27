@@ -3,10 +3,14 @@ export type Settings = {
   cookieName: string;
   csrfCookieName: string;
   cookieSecure: boolean;
+  cookieSameSite: 'lax' | 'none';
   cookieDomain?: string;
   sessionTtlMs: number;
   trustProxy: boolean;
   publicBaseUrl?: string;
+  frontendBaseUrl?: string;
+  inviteOnly: boolean;
+  inviteTtlMs: number;
   githubOAuth?: {
     clientId: string;
     clientSecret: string;
@@ -22,18 +26,26 @@ export function loadSettingsFromEnv(env: NodeJS.ProcessEnv): Settings {
   const githubClientId = env.GITHUB_CLIENT_ID;
   const githubClientSecret = env.GITHUB_CLIENT_SECRET;
 
+  const cookieSameSite = (env.COOKIE_SAMESITE ?? 'lax').trim().toLowerCase() === 'none' ? 'none' : 'lax';
+  const frontendBaseUrl = typeof env.FRONTEND_BASE_URL === 'string' ? env.FRONTEND_BASE_URL.trim().replace(/\/+$/, '') : undefined;
+  const inviteOnly = (env.INVITE_ONLY ?? 'false').trim().toLowerCase() === 'true';
+  const inviteTtlMs = Number(env.INVITE_TTL_MS ?? 1000 * 60 * 60 * 24 * 7);
+
   return {
     corsAllowOrigins,
     cookieName: env.COOKIE_NAME ?? 'pa_session',
     csrfCookieName: env.CSRF_COOKIE_NAME ?? 'pa_csrf',
     cookieSecure: (env.COOKIE_SECURE ?? 'false') === 'true',
+    cookieSameSite,
     sessionTtlMs: Number(env.SESSION_TTL_MS ?? 1000 * 60 * 60 * 24 * 30),
     trustProxy: (env.TRUST_PROXY ?? 'false') === 'true',
-    publicBaseUrl: env.PUBLIC_BASE_URL,
+    publicBaseUrl: typeof env.PUBLIC_BASE_URL === 'string' ? env.PUBLIC_BASE_URL.trim().replace(/\/+$/, '') : undefined,
+    frontendBaseUrl,
+    inviteOnly,
+    inviteTtlMs,
     githubOAuth:
       githubClientId && githubClientSecret
         ? { clientId: githubClientId, clientSecret: githubClientSecret }
         : undefined,
   };
 }
-
