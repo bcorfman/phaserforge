@@ -146,6 +146,27 @@ actions:
     parameters:
       - { name: dx, type: number, default: 0 }
       - { name: dy, type: number, default: 0 }
+  - type: TweenUntil
+    displayName: Tween Until
+    category: transforms
+    targetKinds: [entity, group]
+    implemented: true
+    propertyTargets:
+      - { key: x, type: number, tweenable: true, affectsBounds: true }
+      - { key: y, type: number, tweenable: true, affectsBounds: true }
+      - { key: rotationDeg, type: number, tweenable: true, affectsBounds: true }
+      - { key: scaleX, type: number, tweenable: true, affectsBounds: true }
+      - { key: scaleY, type: number, tweenable: true, affectsBounds: true }
+      - { key: alpha, type: number, tweenable: true, affectsBounds: false }
+      - { key: vx, type: number, tweenable: true, affectsBounds: false }
+      - { key: vy, type: number, tweenable: true, affectsBounds: false }
+    parameters:
+      - { name: property, type: string, default: x }
+      - { name: from, type: string, default: current }
+      - { name: startValue, type: number, default: 0 }
+      - { name: endValue, type: number, default: 0 }
+      - { name: durationMs, type: number, default: 250 }
+      - { name: easing, type: string, default: linear }
   - type: MoveXUntil
     displayName: Move X Until
     category: movement

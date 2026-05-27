@@ -1,13 +1,5 @@
 # Studio workflow: recreate `pattern_demo.py` and Save YAML (updated for new QoL features)
 
-This version assumes the features in `.plans/implementation-plan-qol-text-bounds-duplicate-loops-layout-2026-05-17.md` exist:
-
-- Text entities (labels)
-- Bounds Helper calculator
-- Duplicate carries behaviors + `Duplicate…` options dialog
-- Loop Templates (“Loops” tab in Add Step)
-- Layout panel (Align/Distribute/Spacing) accessible from the on-canvas selection bar
-
 ## 1. Start a new project/scene
 
 - Set Startup to New Empty Scene (or otherwise reset to an empty scene).
@@ -16,8 +8,10 @@ This version assumes the features in `.plans/implementation-plan-qol-text-bounds
 ## 2. Import the ship sprite once, then duplicate it
 
 - Use **A20 — Import Asset into Project** to import a ship image (or use any existing sprite asset you already have).
+  NOTE: In the res/images directory, there is a ship_sidesA.png that I use.
 - Use **A21 — Drag Asset to Target**: drag it onto the canvas to create your first ship entity.
-- Duplicate until you have 7 ship entities:
+  NOTE: You may want to use the Scale X and Scale Y feature in the Inspector to reduce the sprite size to 0.5 if it's too large.
+- Duplicate the sprite until you have 7 separate sprite entities:
   - Fast path: **Alt+Drag** to duplicate and place.
   - Alternative: Entity List `⋯` → **Duplicate** (or **Duplicate…** if you need to change options).
 - Name the 7 ships (via **A4 — Rename Item (inline)** in Entity List):
@@ -113,8 +107,8 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
 - In **Bounds → Edit mode**, switch to **Center/Span**.
 - Use **Auto from selection** to fill center (and pull sprite size).
 - Set travel span:
-  - `± X Span = 60`
-  - `± Y Span = 40`
+  - `± X Span = 50`
+  - `± Y Span = 60`
 - Click **Apply** (writes the computed values into Bounds Min/Max).
 
 ### Patrol
