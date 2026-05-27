@@ -4,6 +4,8 @@ import type {
   CloudGame,
   CloudGameMeta,
   GameRepository,
+  InviteRecord,
+  InviteRepository,
   OAuthAccountRecord,
   OAuthRepository,
   Repositories,
@@ -115,6 +117,80 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
     },
   };
 
+  const invites: InviteRepository = {
+    async findByTokenHash(tokenHash) {
+      const row = await prisma.invite.findUnique({ where: { tokenHash } });
+      if (!row) return null;
+      return {
+        id: row.id,
+        email: row.email,
+        tokenHash: row.tokenHash,
+        createdAt: toIso(row.createdAt),
+        expiresAt: toIso(row.expiresAt),
+        usedAt: row.usedAt ? toIso(row.usedAt) : null,
+        usedByUserId: row.usedByUserId ?? null,
+      };
+    },
+    async findUsableByTokenHash(tokenHash, nowIso) {
+      const row = await prisma.invite.findFirst({
+        where: { tokenHash, usedAt: null, expiresAt: { gt: new Date(nowIso) } },
+      });
+      if (!row) return null;
+      return {
+        id: row.id,
+        email: row.email,
+        tokenHash: row.tokenHash,
+        createdAt: toIso(row.createdAt),
+        expiresAt: toIso(row.expiresAt),
+        usedAt: null,
+        usedByUserId: row.usedByUserId ?? null,
+      };
+    },
+    async findUsableByEmail(email, nowIso) {
+      const row = await prisma.invite.findFirst({
+        where: { email: email.toLowerCase(), usedAt: null, expiresAt: { gt: new Date(nowIso) } },
+      });
+      if (!row) return null;
+      return {
+        id: row.id,
+        email: row.email,
+        tokenHash: row.tokenHash,
+        createdAt: toIso(row.createdAt),
+        expiresAt: toIso(row.expiresAt),
+        usedAt: null,
+        usedByUserId: row.usedByUserId ?? null,
+      };
+    },
+    async create(invite) {
+      const row = await prisma.invite.create({
+        data: {
+          id: invite.id,
+          email: invite.email.toLowerCase(),
+          tokenHash: invite.tokenHash,
+          createdAt: new Date(invite.createdAt),
+          expiresAt: new Date(invite.expiresAt),
+          usedAt: invite.usedAt ? new Date(invite.usedAt) : null,
+          usedByUserId: invite.usedByUserId,
+        },
+      });
+      return {
+        id: row.id,
+        email: row.email,
+        tokenHash: row.tokenHash,
+        createdAt: toIso(row.createdAt),
+        expiresAt: toIso(row.expiresAt),
+        usedAt: row.usedAt ? toIso(row.usedAt) : null,
+        usedByUserId: row.usedByUserId ?? null,
+      };
+    },
+    async markUsed(id, userId, usedAtIso) {
+      await prisma.invite.update({
+        where: { id },
+        data: { usedAt: new Date(usedAtIso), usedByUserId: userId },
+      });
+    },
+  };
+
   const games: GameRepository = {
     async listByUserId(userId) {
       const rows = await prisma.game.findMany({
@@ -180,6 +256,5 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
     },
   };
 
-  return { users, oauth, sessions, games };
+  return { users, oauth, sessions, invites, games };
 }
-

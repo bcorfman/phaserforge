@@ -10,6 +10,8 @@ import { newId } from '../../security/ids';
 
 export function authRouter(settings: Settings, repositories: Repositories) {
   const router = express.Router();
+  const cookieSameSite = settings.cookieSameSite === 'none' ? 'none' : 'lax';
+  const cookieSecure = settings.cookieSameSite === 'none' ? true : settings.cookieSecure;
 
   const authLimiter = rateLimit({
     windowMs: 60_000,
@@ -22,8 +24,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     const csrfToken = randomToken(24);
     res.cookie(settings.csrfCookieName, csrfToken, {
       httpOnly: false,
-      secure: settings.cookieSecure,
-      sameSite: 'lax',
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
       path: '/',
       ...(settings.cookieDomain ? { domain: settings.cookieDomain } : {}),
       maxAge: 24 * 60 * 60 * 1000,
@@ -34,8 +36,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
   function setOAuthStateCookie(res: express.Response, token: string) {
     res.cookie('pa_oauth_state', token, {
       httpOnly: true,
-      secure: settings.cookieSecure,
-      sameSite: 'lax',
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
       path: '/',
       maxAge: 10 * 60 * 1000,
     });
@@ -48,8 +50,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
   function setReturnToCookie(res: express.Response, returnTo: string) {
     res.cookie('pa_return_to', returnTo, {
       httpOnly: true,
-      secure: settings.cookieSecure,
-      sameSite: 'lax',
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
       path: '/',
       maxAge: 10 * 60 * 1000,
     });
@@ -77,7 +79,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
   }
 
   router.get('/github/start', authLimiter, (req, res) => {
-    if (!settings.githubOAuth || !settings.publicBaseUrl) {
+    if (!settings.githubOAuth || !settings.publicBaseUrl || !settings.frontendBaseUrl) {
       res.status(400).json({ error: 'oauth_not_configured' });
       return;
     }
@@ -103,7 +105,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
   });
 
   router.get('/github/callback', authLimiter, async (req, res) => {
-    if (!settings.githubOAuth || !settings.publicBaseUrl) {
+    if (!settings.githubOAuth || !settings.publicBaseUrl || !settings.frontendBaseUrl) {
       res.status(400).json({ error: 'oauth_not_configured' });
       return;
     }
@@ -191,9 +193,22 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     } else {
       const normalizedEmail = email.trim().toLowerCase();
       const existingUser = await repositories.users.findByEmail(normalizedEmail);
+      let inviteToConsumeId: string | null = null;
+      if (!existingUser && settings.inviteOnly) {
+        const inv = await repositories.invites.findUsableByEmail(normalizedEmail, new Date().toISOString());
+        if (!inv) {
+          res.status(403).json({ error: 'invite_required' });
+          return;
+        }
+        inviteToConsumeId = inv.id;
+      }
+
       userId = existingUser?.id ?? newId('user');
       if (!existingUser) {
         await repositories.users.create({ id: userId, email: normalizedEmail, passwordHash: null, createdAt: new Date().toISOString() });
+      }
+      if (inviteToConsumeId) {
+        await repositories.invites.markUsed(inviteToConsumeId, userId, new Date().toISOString());
       }
       await repositories.oauth.create({
         id: newId('oa'),
@@ -205,7 +220,16 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     }
 
     await createSession(userId, res);
-    res.redirect(302, returnTo.startsWith('/') ? returnTo : '/');
+
+    let redirectUrl: string;
+    try {
+      const base = new URL(settings.frontendBaseUrl);
+      const target = new URL(returnTo.startsWith('/') ? returnTo : '/', base);
+      redirectUrl = target.origin === base.origin ? target.toString() : new URL(base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`, base).toString();
+    } catch {
+      redirectUrl = '/';
+    }
+    res.redirect(302, redirectUrl);
   });
 
   router.post('/signup', authLimiter, async (req, res) => {
@@ -217,7 +241,15 @@ export function authRouter(settings: Settings, repositories: Repositories) {
 
     const result = await signupWithPassword(settings, repositories, res, parsed.data);
     if (!result.ok) {
-      res.status(result.error === 'email_taken' ? 409 : 400).json({ error: result.error });
+      if (result.error === 'email_taken') {
+        res.status(409).json({ error: result.error });
+        return;
+      }
+      if (result.error === 'invite_required' || result.error === 'invite_invalid') {
+        res.status(403).json({ error: result.error });
+        return;
+      }
+      res.status(400).json({ error: result.error });
       return;
     }
     res.json({ user: result.user });

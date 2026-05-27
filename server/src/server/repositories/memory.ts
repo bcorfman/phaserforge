@@ -2,6 +2,8 @@ import type {
   CloudGame,
   CloudGameMeta,
   GameRepository,
+  InviteRecord,
+  InviteRepository,
   OAuthAccountRecord,
   OAuthRepository,
   Repositories,
@@ -96,6 +98,54 @@ class MemorySessionRepository implements SessionRepository {
   }
 }
 
+class MemoryInviteRepository implements InviteRepository {
+  private byId = new Map<string, InviteRecord>();
+  private byHash = new Map<string, string>();
+
+  async findByTokenHash(tokenHash: string): Promise<InviteRecord | null> {
+    const id = this.byHash.get(tokenHash);
+    if (!id) return null;
+    return clone(this.byId.get(id) ?? null);
+  }
+
+  async findUsableByTokenHash(tokenHash: string, nowIso: string): Promise<InviteRecord | null> {
+    const inv = await this.findByTokenHash(tokenHash);
+    if (!inv) return null;
+    if (inv.usedAt) return null;
+    if (new Date(inv.expiresAt).getTime() <= new Date(nowIso).getTime()) return null;
+    return inv;
+  }
+
+  async findUsableByEmail(email: string, nowIso: string): Promise<InviteRecord | null> {
+    const key = email.toLowerCase();
+    const now = new Date(nowIso).getTime();
+    for (const inv of this.byId.values()) {
+      if (inv.email.toLowerCase() !== key) continue;
+      if (inv.usedAt) continue;
+      if (new Date(inv.expiresAt).getTime() <= now) continue;
+      return clone(inv);
+    }
+    return null;
+  }
+
+  async create(invite: InviteRecord): Promise<InviteRecord> {
+    if (this.byHash.has(invite.tokenHash)) {
+      throw new Error('unique_token_hash_violation');
+    }
+    const record: InviteRecord = { ...invite, email: invite.email.toLowerCase() };
+    this.byId.set(record.id, record);
+    this.byHash.set(record.tokenHash, record.id);
+    return clone(record);
+  }
+
+  async markUsed(id: string, userId: string, usedAtIso: string): Promise<void> {
+    const existing = this.byId.get(id);
+    if (!existing) return;
+    existing.usedAt = usedAtIso;
+    existing.usedByUserId = userId;
+  }
+}
+
 class MemoryGameRepository implements GameRepository {
   private byId = new Map<string, CloudGame>();
   private byUser = new Map<string, Set<string>>();
@@ -159,7 +209,7 @@ export function createMemoryRepositories(): Repositories {
     users,
     oauth: new MemoryOAuthRepository(),
     sessions: new MemorySessionRepository(),
+    invites: new MemoryInviteRepository(),
     games: new MemoryGameRepository(),
   };
 }
-

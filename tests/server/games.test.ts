@@ -10,9 +10,13 @@ function makeApp() {
       cookieName: 'pa_session',
       csrfCookieName: 'pa_csrf',
       cookieSecure: false,
+      cookieSameSite: 'lax',
       sessionTtlMs: 1000 * 60 * 60,
       trustProxy: false,
       publicBaseUrl: 'http://localhost:8787',
+      frontendBaseUrl: 'http://localhost:5173',
+      inviteOnly: false,
+      inviteTtlMs: 1000 * 60 * 60,
     },
   });
   return { app };
