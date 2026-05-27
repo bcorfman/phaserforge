@@ -21,6 +21,11 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
   expect(editSnapshot.zoom).toBeGreaterThan(editBefore.zoom);
   const editPoint = await worldToClient(page, anchorWorld);
   expect(editPoint).toBeTruthy();
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const editCanvasBox = await canvas.boundingBox();
+  if (!editCanvasBox) throw new Error('Canvas bounding box unavailable');
+  const editPointInCanvas = { x: editPoint.x - editCanvasBox.x, y: editPoint.y - editCanvasBox.y };
 
   await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('play');
@@ -32,13 +37,17 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
 
   // Validate the user-visible invariant: the same world point stays in (nearly) the same screen location.
   // Minor pixel drift can occur due to per-scene pixel-rounding / device scale differences, especially under load.
+  // Compare relative to the canvas origin so layout shifts between edit/play modes don't cause false failures.
   const maxPixelDelta = 5;
   await expect
     .poll(async () => {
       const playPoint = await worldToClient(page, anchorWorld);
       if (!playPoint) return Number.POSITIVE_INFINITY;
-      const dx = Math.abs(playPoint.x - editPoint.x);
-      const dy = Math.abs(playPoint.y - editPoint.y);
+      const playCanvasBox = await canvas.boundingBox();
+      if (!playCanvasBox) return Number.POSITIVE_INFINITY;
+      const playPointInCanvas = { x: playPoint.x - playCanvasBox.x, y: playPoint.y - playCanvasBox.y };
+      const dx = Math.abs(playPointInCanvas.x - editPointInCanvas.x);
+      const dy = Math.abs(playPointInCanvas.y - editPointInCanvas.y);
       return Math.max(dx, dy);
     })
     .toBeLessThanOrEqual(maxPixelDelta);
