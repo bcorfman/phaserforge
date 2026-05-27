@@ -27,3 +27,6 @@ dist-ssr
 .codegraph/
 playwright-report/
 test-results/
+
+# Private local notes (never commit)
+.plans/private/

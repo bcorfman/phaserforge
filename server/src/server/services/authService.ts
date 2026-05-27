@@ -11,7 +11,7 @@ const Email = z.string().trim().min(3).max(320).email();
 const Password = z.string().min(8).max(200);
 
 export const AuthSchemas = {
-  signup: z.object({ email: Email, password: Password }),
+  signup: z.object({ email: Email, password: Password, inviteToken: z.string().trim().min(8).max(500).optional() }),
   login: z.object({ email: Email, password: Password }),
 };
 
@@ -20,10 +20,12 @@ export function normalizeEmail(email: string): string {
 }
 
 export function setSessionCookie(res: Response, settings: Settings, token: string) {
+  const sameSite = settings.cookieSameSite === 'none' ? 'none' : 'lax';
+  const secure = settings.cookieSameSite === 'none' ? true : settings.cookieSecure;
   res.cookie(settings.cookieName, token, {
     httpOnly: true,
-    secure: settings.cookieSecure,
-    sameSite: 'lax',
+    secure,
+    sameSite,
     path: '/',
     ...(settings.cookieDomain ? { domain: settings.cookieDomain } : {}),
   });
@@ -37,14 +39,25 @@ export async function signupWithPassword(
   settings: Settings,
   repositories: Repositories,
   res: Response,
-  input: { email: string; password: string },
+  input: { email: string; password: string; inviteToken?: string },
 ) {
   const email = normalizeEmail(input.email);
+  const now = new Date().toISOString();
+
+  let inviteId: string | null = null;
+  if (settings.inviteOnly) {
+    const token = typeof input.inviteToken === 'string' ? input.inviteToken.trim() : '';
+    if (!token) return { ok: false as const, error: 'invite_required' as const };
+    const tokenHash = sha256Base64Url(token);
+    const invite = await repositories.invites.findUsableByTokenHash(tokenHash, now);
+    if (!invite || normalizeEmail(invite.email) !== email) return { ok: false as const, error: 'invite_invalid' as const };
+    inviteId = invite.id;
+  }
+
   const existing = await repositories.users.findByEmail(email);
   if (existing) return { ok: false as const, error: 'email_taken' as const };
 
   const passwordHash = await hashPassword(input.password);
-  const now = new Date().toISOString();
   const userId = newId('user');
 
   try {
@@ -52,6 +65,10 @@ export async function signupWithPassword(
   } catch (err) {
     if (err instanceof Error && err.message === 'unique_email_violation') return { ok: false as const, error: 'email_taken' as const };
     throw err;
+  }
+
+  if (inviteId) {
+    await repositories.invites.markUsed(inviteId, userId, now);
   }
 
   await createSession(settings, repositories, res, userId);
