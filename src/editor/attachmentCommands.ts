@@ -201,6 +201,8 @@ export function createAttachment(
     baseDefaults.params = { x: 0, y: 0 };
   } else if (presetId === 'MoveBy') {
     baseDefaults.params = { dx: 0, dy: 0 };
+  } else if (presetId === 'TweenUntil') {
+    baseDefaults.params = { property: 'x', from: 'current', endValue: 0, durationMs: 250, easing: 'linear' };
   } else if (presetId === 'Wait') {
     baseDefaults.params = { durationMs: 100 };
   } else if (presetId === 'Call') {
