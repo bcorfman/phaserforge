@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620">
+  <defs>
+    <style>
+      .bg { fill: #1e1f22; }
+      .panel { fill: #2b2d31; stroke: #3b3f45; stroke-width: 1; }
+      .panel2 { fill: #25272c; stroke: #3b3f45; stroke-width: 1; }
+      .title { font: 700 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #e8e8e8; }
+      .label { font: 600 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #cfcfcf; }
+      .hint { font: 500 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #a7abb3; }
+      .inputBg { fill: #1f2227; stroke: #3b3f45; stroke-width: 1; }
+      .inputText { font: 600 12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New"; fill: #e8e8e8; }
+      .button { fill: #3b3f45; stroke: #51565f; stroke-width: 1; }
+      .buttonPrimary { fill: #2f6feb; stroke: #4a86ff; stroke-width: 1; }
+      .buttonText { font: 700 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #f3f3f3; }
+      .divider { stroke: #3b3f45; stroke-width: 1; }
+      .chip { fill: #1f2227; stroke: #3b3f45; stroke-width: 1; }
+      .chipActive { fill: #3b3f45; stroke: #6a707a; stroke-width: 1; }
+      .chipText { font: 700 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #e8e8e8; }
+      .muted { fill: #a7abb3; }
+      .warn { fill: #ffcc66; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="980" height="620" />
+
+  <!-- Left: Canvas selection + Layout tools -->
+  <rect class="panel" x="36" y="36" width="450" height="548" rx="10" />
+  <text class="hint" x="58" y="70">Canvas ▸ Selection: 400 entities</text>
+  <line class="divider" x1="56" y1="88" x2="464" y2="88" />
+
+  <rect class="panel2" x="56" y="108" width="410" height="84" rx="10" />
+  <text class="title" x="76" y="140">Selection Bar</text>
+  <text class="hint" x="76" y="162">Align • Distribute • Layout…</text>
+  <rect class="buttonPrimary" x="330" y="128" width="120" height="40" rx="10" />
+  <text class="buttonText" x="390" y="154" text-anchor="middle">Layout…</text>
+
+  <rect class="panel2" x="56" y="210" width="410" height="344" rx="10" />
+  <text class="label" x="76" y="242">Layout ▸ Placement</text>
+
+  <rect class="chipActive" x="76" y="258" width="190" height="34" rx="10" />
+  <text class="chipText" x="171" y="280" text-anchor="middle">Scatter…</text>
+  <text class="hint" x="76" y="312">Randomize positions of existing entities inside a region</text>
+
+  <rect class="chip" x="76" y="332" width="190" height="34" rx="10" />
+  <text class="chipText" x="171" y="354" text-anchor="middle">Jitter…</text>
+  <text class="hint" x="76" y="386">Small random offsets (keeps general structure)</text>
+
+  <rect class="chip" x="76" y="406" width="190" height="34" rx="10" />
+  <text class="chipText" x="171" y="428" text-anchor="middle">Shuffle Order</text>
+  <text class="hint" x="76" y="460">Reorders selection (useful for groups/slots)</text>
+
+  <rect class="panel2" x="56" y="564" width="410" height="20" rx="10" />
+  <text class="hint" x="76" y="579">Mockup focus: authoring-time scatter (no runtime spawn required)</text>
+
+  <!-- Right: Scatter dialog -->
+  <rect class="panel" x="512" y="36" width="432" height="548" rx="10" />
+  <text class="hint" x="534" y="70">Layout ▸ Scatter…</text>
+  <line class="divider" x1="532" y1="88" x2="924" y2="88" />
+
+  <text class="title" x="534" y="122">Scatter Selection</text>
+  <text class="hint" x="534" y="144">Random placement tool for many workflows (debris, pickups, decor, crowds, etc.)</text>
+
+  <text class="label" x="534" y="182">Region</text>
+  <rect class="chipActive" x="534" y="192" width="120" height="30" rx="10" />
+  <text class="chipText" x="594" y="212" text-anchor="middle">World</text>
+  <rect class="chip" x="664" y="192" width="120" height="30" rx="10" />
+  <text class="chipText" x="724" y="212" text-anchor="middle">Viewport</text>
+  <rect class="chip" x="794" y="192" width="130" height="30" rx="10" />
+  <text class="chipText" x="859" y="212" text-anchor="middle">Rect…</text>
+
+  <rect class="panel2" x="534" y="236" width="390" height="118" rx="10" />
+  <text class="label" x="554" y="266">Bounds</text>
+  <rect class="inputBg" x="554" y="276" width="175" height="30" rx="8" />
+  <text class="inputText" x="566" y="296">minX = 0</text>
+  <rect class="inputBg" x="749" y="276" width="175" height="30" rx="8" />
+  <text class="inputText" x="761" y="296">maxX = worldW</text>
+  <rect class="inputBg" x="554" y="314" width="175" height="30" rx="8" />
+  <text class="inputText" x="566" y="334">minY = 0</text>
+  <rect class="inputBg" x="749" y="314" width="175" height="30" rx="8" />
+  <text class="inputText" x="761" y="334">maxY = worldH</text>
+
+  <text class="label" x="534" y="384">Distribution</text>
+  <rect class="inputBg" x="534" y="392" width="250" height="34" rx="8" />
+  <text class="inputText" x="548" y="414">Uniform</text>
+  <text class="hint" x="794" y="414">Poisson / Grid+jitter</text>
+
+  <text class="label" x="534" y="448">Seed</text>
+  <rect class="inputBg" x="534" y="456" width="190" height="34" rx="8" />
+  <text class="inputText" x="548" y="478">12345</text>
+  <rect class="button" x="734" y="456" width="190" height="34" rx="10" />
+  <text class="buttonText" x="829" y="478" text-anchor="middle">Re-roll</text>
+
+  <rect class="panel2" x="534" y="506" width="390" height="34" rx="10" />
+  <text class="hint" x="554" y="528">Options: keep inside bounds • avoid overlaps • scatter X only / Y only</text>
+
+  <rect class="buttonPrimary" x="724" y="548" width="200" height="32" rx="10" />
+  <text class="buttonText" x="824" y="570" text-anchor="middle">Apply</text>
+
+  <text class="hint" x="36" y="606">This replaces “Spawn Instances” for Stars authoring: create stars once (duplicate), then Scatter Selection to randomize placement quickly.</text>
+</svg>

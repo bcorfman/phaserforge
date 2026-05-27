@@ -2709,6 +2709,96 @@ function AttachmentInspector({
         </InspectorFoldout>
       )}
 
+      {attachment.presetId === 'TweenUntil' && (
+        <InspectorFoldout
+          title="Tween Until"
+          open={foldouts.isOpen('attachment.tweenuntil', true)}
+          onToggle={() => foldouts.toggle('attachment.tweenuntil', true)}
+        >
+          <label className="field">
+            <span>Property</span>
+            <select
+              aria-label="Tween Property"
+              data-testid="attachment-tweenuntil-property-select"
+              value={String(params.property ?? 'x')}
+              onChange={(e) => onUpdate({ ...attachment, params: { ...params, property: e.target.value } })}
+            >
+              <option value="x">x</option>
+              <option value="y">y</option>
+              <option value="rotationDeg">rotationDeg</option>
+              <option value="scaleX">scaleX</option>
+              <option value="scaleY">scaleY</option>
+              <option value="alpha">alpha</option>
+              <option value="vx">vx</option>
+              <option value="vy">vy</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <span>From</span>
+            <select
+              aria-label="Tween From Mode"
+              data-testid="attachment-tweenuntil-from-select"
+              value={String(params.from ?? 'current')}
+              onChange={(e) => onUpdate({ ...attachment, params: { ...params, from: e.target.value } })}
+            >
+              <option value="current">Current value</option>
+              <option value="value">Explicit value</option>
+            </select>
+          </label>
+
+          {String(params.from ?? 'current') === 'value' && (
+            <label className="field">
+              <span>Start Value</span>
+              <ValidatedNumberInput
+                aria-label="Tween Start Value"
+                data-testid="attachment-tweenuntil-start-value-input"
+                value={Number(params.startValue ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, startValue: next } })}
+              />
+            </label>
+          )}
+
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>End Value</span>
+              <ValidatedNumberInput
+                aria-label="Tween End Value"
+                data-testid="attachment-tweenuntil-end-value-input"
+                value={Number(params.endValue ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, endValue: next } })}
+              />
+            </label>
+            <label className="field">
+              <span>Duration (ms)</span>
+              <ValidatedNumberInput
+                aria-label="Tween Duration Ms"
+                data-testid="attachment-tweenuntil-duration-input"
+                min={0}
+                value={Number(params.durationMs ?? 250)}
+                clamp={(next) => Math.max(0, next || 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, durationMs: next } })}
+              />
+            </label>
+          </div>
+
+          <label className="field">
+            <span>Easing</span>
+            <select
+              aria-label="Tween Easing"
+              data-testid="attachment-tweenuntil-easing-select"
+              value={String(params.easing ?? 'linear')}
+              onChange={(e) => onUpdate({ ...attachment, params: { ...params, easing: e.target.value } })}
+            >
+              <option value="linear">linear</option>
+              <option value="easeIn">easeIn</option>
+              <option value="easeOut">easeOut</option>
+              <option value="easeInOut">easeInOut</option>
+            </select>
+          </label>
+        </InspectorFoldout>
+      )}
+
       {attachment.presetId === 'MoveXUntil' && (
         <InspectorFoldout
           title="Move X Until"

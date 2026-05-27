@@ -10,6 +10,7 @@ const SUPPORTED_PRESETS = new Set([
   'MoveUntil',
   'MoveTo',
   'MoveBy',
+  'TweenUntil',
   'MoveXUntil',
   'MoveYUntil',
   'WavePattern',
