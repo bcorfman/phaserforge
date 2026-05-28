@@ -48,4 +48,39 @@ describe('cloud api', () => {
       game: { id: 'g', title: 'My Game', created_at: 'c', updated_at: 'u' },
     });
   });
+
+  it('checkGithubPagesTarget posts json body with credentials', async () => {
+    vi.resetModules();
+    delete process.env.VITE_API_BASE_URL;
+    const { checkGithubPagesTarget } = await import('../../src/cloud/api');
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe('/api/v1/publish/github-pages/check');
+      expect(init?.method).toBe('POST');
+      expect(init?.credentials).toBe('include');
+      expect((init?.headers as any)['content-type']).toBe('application/json');
+      expect(init?.body).toBe(JSON.stringify({ route: 'mygame' }));
+      return new Response(JSON.stringify({ ok: true, url: 'u', exists: false, status: 404 }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    await expect(checkGithubPagesTarget('mygame')).resolves.toEqual({ ok: true, url: 'u', exists: false, status: 404 });
+  });
+
+  it('publishToGithubPages sends csrf header', async () => {
+    vi.resetModules();
+    delete process.env.VITE_API_BASE_URL;
+    const { publishToGithubPages } = await import('../../src/cloud/api');
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe('/api/v1/publish/github-pages');
+      expect(init?.method).toBe('POST');
+      expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
+      expect((init?.headers as any)['content-type']).toBe('application/json');
+      expect(init?.credentials).toBe('include');
+      expect(init?.body).toBe(JSON.stringify({ gameId: 'g1', route: 'r1' }));
+      return new Response(JSON.stringify({ ok: true, url: 'https://x' }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    await expect(publishToGithubPages('g1', 'r1', 'csrf')).resolves.toEqual({ ok: true, url: 'https://x' });
+  });
 });

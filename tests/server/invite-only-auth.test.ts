@@ -92,7 +92,7 @@ describe('invite-only auth', () => {
         return new Response(JSON.stringify({ access_token: 'at' }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (url === 'https://api.github.com/user') {
-        return new Response(JSON.stringify({ id: 123 }), { status: 200, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ id: 123, login: 'alice' }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (url === 'https://api.github.com/user/emails') {
         return new Response(JSON.stringify([{ email: 'alice@example.com', primary: true, verified: true }]), {
@@ -118,4 +118,3 @@ describe('invite-only auth', () => {
       .expect({ error: 'invite_required' });
   });
 });
-
