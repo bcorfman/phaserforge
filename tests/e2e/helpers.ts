@@ -24,6 +24,7 @@ const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 60000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 
 const seededSampleContexts = new WeakSet<object>();
+const routedApiStubContexts = new WeakSet<object>();
 
 const BOOT_MUTEX_PATH = path.join(os.tmpdir(), 'phaserforge-e2e-boot.lock');
 const BOOT_MUTEX_STALE_MS = 20_000;
@@ -73,6 +74,64 @@ async function withBootMutex<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean }): Promise<void> {
+  const contextKey = page.context() as unknown as object;
+  if (!routedApiStubContexts.has(contextKey)) {
+    routedApiStubContexts.add(contextKey);
+    // Default API stub: prevents Vite proxy ECONNREFUSED in E2E when a test doesn't explicitly
+    // mock an API endpoint. This should be conservative and return safe "logged out / empty"
+    // responses so the editor can boot deterministically without a backend.
+    await page.context().route('**/api/**', async (route) => {
+      const req = route.request();
+      const url = new URL(req.url());
+      const pathname = url.pathname;
+      const method = req.method().toUpperCase();
+
+      const json = (status: number, body: any) =>
+        route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+
+      // Minimal endpoints used by the app on boot / cloud tab.
+      if (method === 'GET' && pathname === '/api/v1/auth/csrf') return json(200, { csrfToken: 'e2e-csrf' });
+      if (method === 'GET' && pathname === '/api/v1/auth/me') return json(401, { error: 'unauthorized' });
+
+      // Games: default to empty list, and 404 for individual games.
+      if (method === 'GET' && pathname === '/api/v1/games') return json(200, { games: [] });
+      if (method === 'GET' && pathname.startsWith('/api/v1/games/')) {
+        const id = pathname.split('/').pop() || 'g';
+        // Provide a minimal valid project YAML so play-only views can boot without special stubbing.
+        const emptyProjectYaml = [
+          'id: p1',
+          'assets:',
+          '  images: {}',
+          '  spriteSheets: {}',
+          '  fonts: {}',
+          'audio:',
+          '  sounds: {}',
+          'inputMaps: {}',
+          'scenes:',
+          '  s1:',
+          '    id: s1',
+          '    entities: {}',
+          '    groups: {}',
+          '    attachments: {}',
+          '    behaviors: {}',
+          '    actions: {}',
+          '    conditions: {}',
+          'initialSceneId: s1',
+        ].join('\n');
+        return json(200, {
+          game: { id, title: 'E2E Stub Game', yaml: emptyProjectYaml, created_at: 'c', updated_at: 'u' },
+        });
+      }
+
+      // Publish: default to "not linked" so UI stays disabled unless tests stub it.
+      if (method === 'GET' && pathname === '/api/v1/publish/github-pages/info') return json(400, { error: 'github_not_linked' });
+      if (method === 'POST' && pathname === '/api/v1/publish/github-pages/check') return json(400, { error: 'github_not_linked' });
+      if (method === 'POST' && pathname === '/api/v1/publish/github-pages') return json(400, { error: 'github_not_linked' });
+
+      return json(503, { error: 'e2e_api_stub_unhandled' });
+    });
+  }
+
   // Keep helper calls bounded under the per-test timeout (60s local, 120s CI).
   await page.context().setDefaultTimeout(IS_CI ? 60000 : 45000);
   if (!options?.forceNavigate) {
