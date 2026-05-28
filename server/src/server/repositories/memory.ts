@@ -46,10 +46,18 @@ class MemoryUserRepository implements UserRepository {
 class MemoryOAuthRepository implements OAuthRepository {
   private byId = new Map<string, OAuthAccountRecord>();
   private byProvider = new Map<string, string>();
+  private byUserProvider = new Map<string, string>();
 
   async findByProviderAccount(provider: string, providerAccountId: string): Promise<OAuthAccountRecord | null> {
     const key = `${provider}:${providerAccountId}`;
     const id = this.byProvider.get(key);
+    if (!id) return null;
+    return clone(this.byId.get(id) ?? null);
+  }
+
+  async findByUserIdProvider(userId: string, provider: string): Promise<OAuthAccountRecord | null> {
+    const key = `${userId}:${provider}`;
+    const id = this.byUserProvider.get(key);
     if (!id) return null;
     return clone(this.byId.get(id) ?? null);
   }
@@ -61,7 +69,15 @@ class MemoryOAuthRepository implements OAuthRepository {
     }
     this.byId.set(oauth.id, oauth);
     this.byProvider.set(key, oauth.id);
+    this.byUserProvider.set(`${oauth.userId}:${oauth.provider}`, oauth.id);
     return clone(oauth);
+  }
+
+  async update(id: string, patch: { providerLogin?: string | null; accessToken?: string | null }): Promise<void> {
+    const existing = this.byId.get(id);
+    if (!existing) return;
+    if ('providerLogin' in patch) existing.providerLogin = patch.providerLogin ?? null;
+    if ('accessToken' in patch) existing.accessToken = patch.accessToken ?? null;
   }
 }
 

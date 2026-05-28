@@ -31,6 +31,8 @@ export type OAuthAccountRecord = {
   userId: string;
   provider: string;
   providerAccountId: string;
+  providerLogin?: string | null;
+  accessToken?: string | null;
   createdAt: string;
 };
 
@@ -59,7 +61,9 @@ export type UserRepository = {
 
 export type OAuthRepository = {
   findByProviderAccount(provider: string, providerAccountId: string): Promise<OAuthAccountRecord | null>;
+  findByUserIdProvider(userId: string, provider: string): Promise<OAuthAccountRecord | null>;
   create(oauth: OAuthAccountRecord): Promise<OAuthAccountRecord>;
+  update(id: string, patch: { providerLogin?: string | null; accessToken?: string | null }): Promise<void>;
 };
 
 export type SessionRepository = {
