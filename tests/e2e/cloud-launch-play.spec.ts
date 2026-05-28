@@ -6,6 +6,17 @@ import { createEmptyProject } from '../../src/model/emptyProject';
 test('Cloud Launch opens play-only runtime view @smoke', async ({ page }) => {
   const cloudYaml = serializeProjectToYaml(createEmptyProject());
 
+  // Install the game fetch stub at the context level so the popup inherits it without races.
+  await page.context().route('**/api/v1/games/g1', async (route) => {
+    await route.fulfill({
+      status: 200,
+      body: JSON.stringify({
+        game: { id: 'g1', title: 'Workspace', created_at: '2026-05-28T10:00:00.000Z', updated_at: '2026-05-28T10:14:00.000Z', yaml: cloudYaml },
+      }),
+      contentType: 'application/json',
+    });
+  });
+
   await page.route('**/api/v1/auth/csrf', async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ csrfToken: 'csrf' }), contentType: 'application/json' });
   });
@@ -25,13 +36,8 @@ test('Cloud Launch opens play-only runtime view @smoke', async ({ page }) => {
     });
   });
   await page.route('**/api/v1/games/g1', async (route) => {
-    await route.fulfill({
-      status: 200,
-      body: JSON.stringify({
-        game: { id: 'g1', title: 'Workspace', created_at: '2026-05-28T10:00:00.000Z', updated_at: '2026-05-28T10:14:00.000Z', yaml: cloudYaml },
-      }),
-      contentType: 'application/json',
-    });
+    // Page-level stub is redundant but harmless; keep for clarity.
+    await route.fulfill({ status: 200, body: JSON.stringify({ game: { id: 'g1', title: 'Workspace', created_at: '2026-05-28T10:00:00.000Z', updated_at: '2026-05-28T10:14:00.000Z', yaml: cloudYaml } }), contentType: 'application/json' });
   });
 
   await gotoStudio(page, { forceNavigate: true });
@@ -46,18 +52,6 @@ test('Cloud Launch opens play-only runtime view @smoke', async ({ page }) => {
   const popupPromise = page.waitForEvent('popup');
   await page.getByTestId('cloud-launch-button').click();
   const popup = await popupPromise;
-
-  // Ensure API routes apply in popup too (Playwright routing is per-page by default).
-  // Reuse the same routes by adding them to the new page.
-  await popup.route('**/api/v1/games/g1', async (route) => {
-    await route.fulfill({
-      status: 200,
-      body: JSON.stringify({
-        game: { id: 'g1', title: 'Workspace', created_at: '2026-05-28T10:00:00.000Z', updated_at: '2026-05-28T10:14:00.000Z', yaml: cloudYaml },
-      }),
-      contentType: 'application/json',
-    });
-  });
 
   await popup.waitForLoadState('domcontentloaded');
   await expect(popup.getByTestId('play-root')).toBeVisible();
