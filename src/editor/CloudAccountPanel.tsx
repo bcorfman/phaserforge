@@ -177,19 +177,12 @@ export function CloudAccountPanel({
     };
   }, [user, onError]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!user) return;
-    const load = async () => {
-      const info = await getGithubPagesPublishInfo();
-      if (cancelled) return;
-      setPublishInfo(info);
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+  const ensurePublishInfo = async (): Promise<{ ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string }> => {
+    if (publishInfo) return publishInfo;
+    const info = await getGithubPagesPublishInfo();
+    setPublishInfo(info);
+    return info;
+  };
 
   const projectHasPathAssets = useMemo(() => {
     const assets = state.project.assets;
@@ -314,6 +307,11 @@ export function CloudAccountPanel({
     if (!selectedGameId) return;
     if (!publishRoute.trim()) {
       onError('Enter a route to publish (example: mygame)');
+      return;
+    }
+    const info = await ensurePublishInfo();
+    if (!info.ok) {
+      onError('Requires GitHub login to publish.');
       return;
     }
     const check = await checkGithubPagesTarget(publishRoute.trim());
@@ -571,7 +569,7 @@ export function CloudAccountPanel({
             <div className="cloud-help" data-testid="cloud-publish-pages-help">
               {publishInfo?.ok
                 ? `Publishes to https://${publishInfo.login}.github.io/<route>/ (public repo: ${publishInfo.repo}). Embedded assets only.`
-                : 'Requires GitHub login and a public GitHub Pages repo (username/username.github.io). Embedded assets only.'}
+                : 'Publishes to https://<username>.github.io/<route>/ (public repo: username/username.github.io). Requires GitHub login. Embedded assets only.'}
               {projectHasPathAssets ? ' Path assets detected; publishing is disabled.' : ''}
             </div>
           </div>
