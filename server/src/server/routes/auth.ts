@@ -99,7 +99,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     authUrl.searchParams.set('client_id', settings.githubOAuth.clientId);
     authUrl.searchParams.set('redirect_uri', callbackUrl);
     authUrl.searchParams.set('state', state);
-    authUrl.searchParams.set('scope', 'user:email');
+    authUrl.searchParams.set('scope', 'user:email,public_repo');
 
     res.redirect(302, authUrl.toString());
   });
@@ -158,11 +158,12 @@ export function authRouter(settings: Settings, repositories: Repositories) {
       res.status(502).json({ error: 'github_user_fetch_failed' });
       return;
     }
-    const ghUser = (await userRes.json()) as { id?: number };
-    if (typeof ghUser.id !== 'number') {
+    const ghUser = (await userRes.json()) as { id?: number; login?: string };
+    if (typeof ghUser.id !== 'number' || typeof ghUser.login !== 'string' || ghUser.login.trim().length === 0) {
       res.status(502).json({ error: 'github_user_fetch_failed' });
       return;
     }
+    const ghLogin = ghUser.login.trim();
 
     const emailRes = await fetch('https://api.github.com/user/emails', {
       headers: {
@@ -190,6 +191,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     let userId: string;
     if (existingOAuth) {
       userId = existingOAuth.userId;
+      await repositories.oauth.update(existingOAuth.id, { providerLogin: ghLogin, accessToken });
     } else {
       const normalizedEmail = email.trim().toLowerCase();
       const existingUser = await repositories.users.findByEmail(normalizedEmail);
@@ -215,6 +217,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
         userId,
         provider,
         providerAccountId,
+        providerLogin: ghLogin,
+        accessToken,
         createdAt: new Date().toISOString(),
       });
     }

@@ -53,6 +53,21 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
         userId: row.userId,
         provider: row.provider,
         providerAccountId: row.providerAccountId,
+        providerLogin: (row as any).providerLogin ?? null,
+        accessToken: (row as any).accessToken ?? null,
+        createdAt: toIso(row.createdAt),
+      };
+    },
+    async findByUserIdProvider(userId, provider) {
+      const row = await prisma.oAuthAccount.findFirst({ where: { userId, provider } });
+      if (!row) return null;
+      return {
+        id: row.id,
+        userId: row.userId,
+        provider: row.provider,
+        providerAccountId: row.providerAccountId,
+        providerLogin: (row as any).providerLogin ?? null,
+        accessToken: (row as any).accessToken ?? null,
         createdAt: toIso(row.createdAt),
       };
     },
@@ -63,6 +78,8 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
           userId: account.userId,
           provider: account.provider,
           providerAccountId: account.providerAccountId,
+          providerLogin: account.providerLogin ?? null,
+          accessToken: account.accessToken ?? null,
           createdAt: new Date(account.createdAt),
         },
       });
@@ -71,8 +88,19 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
         userId: row.userId,
         provider: row.provider,
         providerAccountId: row.providerAccountId,
+        providerLogin: (row as any).providerLogin ?? null,
+        accessToken: (row as any).accessToken ?? null,
         createdAt: toIso(row.createdAt),
       };
+    },
+    async update(id, patch) {
+      await prisma.oAuthAccount.updateMany({
+        where: { id },
+        data: {
+          ...(patch.providerLogin !== undefined ? { providerLogin: patch.providerLogin } : {}),
+          ...(patch.accessToken !== undefined ? { accessToken: patch.accessToken } : {}),
+        } as any,
+      });
     },
   };
 
