@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { createGame, fetchCsrfToken, getGame, listGames, login, logout, me, signup, updateGame } from '../cloud/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { checkGithubPagesTarget, createGame, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame } from '../cloud/api';
 import { serializeProjectToYaml } from '../model/serialization';
-import type { EditorState } from './EditorStore';
+import { PROJECT_LAST_SAVED_AT_STORAGE_KEY, PROJECT_STORAGE_KEY, WORKSPACE_BACKUP_STORAGE_KEY, type EditorState } from './EditorStore';
+import { WorkspaceConflictModal } from './WorkspaceConflictModal';
+import { summarizeYamlWorkspace } from './workspaceSummary';
 
 export function CloudAccountPanel({
   state,
@@ -24,6 +26,15 @@ export function CloudAccountPanel({
   const [selectedGameId, setSelectedGameId] = useState<string>('');
   const [newTitle, setNewTitle] = useState<string>('My Game');
   const [busy, setBusy] = useState(false);
+  const [publishRoute, setPublishRoute] = useState('');
+  const [publishInfo, setPublishInfo] = useState<{ ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string } | null>(null);
+  const [publishCheck, setPublishCheck] = useState<{ url: string; exists: boolean; status: number | null } | null>(null);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [workspaceConflict, setWorkspaceConflict] = useState<{
+    cloud: { yaml: string; updatedAt: string; label: string };
+    device: { yaml: string; savedAtMs: number | null; label: string };
+  } | null>(null);
+  const hasCheckedConflictRef = useRef(false);
 
   const githubEnabled = useMemo(() => true, []);
   const githubStartHref = useMemo(() => {
@@ -61,6 +72,97 @@ export function CloudAccountPanel({
   useEffect(() => {
     let cancelled = false;
     if (!user) return;
+    if (hasCheckedConflictRef.current) return;
+    hasCheckedConflictRef.current = true;
+
+    const readDeviceSnapshot = (): { yaml: string | null; savedAtMs: number | null } => {
+      if (typeof window === 'undefined') return { yaml: null, savedAtMs: null };
+      let storage: Storage | null = null;
+      try {
+        storage = window.localStorage;
+      } catch {
+        storage = null;
+      }
+      if (!storage) return { yaml: null, savedAtMs: null };
+      const yaml = storage.getItem(PROJECT_STORAGE_KEY);
+      const savedAtRaw = storage.getItem(PROJECT_LAST_SAVED_AT_STORAGE_KEY);
+      const savedAtMs = savedAtRaw != null && savedAtRaw.length > 0 ? Number(savedAtRaw) : NaN;
+      return { yaml, savedAtMs: Number.isFinite(savedAtMs) ? savedAtMs : null };
+    };
+
+    const formatDeviceLastSaved = (savedAtMs: number | null): string => {
+      if (!savedAtMs) return 'Unknown';
+      try {
+        return new Date(savedAtMs).toLocaleString();
+      } catch {
+        return 'Unknown';
+      }
+    };
+
+    const formatCloudLastSaved = (updatedAt: string): string => {
+      try {
+        const date = new Date(updatedAt);
+        if (Number.isNaN(date.getTime())) return updatedAt || 'Unknown';
+        return date.toLocaleString();
+      } catch {
+        return updatedAt || 'Unknown';
+      }
+    };
+
+    const detectConflict = async () => {
+      const device = readDeviceSnapshot();
+      if (!device.yaml) return;
+
+      try {
+        const res = await listGames();
+        const candidates = res.games ?? [];
+        if (candidates.length === 0) return;
+        const latest = candidates.reduce((best, cur) => {
+          const bestMs = Date.parse(best.updated_at);
+          const curMs = Date.parse(cur.updated_at);
+          if (!Number.isFinite(bestMs)) return cur;
+          if (!Number.isFinite(curMs)) return best;
+          return curMs > bestMs ? cur : best;
+        });
+        const full = await getGame(latest.id);
+        if (!full?.game?.yaml) return;
+
+        const deviceParsed = summarizeYamlWorkspace(device.yaml);
+        const cloudParsed = summarizeYamlWorkspace(full.game.yaml);
+        const isEquivalent =
+          deviceParsed.ok && cloudParsed.ok ? deviceParsed.canonicalYaml === cloudParsed.canonicalYaml : false;
+        if (isEquivalent) return;
+        if (cancelled) return;
+
+        setWorkspaceConflict({
+          cloud: {
+            yaml: full.game.yaml,
+            updatedAt: latest.updated_at,
+            label: `Cloud (last game: ${latest.title})`,
+          },
+          device: {
+            yaml: device.yaml,
+            savedAtMs: device.savedAtMs,
+            label: 'This device',
+          },
+        });
+        onStatus(
+          `Workspace conflict detected (Cloud: ${formatCloudLastSaved(latest.updated_at)}; Device: ${formatDeviceLastSaved(device.savedAtMs)})`,
+        );
+      } catch {
+        // ignore: conflict UI is best-effort; users can still use manual load/save.
+      }
+    };
+
+    void detectConflict();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, onStatus]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) return;
     const load = async () => {
       try {
         const res = await listGames();
@@ -74,6 +176,31 @@ export function CloudAccountPanel({
       cancelled = true;
     };
   }, [user, onError]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) return;
+    const load = async () => {
+      const info = await getGithubPagesPublishInfo();
+      if (cancelled) return;
+      setPublishInfo(info);
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const projectHasPathAssets = useMemo(() => {
+    const assets = state.project.assets;
+    const audio = state.project.audio;
+    const anyPath =
+      Object.values(assets.images).some((a) => (a as any)?.source?.kind === 'path') ||
+      Object.values(assets.spriteSheets).some((a) => (a as any)?.source?.kind === 'path') ||
+      Object.values(assets.fonts).some((a) => (a as any)?.source?.kind === 'path') ||
+      Object.values(audio.sounds).some((a) => (a as any)?.source?.kind === 'path');
+    return anyPath;
+  }, [state.project]);
 
   const ensureCsrf = async () => {
     if (csrfToken) return csrfToken;
@@ -121,6 +248,11 @@ export function CloudAccountPanel({
       setUser(null);
       setGames([]);
       setSelectedGameId('');
+      setPublishInfo(null);
+      setPublishCheck(null);
+      setShowPublishConfirm(false);
+      setWorkspaceConflict(null);
+      hasCheckedConflictRef.current = false;
       onStatus('Signed out');
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Logout failed');
@@ -178,8 +310,132 @@ export function CloudAccountPanel({
     }
   };
 
+  const handlePublishCheck = async () => {
+    if (!selectedGameId) return;
+    if (!publishRoute.trim()) {
+      onError('Enter a route to publish (example: mygame)');
+      return;
+    }
+    const check = await checkGithubPagesTarget(publishRoute.trim());
+    if (!check.ok) {
+      onError(check.error);
+      return;
+    }
+    setPublishCheck({ url: check.url, exists: check.exists, status: check.status });
+    if (check.exists) setShowPublishConfirm(true);
+    else setShowPublishConfirm(true);
+  };
+
+  const handlePublish = async (allowOverwrite: boolean) => {
+    if (!user) return;
+    if (!selectedGameId) return;
+    setBusy(true);
+    try {
+      const csrf = await ensureCsrf();
+      const result = await publishToGithubPages(selectedGameId, publishRoute.trim(), csrf, { ...(allowOverwrite ? { allowOverwrite: true } : {}) });
+      if (!result.ok) {
+        if (result.error === 'target_exists') {
+          onError('That GitHub Pages URL already exists. Choose a different route or confirm overwrite.');
+        } else if (result.error === 'path_assets_unsupported') {
+          onError('Publishing requires embedded assets only. Convert path assets to embedded before publishing.');
+        } else {
+          onError(result.error);
+        }
+        return;
+      }
+      onStatus(`Published to ${result.url}`);
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setBusy(false);
+      setShowPublishConfirm(false);
+    }
+  };
+
   return (
     <div className="panel cloud-panel" data-testid="cloud-panel">
+      {workspaceConflict ? (
+        <WorkspaceConflictModal
+          cloud={{
+            kind: 'cloud',
+            label: workspaceConflict.cloud.label,
+            lastSavedLabel: (() => {
+              try {
+                const date = new Date(workspaceConflict.cloud.updatedAt);
+                return Number.isNaN(date.getTime()) ? workspaceConflict.cloud.updatedAt : date.toLocaleString();
+              } catch {
+                return workspaceConflict.cloud.updatedAt || 'Unknown';
+              }
+            })(),
+            yamlText: workspaceConflict.cloud.yaml,
+            parsed: summarizeYamlWorkspace(workspaceConflict.cloud.yaml),
+          }}
+          device={{
+            kind: 'device',
+            label: workspaceConflict.device.label,
+            lastSavedLabel: (() => {
+              const ms = workspaceConflict.device.savedAtMs;
+              if (!ms) return 'Unknown';
+              try {
+                return new Date(ms).toLocaleString();
+              } catch {
+                return 'Unknown';
+              }
+            })(),
+            yamlText: workspaceConflict.device.yaml,
+            parsed: summarizeYamlWorkspace(workspaceConflict.device.yaml),
+          }}
+          onExportBoth={() => {
+            const formatName = (kind: 'cloud' | 'device', time: string) => {
+              const safe = time
+                .replace(/[:.]/g, '-')
+                .replace(/\s+/g, '-')
+                .replace(/[^\w-]/g, '')
+                .slice(0, 64);
+              return `phaserforge-${kind}-${safe || 'workspace'}.yaml`;
+            };
+
+            const download = (name: string, text: string) => {
+              const blob = new Blob([text], { type: 'application/x-yaml;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = name;
+              a.style.display = 'none';
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              window.setTimeout(() => URL.revokeObjectURL(url), 2500);
+            };
+
+            const cloudTime = workspaceConflict.cloud.updatedAt || 'cloud';
+            const deviceTime = workspaceConflict.device.savedAtMs ? new Date(workspaceConflict.device.savedAtMs).toISOString() : 'device';
+            download(formatName('cloud', cloudTime), workspaceConflict.cloud.yaml);
+            download(formatName('device', deviceTime), workspaceConflict.device.yaml);
+            onStatus('Exported both YAML snapshots');
+          }}
+          onChooseCloud={() => {
+            try {
+              window.localStorage.setItem(WORKSPACE_BACKUP_STORAGE_KEY, workspaceConflict.device.yaml);
+            } catch {
+              // ignore
+            }
+            onLoadYaml(workspaceConflict.cloud.yaml, 'cloud:workspace');
+            setWorkspaceConflict(null);
+            onStatus('Loaded cloud workspace (device backup saved)');
+          }}
+          onChooseDevice={() => {
+            try {
+              window.localStorage.setItem(WORKSPACE_BACKUP_STORAGE_KEY, workspaceConflict.cloud.yaml);
+            } catch {
+              // ignore
+            }
+            onLoadYaml(workspaceConflict.device.yaml, 'device:workspace');
+            setWorkspaceConflict(null);
+            onStatus('Kept device workspace (cloud backup saved)');
+          }}
+          onClose={() => setWorkspaceConflict(null)}
+        />
+      ) : null}
       {!user ? (
         <div className="cloud-auth">
           <label className="field">
@@ -260,6 +516,19 @@ export function CloudAccountPanel({
             <button className="button button-compact" type="button" disabled={busy || !selectedGameId} onClick={handleLoadSelected}>
               Load
             </button>
+            <a
+              className={`button button-compact ${!selectedGameId ? 'disabled' : ''}`}
+              data-testid="cloud-launch-button"
+              href={selectedGameId ? `?playGameId=${encodeURIComponent(selectedGameId)}` : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!selectedGameId}
+              onClick={(e) => {
+                if (!selectedGameId) e.preventDefault();
+              }}
+            >
+              Launch
+            </a>
           </div>
           <div className="cloud-row">
             <label className="field">
@@ -270,8 +539,73 @@ export function CloudAccountPanel({
               Save
             </button>
           </div>
+
+          <div className="cloud-row">
+            <label className="field">
+              <span>Publish route</span>
+              <input
+                value={publishRoute}
+                placeholder="mygame"
+                onChange={(e) => setPublishRoute(e.target.value)}
+                aria-label="Publish route"
+              />
+            </label>
+            <button
+              className="button button-compact"
+              type="button"
+              data-testid="cloud-publish-pages-button"
+              disabled={
+                busy ||
+                !selectedGameId ||
+                !publishRoute.trim() ||
+                !publishInfo ||
+                !publishInfo.ok ||
+                projectHasPathAssets
+              }
+              onClick={() => void handlePublishCheck()}
+            >
+              Publish to GitHub Pages
+            </button>
+          </div>
+          <div className="cloud-row">
+            <div className="cloud-help" data-testid="cloud-publish-pages-help">
+              {publishInfo?.ok
+                ? `Publishes to https://${publishInfo.login}.github.io/<route>/ (public repo: ${publishInfo.repo}). Embedded assets only.`
+                : 'Requires GitHub login and a public GitHub Pages repo (username/username.github.io). Embedded assets only.'}
+              {projectHasPathAssets ? ' Path assets detected; publishing is disabled.' : ''}
+            </div>
+          </div>
         </div>
       )}
+
+      {showPublishConfirm && publishCheck ? (
+        <div className="modal-overlay" data-testid="publish-confirm-modal" role="dialog" aria-label="Confirm GitHub Pages publish">
+          <div className="modal-card">
+            <div className="workspace-conflict-header">
+              <div className="workspace-conflict-title">Publish to GitHub Pages</div>
+              <button className="button button-compact" type="button" onClick={() => setShowPublishConfirm(false)}>
+                Close
+              </button>
+            </div>
+            <div className="cloud-help">
+              Target: <span className="mono">{publishCheck.url}</span>
+            </div>
+            <div className="cloud-help">
+              {publishCheck.exists
+                ? `A page already exists at this URL (HTTP ${publishCheck.status ?? 'unknown'}). Publishing may overwrite it.`
+                : 'No existing page detected at this URL.'}
+            </div>
+            <div className="cloud-row">
+              <button className="button" type="button" onClick={() => setShowPublishConfirm(false)}>
+                Cancel
+              </button>
+              <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={() => void handlePublish(Boolean(publishCheck.exists))}>
+                {publishCheck.exists ? 'Publish anyway' : 'Publish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

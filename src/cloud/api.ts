@@ -116,3 +116,43 @@ export async function updateGame(
   });
   return json;
 }
+
+export async function getGithubPagesPublishInfo(): Promise<{ ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string }> {
+  try {
+    const json = await api<{ ok: true; login: string; pagesBaseUrl: string; repo: string }>('/api/v1/publish/github-pages/info');
+    return json;
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'publish_info_failed' };
+  }
+}
+
+export async function checkGithubPagesTarget(route: string): Promise<{ ok: true; url: string; exists: boolean; status: number | null } | { ok: false; error: string }> {
+  try {
+    const json = await api<{ ok: true; url: string; exists: boolean; status: number | null }>('/api/v1/publish/github-pages/check', {
+      method: 'POST',
+      body: JSON.stringify({ route }),
+    });
+    return json;
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'publish_check_failed' };
+  }
+}
+
+export async function publishToGithubPages(
+  gameId: string,
+  route: string,
+  csrfToken: string,
+  options?: { allowOverwrite?: boolean },
+): Promise<{ ok: true; url: string } | { ok: false; error: string; url?: string }> {
+  try {
+    const json = await api<{ ok: true; url: string }>('/api/v1/publish/github-pages', {
+      method: 'POST',
+      headers: { 'x-csrf-token': csrfToken },
+      body: JSON.stringify({ gameId, route, ...(options?.allowOverwrite ? { allowOverwrite: true } : {}) }),
+    });
+    return json;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'publish_failed';
+    return { ok: false, error: msg };
+  }
+}

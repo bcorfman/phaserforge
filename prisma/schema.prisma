@@ -23,6 +23,8 @@ model OAuthAccount {
   userId            String
   provider          String
   providerAccountId String
+  providerLogin     String?
+  accessToken       String?  @db.Text
   createdAt         DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

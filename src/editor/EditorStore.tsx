@@ -47,6 +47,8 @@ import { measureTextEntityPixels, resolveTextEntityDefaults, resolveTextFontFami
 import { allocDuplicateName } from './duplicateNaming';
 
 export const PROJECT_STORAGE_KEY = 'phaserforge.projectYaml.v1';
+export const PROJECT_LAST_SAVED_AT_STORAGE_KEY = 'phaserforge.projectLastSavedAtMs.v1';
+export const WORKSPACE_BACKUP_STORAGE_KEY = 'phaserforge.workspaceBackupYaml.v1';
 export const SCENE_STORAGE_KEY_V1 = 'phaserforge.sceneYaml.v1';
 export const SCENE_STORAGE_KEY = 'phaserforge.sceneYaml.v2';
 export const STARTUP_MODE_STORAGE_KEY = 'phaserforge.startupMode.v1';
@@ -3452,6 +3454,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined' || !state.initialized) return;
     try {
       window.localStorage.setItem(PROJECT_STORAGE_KEY, serializeProjectToYaml(state.project));
+      window.localStorage.setItem(PROJECT_LAST_SAVED_AT_STORAGE_KEY, String(Date.now()));
     } catch {
       // ignore storage errors
     }

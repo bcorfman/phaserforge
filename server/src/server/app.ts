@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import type { CreateAppOptions, Repositories } from './types';
 import { authRouter } from './routes/auth';
 import { gamesRouter } from './routes/games';
+import { publishRouter } from './routes/publish';
 import { createMemoryRepositories } from './repositories/memory';
 import { requireCsrf } from '../security/csrf';
 
@@ -53,6 +54,7 @@ export function createApp(options: CreateAppOptions) {
   app.get('/api/v1/health', (_req, res) => res.json({ status: 'ok' }));
   app.use('/api/v1/auth', authRouter(settings, repositories));
   app.use('/api/v1/games', gamesRouter(settings, repositories));
+  app.use('/api/v1/publish', publishRouter(settings, repositories));
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
