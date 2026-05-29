@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, dragAssetToCanvas, expectInputValue, getState, gotoStudio, importImageAssetFromFile, importSpritesheetAssetFromFile, openProjectScope, openSceneScope, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { dismissViewHint, dragAssetToCanvas, expectInputValue, getSceneSnapshot, getState, gotoStudio, importImageAssetFromFile, importSpritesheetAssetFromFile, openProjectScope, openSceneScope, panByScreenDelta, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
+import { serializeProjectToYaml } from '../../src/model/serialization';
+import { createEmptyProject } from '../../src/model/emptyProject';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -10,6 +15,7 @@ test.beforeEach(async ({ page }) => {
     window.localStorage.removeItem('phaserforge.themeMode.v1');
     window.localStorage.removeItem('phaserforge.uiScale.v1');
     window.localStorage.removeItem('phaserforge.inspectorFoldouts.v1');
+    window.localStorage.removeItem('phaserforge.viewState.v1');
   });
 });
 
@@ -45,6 +51,20 @@ test('updates startup mode and persists the last YAML-backed scene across reload
 
   await openProjectScope(page);
   await page.getByTestId('project-startup-mode-select').selectOption('reload_last_yaml');
+  const zoomBefore = await page.getByTestId('zoom-pill').innerText();
+  await page.getByTestId('zoom-in-button').click();
+  const zoomAfter = await page.getByTestId('zoom-pill').innerText();
+  expect(zoomAfter).not.toBe(zoomBefore);
+
+  const viewBeforePan = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
+  await panByScreenDelta(page, { x: 120, y: 80 });
+  await expect.poll(async () => {
+    const view = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
+    return { scrollX: view.scrollX, scrollY: view.scrollY };
+  }).not.toEqual({ scrollX: viewBeforePan.scrollX, scrollY: viewBeforePan.scrollY });
+  const viewAfterPan = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
+  const persistedScroll = { scrollX: viewAfterPan.scrollX, scrollY: viewAfterPan.scrollY };
+
   await openSceneScope(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('formation-name-input').fill('Persisted Wing');
@@ -56,6 +76,11 @@ test('updates startup mode and persists the last YAML-backed scene across reload
   await page.reload();
   await gotoStudio(page);
   await waitForSampleScene(page);
+  await expect(page.getByTestId('zoom-pill')).toHaveText(zoomAfter);
+  await expect.poll(async () => {
+    const view = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
+    return { scrollX: view.scrollX, scrollY: view.scrollY };
+  }).toEqual(persistedScroll);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Persisted Wing');
 
@@ -64,6 +89,52 @@ test('updates startup mode and persists the last YAML-backed scene across reload
   await page.reload();
   await gotoStudio(page);
   await waitForEmptyScene(page);
+});
+
+test('resets zoom and view position when a different project is loaded', async ({ page }) => {
+  await page.addInitScript(() => {
+    // Force the `<input type=file>` picker path for this test.
+    (window as any).showOpenFilePicker = undefined;
+  });
+
+  await seedSampleScene(page, { once: true });
+  await gotoStudio(page);
+  await waitForSampleScene(page);
+
+  const zoomBefore = await page.getByTestId('zoom-pill').innerText();
+  await page.getByTestId('zoom-in-button').click();
+  const zoomAfter = await page.getByTestId('zoom-pill').innerText();
+  expect(zoomAfter).not.toBe(zoomBefore);
+
+  const viewBeforePan = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
+  await panByScreenDelta(page, { x: 160, y: 100 });
+  await expect.poll(async () => {
+    const view = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
+    return { scrollX: view.scrollX, scrollY: view.scrollY };
+  }).not.toEqual({ scrollX: viewBeforePan.scrollX, scrollY: viewBeforePan.scrollY });
+  const viewAfterPan = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
+
+  // Load a different project (different project id) via the YAML editor.
+  await page.getByTestId('yaml-open-button').click();
+  await expect(page.getByTestId('yaml-open-file-input')).toHaveCount(1);
+
+  const emptyProject = createEmptyProject();
+  (emptyProject as any).id = 'p2';
+  const yaml = serializeProjectToYaml(emptyProject);
+  const tmpPath = path.join(os.tmpdir(), `phaserforge-project-switch-${Date.now()}-p2.yaml`);
+  fs.writeFileSync(tmpPath, yaml, 'utf8');
+  await page.setInputFiles('[data-testid="yaml-open-file-input"]', tmpPath);
+
+  await waitForEmptyScene(page);
+
+  // Different project should reset view (should not retain prior zoom).
+  await expect(page.getByTestId('zoom-pill')).not.toHaveText(zoomAfter);
+  await expect.poll(async () => {
+    const view = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
+    return { scrollX: view.scrollX, scrollY: view.scrollY };
+  }).not.toEqual({ scrollX: viewAfterPan.scrollX, scrollY: viewAfterPan.scrollY });
+
+  fs.unlinkSync(tmpPath);
 });
 
 test('imports embedded sprites and spritesheets into the scene @critical', async ({ page }) => {
