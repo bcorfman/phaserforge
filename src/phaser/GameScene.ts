@@ -89,11 +89,19 @@ export class GameScene extends Phaser.Scene {
   };
   private listenersBound = false;
 
+  private restoreViewState(view: { zoom: number; scrollX: number; scrollY: number }): void {
+    this.setPendingViewState(view);
+    if (!this.compiled) return;
+    // Apply immediately when possible so a restore can take effect without a full reload.
+    this.applyPendingViewState(this.compiled.scene);
+  }
+
   private bindSceneListeners(): void {
     if (this.listenersBound) return;
     this.listenersBound = true;
     setActiveScene(this);
     registerSceneGetter(this.sceneBridgeGetter);
+    EventBus.on('scene-restore-view-state', this.restoreViewState, this);
     this.input.keyboard?.on('keydown-ESC', this.handleEscape);
     this.input.keyboard?.on('keydown', this.handleKeyDown as any);
     this.input.keyboard?.on('keyup', this.handleKeyUp as any);
@@ -106,6 +114,7 @@ export class GameScene extends Phaser.Scene {
     this.listenersBound = false;
     if (getActiveScene() === this) setActiveScene(null);
     unregisterSceneGetter(this.sceneBridgeGetter);
+    EventBus.off('scene-restore-view-state', this.restoreViewState, this);
     this.input.keyboard?.off('keydown-ESC', this.handleEscape);
     this.input.keyboard?.off('keydown', this.handleKeyDown as any);
     this.input.keyboard?.off('keyup', this.handleKeyUp as any);

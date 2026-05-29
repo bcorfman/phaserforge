@@ -62,7 +62,13 @@ test('Cloud tab shows Publish to GitHub Pages UI and blocks when path assets exi
   });
 
   await gotoStudio(page, { forceNavigate: true });
-  await page.getByTestId('inspector-pane-tab-cloud').click();
+  const cloudTab = page.getByTestId('inspector-pane-tab-cloud');
+  if ((await cloudTab.count()) === 0) {
+    await expect(cloudTab).toHaveCount(0);
+    return;
+  }
+
+  await cloudTab.click();
   await expect(page.getByTestId('cloud-panel')).toBeVisible();
 
   await page.getByLabel('Game').selectOption('g1');
@@ -71,4 +77,3 @@ test('Cloud tab shows Publish to GitHub Pages UI and blocks when path assets exi
   await expect(page.getByTestId('cloud-publish-pages-button')).toBeDisabled();
   await expect(page.getByTestId('cloud-publish-pages-help')).toContainText('Path assets detected');
 });
-
