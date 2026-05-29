@@ -13,6 +13,7 @@ import { loadProjectFonts } from './editor/fontLoader';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
+import { readStoredViewState, VIEW_STATE_STORAGE_KEY, writeStoredViewState } from './util/viewStateStorage';
 import {
   registerAppStateGetter,
   registerActionDispatcher,
@@ -39,6 +40,8 @@ function AppShell() {
   const [worldHeightDraft, setWorldHeightDraft] = useState('');
   const readyRef = useRef(false);
   const runtimeLoadedRef = useRef(false);
+  const viewRestoreAttemptedRef = useRef(false);
+  const lastViewProjectIdRef = useRef<string | null>(null);
   const appStateRef = useRef({
     project: state.project,
     currentSceneId: state.currentSceneId,
@@ -258,6 +261,20 @@ function AppShell() {
       if (!state.hasSeenViewHint) {
         dispatch({ type: 'dismiss-view-hint' });
       }
+
+      // Avoid overwriting a persisted view state before we get a chance to restore it on boot.
+      const startupMode = appStateRef.current.startupMode;
+      if (startupMode === 'reload_last_yaml' && !viewRestoreAttemptedRef.current) return;
+
+      try {
+        const scene = getActiveScene() as any;
+        const view = scene && typeof scene.getViewState === 'function' ? (scene.getViewState() as { zoom: number; scrollX: number; scrollY: number }) : null;
+        if (!view) return;
+        writeStoredViewState(window.localStorage, appStateRef.current.project.id, view);
+        lastViewProjectIdRef.current = appStateRef.current.project.id;
+      } catch {
+        // ignore persistence errors (localStorage may be unavailable in transient docs)
+      }
     };
 
     EventBus.on('scene-view-state', handleViewState);
@@ -265,6 +282,47 @@ function AppShell() {
       EventBus.off('scene-view-state', handleViewState);
     };
   }, [dispatch, state.hasSeenViewHint]);
+
+  useEffect(() => {
+    if (viewRestoreAttemptedRef.current) return;
+    if (!sceneReady || !runtimeLoadedRef.current) return;
+    if (!state.initialized) return;
+    if (state.startupMode !== 'reload_last_yaml') {
+      viewRestoreAttemptedRef.current = true;
+      return;
+    }
+
+    try {
+      const projectId = state.project.id;
+      lastViewProjectIdRef.current = projectId;
+      const view = readStoredViewState(window.localStorage, projectId);
+      if (view) EventBus.emit('scene-restore-view-state', view);
+    } catch {
+      // ignore restore errors
+    } finally {
+      viewRestoreAttemptedRef.current = true;
+    }
+  }, [sceneReady, state.initialized, state.startupMode]);
+
+  useEffect(() => {
+    const currentProjectId = state.project.id;
+    const lastProjectId = lastViewProjectIdRef.current;
+    if (!lastProjectId) {
+      lastViewProjectIdRef.current = currentProjectId;
+      return;
+    }
+    if (currentProjectId === lastProjectId) return;
+
+    // A different project was loaded; reset view to default and avoid leaking view state across projects.
+    lastViewProjectIdRef.current = currentProjectId;
+    viewRestoreAttemptedRef.current = false;
+    try {
+      window.localStorage.removeItem(VIEW_STATE_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    EventBus.emit('scene-fit-view');
+  }, [state.project.id]);
 
   useEffect(() => {
     const handleGridToggled = (enabled: boolean) => setGridSnapEnabled(enabled);

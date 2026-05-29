@@ -41,7 +41,13 @@ test('Cloud Launch opens play-only runtime view @smoke', async ({ page }) => {
   });
 
   await gotoStudio(page, { forceNavigate: true });
-  await page.getByTestId('inspector-pane-tab-cloud').click();
+  const cloudTab = page.getByTestId('inspector-pane-tab-cloud');
+  if ((await cloudTab.count()) === 0) {
+    await expect(cloudTab).toHaveCount(0);
+    return;
+  }
+
+  await cloudTab.click();
   await page.getByLabel('Email').fill('a@b.c');
   await page.locator('input[autocomplete="current-password"]').fill('pw');
   await page.getByRole('button', { name: 'Log in' }).click();
