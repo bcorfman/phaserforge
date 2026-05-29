@@ -127,12 +127,12 @@ test('resets zoom and view position when a different project is loaded', async (
 
   await waitForEmptyScene(page);
 
-  // Different project should reset view (should not retain prior zoom).
-  await expect(page.getByTestId('zoom-pill')).not.toHaveText(zoomAfter);
+  // Different project should reset view (should not retain prior view state).
+  // Zoom percent can coincidentally match across projects, so assert the full view state diverges.
   await expect.poll(async () => {
-    const view = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
-    return { scrollX: view.scrollX, scrollY: view.scrollY };
-  }).not.toEqual({ scrollX: viewAfterPan.scrollX, scrollY: viewAfterPan.scrollY });
+    const view = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number }>(page);
+    return { zoom: view.zoom, scrollX: view.scrollX, scrollY: view.scrollY };
+  }).not.toEqual({ zoom: viewAfterPan.zoom, scrollX: viewAfterPan.scrollX, scrollY: viewAfterPan.scrollY });
 
   fs.unlinkSync(tmpPath);
 });
