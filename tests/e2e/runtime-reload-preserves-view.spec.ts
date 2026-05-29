@@ -29,7 +29,16 @@ test('runtime reload preserves editor camera view @regression', async ({ page })
 
   const anchorWorldPoint = { x: 512, y: 384 };
   const beforeView = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number }>(page);
-  const beforeAnchor = await page.evaluate((worldPoint) => window.__PHASER_FORGE_TEST__?.worldToClient(worldPoint), anchorWorldPoint);
+  const beforeAnchor = await page.evaluate((worldPoint) => {
+    const client = window.__PHASER_FORGE_TEST__?.worldToClient(worldPoint);
+    if (!client) return null;
+    const canvas =
+      (document.querySelector('[data-testid="canvas-pane"] canvas') as HTMLCanvasElement | null) ??
+      (document.querySelector('canvas') as HTMLCanvasElement | null);
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return { x: client.x - rect.left, y: client.y - rect.top };
+  }, anchorWorldPoint);
   if (!beforeAnchor) throw new Error('Before anchor point unavailable');
 
   await page.evaluate(() => window.__PHASER_FORGE_TEST__?.reloadRuntime?.());
@@ -42,9 +51,19 @@ test('runtime reload preserves editor camera view @regression', async ({ page })
   expect(Math.abs(afterView.scrollX - beforeView.scrollX)).toBeLessThanOrEqual(1);
   expect(Math.abs(afterView.scrollY - beforeView.scrollY)).toBeLessThanOrEqual(1);
 
-  const afterAnchor = await page.evaluate((worldPoint) => window.__PHASER_FORGE_TEST__?.worldToClient(worldPoint), anchorWorldPoint);
+  const afterAnchor = await page.evaluate((worldPoint) => {
+    const client = window.__PHASER_FORGE_TEST__?.worldToClient(worldPoint);
+    if (!client) return null;
+    const canvas =
+      (document.querySelector('[data-testid="canvas-pane"] canvas') as HTMLCanvasElement | null) ??
+      (document.querySelector('canvas') as HTMLCanvasElement | null);
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return { x: client.x - rect.left, y: client.y - rect.top };
+  }, anchorWorldPoint);
   if (!afterAnchor) throw new Error('After anchor point unavailable');
   // Allow small pixel-rounding differences across reloads/drivers (headless rendering can land on different subpixels).
+  // Compare relative to the canvas to avoid DOM/layout shifts affecting this camera-view assertion.
   expect(Math.abs(afterAnchor.x - beforeAnchor.x)).toBeLessThanOrEqual(6);
   expect(Math.abs(afterAnchor.y - beforeAnchor.y)).toBeLessThanOrEqual(6);
 });
