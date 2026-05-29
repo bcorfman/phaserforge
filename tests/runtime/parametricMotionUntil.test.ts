@@ -48,6 +48,19 @@ describe('ParametricMotionUntil', () => {
     expect(entity.rotationDeg).toBeCloseTo(45, 1);
   });
 
+  test('rotateWithPath initializes rotationDeg on start', () => {
+    const entity = makeEntity();
+    const durationMs = 500;
+    const action = new ParametricMotionUntil(entity, (t) => [t, t], new ElapsedTime(durationMs), {
+      durationMs,
+      rotateWithPath: true,
+      rotationOffsetDeg: 0,
+    });
+
+    action.start();
+    expect(entity.rotationDeg).toBeCloseTo(45, 1);
+  });
+
   test('factor scales progress speed', () => {
     const entity = makeEntity();
     entity.x = 10;
@@ -108,4 +121,3 @@ describe('ParametricMotionUntil', () => {
     warn.mockRestore();
   });
 });
-
