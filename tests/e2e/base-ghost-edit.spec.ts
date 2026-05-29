@@ -39,14 +39,22 @@ test('Edit mode: base scene ghost renders but is non-interactive @browser', asyn
 
   await dismissViewHint(page);
 
-  await expect.poll(async () => (await getSceneSnapshot<any>(page))?.compiledSceneId).toBe('wave');
-  await expect.poll(async () => (await getSceneSnapshot<any>(page))?.referenceSpriteCount).toBe(1);
+  await expect
+    .poll(async () => (await getSceneSnapshot<any>(page))?.compiledSceneId, { timeout: 5000 })
+    .toBe('wave');
+  await expect
+    .poll(async () => (await getSceneSnapshot<any>(page))?.referenceSpriteCount, { timeout: 5000 })
+    .toBe(1);
 
   await tapWorld(page, { x: 500, y: 300 });
-  await expect.poll(async () => (await getState<any>(page))?.selection).toEqual({ kind: 'entity', id: 'w1' });
+  await expect
+    .poll(async () => (await getState<any>(page))?.selection, { timeout: 5000 })
+    .toEqual({ kind: 'entity', id: 'w1' });
 
   // Use the test bridge for a deterministic world-space click; this avoids occasional client-space
   // coordinate mismatches in WebKit under CI load.
   await tapWorld(page, { x: 200, y: 200 });
-  await expect.poll(async () => (await getState<any>(page))?.selection).toEqual({ kind: 'none' });
+  await expect
+    .poll(async () => (await getState<any>(page))?.selection, { timeout: 5000 })
+    .toEqual({ kind: 'none' });
 });
