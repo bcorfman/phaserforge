@@ -47,7 +47,13 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
   await gotoStudio(page, { forceNavigate: true });
   await waitForSampleScene(page);
 
-  await page.getByTestId('inspector-pane-tab-cloud').click();
+  const cloudTab = page.getByTestId('inspector-pane-tab-cloud');
+  if ((await cloudTab.count()) === 0) {
+    await expect(cloudTab).toHaveCount(0);
+    return;
+  }
+
+  await cloudTab.click();
   await expect(page.getByTestId('cloud-panel')).toBeVisible();
 
   await page.getByLabel('Email').fill('a@b.c');

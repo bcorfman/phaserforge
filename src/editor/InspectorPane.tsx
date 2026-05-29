@@ -3,37 +3,42 @@ import { useState } from 'react';
 import { useEditorStore } from './EditorStore';
 import { Inspector } from './Inspector';
 import { CloudAccountPanel } from './CloudAccountPanel';
+import { isLocalHostname } from '../util/isLocalHostname';
 
 export function InspectorPane() {
   const { state, dispatch } = useEditorStore();
   const [tab, setTab] = useState<'inspector' | 'cloud'>('inspector');
+  const cloudEnabled = !isLocalHostname(globalThis.location?.hostname);
+  const effectiveTab: 'inspector' | 'cloud' = cloudEnabled ? tab : 'inspector';
 
   return (
     <>
-      <div className="inspector-pane-tabs" role="tablist" aria-label="Inspector Pane Tabs">
-        <button
-          className={`button ${tab === 'inspector' ? 'active' : ''}`}
-          data-testid="inspector-pane-tab-inspector"
-          type="button"
-          role="tab"
-          aria-selected={tab === 'inspector'}
-          onClick={() => setTab('inspector')}
-        >
-          Inspector
-        </button>
-        <button
-          className={`button ${tab === 'cloud' ? 'active' : ''}`}
-          data-testid="inspector-pane-tab-cloud"
-          type="button"
-          role="tab"
-          aria-selected={tab === 'cloud'}
-          onClick={() => setTab('cloud')}
-        >
-          Cloud
-        </button>
-      </div>
+      {cloudEnabled ? (
+        <div className="inspector-pane-tabs" role="tablist" aria-label="Inspector Pane Tabs">
+          <button
+            className={`button ${effectiveTab === 'inspector' ? 'active' : ''}`}
+            data-testid="inspector-pane-tab-inspector"
+            type="button"
+            role="tab"
+            aria-selected={effectiveTab === 'inspector'}
+            onClick={() => setTab('inspector')}
+          >
+            Inspector
+          </button>
+          <button
+            className={`button ${effectiveTab === 'cloud' ? 'active' : ''}`}
+            data-testid="inspector-pane-tab-cloud"
+            type="button"
+            role="tab"
+            aria-selected={effectiveTab === 'cloud'}
+            onClick={() => setTab('cloud')}
+          >
+            Cloud
+          </button>
+        </div>
+      ) : null}
 
-      {tab === 'inspector' ? (
+      {effectiveTab === 'inspector' ? (
         <>
           <Inspector />
         </>

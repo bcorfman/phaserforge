@@ -216,6 +216,22 @@ export class EditorScene extends Phaser.Scene {
     this.pendingViewState = view;
   }
 
+  private restoreViewState(view: { zoom: number; scrollX: number; scrollY: number }): void {
+    if (!this.compiled) {
+      this.setPendingViewState(view);
+      return;
+    }
+
+    const world = getSceneWorld(this.compiled.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
+    const nextZoom = clampZoom(view.zoom, maxZoom);
+    this.currentZoom = nextZoom;
+    this.cameras.main.setZoom(nextZoom);
+    this.applyScroll(view.scrollX, view.scrollY);
+    this.hasInitializedView = true;
+    this.emitViewState();
+  }
+
   private readonly handleKeyDownBound = (event: KeyboardEvent) => {
     this.handleKeyDown(event);
   };
@@ -286,6 +302,7 @@ export class EditorScene extends Phaser.Scene {
     EventBus.on('scene-zoom-out', this.zoomOut, this);
     EventBus.on('scene-fit-view', this.fitView, this);
     EventBus.on('scene-reset-zoom', this.resetZoom, this);
+    EventBus.on('scene-restore-view-state', this.restoreViewState, this);
 
     this.input.on('pointerdown', this.handlePointerDown, this);
     this.input.on('pointermove', this.handlePointerMove, this);
@@ -332,6 +349,7 @@ export class EditorScene extends Phaser.Scene {
     EventBus.off('scene-zoom-out', this.zoomOut, this);
     EventBus.off('scene-fit-view', this.fitView, this);
     EventBus.off('scene-reset-zoom', this.resetZoom, this);
+    EventBus.off('scene-restore-view-state', this.restoreViewState, this);
 
     this.input.off('pointerdown', this.handlePointerDown, this);
     this.input.off('pointermove', this.handlePointerMove, this);
