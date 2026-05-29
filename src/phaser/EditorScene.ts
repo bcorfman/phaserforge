@@ -227,7 +227,8 @@ export class EditorScene extends Phaser.Scene {
     const nextZoom = clampZoom(view.zoom, maxZoom);
     this.currentZoom = nextZoom;
     this.cameras.main.setZoom(nextZoom);
-    this.applyScroll(view.scrollX, view.scrollY);
+    // Preserve stored scroll exactly; clamping against a slightly different viewport can shift the restored position.
+    this.applyScroll(view.scrollX, view.scrollY, false);
     this.hasInitializedView = true;
     this.emitViewState();
   }
@@ -804,8 +805,8 @@ export class EditorScene extends Phaser.Scene {
       const nextZoom = clampZoom(this.pendingViewState.zoom, maxZoom);
       this.currentZoom = nextZoom;
       this.cameras.main.setZoom(nextZoom);
-      // Preserve the captured scroll exactly; `applyScroll` will clamp using the current viewport.
-      this.applyScroll(this.pendingViewState.scrollX, this.pendingViewState.scrollY);
+      // Preserve the captured scroll exactly; clamping against a slightly different viewport can shift the restored position.
+      this.applyScroll(this.pendingViewState.scrollX, this.pendingViewState.scrollY, false);
       this.pendingViewState = undefined;
       this.hasInitializedView = true;
       this.emitViewState();
