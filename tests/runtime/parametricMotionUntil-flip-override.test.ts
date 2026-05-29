@@ -17,6 +17,10 @@ describe('ParametricMotionUntil flip overrides', () => {
     } as any);
 
     action.start();
+    // Flip overrides should take effect immediately on start to avoid a 1-frame glitch
+    // when chaining actions (e.g. outward spiral -> inward spiral).
+    expect(entity.flipX).toBe(true);
+    expect(entity.flipY).toBe(false);
     action.update(5);
     expect(entity.flipX).toBe(true);
     expect(entity.flipY).toBe(false);
@@ -28,4 +32,3 @@ describe('ParametricMotionUntil flip overrides', () => {
     expect(entity.flipY).toBe(true);
   });
 });
-

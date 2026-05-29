@@ -68,8 +68,26 @@ export class ParametricMotionUntil extends ActionBase {
 
     for (const member of flattenTarget(this.target)) {
       this.origins.set(member.id, { x: member.x, y: member.y });
-      this.prevOffsets.set(member.id, { dx: 0, dy: 0 });
+      const [dx0, dy0] = this.offsetFn(0);
+      this.prevOffsets.set(member.id, { dx: dx0, dy: dy0 });
       this.origFlips.set(member.id, { flipX: member.flipX ?? false, flipY: member.flipY ?? false });
+
+      // Apply flip overrides immediately to avoid a single-frame glitch when chaining actions.
+      if (this.flipXOverride !== undefined) member.flipX = this.flipXOverride;
+      if (this.flipYOverride !== undefined) member.flipY = this.flipYOverride;
+
+      // When chaining actions in a Sequence, the next child is started but not updated until the next tick.
+      // If we rotate with path, initialize rotation immediately so we don't render a 1-frame stale heading.
+      if (this.rotateWithPath) {
+        const eps = 1e-3;
+        const [dx1, dy1] = this.offsetFn(Math.min(1, eps));
+        const stepDx = dx1 - dx0;
+        const stepDy = dy1 - dy0;
+        if (Math.abs(stepDx) > 1e-6 || Math.abs(stepDy) > 1e-6) {
+          const angleDeg = (Math.atan2(stepDy, stepDx) * 180) / Math.PI;
+          member.rotationDeg = angleDeg + this.rotationOffsetDeg;
+        }
+      }
     }
   }
 
