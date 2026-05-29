@@ -40,6 +40,16 @@ export function useInspectorFoldouts() {
     saveFoldoutMap(map);
   }, [map]);
 
+  useEffect(() => {
+    const handler = () => {
+      setMap(loadFoldoutMap());
+    };
+    window.addEventListener('phaserforge:test-reset-ui', handler);
+    return () => {
+      window.removeEventListener('phaserforge:test-reset-ui', handler);
+    };
+  }, []);
+
   const isOpen = (key: string, defaultOpen: boolean) => map[key] ?? defaultOpen;
 
   const setOpen = (key: string, open: boolean) => {
