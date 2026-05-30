@@ -42,7 +42,8 @@
         "test:e2e": "node scripts/playwright-no-deprecation.cjs test",
         "test:e2e:ui": "node scripts/playwright-no-deprecation.cjs test --ui",
         "test:all": "npm run test:unit && npm run test:e2e",
-        "invite:create": "node --import tsx scripts/create-invite.ts"
+        "invite:create": "node --import tsx scripts/create-invite.ts",
+        "invite:revoke": "node --import tsx scripts/revoke-invite.ts"
     },
     "dependencies": {
         "@prisma/adapter-pg": "^7.8.0",
