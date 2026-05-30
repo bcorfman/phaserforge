@@ -35,6 +35,9 @@ test('Cloud Launch opens play-only runtime view @smoke', async ({ page }) => {
       contentType: 'application/json',
     });
   });
+  await page.route('**/api/v1/publish/github-pages/info', async (route) => {
+    await route.fulfill({ status: 400, body: JSON.stringify({ error: 'github_not_linked' }), contentType: 'application/json' });
+  });
   await page.route('**/api/v1/games/g1', async (route) => {
     // Page-level stub is redundant but harmless; keep for clarity.
     await route.fulfill({ status: 200, body: JSON.stringify({ game: { id: 'g1', title: 'Workspace', created_at: '2026-05-28T10:00:00.000Z', updated_at: '2026-05-28T10:14:00.000Z', yaml: cloudYaml } }), contentType: 'application/json' });
