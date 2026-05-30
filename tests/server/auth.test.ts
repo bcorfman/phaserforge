@@ -149,4 +149,36 @@ describe('auth', () => {
       .expect(302);
     expect(cbRes.headers.location).toBe('https://bcorfman.github.io/phaserforge/');
   });
+
+  it('github oauth start accepts absolute returnTo matching frontend origin', async () => {
+    const { app } = makeApp({
+      frontendBaseUrl: 'https://bcorfman.github.io/phaserforge/',
+      publicBaseUrl: 'https://phaseractions-studio-production.up.railway.app',
+      githubOAuth: { clientId: 'cid', clientSecret: 'csecret' },
+    });
+
+    const res = await request(app)
+      .get('/api/v1/auth/github/start?returnTo=https%3A%2F%2Fbcorfman.github.io%2Fphaserforge%2F%3Fx%3D1%23hash')
+      .expect(302);
+
+    const location = res.headers.location as string;
+    expect(location).toContain('https://github.com/login/oauth/authorize');
+
+    const setCookies = (res.headers['set-cookie'] ?? []) as string[];
+    const returnTo = setCookies.find((c) => c.startsWith('pa_return_to='))?.split(';')[0] ?? '';
+    // Stores a normalized path-only value.
+    expect(decodeURIComponent(returnTo.replace(/^pa_return_to=/, ''))).toBe('/phaserforge/?x=1#hash');
+  });
+
+  it('github oauth start rejects absolute returnTo with a different origin', async () => {
+    const { app } = makeApp({
+      frontendBaseUrl: 'https://bcorfman.github.io/phaserforge/',
+      publicBaseUrl: 'https://phaseractions-studio-production.up.railway.app',
+      githubOAuth: { clientId: 'cid', clientSecret: 'csecret' },
+    });
+
+    await request(app).get('/api/v1/auth/github/start?returnTo=https%3A%2F%2Fevil.example%2Fphaserforge%2F').expect(400, {
+      error: 'invalid_return_to',
+    });
+  });
 });
