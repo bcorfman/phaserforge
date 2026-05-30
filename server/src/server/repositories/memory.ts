@@ -79,6 +79,18 @@ class MemoryOAuthRepository implements OAuthRepository {
     if ('providerLogin' in patch) existing.providerLogin = patch.providerLogin ?? null;
     if ('accessToken' in patch) existing.accessToken = patch.accessToken ?? null;
   }
+
+  async deleteByUserIdProvider(userId: string, provider: string): Promise<void> {
+    const key = `${userId}:${provider}`;
+    const id = this.byUserProvider.get(key);
+    if (!id) return;
+    const existing = this.byId.get(id);
+    if (existing) {
+      this.byProvider.delete(`${existing.provider}:${existing.providerAccountId}`);
+    }
+    this.byUserProvider.delete(key);
+    this.byId.delete(id);
+  }
 }
 
 class MemorySessionRepository implements SessionRepository {

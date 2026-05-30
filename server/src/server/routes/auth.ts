@@ -47,6 +47,20 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     res.clearCookie('pa_oauth_state', { path: '/' });
   }
 
+  function setOAuthForceSwitchCookie(res: express.Response, enabled: boolean) {
+    res.cookie('pa_oauth_force_switch', enabled ? '1' : '0', {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
+      path: '/',
+      maxAge: 10 * 60 * 1000,
+    });
+  }
+
+  function clearOAuthForceSwitchCookie(res: express.Response) {
+    res.clearCookie('pa_oauth_force_switch', { path: '/' });
+  }
+
   function setReturnToCookie(res: express.Response, returnTo: string) {
     res.cookie('pa_return_to', returnTo, {
       httpOnly: true,
@@ -78,7 +92,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     setSessionCookie(res, settings, sessionToken);
   }
 
-  router.get('/github/start', authLimiter, (req, res) => {
+  router.get('/github/start', authLimiter, requireAuth(settings, repositories), (req, res) => {
     if (!settings.githubOAuth || !settings.publicBaseUrl || !settings.frontendBaseUrl) {
       res.status(400).json({ error: 'oauth_not_configured' });
       return;
@@ -106,6 +120,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
 
     const state = randomToken(24);
     setOAuthStateCookie(res, state);
+    const forceSwitch = req.query.forceSwitch === '1' || req.query.forceSwitch === 'true';
+    setOAuthForceSwitchCookie(res, Boolean(forceSwitch));
     setReturnToCookie(res, returnTo);
 
     const callbackUrl = new URL('/api/v1/auth/github/callback', settings.publicBaseUrl).toString();
@@ -118,7 +134,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     res.redirect(302, authUrl.toString());
   });
 
-  router.get('/github/callback', authLimiter, async (req, res) => {
+  router.get('/github/callback', authLimiter, requireAuth(settings, repositories), async (req, res) => {
     if (!settings.githubOAuth || !settings.publicBaseUrl || !settings.frontendBaseUrl) {
       res.status(400).json({ error: 'oauth_not_configured' });
       return;
@@ -128,6 +144,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     const state = typeof req.query.state === 'string' ? req.query.state : undefined;
     const cookieState = typeof req.cookies?.pa_oauth_state === 'string' ? req.cookies.pa_oauth_state : undefined;
     clearOAuthStateCookie(res);
+    const forceSwitchCookie = typeof req.cookies?.pa_oauth_force_switch === 'string' ? req.cookies.pa_oauth_force_switch : '0';
+    clearOAuthForceSwitchCookie(res);
     const returnTo = typeof req.cookies?.pa_return_to === 'string' ? req.cookies.pa_return_to : '/';
     clearReturnToCookie(res);
 
@@ -201,31 +219,26 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     const provider = 'github';
     const providerAccountId = String(ghUser.id);
 
-    const existingOAuth = await repositories.oauth.findByProviderAccount(provider, providerAccountId);
-    let userId: string;
-    if (existingOAuth) {
-      userId = existingOAuth.userId;
-      await repositories.oauth.update(existingOAuth.id, { providerLogin: ghLogin, accessToken });
-    } else {
-      const normalizedEmail = email.trim().toLowerCase();
-      const existingUser = await repositories.users.findByEmail(normalizedEmail);
-      let inviteToConsumeId: string | null = null;
-      if (!existingUser && settings.inviteOnly) {
-        const inv = await repositories.invites.findUsableByEmail(normalizedEmail, new Date().toISOString());
-        if (!inv) {
-          res.status(403).json({ error: 'invite_required' });
-          return;
-        }
-        inviteToConsumeId = inv.id;
+    const userId = (req as unknown as { userId: string }).userId;
+    const existingLinked = await repositories.oauth.findByUserIdProvider(userId, provider);
+    const existingByAccount = await repositories.oauth.findByProviderAccount(provider, providerAccountId);
+    if (existingByAccount && existingByAccount.userId !== userId) {
+      res.status(409).json({ error: 'github_account_in_use' });
+      return;
+    }
+    if (existingLinked && existingLinked.providerAccountId !== providerAccountId) {
+      const allowSwitch = forceSwitchCookie === '1';
+      if (!allowSwitch) {
+        res.status(409).json({ error: 'github_already_linked_different_account' });
+        return;
       }
+      await repositories.oauth.deleteByUserIdProvider(userId, provider);
+    }
 
-      userId = existingUser?.id ?? newId('user');
-      if (!existingUser) {
-        await repositories.users.create({ id: userId, email: normalizedEmail, passwordHash: null, createdAt: new Date().toISOString() });
-      }
-      if (inviteToConsumeId) {
-        await repositories.invites.markUsed(inviteToConsumeId, userId, new Date().toISOString());
-      }
+    const linkedNow = await repositories.oauth.findByUserIdProvider(userId, provider);
+    if (linkedNow) {
+      await repositories.oauth.update(linkedNow.id, { providerLogin: ghLogin, accessToken });
+    } else {
       await repositories.oauth.create({
         id: newId('oa'),
         userId,
@@ -237,8 +250,6 @@ export function authRouter(settings: Settings, repositories: Repositories) {
       });
     }
 
-    await createSession(userId, res);
-
     let redirectUrl: string;
     try {
       const base = new URL(settings.frontendBaseUrl);
@@ -248,6 +259,12 @@ export function authRouter(settings: Settings, repositories: Repositories) {
       redirectUrl = '/';
     }
     res.redirect(302, redirectUrl);
+  });
+
+  router.post('/github/disconnect', requireAuth(settings, repositories), async (req, res) => {
+    const userId = (req as unknown as { userId: string }).userId;
+    await repositories.oauth.deleteByUserIdProvider(userId, 'github');
+    res.json({ ok: true });
   });
 
   router.post('/signup', authLimiter, async (req, res) => {

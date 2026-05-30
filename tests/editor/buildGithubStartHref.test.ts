@@ -33,4 +33,14 @@ describe('buildGithubStartHref', () => {
     const url = new URL(href);
     expect(url.searchParams.get('returnTo')).toBe('/phaserforge/?x=1#hash');
   });
+
+  it('adds forceSwitch=1 when requested', () => {
+    const href = buildGithubStartHref({
+      apiBaseUrl: 'https://phaseractions-studio-production.up.railway.app/',
+      baseUrl: '/phaserforge/',
+      forceSwitch: true,
+    });
+    const url = new URL(href);
+    expect(url.searchParams.get('forceSwitch')).toBe('1');
+  });
 });
