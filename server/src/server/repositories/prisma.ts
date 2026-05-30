@@ -220,6 +220,13 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
         data: { usedAt: new Date(usedAtIso), usedByUserId: userId },
       });
     },
+    async deleteUnusedByTokenHash(tokenHash) {
+      await prisma.invite.deleteMany({ where: { tokenHash, usedAt: null } });
+    },
+    async deleteUnusedByEmail(email) {
+      const res = await prisma.invite.deleteMany({ where: { email: email.toLowerCase(), usedAt: null } });
+      return res.count;
+    },
   };
 
   const games: GameRepository = {
