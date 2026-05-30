@@ -83,38 +83,8 @@ describe('invite-only auth', () => {
       .expect({ error: 'invite_invalid' });
   });
 
-  it('rejects new-user GitHub OAuth callback when invite is missing', async () => {
+  it('requires Cloud login before starting GitHub OAuth linking', async () => {
     const { app } = makeApp();
-
-    const fetchMock = async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url === 'https://github.com/login/oauth/access_token') {
-        return new Response(JSON.stringify({ access_token: 'at' }), { status: 200, headers: { 'content-type': 'application/json' } });
-      }
-      if (url === 'https://api.github.com/user') {
-        return new Response(JSON.stringify({ id: 123, login: 'alice' }), { status: 200, headers: { 'content-type': 'application/json' } });
-      }
-      if (url === 'https://api.github.com/user/emails') {
-        return new Response(JSON.stringify([{ email: 'alice@example.com', primary: true, verified: true }]), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      return new Response('not found', { status: 404 });
-    };
-    vi.stubGlobal('fetch', fetchMock as any);
-
-    const startRes = await request(app).get('/api/v1/auth/github/start?returnTo=%2F').expect(302);
-    const url = new URL(startRes.headers.location as string);
-    const state = url.searchParams.get('state');
-    const setCookies = (startRes.headers['set-cookie'] ?? []) as string[];
-    const oauthState = setCookies.find((c) => c.startsWith('pa_oauth_state='))?.split(';')[0];
-    const returnTo = setCookies.find((c) => c.startsWith('pa_return_to='))?.split(';')[0];
-
-    await request(app)
-      .get(`/api/v1/auth/github/callback?code=abc&state=${encodeURIComponent(state!)}`)
-      .set('Cookie', [oauthState!, returnTo!])
-      .expect(403)
-      .expect({ error: 'invite_required' });
+    await request(app).get('/api/v1/auth/github/start?returnTo=%2F').expect(401).expect({ error: 'unauthorized' });
   });
 });

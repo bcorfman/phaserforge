@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { checkGithubPagesTarget, createGame, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame } from '../cloud/api';
+import { checkGithubPagesTarget, createGame, disconnectGithub, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame } from '../cloud/api';
 import { serializeProjectToYaml } from '../model/serialization';
 import { PROJECT_LAST_SAVED_AT_STORAGE_KEY, PROJECT_STORAGE_KEY, WORKSPACE_BACKUP_STORAGE_KEY, type EditorState } from './EditorStore';
 import { WorkspaceConflictModal } from './WorkspaceConflictModal';
@@ -9,6 +9,7 @@ export function buildGithubStartHref(params: {
   apiBaseUrl: string;
   baseUrl: string;
   locationHref?: string;
+  forceSwitch?: boolean;
 }): string {
   const apiBase = params.apiBaseUrl.trim();
   const baseUrl = params.baseUrl.trim() || '/';
@@ -39,7 +40,8 @@ export function buildGithubStartHref(params: {
     }
   })();
 
-  return `${normalized}/api/v1/auth/github/start?returnTo=${encodeURIComponent(returnTo)}`;
+  const forceSwitch = params.forceSwitch ? '&forceSwitch=1' : '';
+  return `${normalized}/api/v1/auth/github/start?returnTo=${encodeURIComponent(returnTo)}${forceSwitch}`;
 }
 
 export function CloudAccountPanel({
@@ -67,6 +69,7 @@ export function CloudAccountPanel({
   const [publishInfo, setPublishInfo] = useState<{ ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string } | null>(null);
   const [publishCheck, setPublishCheck] = useState<{ url: string; exists: boolean; status: number | null } | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [showGithubConfirm, setShowGithubConfirm] = useState<null | { mode: 'connect' | 'switch' }>(null);
   const [workspaceConflict, setWorkspaceConflict] = useState<{
     cloud: { yaml: string; updatedAt: string; label: string };
     device: { yaml: string; savedAtMs: number | null; label: string };
@@ -80,6 +83,13 @@ export function CloudAccountPanel({
     const baseUrl = typeof metaEnv?.BASE_URL === 'string' ? metaEnv.BASE_URL : '/';
     const locationHref = typeof window !== 'undefined' ? window.location.href : undefined;
     return buildGithubStartHref({ apiBaseUrl: apiBase, baseUrl, locationHref });
+  }, []);
+  const githubSwitchHref = useMemo(() => {
+    const metaEnv = (import.meta as any)?.env as Record<string, unknown> | undefined;
+    const apiBase = typeof metaEnv?.VITE_API_BASE_URL === 'string' ? metaEnv.VITE_API_BASE_URL.trim() : '';
+    const baseUrl = typeof metaEnv?.BASE_URL === 'string' ? metaEnv.BASE_URL : '/';
+    const locationHref = typeof window !== 'undefined' ? window.location.href : undefined;
+    return buildGithubStartHref({ apiBaseUrl: apiBase, baseUrl, locationHref, forceSwitch: true });
   }, []);
 
   useEffect(() => {
@@ -297,11 +307,29 @@ export function CloudAccountPanel({
       setPublishInfo(null);
       setPublishCheck(null);
       setShowPublishConfirm(false);
+      setShowGithubConfirm(null);
       setWorkspaceConflict(null);
       hasCheckedConflictRef.current = false;
       onStatus('Signed out');
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Logout failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisconnectGithub = async () => {
+    if (!user) return;
+    setBusy(true);
+    try {
+      const csrf = await ensureCsrf();
+      await disconnectGithub(csrf);
+      setPublishInfo({ ok: false, error: 'github_not_linked' });
+      setPublishCheck(null);
+      setShowPublishConfirm(false);
+      onStatus('Disconnected GitHub');
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Failed to disconnect GitHub');
     } finally {
       setBusy(false);
     }
@@ -524,6 +552,9 @@ export function CloudAccountPanel({
             <span>Invite code</span>
             <input value={inviteToken} autoComplete="off" onChange={(e) => setInviteToken(e.target.value)} />
           </label>
+          <div className="cloud-help">
+            Sign up requires an invite code emailed to you. After that, use Log in to access cloud saves and publishing.
+          </div>
           <div className="cloud-auth-actions">
             <button className="button" type="button" disabled={busy} onClick={handleSignup}>
               Sign up
@@ -532,19 +563,8 @@ export function CloudAccountPanel({
               Log in
             </button>
           </div>
-          {githubEnabled && (
-            <a className="button cloud-github-button" href={githubStartHref} aria-label="Continue with GitHub">
-              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 2.5C6.75 2.5 2.5 6.75 2.5 12C2.5 16.3 5.37 19.92 9.33 21.22C9.8 21.31 9.98 21.02 9.98 20.78V19.1C7.33 19.68 6.77 18.03 6.77 18.03C6.33 16.93 5.68 16.64 5.68 16.64C4.8 16.05 5.75 16.06 5.75 16.06C6.72 16.13 7.23 17.06 7.23 17.06C8.08 18.52 9.49 18.1 10.05 17.85C10.14 17.22 10.39 16.79 10.67 16.54C8.55 16.3 6.33 15.48 6.33 11.5C6.33 10.36 6.73 9.43 7.4 8.7C7.29 8.46 6.94 7.5 7.5 6.2C7.5 6.2 8.35 5.93 9.98 7.03C10.78 6.81 11.64 6.7 12.5 6.7C13.36 6.7 14.22 6.81 15.02 7.03C16.65 5.93 17.5 6.2 17.5 6.2C18.06 7.5 17.71 8.46 17.6 8.7C18.27 9.43 18.67 10.36 18.67 11.5C18.67 15.49 16.44 16.29 14.31 16.53C14.67 16.85 15 17.48 15 18.45V20.78C15 21.02 15.18 21.32 15.66 21.22C19.63 19.92 22.5 16.3 22.5 12C22.5 6.75 18.25 2.5 13 2.5H12Z"
-                  fill="currentColor"
-                />
-              </svg>
-              Continue with GitHub
-            </a>
-          )}
           <div className="cloud-help">
-            GitHub sign-in also creates/signs into your Cloud account and connects GitHub for publishing.
+            Create an account (email + password + invite code), then connect GitHub to enable publishing.
           </div>
         </div>
       ) : (
@@ -563,15 +583,39 @@ export function CloudAccountPanel({
                   ? `GitHub: connected as ${publishInfo.login}.`
                   : 'GitHub: not connected (required to publish).'}
             </div>
-            {!publishInfo?.ok ? (
-              <a className="button button-compact" href={githubStartHref} aria-label="Connect GitHub">
-                Connect GitHub
-              </a>
-            ) : (
-              <a className="button button-compact" href={githubStartHref} aria-label="Reconnect GitHub">
-                Reconnect
-              </a>
-            )}
+            {githubEnabled ? (
+              !publishInfo?.ok ? (
+                <button
+                  className="button button-compact"
+                  type="button"
+                  disabled={busy}
+                  aria-label="Connect GitHub"
+                  onClick={() => setShowGithubConfirm({ mode: 'connect' })}
+                >
+                  Connect GitHub
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="button button-compact"
+                    type="button"
+                    disabled={busy}
+                    aria-label="Switch GitHub account"
+                    onClick={() => setShowGithubConfirm({ mode: 'switch' })}
+                  >
+                    Switch GitHub account…
+                  </button>
+                  <button className="button button-compact" type="button" disabled={busy} onClick={handleDisconnectGithub}>
+                    Disconnect
+                  </button>
+                </>
+              )
+            ) : null}
+          </div>
+          <div className="cloud-row">
+            <div className="cloud-help">
+              Connect GitHub authorizes PhaserForge to publish games to GitHub Pages. Make sure the correct GitHub account is signed into this browser.
+            </div>
           </div>
           <div className="cloud-row">
             <label className="field">
@@ -676,6 +720,42 @@ export function CloudAccountPanel({
               <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={() => void handlePublish(Boolean(publishCheck.exists))}>
                 {publishCheck.exists ? 'Publish anyway' : 'Publish'}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showGithubConfirm ? (
+        <div className="modal-overlay" data-testid="github-connect-modal" role="dialog" aria-label="Confirm GitHub connection">
+          <div className="modal-card">
+            <div className="workspace-conflict-header">
+              <div className="workspace-conflict-title">
+                {showGithubConfirm.mode === 'switch' ? 'Switch GitHub account' : 'Connect GitHub'}
+              </div>
+              <button className="button button-compact" type="button" onClick={() => setShowGithubConfirm(null)}>
+                Close
+              </button>
+            </div>
+            <div className="cloud-help">
+              You’ll be redirected to GitHub to authorize PhaserForge to publish to GitHub Pages.
+            </div>
+            <div className="cloud-help">
+              {publishInfo?.ok
+                ? `Currently linked: ${publishInfo.login}. Continuing may change the linked account.`
+                : 'Make sure the correct GitHub account is signed into this browser.'}
+            </div>
+            <div className="cloud-row">
+              <button className="button" type="button" onClick={() => setShowGithubConfirm(null)}>
+                Cancel
+              </button>
+              <a
+                className="button primary"
+                data-testid="github-connect-confirm"
+                href={showGithubConfirm.mode === 'switch' ? githubSwitchHref : githubStartHref}
+                onClick={() => setShowGithubConfirm(null)}
+              >
+                Continue to GitHub
+              </a>
             </div>
           </div>
         </div>
