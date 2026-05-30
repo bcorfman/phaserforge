@@ -84,8 +84,22 @@ export function authRouter(settings: Settings, repositories: Repositories) {
       return;
     }
 
-    const returnTo = typeof req.query.returnTo === 'string' ? req.query.returnTo : '/';
-    if (!returnTo.startsWith('/')) {
+    const rawReturnTo = typeof req.query.returnTo === 'string' ? req.query.returnTo : '/';
+    const returnTo = (() => {
+      if (rawReturnTo.startsWith('/')) return rawReturnTo;
+      if (rawReturnTo.startsWith('http://') || rawReturnTo.startsWith('https://')) {
+        try {
+          const base = new URL(settings.frontendBaseUrl);
+          const candidate = new URL(rawReturnTo);
+          if (candidate.origin !== base.origin) return null;
+          return `${candidate.pathname}${candidate.search}${candidate.hash}` || '/';
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    })();
+    if (!returnTo) {
       res.status(400).json({ error: 'invalid_return_to' });
       return;
     }
