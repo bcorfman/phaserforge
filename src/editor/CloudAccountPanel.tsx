@@ -5,6 +5,29 @@ import { PROJECT_LAST_SAVED_AT_STORAGE_KEY, PROJECT_STORAGE_KEY, WORKSPACE_BACKU
 import { WorkspaceConflictModal } from './WorkspaceConflictModal';
 import { summarizeYamlWorkspace } from './workspaceSummary';
 
+export function buildGithubStartHref(params: {
+  apiBaseUrl: string;
+  baseUrl: string;
+  locationHref?: string;
+}): string {
+  const apiBase = params.apiBaseUrl.trim();
+  const baseUrl = params.baseUrl.trim() || '/';
+  if (!apiBase) return '/api/v1/auth/github/start?returnTo=/';
+
+  const normalized = apiBase.replace(/\/+$/, '');
+  const returnTo = (() => {
+    if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) return baseUrl;
+    if (!params.locationHref) return baseUrl;
+    try {
+      return new URL(baseUrl, params.locationHref).toString();
+    } catch {
+      return baseUrl;
+    }
+  })();
+
+  return `${normalized}/api/v1/auth/github/start?returnTo=${encodeURIComponent(returnTo)}`;
+}
+
 export function CloudAccountPanel({
   state,
   onLoadYaml,
@@ -41,9 +64,8 @@ export function CloudAccountPanel({
     const metaEnv = (import.meta as any)?.env as Record<string, unknown> | undefined;
     const apiBase = typeof metaEnv?.VITE_API_BASE_URL === 'string' ? metaEnv.VITE_API_BASE_URL.trim() : '';
     const baseUrl = typeof metaEnv?.BASE_URL === 'string' ? metaEnv.BASE_URL : '/';
-    if (!apiBase) return '/api/v1/auth/github/start?returnTo=/';
-    const normalized = apiBase.replace(/\/+$/, '');
-    return `${normalized}/api/v1/auth/github/start?returnTo=${encodeURIComponent(baseUrl)}`;
+    const locationHref = typeof window !== 'undefined' ? window.location.href : undefined;
+    return buildGithubStartHref({ apiBaseUrl: apiBase, baseUrl, locationHref });
   }, []);
 
   useEffect(() => {
