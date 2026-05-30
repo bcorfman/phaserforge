@@ -102,6 +102,9 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
         } as any,
       });
     },
+    async deleteByUserIdProvider(userId, provider) {
+      await prisma.oAuthAccount.deleteMany({ where: { userId, provider } });
+    },
   };
 
   const sessions: SessionRepository = {

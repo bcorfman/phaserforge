@@ -156,3 +156,7 @@ export async function publishToGithubPages(
     return { ok: false, error: msg };
   }
 }
+
+export async function disconnectGithub(csrfToken: string): Promise<void> {
+  await api('/api/v1/auth/github/disconnect', { method: 'POST', headers: { 'x-csrf-token': csrfToken } });
+}
