@@ -1,44 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dispatchAction, dragAssetToCanvas, dragDropByTestIdAtClientPoint, dropAssetOnTestId, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, worldToClient } from './helpers';
+import { dismissViewHint, dispatchAction, dragAssetToCanvas, dragDropByTestIdAtClientPoint, dropAssetOnTestId, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, waitForViewportToSettle, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test.describe.configure({ timeout: 120000 });
-
-  async function waitForViewportToSettle(page: Page) {
-    let last: { zoom: number; scrollX: number; scrollY: number } | null = null;
-    let stableSince = Date.now();
-    const epsilon = 0.25;
-    const stableForMs = 250;
-
-    await expect
-      .poll(async () => {
-        const snap = await getSceneSnapshot<any>(page);
-        if (!snap?.ready) return false;
-        const next = {
-          zoom: typeof snap.zoom === 'number' ? snap.zoom : 0,
-          scrollX: typeof snap.scrollX === 'number' ? snap.scrollX : 0,
-          scrollY: typeof snap.scrollY === 'number' ? snap.scrollY : 0,
-        };
-        if (!last) {
-          last = next;
-          stableSince = Date.now();
-          return false;
-        }
-        const delta = Math.max(
-          Math.abs(next.zoom - last.zoom),
-          Math.abs(next.scrollX - last.scrollX),
-          Math.abs(next.scrollY - last.scrollY),
-        );
-        if (delta <= epsilon) {
-          return Date.now() - stableSince >= stableForMs;
-        }
-        last = next;
-        stableSince = Date.now();
-        return false;
-      })
-      .toBe(true);
-  }
 
   test('imports an image and drags to canvas to create an entity with asset ref @critical @browser', async ({ page }) => {
     await seedProject(page, createEmptyProject());
