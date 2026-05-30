@@ -172,6 +172,28 @@ class MemoryInviteRepository implements InviteRepository {
     existing.usedAt = usedAtIso;
     existing.usedByUserId = userId;
   }
+
+  async deleteUnusedByTokenHash(tokenHash: string): Promise<void> {
+    const id = this.byHash.get(tokenHash);
+    if (!id) return;
+    const inv = this.byId.get(id);
+    if (!inv || inv.usedAt) return;
+    this.byHash.delete(tokenHash);
+    this.byId.delete(id);
+  }
+
+  async deleteUnusedByEmail(email: string): Promise<number> {
+    const key = email.toLowerCase();
+    let deleted = 0;
+    for (const [id, inv] of this.byId.entries()) {
+      if (inv.usedAt) continue;
+      if (inv.email.toLowerCase() !== key) continue;
+      this.byId.delete(id);
+      this.byHash.delete(inv.tokenHash);
+      deleted += 1;
+    }
+    return deleted;
+  }
 }
 
 class MemoryGameRepository implements GameRepository {

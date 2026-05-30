@@ -80,6 +80,8 @@ export type InviteRepository = {
   findUsableByEmail(email: string, nowIso: string): Promise<InviteRecord | null>;
   create(invite: InviteRecord): Promise<InviteRecord>;
   markUsed(id: string, userId: string, usedAtIso: string): Promise<void>;
+  deleteUnusedByTokenHash(tokenHash: string): Promise<void>;
+  deleteUnusedByEmail(email: string): Promise<number>;
 };
 
 export type GameRepository = {
