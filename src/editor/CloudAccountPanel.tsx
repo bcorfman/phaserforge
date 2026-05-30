@@ -16,12 +16,26 @@ export function buildGithubStartHref(params: {
 
   const normalized = apiBase.replace(/\/+$/, '');
   const returnTo = (() => {
-    if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) return baseUrl;
-    if (!params.locationHref) return baseUrl;
+    const toPathOnly = (url: URL): string => `${url.pathname}${url.search}${url.hash}` || '/';
+
+    if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
+      try {
+        return toPathOnly(new URL(baseUrl));
+      } catch {
+        return '/';
+      }
+    }
+
+    if (!params.locationHref) {
+      const path = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
+      return path.startsWith('/') ? path : '/';
+    }
+
     try {
-      return new URL(baseUrl, params.locationHref).toString();
+      const resolved = new URL(baseUrl, params.locationHref);
+      return toPathOnly(resolved);
     } catch {
-      return baseUrl;
+      return '/';
     }
   })();
 
@@ -198,6 +212,23 @@ export function CloudAccountPanel({
       cancelled = true;
     };
   }, [user, onError]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) return;
+    const loadPublishInfo = async () => {
+      try {
+        const info = await getGithubPagesPublishInfo();
+        if (!cancelled) setPublishInfo(info);
+      } catch {
+        if (!cancelled) setPublishInfo({ ok: false, error: 'publish_info_failed' });
+      }
+    };
+    void loadPublishInfo();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const ensurePublishInfo = async (): Promise<{ ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string }> => {
     if (publishInfo) return publishInfo;
@@ -502,16 +533,19 @@ export function CloudAccountPanel({
             </button>
           </div>
           {githubEnabled && (
-            <a className="button cloud-github-button" href={githubStartHref} aria-label="Log in with GitHub">
+            <a className="button cloud-github-button" href={githubStartHref} aria-label="Continue with GitHub">
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M12 2.5C6.75 2.5 2.5 6.75 2.5 12C2.5 16.3 5.37 19.92 9.33 21.22C9.8 21.31 9.98 21.02 9.98 20.78V19.1C7.33 19.68 6.77 18.03 6.77 18.03C6.33 16.93 5.68 16.64 5.68 16.64C4.8 16.05 5.75 16.06 5.75 16.06C6.72 16.13 7.23 17.06 7.23 17.06C8.08 18.52 9.49 18.1 10.05 17.85C10.14 17.22 10.39 16.79 10.67 16.54C8.55 16.3 6.33 15.48 6.33 11.5C6.33 10.36 6.73 9.43 7.4 8.7C7.29 8.46 6.94 7.5 7.5 6.2C7.5 6.2 8.35 5.93 9.98 7.03C10.78 6.81 11.64 6.7 12.5 6.7C13.36 6.7 14.22 6.81 15.02 7.03C16.65 5.93 17.5 6.2 17.5 6.2C18.06 7.5 17.71 8.46 17.6 8.7C18.27 9.43 18.67 10.36 18.67 11.5C18.67 15.49 16.44 16.29 14.31 16.53C14.67 16.85 15 17.48 15 18.45V20.78C15 21.02 15.18 21.32 15.66 21.22C19.63 19.92 22.5 16.3 22.5 12C22.5 6.75 18.25 2.5 13 2.5H12Z"
                   fill="currentColor"
                 />
               </svg>
-              Login with GitHub
+              Continue with GitHub
             </a>
           )}
+          <div className="cloud-help">
+            GitHub sign-in also creates/signs into your Cloud account and connects GitHub for publishing.
+          </div>
         </div>
       ) : (
         <div className="cloud-signed-in">
@@ -520,6 +554,24 @@ export function CloudAccountPanel({
             <button className="button button-compact" type="button" disabled={busy} onClick={handleLogout}>
               Log out
             </button>
+          </div>
+          <div className="cloud-row">
+            <div className="cloud-help" data-testid="cloud-github-connection">
+              {publishInfo == null
+                ? 'GitHub: checking connection…'
+                : publishInfo.ok
+                  ? `GitHub: connected as ${publishInfo.login}.`
+                  : 'GitHub: not connected (required to publish).'}
+            </div>
+            {!publishInfo?.ok ? (
+              <a className="button button-compact" href={githubStartHref} aria-label="Connect GitHub">
+                Connect GitHub
+              </a>
+            ) : (
+              <a className="button button-compact" href={githubStartHref} aria-label="Reconnect GitHub">
+                Reconnect
+              </a>
+            )}
           </div>
           <div className="cloud-row">
             <label className="field">
@@ -589,9 +641,11 @@ export function CloudAccountPanel({
           </div>
           <div className="cloud-row">
             <div className="cloud-help" data-testid="cloud-publish-pages-help">
-              {publishInfo?.ok
-                ? `Publishes to https://${publishInfo.login}.github.io/<route>/ (public repo: ${publishInfo.repo}). Embedded assets only.`
-                : 'Publishes to https://<username>.github.io/<route>/ (public repo: username/username.github.io). Requires GitHub login. Embedded assets only.'}
+              {publishInfo == null
+                ? 'Checking GitHub connection…'
+                : publishInfo.ok
+                  ? `Publishes to https://${publishInfo.login}.github.io/<route>/ (public repo: ${publishInfo.repo}). Embedded assets only.`
+                  : 'Connect GitHub to publish to GitHub Pages. Embedded assets only.'}
               {projectHasPathAssets ? ' Path assets detected; publishing is disabled.' : ''}
             </div>
           </div>
