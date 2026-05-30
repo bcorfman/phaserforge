@@ -418,6 +418,41 @@ export async function getSceneSnapshot<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_FORGE_TEST__?.getSceneSnapshot()) as Promise<T>;
 }
 
+export async function waitForViewportToSettle(page: Page, options?: { stableForMs?: number; epsilon?: number }): Promise<void> {
+  let last: { zoom: number; scrollX: number; scrollY: number } | null = null;
+  let stableSince = Date.now();
+  const epsilon = options?.epsilon ?? 0.25;
+  const stableForMs = options?.stableForMs ?? 250;
+
+  await expect
+    .poll(async () => {
+      const snap = await getSceneSnapshot<any>(page);
+      if (!snap?.ready) return false;
+      const next = {
+        zoom: typeof snap.zoom === 'number' ? snap.zoom : 0,
+        scrollX: typeof snap.scrollX === 'number' ? snap.scrollX : 0,
+        scrollY: typeof snap.scrollY === 'number' ? snap.scrollY : 0,
+      };
+      if (!last) {
+        last = next;
+        stableSince = Date.now();
+        return false;
+      }
+      const delta = Math.max(
+        Math.abs(next.zoom - last.zoom),
+        Math.abs(next.scrollX - last.scrollX),
+        Math.abs(next.scrollY - last.scrollY),
+      );
+      if (delta <= epsilon) {
+        return Date.now() - stableSince >= stableForMs;
+      }
+      last = next;
+      stableSince = Date.now();
+      return false;
+    })
+    .toBe(true);
+}
+
 export async function hitTestAtClientPoint(
   page: Page,
   point: Point
