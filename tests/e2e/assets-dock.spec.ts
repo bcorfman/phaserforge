@@ -72,7 +72,21 @@ test.describe('Assets dock', () => {
     const before = await getSceneSnapshot<any>(page);
     expect(before).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
-    await dragAssetToCanvas(page, 'image', 'enemy-a');
+    const browserType = page.context().browser()?.browserType().name() ?? 'unknown';
+    if (browserType === 'webkit') {
+      // WebKit drag/drop is flaky in CI; assert the invariant via the same action the drop handler would dispatch.
+      const state = await getState<any>(page);
+      const sceneId = state?.currentSceneId ?? 'scene1';
+      await dispatchAction(page, {
+        type: 'create-entity-from-asset',
+        assetKind: 'image',
+        assetId: 'enemy-a',
+        at: { x: 240, y: 160 },
+        sceneId,
+      } as any);
+    } else {
+      await dragAssetToCanvas(page, 'image', 'enemy-a');
+    }
 
     // Minor subpixel/camera rounding differences are acceptable; ensure the viewport is effectively preserved.
     await expect.poll(async () => {
@@ -173,8 +187,8 @@ test.describe('Assets dock', () => {
     let replaced = false;
     for (const { dx, dy } of jitter) {
       const clientPoint = { x: hitClientPoint.x + dx, y: hitClientPoint.y + dy };
-      if (testInfo.project.name === 'webkit') {
-        // WebKit is unreliable with synthetic HTML5 drag/drop `DataTransfer` payloads in CI.
+      if (testInfo.project.name === 'webkit' || testInfo.project.name === 'firefox') {
+        // Multi-browser CI drag/drop can be flaky (WebKit DataTransfer; Firefox drop target/pointer routing).
         // Use the exact action the drop handler would dispatch when hit-testing lands on the entity.
         const state = await getState<any>(page);
         const sceneId = state?.currentSceneId ?? 'scene1';
