@@ -5,7 +5,11 @@ import { getAssetReferences, type AssetKind } from './assetReferences';
 import { ASSET_DRAG_MIME } from './dragAssets';
 import { loadImageMetadataFromFile, type LoadedImageMetadata } from './imageMetadata';
 
-const DEMO_PACK_IMAGES = import.meta.glob('../../res/images/*.png', { eager: true, as: 'url' }) as Record<string, string>;
+const DEMO_PACK_IMAGES = import.meta.glob('../../res/images/*.png', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
 
 async function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
