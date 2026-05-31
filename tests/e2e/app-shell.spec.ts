@@ -158,7 +158,8 @@ test('imports embedded sprites into the scene @critical', async ({ page }) => {
   }).toEqual({ count: 1, imageType: 'image', sourceKind: 'asset' });
 
   const { assetId: secondImageAssetId } = await importImageAssetFromFile(page, 'res/images/mainwindow.png');
-  await dragAssetToCanvas(page, 'image', secondImageAssetId);
+  // Drop at a different position so we don't replace the first sprite.
+  await dragAssetToCanvas(page, 'image', secondImageAssetId, { targetPosition: { x: 320, y: 220 } });
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, { asset?: { imageType: string } }> } }>(page);
