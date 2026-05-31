@@ -9,7 +9,6 @@ import {
   getState,
   gotoStudio,
   importImageAssetFromFile,
-  importSpritesheetAssetFromFile,
   openProjectScope,
   openSceneScope,
   resetScene,
@@ -370,9 +369,10 @@ test('reassigns a sprite asset from another sprite via the inspector @critical',
 
 test('assigns a group MoveUntil action to imported sprites and runs it in play mode @critical', async ({ page }) => {
   await resetScene(page);
-  const { assetId } = await importSpritesheetAssetFromFile(page, 'res/images/mainwindow.png', { frameWidth: 64, frameHeight: 64 });
-  await dragAssetToCanvas(page, 'spritesheet', assetId, { targetPosition: { x: 220, y: 160 } });
-  await dragAssetToCanvas(page, 'spritesheet', assetId, { targetPosition: { x: 320, y: 200 } });
+  const { assetId } = await importImageAssetFromFile(page, 'res/images/mainwindow.png');
+  // This test isn't about drag/drop behavior; create two sprites directly to avoid flakiness from drop-replace semantics.
+  await dispatchAction(page, { type: 'create-entity-from-asset', assetKind: 'image', assetId, at: { x: 220, y: 160 } });
+  await dispatchAction(page, { type: 'create-entity-from-asset', assetKind: 'image', assetId, at: { x: 340, y: 220 } });
   await openSceneScope(page);
   await expect.poll(async () => {
     const state = await getState<{ scene?: { entities?: Record<string, unknown> } } | null>(page);

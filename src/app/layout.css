@@ -1320,6 +1320,12 @@ html[data-theme='dark'] .phaser-frame {
   gap: 0.6rem;
 }
 
+.assets-dock-list-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
 .assets-dock-row {
   display: flex;
   gap: 0.55rem;

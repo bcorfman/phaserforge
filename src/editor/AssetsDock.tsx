@@ -3,8 +3,9 @@ import type { AssetFileSource, ProjectSpec } from '../model/types';
 import type { EditorAction, Selection } from './EditorStore';
 import { getAssetReferences, type AssetKind } from './assetReferences';
 import { ASSET_DRAG_MIME } from './dragAssets';
-import { SpriteImportPanelView } from './SpriteImportPanel';
-import { loadImageMetadataFromFile, loadImageMetadataFromSrc, type LoadedImageMetadata } from './imageMetadata';
+import { loadImageMetadataFromFile, type LoadedImageMetadata } from './imageMetadata';
+
+const DEMO_PACK_IMAGES = import.meta.glob('../../res/images/*.png', { eager: true, as: 'url' }) as Record<string, string>;
 
 async function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -46,6 +47,25 @@ function usageBadgesForAudio(project: ProjectSpec, assetId: string): Array<'MUS'
   ];
 }
 
+function assetIdBaseFromOriginalName(name: string | undefined, fallbackBase: string = 'asset'): string {
+  const raw = (name ?? '').trim();
+  const withoutExt = raw.replace(/\.[a-z0-9]+$/i, '');
+  const base = withoutExt.length > 0 ? withoutExt : fallbackBase;
+  return base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '') || fallbackBase;
+}
+
+async function readUrlAsDataUrl(url: string): Promise<{ dataUrl: string; mimeType?: string }> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load demo pack asset (${res.status})`);
+  const blob = await res.blob();
+  const file = new File([blob], url.split('/').pop() ?? 'asset', { type: blob.type || undefined });
+  return { dataUrl: await readAsDataUrl(file), ...(blob.type ? { mimeType: blob.type } : {}) };
+}
+
 export function AssetsDock({
   project,
   sceneId,
@@ -68,15 +88,11 @@ export function AssetsDock({
     if (raw === '1') return true;
     return true;
   });
-  const [importOpen, setImportOpen] = useState(false);
-  const [importKind, setImportKind] = useState<'image' | 'spritesheet' | 'audio' | 'font'>('image');
-  const [sourceMode, setSourceMode] = useState<'embedded' | 'path'>('embedded');
-  const [pathDraft, setPathDraft] = useState('');
-  const [fileError, setFileError] = useState<string | undefined>();
-  const [loadedImage, setLoadedImage] = useState<LoadedImage | null>(null);
-  const [frameWidth, setFrameWidth] = useState(32);
-  const [frameHeight, setFrameHeight] = useState(32);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null);
+  const addMenuRootRef = useRef<HTMLDivElement | null>(null);
+  const deviceFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [importError, setImportError] = useState<string | undefined>();
+  const [demoPackImporting, setDemoPackImporting] = useState(false);
   const [rowMenu, setRowMenu] = useState<{ assetKind: AssetKind; assetId: string; x: number; y: number } | null>(null);
   const rowMenuRootRef = useRef<HTMLDivElement | null>(null);
   const [relinkOpen, setRelinkOpen] = useState<{ assetKind: AssetKind; assetId: string } | null>(null);
@@ -84,7 +100,6 @@ export function AssetsDock({
   const [relinkPathDraft, setRelinkPathDraft] = useState('');
   const [relinkError, setRelinkError] = useState<string | undefined>();
   const relinkFileInputRef = useRef<HTMLInputElement | null>(null);
-  const [advancedImportOpen, setAdvancedImportOpen] = useState(false);
 
   useEffect(() => {
     const storage: any = (globalThis as any).localStorage;
@@ -123,91 +138,72 @@ export function AssetsDock({
     return [...imageIds, ...sheetIds];
   }, [normalizedSearch, project, tab]);
 
-  const startImport = () => {
-    setImportOpen(true);
-    setFileError(undefined);
-    setLoadedImage(null);
-    setPathDraft('');
+  const openAddMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setAddMenu({ x: Math.max(8, rect.right - 240), y: rect.bottom + 8 });
+    setImportError(undefined);
   };
 
-  const triggerFilePick = () => fileInputRef.current?.click();
+  const importFromDevice = () => {
+    setAddMenu(null);
+    setImportError(undefined);
+    deviceFileInputRef.current?.click();
+  };
 
-  const onFilePicked = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const onDeviceFilesPicked = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
     event.target.value = '';
-    setFileError(undefined);
+    if (files.length === 0) return;
+    setImportError(undefined);
     try {
-      const dataUrl = await readAsDataUrl(file);
-      if (importKind === 'image') {
-        const meta = toLoadedImage(await loadImageMetadataFromFile(file, dataUrl));
-        dispatch({
-          type: 'add-image-asset-from-file',
-          file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, width: meta.width, height: meta.height },
-        } as any);
-        setImportOpen(false);
-        return;
+      for (const file of files) {
+        const lower = file.name.toLowerCase();
+        const isFont = /\.(ttf|otf|woff|woff2)$/.test(lower);
+        if (file.type.startsWith('image/')) {
+          const dataUrl = await readAsDataUrl(file);
+          const meta = toLoadedImage(await loadImageMetadataFromFile(file, dataUrl));
+          dispatch({
+            type: 'add-image-asset-from-file',
+            file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, width: meta.width, height: meta.height },
+          } as any);
+        } else if (file.type.startsWith('audio/')) {
+          const dataUrl = await readAsDataUrl(file);
+          dispatch({ type: 'add-audio-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined } } as any);
+        } else if (isFont) {
+          const dataUrl = await readAsDataUrl(file);
+          dispatch({ type: 'add-font-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined } } as any);
+        }
       }
-      if (importKind === 'audio') {
-        dispatch({ type: 'add-audio-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined } } as any);
-        setImportOpen(false);
-        return;
-      }
-      if (importKind === 'font') {
-        dispatch({ type: 'add-font-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined } } as any);
-        setImportOpen(false);
-        return;
-      }
-
-      setLoadedImage(toLoadedImage(await loadImageMetadataFromFile(file, dataUrl)));
     } catch (err) {
-      setFileError(err instanceof Error ? err.message : 'Unable to import file');
+      setImportError(err instanceof Error ? err.message : 'Failed to import files');
     }
   };
 
-  const commitPathImport = async () => {
-    const path = pathDraft.trim();
-    if (!path) return;
-    if (importKind === 'image') {
-      try {
-        const meta = toLoadedImage(await loadImageMetadataFromSrc(path, path.split('/').pop() ?? path));
-        dispatch({ type: 'add-image-asset-from-path', path, width: meta.width, height: meta.height } as any);
-      } catch {
-        dispatch({ type: 'add-image-asset-from-path', path } as any);
+  const importDemoPack = async () => {
+    setAddMenu(null);
+    setImportError(undefined);
+    if (demoPackImporting) return;
+    setDemoPackImporting(true);
+    try {
+      const urls = Object.entries(DEMO_PACK_IMAGES)
+        .map(([path, url]) => ({ path, url }))
+        .sort((a, b) => a.path.localeCompare(b.path));
+      for (const { path, url } of urls) {
+        const filename = path.split('/').pop() ?? 'image.png';
+        const assetId = assetIdBaseFromOriginalName(filename, 'image');
+        const { dataUrl, mimeType } = await readUrlAsDataUrl(url);
+        const meta = toLoadedImage(await loadImageMetadataFromFile(new File([], filename), dataUrl));
+        dispatch({
+          type: 'ensure-image-asset-from-file',
+          assetId,
+          file: { dataUrl, originalName: filename, mimeType, width: meta.width, height: meta.height },
+        } as any);
       }
-      setImportOpen(false);
-      return;
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Failed to import demo pack');
+    } finally {
+      setDemoPackImporting(false);
     }
-    if (importKind === 'audio') {
-      dispatch({ type: 'add-audio-asset-from-path', path } as any);
-      setImportOpen(false);
-      return;
-    }
-    if (importKind === 'font') {
-      dispatch({ type: 'add-font-asset-from-path', path } as any);
-      setImportOpen(false);
-      return;
-    }
-    // spritesheet path import needs grid; require metadata is unavailable here, so infer a 1x1 sheet.
-    dispatch({
-      type: 'add-spritesheet-asset-from-path',
-      path,
-      grid: { frameWidth: Math.max(1, frameWidth), frameHeight: Math.max(1, frameHeight), columns: 1, rows: 1 },
-    } as any);
-    setImportOpen(false);
-  };
-
-  const commitSpritesheetImport = () => {
-    if (!loadedImage) return;
-    const columns = Math.max(1, Math.floor(loadedImage.width / Math.max(1, frameWidth)));
-    const rows = Math.max(1, Math.floor(loadedImage.height / Math.max(1, frameHeight)));
-    dispatch({
-      type: 'add-spritesheet-asset-from-file',
-      file: { dataUrl: loadedImage.src, originalName: loadedImage.name, mimeType: loadedImage.mimeType },
-      grid: { frameWidth: Math.max(1, frameWidth), frameHeight: Math.max(1, frameHeight), columns, rows },
-    } as any);
-    setImportOpen(false);
-    setLoadedImage(null);
   };
 
   const beginDrag = (assetKind: AssetKind, assetId: string, event: React.DragEvent) => {
@@ -248,6 +244,25 @@ export function AssetsDock({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [rowMenu]);
+
+  useEffect(() => {
+    if (!addMenu) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = addMenuRootRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setAddMenu(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAddMenu(null);
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [addMenu]);
 
   useEffect(() => {
     if (!relinkOpen) return;
@@ -329,153 +344,90 @@ export function AssetsDock({
     <div className="assets-dock" data-testid="assets-dock">
       <div className="assets-dock-header">
         <div className="assets-dock-title">Assets</div>
-        <button className="button button-compact" type="button" disabled={disabled} onClick={startImport} data-testid="assets-dock-import-button">
-          + Import
+        <button className="button button-compact" type="button" disabled={disabled} onClick={openAddMenu} data-testid="assets-dock-add-button">
+          + Add
         </button>
       </div>
 
-      <div className="assets-dock-controls">
-        <input
-          className="text-input"
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search…"
-          aria-label="Search assets"
-          data-testid="assets-dock-search"
-        />
-        <div className="assets-dock-tabs" role="tablist" aria-label="Asset type">
-          <button className={`button button-compact ${tab === 'images' ? 'active' : ''}`} type="button" onClick={() => setTab('images')} role="tab" aria-selected={tab === 'images'} data-testid="assets-dock-tab-images">
-            Images
+      <input
+        ref={deviceFileInputRef}
+        data-testid="assets-dock-device-file-input"
+        type="file"
+        style={{ display: 'none' }}
+        multiple
+        accept="image/*,audio/*,.ttf,.otf,.woff,.woff2"
+        onChange={(e) => void onDeviceFilesPicked(e)}
+        disabled={disabled}
+      />
+
+      {addMenu ? (
+        <div
+          ref={addMenuRootRef}
+          className="scene-graph-menu"
+          style={{ position: 'fixed', left: addMenu.x, top: addMenu.y, zIndex: 51, minWidth: 220 }}
+          data-testid="assets-dock-add-menu"
+          role="menu"
+        >
+          <div className="scene-graph-menu-hint">+ Add</div>
+          <button
+            type="button"
+            className="scene-graph-menu-item"
+            data-testid="assets-dock-add-menu-from-device"
+            disabled={disabled}
+            onClick={importFromDevice}
+          >
+            From device...
           </button>
-          <button className={`button button-compact ${tab === 'audio' ? 'active' : ''}`} type="button" onClick={() => setTab('audio')} role="tab" aria-selected={tab === 'audio'} data-testid="assets-dock-tab-audio">
-            Audio
-          </button>
-          <button className={`button button-compact ${tab === 'fonts' ? 'active' : ''}`} type="button" onClick={() => setTab('fonts')} role="tab" aria-selected={tab === 'fonts'} data-testid="assets-dock-tab-fonts">
-            Fonts
+          <button
+            type="button"
+            className="scene-graph-menu-item"
+            data-testid="assets-dock-add-menu-from-demo-pack"
+            disabled={disabled || demoPackImporting}
+            onClick={() => void importDemoPack()}
+          >
+            From demo pack
           </button>
         </div>
-      </div>
-
-      {importOpen && (
-        <div className="assets-dock-import" data-testid="assets-dock-import-panel">
-          <div className="assets-dock-import-row">
-            <label className="field" style={{ flex: 1 }}>
-              <span>Type</span>
-              <select data-testid="assets-dock-import-kind-select" value={importKind} onChange={(e) => setImportKind(e.target.value as any)} disabled={disabled}>
-                <option value="image">Image</option>
-                <option value="spritesheet">Spritesheet</option>
-                <option value="audio">Audio</option>
-                <option value="font">Font</option>
-              </select>
-            </label>
-            <label className="field" style={{ flex: 1 }}>
-              <span>Source</span>
-              <select data-testid="assets-dock-import-source-select" value={sourceMode} onChange={(e) => setSourceMode(e.target.value as any)} disabled={disabled}>
-                <option value="embedded">Embedded File</option>
-                <option value="path">Asset Path</option>
-              </select>
-            </label>
-            <button className="button button-compact" type="button" onClick={() => setImportOpen(false)} disabled={disabled}>
-              ✕
-            </button>
-          </div>
-
-          {sourceMode === 'embedded' ? (
-            <>
-              <input
-                ref={fileInputRef}
-                data-testid="assets-dock-file-input"
-                type="file"
-                style={{ display: 'none' }}
-                accept={importKind === 'audio' ? 'audio/*' : importKind === 'font' ? '.ttf,.otf,.woff,.woff2' : 'image/*'}
-                onChange={(e) => void onFilePicked(e)}
-                disabled={disabled}
-              />
-              <button className="button" type="button" disabled={disabled} onClick={triggerFilePick} data-testid="assets-dock-pick-file">
-                Choose file…
-              </button>
-              {(importKind === 'image' || importKind === 'spritesheet') && (
-                <button
-                  className="button"
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => setAdvancedImportOpen(true)}
-                  data-testid="assets-dock-advanced-import"
-                >
-                  Advanced…
-                </button>
-              )}
-              {fileError && <div className="muted">{fileError}</div>}
-              {importKind === 'spritesheet' && loadedImage && (
-                <div className="assets-dock-spritesheet-grid">
-                  <div className="muted">{loadedImage.name} · {loadedImage.width}×{loadedImage.height}</div>
-                  <div className="assets-dock-import-row">
-                    <label className="field" style={{ flex: 1 }}>
-                      <span>Frame W</span>
-                      <input
-                        data-testid="assets-dock-spritesheet-frame-width"
-                        type="number"
-                        value={frameWidth}
-                        min={1}
-                        disabled={disabled}
-                        onChange={(e) => setFrameWidth(Math.max(1, Number(e.target.value) || 1))}
-                      />
-                    </label>
-                    <label className="field" style={{ flex: 1 }}>
-                      <span>Frame H</span>
-                      <input
-                        data-testid="assets-dock-spritesheet-frame-height"
-                        type="number"
-                        value={frameHeight}
-                        min={1}
-                        disabled={disabled}
-                        onChange={(e) => setFrameHeight(Math.max(1, Number(e.target.value) || 1))}
-                      />
-                    </label>
-                    <button className="button" type="button" disabled={disabled} onClick={commitSpritesheetImport} data-testid="assets-dock-import-spritesheet">
-                      Import
-                    </button>
-                  </div>
-                </div>
-              )}
-              {importKind !== 'spritesheet' && (
-                <div className="muted">Imported assets appear below immediately.</div>
-              )}
-            </>
-          ) : (
-            <div className="field">
-              <span>Asset Path</span>
-              <input
-                data-testid="assets-dock-import-path-input"
-                type="text"
-                value={pathDraft}
-                disabled={disabled}
-                onChange={(e) => setPathDraft(e.target.value)}
-                placeholder={importKind === 'audio' ? '/assets/audio/theme.mp3' : importKind === 'font' ? '/assets/fonts/MyFont.woff2' : '/assets/images/sprites.png'}
-              />
-              <button className="button" type="button" disabled={disabled} onClick={() => void commitPathImport()} data-testid="assets-dock-import-path">
-                Import
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === 'images' ? (
-        <label className="assets-dock-thumbnails-toggle" data-testid="assets-dock-show-thumbnails">
-          <input
-            type="checkbox"
-            checked={showImageThumbnails}
-            onChange={(e) => setShowImageThumbnails(e.target.checked)}
-          />
-          <span>Show thumbnails</span>
-        </label>
       ) : null}
 
       <div className="assets-dock-list" role="list">
+        <div className="assets-dock-list-controls">
+          <div className="assets-dock-controls">
+            <input
+              className="text-input"
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search…"
+              aria-label="Search assets"
+              data-testid="assets-dock-search"
+            />
+            <div className="assets-dock-tabs" role="tablist" aria-label="Asset type">
+              <button className={`button button-compact ${tab === 'images' ? 'active' : ''}`} type="button" onClick={() => setTab('images')} role="tab" aria-selected={tab === 'images'} data-testid="assets-dock-tab-images">
+                Images
+              </button>
+              <button className={`button button-compact ${tab === 'audio' ? 'active' : ''}`} type="button" onClick={() => setTab('audio')} role="tab" aria-selected={tab === 'audio'} data-testid="assets-dock-tab-audio">
+                Audio
+              </button>
+              <button className={`button button-compact ${tab === 'fonts' ? 'active' : ''}`} type="button" onClick={() => setTab('fonts')} role="tab" aria-selected={tab === 'fonts'} data-testid="assets-dock-tab-fonts">
+                Fonts
+              </button>
+            </div>
+          </div>
+          {tab === 'images' ? (
+            <label className="assets-dock-thumbnails-toggle" data-testid="assets-dock-show-thumbnails">
+              <input
+                type="checkbox"
+                checked={showImageThumbnails}
+                onChange={(e) => setShowImageThumbnails(e.target.checked)}
+              />
+              <span>Show thumbnails</span>
+            </label>
+          ) : null}
+          {importError ? <div className="muted">{importError}</div> : null}
+        </div>
         {rows.length === 0 ? (
-          <div className="muted">No assets.</div>
+          <div className="muted">No assets. Select &quot;+ Add&quot; to import.</div>
         ) : rows.map((row) => {
           const assetKind = row.kind;
           const assetId = row.id;
@@ -694,39 +646,6 @@ export function AssetsDock({
         </div>
       )}
 
-      {advancedImportOpen && (
-        <div
-          className="modal-overlay"
-          data-testid="advanced-import-modal"
-          role="dialog"
-          aria-label="Advanced import"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setAdvancedImportOpen(false);
-          }}
-        >
-          <div className="modal-card">
-            <div className="panel-header">
-              <p className="eyebrow">Assets</p>
-              <h2 className="panel-title">Advanced Import</h2>
-              <p className="panel-description">
-                Multi-frame sprite import with optional auto-hitbox (replaces SpriteImportPanel).
-              </p>
-            </div>
-            <div className="panel-scroll" style={{ overflow: 'auto', paddingRight: 2 }}>
-              <SpriteImportPanelView
-                scene={project.scenes[sceneId]}
-                selection={selection}
-                dispatch={dispatch as any}
-              />
-            </div>
-            <div className="toolbar-actions" style={{ justifyContent: 'flex-end' }}>
-              <button className="button" type="button" onClick={() => setAdvancedImportOpen(false)} data-testid="advanced-import-close">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
