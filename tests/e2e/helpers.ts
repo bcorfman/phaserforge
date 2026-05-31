@@ -329,30 +329,9 @@ export function assetIdFromPath(path: string, fallbackBase: string): string {
 
 export async function importImageAssetFromFile(page: Page, filePath: string): Promise<{ assetId: string }> {
   await openSceneScope(page);
-  await page.getByTestId('assets-dock-import-button').click();
-  await page.getByTestId('assets-dock-import-kind-select').selectOption('image');
-  await page.getByTestId('assets-dock-import-source-select').selectOption('embedded');
-  await page.getByTestId('assets-dock-file-input').setInputFiles(filePath);
+  await page.getByTestId('assets-dock-device-file-input').setInputFiles(filePath);
   const assetId = assetIdFromPath(filePath, 'image');
   await expect(page.getByTestId(`assets-dock-item-image-${assetId}`)).toBeVisible();
-  return { assetId };
-}
-
-export async function importSpritesheetAssetFromFile(
-  page: Page,
-  filePath: string,
-  grid: { frameWidth: number; frameHeight: number }
-): Promise<{ assetId: string }> {
-  await openSceneScope(page);
-  await page.getByTestId('assets-dock-import-button').click();
-  await page.getByTestId('assets-dock-import-kind-select').selectOption('spritesheet');
-  await page.getByTestId('assets-dock-import-source-select').selectOption('embedded');
-  await page.getByTestId('assets-dock-file-input').setInputFiles(filePath);
-  await page.getByTestId('assets-dock-spritesheet-frame-width').fill(String(grid.frameWidth));
-  await page.getByTestId('assets-dock-spritesheet-frame-height').fill(String(grid.frameHeight));
-  await page.getByTestId('assets-dock-import-spritesheet').click();
-  const assetId = assetIdFromPath(filePath, 'spritesheet');
-  await expect(page.getByTestId(`assets-dock-item-spritesheet-${assetId}`)).toBeVisible();
   return { assetId };
 }
 
@@ -457,9 +436,12 @@ export async function hitTestAtClientPoint(
   page: Page,
   point: Point
 ): Promise<{ kind: 'none' | 'entity' | 'group'; id?: string } | null> {
-  return page.evaluate(([p]) => (window as any).__PHASER_FORGE_TEST__?.hitTestAtClientPoint?.(p.x, p.y) ?? null, [point]) as Promise<
-    { kind: 'none' | 'entity' | 'group'; id?: string } | null
-  >;
+  return page.evaluate(([p]) => {
+    const raw = (window as any).__PHASER_FORGE_TEST__?.hitTestAtClientPoint?.(p.x, p.y) ?? null;
+    // Some harness implementations return `null` for empty space; normalize to `{ kind: 'none' }`
+    // so higher-level helpers can reliably find an empty drop target.
+    return raw ?? { kind: 'none' };
+  }, [point]) as Promise<{ kind: 'none' | 'entity' | 'group'; id?: string } | null>;
 }
 
 export async function findEmptyCanvasClientPoint(page: Page, preferredWorldPoint: Point): Promise<Point> {
