@@ -436,9 +436,12 @@ export async function hitTestAtClientPoint(
   page: Page,
   point: Point
 ): Promise<{ kind: 'none' | 'entity' | 'group'; id?: string } | null> {
-  return page.evaluate(([p]) => (window as any).__PHASER_FORGE_TEST__?.hitTestAtClientPoint?.(p.x, p.y) ?? null, [point]) as Promise<
-    { kind: 'none' | 'entity' | 'group'; id?: string } | null
-  >;
+  return page.evaluate(([p]) => {
+    const raw = (window as any).__PHASER_FORGE_TEST__?.hitTestAtClientPoint?.(p.x, p.y) ?? null;
+    // Some harness implementations return `null` for empty space; normalize to `{ kind: 'none' }`
+    // so higher-level helpers can reliably find an empty drop target.
+    return raw ?? { kind: 'none' };
+  }, [point]) as Promise<{ kind: 'none' | 'entity' | 'group'; id?: string } | null>;
 }
 
 export async function findEmptyCanvasClientPoint(page: Page, preferredWorldPoint: Point): Promise<Point> {
