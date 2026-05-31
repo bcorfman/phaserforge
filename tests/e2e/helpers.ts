@@ -329,30 +329,9 @@ export function assetIdFromPath(path: string, fallbackBase: string): string {
 
 export async function importImageAssetFromFile(page: Page, filePath: string): Promise<{ assetId: string }> {
   await openSceneScope(page);
-  await page.getByTestId('assets-dock-import-button').click();
-  await page.getByTestId('assets-dock-import-kind-select').selectOption('image');
-  await page.getByTestId('assets-dock-import-source-select').selectOption('embedded');
-  await page.getByTestId('assets-dock-file-input').setInputFiles(filePath);
+  await page.getByTestId('assets-dock-device-file-input').setInputFiles(filePath);
   const assetId = assetIdFromPath(filePath, 'image');
   await expect(page.getByTestId(`assets-dock-item-image-${assetId}`)).toBeVisible();
-  return { assetId };
-}
-
-export async function importSpritesheetAssetFromFile(
-  page: Page,
-  filePath: string,
-  grid: { frameWidth: number; frameHeight: number }
-): Promise<{ assetId: string }> {
-  await openSceneScope(page);
-  await page.getByTestId('assets-dock-import-button').click();
-  await page.getByTestId('assets-dock-import-kind-select').selectOption('spritesheet');
-  await page.getByTestId('assets-dock-import-source-select').selectOption('embedded');
-  await page.getByTestId('assets-dock-file-input').setInputFiles(filePath);
-  await page.getByTestId('assets-dock-spritesheet-frame-width').fill(String(grid.frameWidth));
-  await page.getByTestId('assets-dock-spritesheet-frame-height').fill(String(grid.frameHeight));
-  await page.getByTestId('assets-dock-import-spritesheet').click();
-  const assetId = assetIdFromPath(filePath, 'spritesheet');
-  await expect(page.getByTestId(`assets-dock-item-spritesheet-${assetId}`)).toBeVisible();
   return { assetId };
 }
 
