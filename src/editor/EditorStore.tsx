@@ -258,6 +258,7 @@ export type EditorAction =
   | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'attachment'; id: Id } }
   | { type: 'add-background-layer-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; defaults?: { layout?: BackgroundLayerSpec['layout'] } }
   | { type: 'add-image-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; width?: number; height?: number } }
+  | { type: 'ensure-image-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string; width?: number; height?: number } }
   | { type: 'add-image-asset-from-path'; path: string; suggestedId?: string; width?: number; height?: number }
   | { type: 'add-spritesheet-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
   | { type: 'add-spritesheet-asset-from-path'; path: string; suggestedId?: string; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
@@ -1671,6 +1672,37 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const base = assetIdBaseFromOriginalName(action.file.originalName, 'image');
       const assetId = allocUniqueId(images, base);
       const rawName = (action.file.originalName ?? '').replace(/\.[a-z0-9]+$/i, '').trim();
+      const width = action.file.width;
+      const height = action.file.height;
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          images: {
+            ...images,
+            [assetId]: {
+              id: assetId,
+              ...(rawName ? { name: rawName } : {}),
+              ...(typeof width === 'number' && Number.isFinite(width) && width > 0 ? { width } : {}),
+              ...(typeof height === 'number' && Number.isFinite(height) && height > 0 ? { height } : {}),
+              source: {
+                kind: 'embedded',
+                dataUrl: action.file.dataUrl,
+                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+              },
+            },
+          },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'ensure-image-asset-from-file': {
+      const assetId = (action.assetId ?? '').trim();
+      if (!assetId) return state;
+      const images = state.project.assets.images ?? {};
+      if (images[assetId]) return state;
+      const rawName = (action.file.originalName ?? assetId).replace(/\.[a-z0-9]+$/i, '').trim();
       const width = action.file.width;
       const height = action.file.height;
       const nextProject: ProjectSpec = {

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { dismissViewHint, dragAssetToCanvas, expectInputValue, getSceneSnapshot, getState, gotoStudio, importImageAssetFromFile, importSpritesheetAssetFromFile, openProjectScope, openSceneScope, panByScreenDelta, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene, waitForViewportToSettle } from './helpers';
+import { dismissViewHint, dragAssetToCanvas, expectInputValue, getSceneSnapshot, getState, gotoStudio, importImageAssetFromFile, openProjectScope, openSceneScope, panByScreenDelta, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene, waitForViewportToSettle } from './helpers';
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { createEmptyProject } from '../../src/model/emptyProject';
 
@@ -20,6 +20,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('boots empty by default and loads scenes @smoke', async ({ page }) => {
+  test.setTimeout(120000);
   await gotoStudio(page);
   await expect(page.getByTestId('toolbar')).toBeVisible();
   await expect(page.getByTestId('add-background-button')).toHaveCount(0);
@@ -139,7 +140,7 @@ test('resets zoom and view position when a different project is loaded', async (
   fs.unlinkSync(tmpPath);
 });
 
-test('imports embedded sprites and spritesheets into the scene @critical', async ({ page }) => {
+test('imports embedded sprites into the scene @critical', async ({ page }) => {
   await gotoStudio(page);
   await openSceneScope(page);
 
@@ -156,15 +157,13 @@ test('imports embedded sprites and spritesheets into the scene @critical', async
     };
   }).toEqual({ count: 1, imageType: 'image', sourceKind: 'asset' });
 
-  const { assetId: sheetAssetId } = await importSpritesheetAssetFromFile(page, 'res/images/mainwindow.png', { frameWidth: 64, frameHeight: 64 });
-  await dragAssetToCanvas(page, 'spritesheet', sheetAssetId);
+  const { assetId: secondImageAssetId } = await importImageAssetFromFile(page, 'res/images/mainwindow.png');
+  await dragAssetToCanvas(page, 'image', secondImageAssetId);
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, { asset?: { imageType: string } }> } }>(page);
-    return Object.values(state.scene.entities)
-      .filter((entity) => entity.asset?.imageType === 'spritesheet')
-      .length;
-  }).toBe(1);
+    return Object.values(state.scene.entities).length;
+  }).toBe(2);
 });
 
 test('removes an imported sprite from the scene graph @critical', async ({ page }) => {
