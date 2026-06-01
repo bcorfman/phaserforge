@@ -1103,7 +1103,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     case 'set-error':
       return { ...state, error: action.error };
     case 'set-status':
-      return { ...state, statusMessage: action.message, statusExpiresAt: action.expiresAt };
+      return { ...state, statusMessage: action.message, statusExpiresAt: action.expiresAt, error: action.message ? undefined : state.error };
     case 'export-yaml':
       return { ...state, yamlText: serializeProjectToYaml(state.project), error: undefined };
     case 'mark-saved':
