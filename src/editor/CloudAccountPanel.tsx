@@ -55,6 +55,7 @@ export function CloudAccountPanel({
   onStatus: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const LAST_PUBLISH_STORAGE_KEY = 'phaserforge.cloud.last_github_pages_publish_v1';
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [email, setEmail] = useState('');
@@ -70,6 +71,7 @@ export function CloudAccountPanel({
   const [publishCheck, setPublishCheck] = useState<{ url: string; exists: boolean; status: number | null } | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showGithubConfirm, setShowGithubConfirm] = useState<null | { mode: 'connect' | 'switch' }>(null);
+  const [lastPublish, setLastPublish] = useState<{ url: string; publishedAtMs: number } | null>(null);
   const [workspaceConflict, setWorkspaceConflict] = useState<{
     cloud: { yaml: string; updatedAt: string; label: string };
     device: { yaml: string; savedAtMs: number | null; label: string };
@@ -106,6 +108,17 @@ export function CloudAccountPanel({
       try {
         const res = await me();
         if (!cancelled) setUser(res.user);
+      } catch {
+        // ignore
+      }
+
+      try {
+        const raw = window.localStorage.getItem(LAST_PUBLISH_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as { url?: unknown; publishedAtMs?: unknown };
+        if (typeof parsed.url !== 'string') return;
+        if (typeof parsed.publishedAtMs !== 'number' || !Number.isFinite(parsed.publishedAtMs)) return;
+        if (!cancelled) setLastPublish({ url: parsed.url, publishedAtMs: parsed.publishedAtMs });
       } catch {
         // ignore
       }
@@ -423,6 +436,13 @@ export function CloudAccountPanel({
         }
         return;
       }
+      try {
+        const publishedAtMs = Date.now();
+        window.localStorage.setItem(LAST_PUBLISH_STORAGE_KEY, JSON.stringify({ url: result.url, publishedAtMs }));
+        setLastPublish({ url: result.url, publishedAtMs });
+      } catch {
+        // ignore
+      }
       onStatus(`Published to ${result.url}`);
       window.open(result.url, '_blank', 'noopener,noreferrer');
     } finally {
@@ -517,65 +537,75 @@ export function CloudAccountPanel({
         />
       ) : null}
       {!user ? (
-        <div className="cloud-auth">
-          <label className="field">
-            <span>Email</span>
-            <input
-              ref={emailInputRef}
-              value={email}
-              autoComplete="email"
-              inputMode="email"
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>Password</span>
-            <span className="cloud-password-row">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                autoComplete="current-password"
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <button
-                className="cloud-password-toggle"
-                type="button"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                onClick={() => setShowPassword((v) => !v)}
-              >
-                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M2.5 12C4.8 7.6 8.2 5.5 12 5.5C15.8 5.5 19.2 7.6 21.5 12C19.2 16.4 15.8 18.5 12 18.5C8.2 18.5 4.8 16.4 2.5 12Z"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinejoin="round"
+        <>
+          <div className="cloud-section-card" data-testid="cloud-account-section">
+            <div className="cloud-section-title">ACCOUNT</div>
+            <div className="cloud-auth">
+              <label className="field">
+                <span>Email</span>
+                <input
+                  ref={emailInputRef}
+                  value={email}
+                  autoComplete="email"
+                  inputMode="email"
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span>Password</span>
+                <span className="cloud-password-row">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    autoComplete="current-password"
+                    onChange={(e) => setPassword(e.target.value)}
                   />
-                  <circle cx="12" cy="12" r="3.25" stroke="currentColor" strokeWidth="1.7" />
-                </svg>
-              </button>
-            </span>
-          </label>
-          <label className="field">
-            <span>Invite code</span>
-            <input value={inviteToken} autoComplete="off" onChange={(e) => setInviteToken(e.target.value)} />
-          </label>
-          <div className="cloud-help">
-            Sign up requires an invite code emailed to you. After that, use Log in to access cloud saves and publishing.
-          </div>
-          <div className="cloud-auth-actions">
-            <button className="button" type="button" disabled={busy} onClick={handleSignup}>
-              Sign up
-            </button>
-            <button className="button" type="button" disabled={busy} onClick={handleLogin}>
-              Log in
-            </button>
-          </div>
-          <div className="cloud-help">
-            Create an account (email + password + invite code), then connect GitHub to enable publishing.
+                  <button
+                    className="cloud-password-toggle"
+                    type="button"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowPassword((v) => !v)}
+                  >
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M2.5 12C4.8 7.6 8.2 5.5 12 5.5C15.8 5.5 19.2 7.6 21.5 12C19.2 16.4 15.8 18.5 12 18.5C8.2 18.5 4.8 16.4 2.5 12Z"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinejoin="round"
+                      />
+                      <circle cx="12" cy="12" r="3.25" stroke="currentColor" strokeWidth="1.7" />
+                    </svg>
+                  </button>
+                </span>
+              </label>
+              <label className="field">
+                <span>Invite code</span>
+                <input value={inviteToken} autoComplete="off" onChange={(e) => setInviteToken(e.target.value)} />
+              </label>
+              <div className="cloud-help">
+                Sign up requires an invite code emailed to you. After that, use Log in to access cloud saves and publishing.
+              </div>
+              <div className="cloud-auth-actions">
+                <button className="button" type="button" disabled={busy} onClick={handleSignup}>
+                  Sign up
+                </button>
+                <button className="button" type="button" disabled={busy} onClick={handleLogin}>
+                  Log in
+                </button>
+              </div>
+              <div className="cloud-help">
+                Create an account (email + password + invite code), then connect GitHub to enable publishing.
+              </div>
+            </div>
           </div>
 
-          <div className="panel-section" data-testid="cloud-publish-pages-section">
-            <h3 className="section-subtitle">Publish (GitHub Pages)</h3>
+          <div className="cloud-section-card" data-testid="cloud-publish-pages-section">
+            <div className="cloud-section-title">PUBLISH (GITHUB PAGES)</div>
+            <div className="cloud-prereqs" aria-label="Publish prerequisites">
+              <span className="cloud-badge">Signed in</span>
+              <span className="cloud-badge">GitHub linked</span>
+              <span className="cloud-badge warn">Embedded assets only</span>
+            </div>
             <div className="cloud-help">Sign in to enable publishing to GitHub Pages.</div>
             <div className="cloud-row">
               <button
@@ -598,98 +628,109 @@ export function CloudAccountPanel({
               </button>
             </div>
           </div>
-        </div>
+        </>
       ) : (
-        <div className="cloud-signed-in">
-          <div className="cloud-row">
-            <span className="cloud-user">Signed in: {user.email}</span>
-            <button className="button button-compact" type="button" disabled={busy} onClick={handleLogout}>
-              Log out
-            </button>
-          </div>
-          <div className="cloud-row">
-            <div className="cloud-help" data-testid="cloud-github-connection">
-              {publishInfo == null
-                ? 'GitHub: checking connection…'
-                : publishInfo.ok
-                  ? `GitHub: connected as ${publishInfo.login}.`
-                  : 'GitHub: not connected (required to publish).'}
-            </div>
-            {githubEnabled ? (
-              !publishInfo?.ok ? (
-                <button
-                  className="button button-compact"
-                  type="button"
-                  disabled={busy}
-                  aria-label="Connect GitHub"
-                  onClick={() => setShowGithubConfirm({ mode: 'connect' })}
-                >
-                  Connect GitHub
+        <>
+          <div className="cloud-section-card" data-testid="cloud-account-section">
+            <div className="cloud-section-title">ACCOUNT</div>
+            <div className="cloud-signed-in">
+              <div className="cloud-row">
+                <span className="cloud-user">Signed in</span>
+                <span className="mono">{user.email}</span>
+                <button className="button button-compact" type="button" disabled={busy} onClick={handleLogout}>
+                  Log out
                 </button>
-              ) : (
-                <>
-                  <button
-                    className="button button-compact"
-                    type="button"
-                    disabled={busy}
-                    aria-label="Switch GitHub account"
-                    onClick={() => setShowGithubConfirm({ mode: 'switch' })}
-                  >
-                    Switch GitHub account…
-                  </button>
-                  <button className="button button-compact" type="button" disabled={busy} onClick={handleDisconnectGithub}>
-                    Disconnect
-                  </button>
-                </>
-              )
-            ) : null}
-          </div>
-          <div className="cloud-row">
-            <div className="cloud-help">
-              Connect GitHub authorizes PhaserForge to publish games to GitHub Pages. Make sure the correct GitHub account is signed into this browser.
+              </div>
+              <div className="cloud-row">
+                <div className="cloud-help" data-testid="cloud-github-connection">
+                  {publishInfo == null
+                    ? 'GitHub: checking connection…'
+                    : publishInfo.ok
+                      ? `GitHub: connected as ${publishInfo.login}.`
+                      : 'GitHub: not connected (required to publish).'}
+                </div>
+                {githubEnabled ? (
+                  !publishInfo?.ok ? (
+                    <button
+                      className="button button-compact"
+                      type="button"
+                      disabled={busy}
+                      aria-label="Connect GitHub"
+                      onClick={() => setShowGithubConfirm({ mode: 'connect' })}
+                    >
+                      Connect GitHub
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="button button-compact"
+                        type="button"
+                        disabled={busy}
+                        aria-label="Switch GitHub account"
+                        onClick={() => setShowGithubConfirm({ mode: 'switch' })}
+                      >
+                        Switch GitHub…
+                      </button>
+                      <button className="button button-compact" type="button" disabled={busy} onClick={handleDisconnectGithub}>
+                        Disconnect
+                      </button>
+                    </>
+                  )
+                ) : null}
+              </div>
+              <div className="cloud-row">
+                <div className="cloud-help">
+                  GitHub authorization is required for publishing to GitHub Pages. Make sure the correct GitHub account is signed into this browser.
+                </div>
+              </div>
+              <div className="cloud-row">
+                <label className="field">
+                  <span>Game</span>
+                  <select value={selectedGameId} onChange={(e) => setSelectedGameId(e.target.value)}>
+                    <option value="">(New)</option>
+                    {games.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button className="button button-compact" type="button" disabled={busy || !selectedGameId} onClick={handleLoadSelected}>
+                  Load
+                </button>
+                <a
+                  className={`button button-compact ${!selectedGameId ? 'disabled' : ''}`}
+                  data-testid="cloud-launch-button"
+                  href={selectedGameId ? `?playGameId=${encodeURIComponent(selectedGameId)}` : undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-disabled={!selectedGameId}
+                  onClick={(e) => {
+                    if (!selectedGameId) e.preventDefault();
+                  }}
+                >
+                  Launch
+                </a>
+              </div>
+              <div className="cloud-row">
+                <label className="field">
+                  <span>Title</span>
+                  <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+                </label>
+                <button className="button button-compact" type="button" disabled={busy} onClick={handleSave}>
+                  Save
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="cloud-row">
-            <label className="field">
-              <span>Game</span>
-              <select value={selectedGameId} onChange={(e) => setSelectedGameId(e.target.value)}>
-                <option value="">(New)</option>
-                {games.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button className="button button-compact" type="button" disabled={busy || !selectedGameId} onClick={handleLoadSelected}>
-              Load
-            </button>
-            <a
-              className={`button button-compact ${!selectedGameId ? 'disabled' : ''}`}
-              data-testid="cloud-launch-button"
-              href={selectedGameId ? `?playGameId=${encodeURIComponent(selectedGameId)}` : undefined}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-disabled={!selectedGameId}
-              onClick={(e) => {
-                if (!selectedGameId) e.preventDefault();
-              }}
-            >
-              Launch
-            </a>
-          </div>
-          <div className="cloud-row">
-            <label className="field">
-              <span>Title</span>
-              <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
-            </label>
-            <button className="button button-compact" type="button" disabled={busy} onClick={handleSave}>
-              Save
-            </button>
           </div>
 
-          <div className="panel-section" data-testid="cloud-publish-pages-section">
-            <h3 className="section-subtitle">Publish (GitHub Pages)</h3>
+          <div className="cloud-section-card" data-testid="cloud-publish-pages-section">
+            <div className="cloud-section-title">PUBLISH (GITHUB PAGES)</div>
+            <div className="cloud-prereqs" aria-label="Publish prerequisites">
+              <span className="cloud-badge ok">Signed in</span>
+              <span className={`cloud-badge ${publishInfo?.ok ? 'ok' : ''}`}>GitHub linked</span>
+              <span className={`cloud-badge ${projectHasPathAssets ? 'warn' : 'ok'}`}>Embedded assets only</span>
+            </div>
             {!publishInfo?.ok ? (
               <>
                 <div className="cloud-help">
@@ -711,8 +752,13 @@ export function CloudAccountPanel({
             ) : (
               <>
                 <div className="cloud-row">
+                  <div className="cloud-help">
+                    Publishes to <span className="mono">{`${publishInfo.pagesBaseUrl}<route>/`}</span>
+                  </div>
+                </div>
+                <div className="cloud-row">
                   <label className="field">
-                    <span>Publish route</span>
+                    <span>Route</span>
                     <input
                       value={publishRoute}
                       placeholder="mygame"
@@ -721,25 +767,44 @@ export function CloudAccountPanel({
                     />
                   </label>
                   <button
-                    className="button button-compact"
+                    className="button primary"
                     type="button"
                     data-testid="cloud-publish-pages-button"
                     disabled={busy || !selectedGameId || !publishRoute.trim() || projectHasPathAssets}
                     onClick={() => void handlePublishCheck()}
                   >
-                    Publish to GitHub Pages
+                    Publish
                   </button>
                 </div>
                 <div className="cloud-row">
                   <div className="cloud-help" data-testid="cloud-publish-pages-help">
-                    {`Publishes to https://${publishInfo.login}.github.io/<route>/ (public repo: ${publishInfo.repo}). Embedded assets only.`}
-                    {projectHasPathAssets ? ' Path assets detected; publishing is disabled.' : ''}
+                    {`Public repo: ${publishInfo.repo}.`}
+                    {projectHasPathAssets ? ' Path assets detected; publishing is disabled.' : ' Embedded assets only.'}
                   </div>
+                </div>
+                <div className="cloud-row">
+                  <label className="field">
+                    <span>Last publish</span>
+                    <input
+                      value={
+                        lastPublish
+                          ? (() => {
+                              try {
+                                return `${new Date(lastPublish.publishedAtMs).toLocaleString()} — ${lastPublish.url}`;
+                              } catch {
+                                return lastPublish.url;
+                              }
+                            })()
+                          : 'Never published from this device.'
+                      }
+                      readOnly
+                    />
+                  </label>
                 </div>
               </>
             )}
           </div>
-        </div>
+        </>
       )}
 
       {showPublishConfirm && publishCheck ? (

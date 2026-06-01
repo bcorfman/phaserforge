@@ -1133,6 +1133,57 @@ html[data-theme='dark'] .phaser-frame {
   gap: 1rem;
 }
 
+.cloud-section-card {
+  border: 1px solid rgba(186, 168, 143, 0.28);
+  background: rgba(12, 15, 26, 0.12);
+  border-radius: 1rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.cloud-section-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cloud-prereqs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cloud-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 168, 143, 0.28);
+  background: rgba(12, 15, 26, 0.12);
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.cloud-badge.ok {
+  border-color: rgba(59, 255, 184, 0.22);
+  background: rgba(25, 125, 80, 0.22);
+  color: rgba(210, 255, 235, 0.92);
+}
+
+.cloud-badge.warn {
+  border-color: rgba(255, 200, 82, 0.25);
+  background: rgba(150, 105, 20, 0.18);
+  color: rgba(255, 238, 205, 0.92);
+}
+
 .cloud-auth,
 .cloud-signed-in {
   display: flex;
