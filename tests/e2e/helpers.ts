@@ -28,7 +28,10 @@ const routedApiStubContexts = new WeakSet<object>();
 
 const BOOT_MUTEX_PATH = path.join(os.tmpdir(), 'phaserforge-e2e-boot.lock');
 const BOOT_MUTEX_STALE_MS = 20_000;
-const BOOT_MUTEX_WAIT_MS = 5_000;
+// Boot can take >5s locally when Vite is starting up and multiple workers contend for the server.
+// Waiting a bit longer avoids the "fallback to no mutex" path, which has proven to create rare
+// startup flakes (slow boots and occasional timeouts) under load.
+const BOOT_MUTEX_WAIT_MS = 15_000;
 
 async function withBootMutex<T>(fn: () => Promise<T>): Promise<T> {
   const startedAt = Date.now();
