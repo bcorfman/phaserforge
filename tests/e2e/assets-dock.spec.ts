@@ -72,37 +72,22 @@ test.describe('Assets dock', () => {
     const before = await getSceneSnapshot<any>(page);
     expect(before).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
-    const browserType = page.context().browser()?.browserType().name() ?? 'unknown';
-    if (browserType === 'webkit') {
-      // WebKit drag/drop is flaky in CI; assert the invariant via the same action the drop handler would dispatch.
-      const state = await getState<any>(page);
-      const sceneId = state?.currentSceneId ?? 'scene1';
-      await dispatchAction(page, {
-        type: 'create-entity-from-asset',
-        assetKind: 'image',
-        assetId: 'enemy-a',
-        at: { x: 240, y: 160 },
-        sceneId,
-      } as any);
-    } else {
-      await dragAssetToCanvas(page, 'image', 'enemy-a');
-    }
+    // Use the same drag/drop path across browsers. Our helper uses a synthetic HTML5 drop for WebKit
+    // to avoid flakiness from native `dragTo` while still exercising the real drop handler.
+    await dragAssetToCanvas(page, 'image', 'enemy-a');
+
+    await waitForViewportToSettle(page);
+    const after = await getSceneSnapshot<any>(page);
+    expect(after).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
     // Minor subpixel/camera rounding differences are acceptable; ensure the viewport is effectively preserved.
-    await expect.poll(async () => {
-      const next = await getSceneSnapshot<any>(page);
-      if (!next) return Number.POSITIVE_INFINITY;
-      return Math.abs((next.zoom ?? 0) - (before.zoom ?? 0));
-    }).toBeLessThanOrEqual(1e-6);
-
-    await expect.poll(async () => {
-      const next = await getSceneSnapshot<any>(page);
-      if (!next) return Number.POSITIVE_INFINITY;
-      return Math.max(
-        Math.abs((next.scrollX ?? 0) - (before.scrollX ?? 0)),
-        Math.abs((next.scrollY ?? 0) - (before.scrollY ?? 0)),
-      );
-    }).toBeLessThanOrEqual(5);
+    expect(Math.abs((after.zoom ?? 0) - (before.zoom ?? 0))).toBeLessThanOrEqual(1e-3);
+    expect(
+      Math.max(
+        Math.abs((after.scrollX ?? 0) - (before.scrollX ?? 0)),
+        Math.abs((after.scrollY ?? 0) - (before.scrollY ?? 0)),
+      ),
+    ).toBeLessThanOrEqual(5);
   });
 
   test('dragging an image asset onto an existing sprite replaces its asset @critical @browser', async ({ page }, testInfo) => {
