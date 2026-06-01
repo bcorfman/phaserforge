@@ -77,6 +77,19 @@ describe('EditorStore reducer', () => {
     expect(cleared.error).toBeUndefined();
   });
 
+  it('clears errors when setting a success status message', () => {
+    const state = {
+      ...seededState(),
+      error: 'invalid_credentials',
+    };
+
+    const next = reducer(state, { type: 'set-status', message: 'Signed in as test@example.com', expiresAt: 1234 });
+
+    expect(next.statusMessage).toBe('Signed in as test@example.com');
+    expect(next.statusExpiresAt).toBe(1234);
+    expect(next.error).toBeUndefined();
+  });
+
   it('exports the current scene to YAML text and clears errors', () => {
     const state = {
       ...seededState(),
