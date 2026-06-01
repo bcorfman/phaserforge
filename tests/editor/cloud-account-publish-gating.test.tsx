@@ -77,7 +77,9 @@ describe('CloudAccountPanel publish gating', () => {
     );
     try {
       await flushEffects();
-      expect(document.querySelector('[data-testid="cloud-publish-pages-section"]')).toBeTruthy();
+      const publish = document.querySelector('[data-testid="cloud-publish-pages-section"]') as HTMLElement | null;
+      expect(publish).toBeTruthy();
+      expect(publish?.textContent).toContain('PUBLISH');
       expect(document.querySelector('[aria-label="Publish route"]')).toBeFalsy();
       expect(document.querySelector('[data-testid="cloud-publish-signin-cta"]')).toBeTruthy();
     } finally {
@@ -94,7 +96,8 @@ describe('CloudAccountPanel publish gating', () => {
     );
     try {
       await flushEffects();
-      expect(document.querySelector('[data-testid="cloud-publish-pages-section"]')).toBeTruthy();
+      const publish = document.querySelector('[data-testid="cloud-publish-pages-section"]') as HTMLElement | null;
+      expect(publish).toBeTruthy();
       expect(document.querySelector('[aria-label="Publish route"]')).toBeFalsy();
       const cta = document.querySelector('[data-testid="cloud-publish-connect-github-cta"]') as HTMLButtonElement | null;
       expect(cta).toBeTruthy();
@@ -114,9 +117,13 @@ describe('CloudAccountPanel publish gating', () => {
     );
     try {
       await flushEffects();
-      expect(document.querySelector('[data-testid="cloud-publish-pages-section"]')).toBeTruthy();
+      const publish = document.querySelector('[data-testid="cloud-publish-pages-section"]') as HTMLElement | null;
+      expect(publish).toBeTruthy();
       expect(document.querySelector('[aria-label="Publish route"]')).toBeTruthy();
       expect(document.querySelector('[data-testid="cloud-publish-connect-github-cta"]')).toBeFalsy();
+
+      // Game/title controls belong to account area, not inside Publish section.
+      expect(publish?.querySelector('select')).toBeFalsy();
     } finally {
       view.cleanup();
     }

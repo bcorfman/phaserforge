@@ -30,7 +30,8 @@ test('Cloud tab email login shows signed-in state and GitHub connect prompt @smo
   await page.locator('input[autocomplete="current-password"]').fill('pw');
   await page.getByRole('button', { name: 'Log in' }).click();
 
-  await expect(page.getByText('Signed in: a@b.c')).toBeVisible();
+  await expect(page.getByTestId('cloud-account-section')).toContainText('Signed in');
+  await expect(page.getByTestId('cloud-account-section')).toContainText('a@b.c');
   await expect(page.getByTestId('cloud-github-connection')).toContainText('not connected');
   await expect(page.getByRole('button', { name: 'Connect GitHub' })).toBeVisible();
 });
