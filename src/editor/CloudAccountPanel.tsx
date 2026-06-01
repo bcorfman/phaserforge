@@ -75,6 +75,7 @@ export function CloudAccountPanel({
     device: { yaml: string; savedAtMs: number | null; label: string };
   } | null>(null);
   const hasCheckedConflictRef = useRef(false);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
 
   const githubEnabled = useMemo(() => true, []);
   const githubStartHref = useMemo(() => {
@@ -519,7 +520,13 @@ export function CloudAccountPanel({
         <div className="cloud-auth">
           <label className="field">
             <span>Email</span>
-            <input value={email} autoComplete="email" inputMode="email" onChange={(e) => setEmail(e.target.value)} />
+            <input
+              ref={emailInputRef}
+              value={email}
+              autoComplete="email"
+              inputMode="email"
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </label>
           <label className="field">
             <span>Password</span>
@@ -565,6 +572,31 @@ export function CloudAccountPanel({
           </div>
           <div className="cloud-help">
             Create an account (email + password + invite code), then connect GitHub to enable publishing.
+          </div>
+
+          <div className="panel-section" data-testid="cloud-publish-pages-section">
+            <h3 className="section-subtitle">Publish (GitHub Pages)</h3>
+            <div className="cloud-help">Sign in to enable publishing to GitHub Pages.</div>
+            <div className="cloud-row">
+              <button
+                className="button primary"
+                type="button"
+                data-testid="cloud-publish-signin-cta"
+                disabled={busy}
+                onClick={() => {
+                  const input = emailInputRef.current;
+                  if (!input) return;
+                  try {
+                    input.scrollIntoView({ block: 'nearest' });
+                  } catch {
+                    // ignore
+                  }
+                  input.focus();
+                }}
+              >
+                Sign in to publish
+              </button>
+            </div>
           </div>
         </div>
       ) : (
@@ -656,42 +688,56 @@ export function CloudAccountPanel({
             </button>
           </div>
 
-          <div className="cloud-row">
-            <label className="field">
-              <span>Publish route</span>
-              <input
-                value={publishRoute}
-                placeholder="mygame"
-                onChange={(e) => setPublishRoute(e.target.value)}
-                aria-label="Publish route"
-              />
-            </label>
-            <button
-              className="button button-compact"
-              type="button"
-              data-testid="cloud-publish-pages-button"
-              disabled={
-                busy ||
-                !selectedGameId ||
-                !publishRoute.trim() ||
-                !publishInfo ||
-                !publishInfo.ok ||
-                projectHasPathAssets
-              }
-              onClick={() => void handlePublishCheck()}
-            >
-              Publish to GitHub Pages
-            </button>
-          </div>
-          <div className="cloud-row">
-            <div className="cloud-help" data-testid="cloud-publish-pages-help">
-              {publishInfo == null
-                ? 'Checking GitHub connection…'
-                : publishInfo.ok
-                  ? `Publishes to https://${publishInfo.login}.github.io/<route>/ (public repo: ${publishInfo.repo}). Embedded assets only.`
-                  : 'Connect GitHub to publish to GitHub Pages. Embedded assets only.'}
-              {projectHasPathAssets ? ' Path assets detected; publishing is disabled.' : ''}
-            </div>
+          <div className="panel-section" data-testid="cloud-publish-pages-section">
+            <h3 className="section-subtitle">Publish (GitHub Pages)</h3>
+            {!publishInfo?.ok ? (
+              <>
+                <div className="cloud-help">
+                  {publishInfo == null ? 'Checking GitHub connection…' : 'Connect GitHub to enable publishing to GitHub Pages.'}
+                  {projectHasPathAssets ? ' Path assets detected; publishing will remain disabled until assets are embedded.' : ''}
+                </div>
+                <div className="cloud-row">
+                  <button
+                    className="button primary"
+                    type="button"
+                    data-testid="cloud-publish-connect-github-cta"
+                    disabled={busy || !githubEnabled}
+                    onClick={() => setShowGithubConfirm({ mode: 'connect' })}
+                  >
+                    Connect GitHub to publish
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="cloud-row">
+                  <label className="field">
+                    <span>Publish route</span>
+                    <input
+                      value={publishRoute}
+                      placeholder="mygame"
+                      onChange={(e) => setPublishRoute(e.target.value)}
+                      aria-label="Publish route"
+                    />
+                  </label>
+                  <button
+                    className="button button-compact"
+                    type="button"
+                    data-testid="cloud-publish-pages-button"
+                    disabled={busy || !selectedGameId || !publishRoute.trim() || projectHasPathAssets}
+                    onClick={() => void handlePublishCheck()}
+                  >
+                    Publish to GitHub Pages
+                  </button>
+                </div>
+                <div className="cloud-row">
+                  <div className="cloud-help" data-testid="cloud-publish-pages-help">
+                    {`Publishes to https://${publishInfo.login}.github.io/<route>/ (public repo: ${publishInfo.repo}). Embedded assets only.`}
+                    {projectHasPathAssets ? ' Path assets detected; publishing is disabled.' : ''}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
