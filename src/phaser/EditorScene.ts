@@ -814,7 +814,15 @@ export class EditorScene extends Phaser.Scene {
       this.fitView();
       this.hasInitializedView = true;
     } else {
-      this.applyZoom(this.currentZoom);
+      // On project reloads we expect the camera view to be preserved by BootScene via `pendingViewState`.
+      // However, if view capture fails for any reason (race, scene not active yet), do not recenter:
+      // preserve the current scroll and only clamp it to the world extents.
+      const world = getSceneWorld(sceneSpec);
+      const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
+      this.currentZoom = clampZoom(this.currentZoom, maxZoom);
+      this.cameras.main.setZoom(this.currentZoom);
+      this.applyScroll(this.cameras.main.scrollX, this.cameras.main.scrollY);
+      this.emitViewState();
     }
 
     void this.ensureAssetTextures(project, referenceSceneSpec ? [sceneSpec, referenceSceneSpec] : [sceneSpec]).finally(() => {
