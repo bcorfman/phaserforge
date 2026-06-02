@@ -5,6 +5,38 @@ import { PROJECT_LAST_SAVED_AT_STORAGE_KEY, PROJECT_STORAGE_KEY, WORKSPACE_BACKU
 import { WorkspaceConflictModal } from './WorkspaceConflictModal';
 import { summarizeYamlWorkspace } from './workspaceSummary';
 
+type CloudAccountUser = { id: string; email: string } | null;
+type CloudPublishInfo = { ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string };
+
+let cachedCloudAccountUser: CloudAccountUser | undefined;
+let cachedCloudAccountUserPromise: Promise<CloudAccountUser> | null = null;
+const cachedPublishInfoByUserId = new Map<string, CloudPublishInfo>();
+
+function resolveCachedCloudAccountUser(): Promise<CloudAccountUser> {
+  if (cachedCloudAccountUser !== undefined) return Promise.resolve(cachedCloudAccountUser);
+  if (cachedCloudAccountUserPromise) return cachedCloudAccountUserPromise;
+  cachedCloudAccountUserPromise = me()
+    .then((res) => res.user)
+    .catch(() => null)
+    .then((user) => {
+      cachedCloudAccountUser = user;
+      cachedCloudAccountUserPromise = null;
+      return user;
+    });
+  return cachedCloudAccountUserPromise;
+}
+
+function setCachedCloudAccountUser(user: CloudAccountUser) {
+  cachedCloudAccountUser = user;
+  cachedCloudAccountUserPromise = null;
+}
+
+export function __resetCloudAccountPanelAuthCacheForTests() {
+  cachedCloudAccountUser = undefined;
+  cachedCloudAccountUserPromise = null;
+  cachedPublishInfoByUserId.clear();
+}
+
 export function buildGithubStartHref(params: {
   apiBaseUrl: string;
   baseUrl: string;
@@ -60,13 +92,16 @@ export function CloudAccountPanel({
   const LAST_PUBLISH_STORAGE_KEY = 'phaserforge.cloud.last_github_pages_publish_v1';
   const CLOUD_GAME_MAP_STORAGE_KEY = 'phaserforge.cloud.project_game_id_map_v1';
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
-  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+  const [user, setUser] = useState<CloudAccountUser>(cachedCloudAccountUser ?? null);
+  const [authResolved, setAuthResolved] = useState(cachedCloudAccountUser !== undefined);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [inviteToken, setInviteToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [publishInfo, setPublishInfo] = useState<{ ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string } | null>(null);
+  const [publishInfo, setPublishInfo] = useState<CloudPublishInfo | null>(
+    cachedCloudAccountUser?.id ? cachedPublishInfoByUserId.get(cachedCloudAccountUser.id) ?? null : null,
+  );
   const [publishCheck, setPublishCheck] = useState<{ url: string; exists: boolean; status: number | null } | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showGithubConfirm, setShowGithubConfirm] = useState<null | { mode: 'connect' | 'switch' }>(null);
@@ -99,38 +134,43 @@ export function CloudAccountPanel({
     let cancelled = false;
     const init = async () => {
       try {
-        const csrf = await fetchCsrfToken();
-        if (!cancelled) setCsrfToken(csrf);
-      } catch {
-        // ignore
-      }
-
-      try {
-        const res = await me();
-        if (!cancelled) setUser(res.user);
-      } catch {
-        // ignore
-      }
-
-      try {
         const raw = window.localStorage.getItem(LAST_PUBLISH_STORAGE_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as { url?: unknown; publishedAtMs?: unknown };
-        if (typeof parsed.url !== 'string') return;
-        if (typeof parsed.publishedAtMs !== 'number' || !Number.isFinite(parsed.publishedAtMs)) return;
-        if (!cancelled) setLastPublish({ url: parsed.url, publishedAtMs: parsed.publishedAtMs });
+        if (raw) {
+          const parsed = JSON.parse(raw) as { url?: unknown; publishedAtMs?: unknown };
+          if (typeof parsed.url === 'string' && typeof parsed.publishedAtMs === 'number' && Number.isFinite(parsed.publishedAtMs) && !cancelled) {
+            setLastPublish({ url: parsed.url, publishedAtMs: parsed.publishedAtMs });
+          }
+        }
       } catch {
         // ignore
       }
 
       try {
         const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const id = state.project?.id;
-        if (!id) return;
-        const mapped = parsed[id];
-        if (typeof mapped === 'string' && mapped.length > 0 && !cancelled) setCloudGameId(mapped);
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<string, unknown>;
+          const id = state.project?.id;
+          if (id) {
+            const mapped = parsed[id];
+            if (typeof mapped === 'string' && mapped.length > 0 && !cancelled) setCloudGameId(mapped);
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      try {
+        const [csrfResult, userResult] = await Promise.allSettled([fetchCsrfToken(), resolveCachedCloudAccountUser()]);
+        if (!cancelled && csrfResult.status === 'fulfilled') setCsrfToken(csrfResult.value);
+        if (!cancelled) {
+          if (userResult.status === 'fulfilled') {
+            setUser(userResult.value);
+          } else {
+            setCachedCloudAccountUser(null);
+            setUser(null);
+          }
+          setAuthResolved(true);
+        }
       } catch {
         // ignore
       }
@@ -250,12 +290,20 @@ export function CloudAccountPanel({
   useEffect(() => {
     let cancelled = false;
     if (!user) return;
+    const cached = cachedPublishInfoByUserId.get(user.id);
+    if (cached) {
+      setPublishInfo(cached);
+      return;
+    }
     const loadPublishInfo = async () => {
       try {
         const info = await getGithubPagesPublishInfo();
+        cachedPublishInfoByUserId.set(user.id, info);
         if (!cancelled) setPublishInfo(info);
       } catch {
-        if (!cancelled) setPublishInfo({ ok: false, error: 'publish_info_failed' });
+        const info = { ok: false, error: 'publish_info_failed' } satisfies CloudPublishInfo;
+        cachedPublishInfoByUserId.set(user.id, info);
+        if (!cancelled) setPublishInfo(info);
       }
     };
     void loadPublishInfo();
@@ -264,9 +312,10 @@ export function CloudAccountPanel({
     };
   }, [user]);
 
-  const ensurePublishInfo = async (): Promise<{ ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string }> => {
+  const ensurePublishInfo = async (): Promise<CloudPublishInfo> => {
     if (publishInfo) return publishInfo;
     const info = await getGithubPagesPublishInfo();
+    if (user?.id) cachedPublishInfoByUserId.set(user.id, info);
     setPublishInfo(info);
     return info;
   };
@@ -297,7 +346,9 @@ export function CloudAccountPanel({
     try {
       const csrf = await ensureCsrf();
       const res = await signup(email, password, csrf, inviteToken.trim() || undefined);
+      setCachedCloudAccountUser(res.user);
       setUser(res.user);
+      setAuthResolved(true);
       onStatus(`Signed in as ${res.user.email}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Signup failed';
@@ -314,7 +365,9 @@ export function CloudAccountPanel({
     try {
       const csrf = await ensureCsrf();
       const res = await login(email, password, csrf);
+      setCachedCloudAccountUser(res.user);
       setUser(res.user);
+      setAuthResolved(true);
       onStatus(`Signed in as ${res.user.email}`);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Login failed');
@@ -328,7 +381,10 @@ export function CloudAccountPanel({
     try {
       const csrf = await ensureCsrf();
       await logout(csrf);
+      setCachedCloudAccountUser(null);
+      if (user?.id) cachedPublishInfoByUserId.delete(user.id);
       setUser(null);
+      setAuthResolved(true);
       setPublishInfo(null);
       setPublishCheck(null);
       setShowPublishConfirm(false);
@@ -350,7 +406,9 @@ export function CloudAccountPanel({
     try {
       const csrf = await ensureCsrf();
       await disconnectGithub(csrf);
-      setPublishInfo({ ok: false, error: 'github_not_linked' });
+      const info = { ok: false, error: 'github_not_linked' } satisfies CloudPublishInfo;
+      if (user?.id) cachedPublishInfoByUserId.set(user.id, info);
+      setPublishInfo(info);
       setPublishCheck(null);
       setShowPublishConfirm(false);
       onStatus('Disconnected GitHub');
@@ -532,7 +590,20 @@ export function CloudAccountPanel({
           onClose={() => setWorkspaceConflict(null)}
         />
       ) : null}
-      {!user ? (
+      {!authResolved ? (
+        <>
+          <div className="cloud-section-card" data-testid="cloud-account-section">
+            <div className="cloud-section-title">ACCOUNT</div>
+            <div className="cloud-help" data-testid="cloud-account-loading">
+              Checking account…
+            </div>
+          </div>
+          <div className="cloud-section-card" data-testid="cloud-publish-pages-section">
+            <div className="cloud-section-title">PUBLISH (GITHUB PAGES)</div>
+            <div className="cloud-help">Checking account status before loading publish options.</div>
+          </div>
+        </>
+      ) : !user ? (
         <>
           <div className="cloud-section-card" data-testid="cloud-account-section">
             <div className="cloud-section-title">ACCOUNT</div>
