@@ -258,12 +258,12 @@ export type EditorAction =
   | { type: 'convert-group-layout-arrange'; id: Id; arrangeKind: string }
   | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'attachment'; id: Id } }
   | { type: 'add-background-layer-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; defaults?: { layout?: BackgroundLayerSpec['layout'] } }
-  | { type: 'add-image-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; width?: number; height?: number } }
-  | { type: 'ensure-image-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; width?: number; height?: number } }
+  | { type: 'add-image-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string; width?: number; height?: number } }
+  | { type: 'ensure-image-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string; width?: number; height?: number } }
   | { type: 'add-image-asset-from-path'; path: string; suggestedId?: string; width?: number; height?: number }
-  | { type: 'add-spritesheet-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string }; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
+  | { type: 'add-spritesheet-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string }; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
   | { type: 'add-spritesheet-asset-from-path'; path: string; suggestedId?: string; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
-  | { type: 'add-font-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string } }
+  | { type: 'add-font-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string } }
   | { type: 'add-font-asset-from-path'; path: string; suggestedId?: string }
   | { type: 'set-asset-display-name'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id; name?: string }
   | { type: 'relink-asset-source'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id; source: AssetFileSource }
@@ -279,7 +279,7 @@ export type EditorAction =
         | { kind: 'scene-ambience'; sceneId: Id; index?: number }
         | { kind: 'entity-sprite'; sceneId: Id; entityId: Id };
     }
-  | { type: 'add-audio-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string } }
+  | { type: 'add-audio-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string } }
   | { type: 'add-audio-asset-from-path'; path: string; suggestedId?: string }
   | { type: 'remove-audio-asset'; assetId: Id }
   | { type: 'set-scene-music'; music: GameSceneSpec['music'] | undefined }
@@ -1391,6 +1391,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
                 kind: 'embedded',
                 dataUrl: action.file.dataUrl,
                 ...(action.file.path ? { path: action.file.path } : {}),
+                ...(action.file.pathHint ? { pathHint: action.file.pathHint } : {}),
                 ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
                 ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
               },
@@ -1656,6 +1657,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
                 kind: 'embedded',
                 dataUrl: action.file.dataUrl,
                 ...(action.file.path ? { path: action.file.path } : {}),
+                ...(action.file.pathHint ? { pathHint: action.file.pathHint } : {}),
                 ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
                 ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
               },
@@ -1700,6 +1702,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
                 kind: 'embedded',
                 dataUrl: action.file.dataUrl,
                 ...(action.file.path ? { path: action.file.path } : {}),
+                ...(action.file.pathHint ? { pathHint: action.file.pathHint } : {}),
                 ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
                 ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
               },
@@ -1732,6 +1735,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
                 kind: 'embedded',
                 dataUrl: action.file.dataUrl,
                 ...(action.file.path ? { path: action.file.path } : {}),
+                ...(action.file.pathHint ? { pathHint: action.file.pathHint } : {}),
                 ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
                 ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
               },

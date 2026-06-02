@@ -112,7 +112,7 @@ describe('EditorStore reducer', () => {
       file: {
         dataUrl: 'data:image/png;base64,AAAA',
         originalName: 'spaceship.png',
-        path: 'spaceship.png',
+        pathHint: 'spaceship.png',
         mimeType: 'image/png',
         width: 32,
         height: 32,
@@ -123,7 +123,7 @@ describe('EditorStore reducer', () => {
     expect(asset).toBeDefined();
     expect(asset.source).toMatchObject({
       kind: 'embedded',
-      path: 'spaceship.png',
+      pathHint: 'spaceship.png',
       originalName: 'spaceship.png',
       mimeType: 'image/png',
     });

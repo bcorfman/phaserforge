@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import type { AssetFileSource, ProjectSpec } from '../model/types';
+import type { ProjectSpec } from '../model/types';
 import type { EditorAction, Selection } from './EditorStore';
 import { getAssetReferences, type AssetKind } from './assetReferences';
 import { ASSET_DRAG_MIME } from './dragAssets';
@@ -62,14 +62,6 @@ function assetIdBaseFromOriginalName(name: string | undefined, fallbackBase: str
     .replace(/-+$/, '') || fallbackBase;
 }
 
-async function readUrlAsDataUrl(url: string): Promise<{ dataUrl: string; mimeType?: string }> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to load asset (${res.status})`);
-  const blob = await res.blob();
-  const file = new File([blob], url.split('/').pop() ?? 'asset', { type: blob.type || undefined });
-  return { dataUrl: await readAsDataUrl(file), ...(blob.type ? { mimeType: blob.type } : {}) };
-}
-
 export function AssetsDock({
   project,
   sceneId,
@@ -99,7 +91,6 @@ export function AssetsDock({
   const [demoPackImporting, setDemoPackImporting] = useState(false);
   const [rowMenu, setRowMenu] = useState<{ assetKind: AssetKind; assetId: string; x: number; y: number } | null>(null);
   const rowMenuRootRef = useRef<HTMLDivElement | null>(null);
-  const [sourceToggleBusy, setSourceToggleBusy] = useState<string | null>(null);
 
   useEffect(() => {
     const storage: any = (globalThis as any).localStorage;
@@ -159,20 +150,20 @@ export function AssetsDock({
       for (const file of files) {
         const lower = file.name.toLowerCase();
         const isFont = /\.(ttf|otf|woff|woff2)$/.test(lower);
-        const sourcePath = file.webkitRelativePath?.trim() || file.name;
+        const sourcePathHint = file.webkitRelativePath?.trim() || file.name;
         if (file.type.startsWith('image/')) {
           const dataUrl = await readAsDataUrl(file);
           const meta = toLoadedImage(await loadImageMetadataFromFile(file, dataUrl));
           dispatch({
             type: 'add-image-asset-from-file',
-            file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, path: sourcePath, width: meta.width, height: meta.height },
+            file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, pathHint: sourcePathHint, width: meta.width, height: meta.height },
           } as any);
         } else if (file.type.startsWith('audio/')) {
           const dataUrl = await readAsDataUrl(file);
-          dispatch({ type: 'add-audio-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, path: sourcePath } } as any);
+          dispatch({ type: 'add-audio-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, pathHint: sourcePathHint } } as any);
         } else if (isFont) {
           const dataUrl = await readAsDataUrl(file);
-          dispatch({ type: 'add-font-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, path: sourcePath } } as any);
+          dispatch({ type: 'add-font-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, pathHint: sourcePathHint } } as any);
         }
       }
     } catch (err) {
@@ -290,46 +281,6 @@ export function AssetsDock({
     dispatch({ type: 'remove-asset', assetKind, assetId } as any);
   };
 
-  const toggleAssetSource = async (assetKind: AssetKind, assetId: string, source: AssetFileSource) => {
-    if (disabled) return;
-    const key = `${assetKind}:${assetId}`;
-    if (sourceToggleBusy === key) return;
-
-    if (source.kind === 'embedded') {
-      const path = typeof (source as any).path === 'string' ? String((source as any).path).trim() : '';
-      if (!path) {
-        dispatch({ type: 'set-error', error: 'Asset has no path stored; cannot switch to path-only.' } as any);
-        return;
-      }
-      dispatch({ type: 'relink-asset-source', assetKind, assetId, source: { kind: 'path', path } } as any);
-      return;
-    }
-
-    const path = source.path.trim();
-    if (!path) return;
-    setSourceToggleBusy(key);
-    try {
-      const { dataUrl, mimeType } = await readUrlAsDataUrl(path);
-      const originalName = path.split('/').pop() ?? 'asset';
-      dispatch({
-        type: 'relink-asset-source',
-        assetKind,
-        assetId,
-        source: {
-          kind: 'embedded',
-          dataUrl,
-          path,
-          originalName,
-          ...(mimeType ? { mimeType } : {}),
-        },
-      } as any);
-    } catch (err) {
-      dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to embed asset from path' } as any);
-    } finally {
-      setSourceToggleBusy((cur) => (cur === key ? null : cur));
-    }
-  };
-
   return (
     <div className="assets-dock" data-testid="assets-dock">
       <div className="assets-dock-header">
@@ -431,7 +382,6 @@ export function AssetsDock({
           const label = displayLabel(assetId, asset?.name);
           const audioBadges = assetKind === 'audio' ? usageBadgesForAudio(project, assetId) : [];
           const sheetBadge = assetKind === 'spritesheet' ? ['SHEET'] : [];
-          const sourceBadge = asset?.source?.kind === 'embedded' ? 'Embedded' : asset?.source?.kind === 'path' ? 'Path' : '';
           const thumbnailSrc = (assetKind === 'image' || assetKind === 'spritesheet') && asset?.source
             ? (asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path)
             : '';
@@ -459,34 +409,6 @@ export function AssetsDock({
                 ) : null}
                 <span className="assets-dock-label">{label}</span>
                 <span className="assets-dock-badges">
-                  {sourceBadge && asset?.source ? (
-                    <span
-                      className="badge badge-inline"
-                      role={disabled ? undefined : 'button'}
-                      tabIndex={disabled ? undefined : 0}
-                      aria-label={disabled ? undefined : `Toggle ${assetKind} source`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (disabled) return;
-                        void toggleAssetSource(assetKind, assetId, asset.source);
-                      }}
-                      onKeyDown={(e) => {
-                        if (disabled) return;
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          void toggleAssetSource(assetKind, assetId, asset.source);
-                        }
-                      }}
-                      style={{
-                        cursor: disabled ? 'default' : 'pointer',
-                        opacity: sourceToggleBusy === `${assetKind}:${assetId}` ? 0.7 : 1,
-                      }}
-                    >
-                      {sourceBadge}
-                    </span>
-                  ) : null}
                   {sheetBadge.map((b) => <span key={b} className="badge badge-inline">{b}</span>)}
                   {audioBadges.map((b) => <span key={b} className="badge badge-inline">{b}</span>)}
                 </span>
