@@ -159,19 +159,20 @@ export function AssetsDock({
       for (const file of files) {
         const lower = file.name.toLowerCase();
         const isFont = /\.(ttf|otf|woff|woff2)$/.test(lower);
+        const sourcePath = file.webkitRelativePath?.trim() || file.name;
         if (file.type.startsWith('image/')) {
           const dataUrl = await readAsDataUrl(file);
           const meta = toLoadedImage(await loadImageMetadataFromFile(file, dataUrl));
           dispatch({
             type: 'add-image-asset-from-file',
-            file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, width: meta.width, height: meta.height },
+            file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, path: sourcePath, width: meta.width, height: meta.height },
           } as any);
         } else if (file.type.startsWith('audio/')) {
           const dataUrl = await readAsDataUrl(file);
-          dispatch({ type: 'add-audio-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined } } as any);
+          dispatch({ type: 'add-audio-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, path: sourcePath } } as any);
         } else if (isFont) {
           const dataUrl = await readAsDataUrl(file);
-          dispatch({ type: 'add-font-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined } } as any);
+          dispatch({ type: 'add-font-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, path: sourcePath } } as any);
         }
       }
     } catch (err) {
