@@ -104,6 +104,31 @@ describe('EditorStore reducer', () => {
     expect(next.error).toBeUndefined();
   });
 
+  it('persists source path metadata when importing an embedded image from device', () => {
+    const state = seededState();
+
+    const next = reducer(state, {
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'spaceship.png',
+        path: 'spaceship.png',
+        mimeType: 'image/png',
+        width: 32,
+        height: 32,
+      },
+    } as any);
+
+    const asset = next.project.assets.images['spaceship'];
+    expect(asset).toBeDefined();
+    expect(asset.source).toMatchObject({
+      kind: 'embedded',
+      path: 'spaceship.png',
+      originalName: 'spaceship.png',
+      mimeType: 'image/png',
+    });
+  });
+
   it('clears the dirty flag after a successful save', () => {
     const state = {
       ...seededState(),
