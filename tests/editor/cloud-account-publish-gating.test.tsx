@@ -126,6 +126,8 @@ describe('CloudAccountPanel publish gating', () => {
       expect(publish).toBeTruthy();
       expect(document.querySelector('[aria-label="Publish route"]')).toBeTruthy();
       expect(document.querySelector('[data-testid="cloud-publish-connect-github-cta"]')).toBeFalsy();
+      expect(document.querySelector('[data-testid="cloud-publish-pages-help"]')?.textContent).not.toContain('Public repo:');
+      expect(document.querySelector('[data-testid="cloud-publish-pages-help"]')?.textContent).not.toContain('Embedded assets only.');
 
       // Game/title controls belong to account area, not inside Publish section.
       expect(publish?.querySelector('select')).toBeFalsy();
