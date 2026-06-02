@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -30,7 +30,7 @@ const api = vi.hoisted(() => {
 
 vi.mock('../../src/cloud/api', () => api);
 
-import { CloudAccountPanel } from '../../src/editor/CloudAccountPanel';
+import { CloudAccountPanel, __resetCloudAccountPanelAuthCacheForTests } from '../../src/editor/CloudAccountPanel';
 
 function baseState(): any {
   return {
@@ -65,6 +65,11 @@ describe('CloudAccountPanel publish gating', () => {
   });
   afterAll(() => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = undefined;
+  });
+
+  afterEach(() => {
+    __resetCloudAccountPanelAuthCacheForTests();
+    vi.clearAllMocks();
   });
 
   it('shows a compact Publish section when not signed in', async () => {
@@ -126,6 +131,85 @@ describe('CloudAccountPanel publish gating', () => {
       expect(publish?.querySelector('select')).toBeFalsy();
     } finally {
       view.cleanup();
+    }
+  });
+
+  it('shows a neutral loading state until auth resolves', async () => {
+    let resolveMe: ((value: { user: { id: string; email: string } }) => void) | null = null;
+    api.me.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveMe = resolve;
+        }),
+    );
+
+    const view = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    try {
+      expect(document.querySelector('[data-testid="cloud-account-loading"]')?.textContent).toContain('Checking account');
+      expect(document.querySelector('[data-testid="cloud-publish-signin-cta"]')).toBeFalsy();
+      expect(document.querySelector('.cloud-signed-in')).toBeFalsy();
+
+      resolveMe?.({ user: { id: 'u1', email: 'a@b.c' } });
+      await flushEffects();
+
+      expect(document.querySelector('[data-testid="cloud-account-loading"]')).toBeFalsy();
+      expect(document.querySelector('.cloud-signed-in')?.textContent).toContain('a@b.c');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('reuses resolved auth on remount instead of showing the signed-out layout first', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValue({ ok: false, error: 'github_not_linked' });
+
+    const firstView = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    await flushEffects();
+    firstView.cleanup();
+
+    const secondView = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    try {
+      expect(document.querySelector('[data-testid="cloud-account-loading"]')).toBeFalsy();
+      expect(document.querySelector('.cloud-signed-in')?.textContent).toContain('a@b.c');
+      expect(api.me).toHaveBeenCalledTimes(1);
+      expect(document.querySelector('[data-testid="cloud-publish-signin-cta"]')).toBeFalsy();
+    } finally {
+      secondView.cleanup();
+    }
+  });
+
+  it('reuses resolved GitHub publish info on remount instead of showing checking state first', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+      ok: true,
+      login: 'alice',
+      pagesBaseUrl: 'https://alice.github.io/',
+      repo: 'alice/alice.github.io',
+    });
+
+    const firstView = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    await flushEffects();
+    firstView.cleanup();
+
+    const secondView = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    try {
+      expect(document.querySelector('[data-testid="cloud-github-connection"]')?.textContent).toContain('connected as alice');
+      expect(document.querySelector('[data-testid="cloud-publish-connect-github-cta"]')).toBeFalsy();
+      expect(document.querySelector('[aria-label="Publish route"]')).toBeTruthy();
+      expect(document.body.textContent).not.toContain('Checking GitHub connection');
+      expect(api.getGithubPagesPublishInfo).toHaveBeenCalledTimes(1);
+    } finally {
+      secondView.cleanup();
     }
   });
 });
