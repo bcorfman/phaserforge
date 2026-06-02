@@ -80,12 +80,16 @@ test.describe('Assets dock', () => {
       return Object.keys(state?.scene?.entities ?? {});
     });
     await dispatchAction(page, { type: 'create-text-entity', at: { x: 120, y: 90 } } as any);
-    const markerId = await page.evaluate((existingIds) => {
-      const state: any = (window as any).__PHASER_FORGE_TEST__?.getState?.();
-      const ids = Object.keys(state?.scene?.entities ?? {});
-      const added = ids.filter((id) => !(existingIds as string[]).includes(id));
-      return added[0] ?? null;
-    }, beforeIds);
+    let markerId: string | null = null;
+    await expect.poll(async () => {
+      markerId = await page.evaluate((existingIds) => {
+        const state: any = (window as any).__PHASER_FORGE_TEST__?.getState?.();
+        const ids = Object.keys(state?.scene?.entities ?? {});
+        const added = ids.filter((id) => !(existingIds as string[]).includes(id));
+        return added[0] ?? null;
+      }, beforeIds);
+      return markerId;
+    }).toBeTruthy();
     if (typeof markerId !== 'string') throw new Error('Failed to create marker entity');
     const markerClientBefore = await entityClientCenter(page, markerId);
 
