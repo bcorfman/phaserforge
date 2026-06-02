@@ -825,8 +825,7 @@ export function CloudAccountPanel({
                 </div>
                 <div className="cloud-row">
                   <div className="cloud-help" data-testid="cloud-publish-pages-help">
-                    {`Public repo: ${publishInfo.repo}.`}
-                    {projectHasPathAssets ? ' Path assets detected; publishing is disabled.' : ' Embedded assets only.'}
+                    {projectHasPathAssets ? 'Path assets detected; publishing is disabled.' : ''}
                   </div>
                 </div>
                 <div className="cloud-row">
