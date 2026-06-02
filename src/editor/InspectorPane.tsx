@@ -45,6 +45,7 @@ export function InspectorPane() {
       ) : (
         <CloudAccountPanel
           state={state}
+          dispatch={dispatch}
           onLoadYaml={(yaml, sourceLabel) => dispatch({ type: 'load-yaml-text', text: yaml, sourceLabel })}
           onStatus={(message) => dispatch({ type: 'set-status', message, expiresAt: Date.now() + 4000 })}
           onError={(message) => dispatch({ type: 'set-error', error: message })}

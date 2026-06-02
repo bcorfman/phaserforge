@@ -261,6 +261,8 @@ export function parseProjectYaml(text: string): ProjectSpec {
 
   return {
     id: typeof raw.id === 'string' ? raw.id : 'project-1',
+    ...(typeof raw.title === 'string' ? { title: raw.title } : {}),
+    ...(typeof raw.publishGithubPagesRoute === 'string' ? { publishGithubPagesRoute: raw.publishGithubPagesRoute } : {}),
     assets: {
       images: coerceRecord(raw.assets?.images),
       spriteSheets: coerceRecord(raw.assets?.spriteSheets),

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type Dispatch, useEffect, useMemo, useRef, useState } from 'react';
 import { checkGithubPagesTarget, createGame, disconnectGithub, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame } from '../cloud/api';
 import { serializeProjectToYaml } from '../model/serialization';
-import { PROJECT_LAST_SAVED_AT_STORAGE_KEY, PROJECT_STORAGE_KEY, WORKSPACE_BACKUP_STORAGE_KEY, type EditorState } from './EditorStore';
+import { PROJECT_LAST_SAVED_AT_STORAGE_KEY, PROJECT_STORAGE_KEY, WORKSPACE_BACKUP_STORAGE_KEY, type EditorAction, type EditorState } from './EditorStore';
 import { WorkspaceConflictModal } from './WorkspaceConflictModal';
 import { summarizeYamlWorkspace } from './workspaceSummary';
 
@@ -46,32 +46,32 @@ export function buildGithubStartHref(params: {
 
 export function CloudAccountPanel({
   state,
+  dispatch,
   onLoadYaml,
   onStatus,
   onError,
 }: {
   state: Pick<EditorState, 'project'>;
+  dispatch: Dispatch<EditorAction>;
   onLoadYaml: (yaml: string, sourceLabel: string) => void;
   onStatus: (message: string) => void;
   onError: (message: string) => void;
 }) {
   const LAST_PUBLISH_STORAGE_KEY = 'phaserforge.cloud.last_github_pages_publish_v1';
+  const CLOUD_GAME_MAP_STORAGE_KEY = 'phaserforge.cloud.project_game_id_map_v1';
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [inviteToken, setInviteToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [games, setGames] = useState<Array<{ id: string; title: string; updated_at: string }>>([]);
-  const [selectedGameId, setSelectedGameId] = useState<string>('');
-  const [newTitle, setNewTitle] = useState<string>('My Game');
   const [busy, setBusy] = useState(false);
-  const [publishRoute, setPublishRoute] = useState('');
   const [publishInfo, setPublishInfo] = useState<{ ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string } | null>(null);
   const [publishCheck, setPublishCheck] = useState<{ url: string; exists: boolean; status: number | null } | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showGithubConfirm, setShowGithubConfirm] = useState<null | { mode: 'connect' | 'switch' }>(null);
   const [lastPublish, setLastPublish] = useState<{ url: string; publishedAtMs: number } | null>(null);
+  const [cloudGameId, setCloudGameId] = useState<string | null>(null);
   const [workspaceConflict, setWorkspaceConflict] = useState<{
     cloud: { yaml: string; updatedAt: string; label: string };
     device: { yaml: string; savedAtMs: number | null; label: string };
@@ -122,12 +122,39 @@ export function CloudAccountPanel({
       } catch {
         // ignore
       }
+
+      try {
+        const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const id = state.project?.id;
+        if (!id) return;
+        const mapped = parsed[id];
+        if (typeof mapped === 'string' && mapped.length > 0 && !cancelled) setCloudGameId(mapped);
+      } catch {
+        // ignore
+      }
     };
     void init();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [state.project?.id]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
+      if (!raw) {
+        setCloudGameId(null);
+        return;
+      }
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const mapped = parsed[state.project.id];
+      setCloudGameId(typeof mapped === 'string' && mapped.length > 0 ? mapped : null);
+    } catch {
+      setCloudGameId(null);
+    }
+  }, [state.project.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -223,23 +250,6 @@ export function CloudAccountPanel({
   useEffect(() => {
     let cancelled = false;
     if (!user) return;
-    const load = async () => {
-      try {
-        const res = await listGames();
-        if (!cancelled) setGames(res.games.map((g) => ({ id: g.id, title: g.title, updated_at: g.updated_at })));
-      } catch (err) {
-        if (!cancelled) onError(err instanceof Error ? err.message : 'Failed to load cloud games');
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, onError]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!user) return;
     const loadPublishInfo = async () => {
       try {
         const info = await getGithubPagesPublishInfo();
@@ -271,6 +281,9 @@ export function CloudAccountPanel({
       Object.values(audio.sounds).some((a) => (a as any)?.source?.kind === 'path');
     return anyPath;
   }, [state.project]);
+
+  const titleValue = state.project.title ?? '';
+  const routeValue = state.project.publishGithubPagesRoute ?? '';
 
   const ensureCsrf = async () => {
     if (csrfToken) return csrfToken;
@@ -316,13 +329,12 @@ export function CloudAccountPanel({
       const csrf = await ensureCsrf();
       await logout(csrf);
       setUser(null);
-      setGames([]);
-      setSelectedGameId('');
       setPublishInfo(null);
       setPublishCheck(null);
       setShowPublishConfirm(false);
       setShowGithubConfirm(null);
       setWorkspaceConflict(null);
+      setCloudGameId(null);
       hasCheckedConflictRef.current = false;
       onStatus('Signed out');
     } catch (err) {
@@ -349,58 +361,36 @@ export function CloudAccountPanel({
     }
   };
 
-  const handleRefreshGames = async () => {
-    if (!user) return;
-    setBusy(true);
+  const persistCloudGameId = (projectId: string, gameId: string) => {
     try {
-      const res = await listGames();
-      setGames(res.games.map((g) => ({ id: g.id, title: g.title, updated_at: g.updated_at })));
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to refresh games');
-    } finally {
-      setBusy(false);
+      const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
+      const existing = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+      const next = { ...existing, [projectId]: gameId };
+      window.localStorage.setItem(CLOUD_GAME_MAP_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
     }
   };
 
-  const handleLoadSelected = async () => {
-    if (!selectedGameId) return;
-    setBusy(true);
-    try {
-      const res = await getGame(selectedGameId);
-      onLoadYaml(res.game.yaml, `cloud:${res.game.title}`);
-      onStatus(`Loaded ${res.game.title}`);
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to load game');
-    } finally {
-      setBusy(false);
+  const ensureCloudGameSaved = async (): Promise<string | null> => {
+    if (!user) return null;
+    const yaml = serializeProjectToYaml(state.project);
+    const title = state.project.title?.trim() || 'Untitled';
+    const csrf = await ensureCsrf();
+    if (cloudGameId) {
+      await updateGame(cloudGameId, { title, yaml }, csrf);
+      return cloudGameId;
     }
-  };
-
-  const handleSave = async () => {
-    if (!user) return;
-    setBusy(true);
-    try {
-      const yaml = serializeProjectToYaml(state.project);
-      const csrf = await ensureCsrf();
-      if (selectedGameId) {
-        await updateGame(selectedGameId, { title: newTitle.trim() || undefined, yaml }, csrf);
-        onStatus('Saved to cloud');
-      } else {
-        const created = await createGame(newTitle.trim() || 'Untitled', yaml, csrf);
-        setSelectedGameId(created.game.id);
-        onStatus('Created in cloud');
-      }
-      await handleRefreshGames();
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to save game');
-    } finally {
-      setBusy(false);
-    }
+    const created = await createGame(title, yaml, csrf);
+    const id = created.game.id;
+    setCloudGameId(id);
+    persistCloudGameId(state.project.id, id);
+    return id;
   };
 
   const handlePublishCheck = async () => {
-    if (!selectedGameId) return;
-    if (!publishRoute.trim()) {
+    const route = state.project.publishGithubPagesRoute?.trim() ?? '';
+    if (!route) {
       onError('Enter a route to publish (example: mygame)');
       return;
     }
@@ -409,7 +399,7 @@ export function CloudAccountPanel({
       onError('Requires GitHub login to publish.');
       return;
     }
-    const check = await checkGithubPagesTarget(publishRoute.trim());
+    const check = await checkGithubPagesTarget(route);
     if (!check.ok) {
       onError(check.error);
       return;
@@ -421,11 +411,17 @@ export function CloudAccountPanel({
 
   const handlePublish = async (allowOverwrite: boolean) => {
     if (!user) return;
-    if (!selectedGameId) return;
     setBusy(true);
     try {
+      const gameId = await ensureCloudGameSaved();
+      if (!gameId) return;
+      const route = state.project.publishGithubPagesRoute?.trim() ?? '';
+      if (!route) {
+        onError('Enter a route to publish (example: mygame)');
+        return;
+      }
       const csrf = await ensureCsrf();
-      const result = await publishToGithubPages(selectedGameId, publishRoute.trim(), csrf, { ...(allowOverwrite ? { allowOverwrite: true } : {}) });
+      const result = await publishToGithubPages(gameId, route, csrf, { ...(allowOverwrite ? { allowOverwrite: true } : {}) });
       if (!result.ok) {
         if (result.error === 'target_exists') {
           onError('That GitHub Pages URL already exists. Choose a different route or confirm overwrite.');
@@ -606,6 +602,16 @@ export function CloudAccountPanel({
               <span className="cloud-badge">GitHub linked</span>
               <span className="cloud-badge warn">Embedded assets only</span>
             </div>
+            <div className="cloud-row">
+              <label className="field">
+                <span>Title</span>
+                <input
+                  value={titleValue}
+                  placeholder="My Game"
+                  onChange={(e) => dispatch({ type: 'set-project-metadata', title: e.target.value })}
+                />
+              </label>
+            </div>
             <div className="cloud-help">Sign in to enable publishing to GitHub Pages.</div>
             <div className="cloud-row">
               <button
@@ -683,44 +689,6 @@ export function CloudAccountPanel({
                   GitHub authorization is required for publishing to GitHub Pages. Make sure the correct GitHub account is signed into this browser.
                 </div>
               </div>
-              <div className="cloud-row">
-                <label className="field">
-                  <span>Game</span>
-                  <select value={selectedGameId} onChange={(e) => setSelectedGameId(e.target.value)}>
-                    <option value="">(New)</option>
-                    {games.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button className="button button-compact" type="button" disabled={busy || !selectedGameId} onClick={handleLoadSelected}>
-                  Load
-                </button>
-                <a
-                  className={`button button-compact ${!selectedGameId ? 'disabled' : ''}`}
-                  data-testid="cloud-launch-button"
-                  href={selectedGameId ? `?playGameId=${encodeURIComponent(selectedGameId)}` : undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-disabled={!selectedGameId}
-                  onClick={(e) => {
-                    if (!selectedGameId) e.preventDefault();
-                  }}
-                >
-                  Launch
-                </a>
-              </div>
-              <div className="cloud-row">
-                <label className="field">
-                  <span>Title</span>
-                  <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
-                </label>
-                <button className="button button-compact" type="button" disabled={busy} onClick={handleSave}>
-                  Save
-                </button>
-              </div>
             </div>
           </div>
 
@@ -730,6 +698,16 @@ export function CloudAccountPanel({
               <span className="cloud-badge ok">Signed in</span>
               <span className={`cloud-badge ${publishInfo?.ok ? 'ok' : ''}`}>GitHub linked</span>
               <span className={`cloud-badge ${projectHasPathAssets ? 'warn' : 'ok'}`}>Embedded assets only</span>
+            </div>
+            <div className="cloud-row">
+              <label className="field">
+                <span>Title</span>
+                <input
+                  value={titleValue}
+                  placeholder="My Game"
+                  onChange={(e) => dispatch({ type: 'set-project-metadata', title: e.target.value })}
+                />
+              </label>
             </div>
             {!publishInfo?.ok ? (
               <>
@@ -760,9 +738,9 @@ export function CloudAccountPanel({
                   <label className="field">
                     <span>Route</span>
                     <input
-                      value={publishRoute}
+                      value={routeValue}
                       placeholder="mygame"
-                      onChange={(e) => setPublishRoute(e.target.value)}
+                      onChange={(e) => dispatch({ type: 'set-project-metadata', publishGithubPagesRoute: e.target.value })}
                       aria-label="Publish route"
                     />
                   </label>
@@ -770,7 +748,7 @@ export function CloudAccountPanel({
                     className="button primary"
                     type="button"
                     data-testid="cloud-publish-pages-button"
-                    disabled={busy || !selectedGameId || !publishRoute.trim() || projectHasPathAssets}
+                    disabled={busy || !routeValue.trim() || projectHasPathAssets}
                     onClick={() => void handlePublishCheck()}
                   >
                     Publish

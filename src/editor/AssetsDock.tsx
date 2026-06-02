@@ -64,7 +64,7 @@ function assetIdBaseFromOriginalName(name: string | undefined, fallbackBase: str
 
 async function readUrlAsDataUrl(url: string): Promise<{ dataUrl: string; mimeType?: string }> {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to load demo pack asset (${res.status})`);
+  if (!res.ok) throw new Error(`Failed to load asset (${res.status})`);
   const blob = await res.blob();
   const file = new File([blob], url.split('/').pop() ?? 'asset', { type: blob.type || undefined });
   return { dataUrl: await readAsDataUrl(file), ...(blob.type ? { mimeType: blob.type } : {}) };
@@ -99,11 +99,7 @@ export function AssetsDock({
   const [demoPackImporting, setDemoPackImporting] = useState(false);
   const [rowMenu, setRowMenu] = useState<{ assetKind: AssetKind; assetId: string; x: number; y: number } | null>(null);
   const rowMenuRootRef = useRef<HTMLDivElement | null>(null);
-  const [relinkOpen, setRelinkOpen] = useState<{ assetKind: AssetKind; assetId: string } | null>(null);
-  const [relinkSourceMode, setRelinkSourceMode] = useState<'embedded' | 'path'>('path');
-  const [relinkPathDraft, setRelinkPathDraft] = useState('');
-  const [relinkError, setRelinkError] = useState<string | undefined>();
-  const relinkFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [sourceToggleBusy, setSourceToggleBusy] = useState<string | null>(null);
 
   useEffect(() => {
     const storage: any = (globalThis as any).localStorage;
@@ -268,15 +264,6 @@ export function AssetsDock({
     };
   }, [addMenu]);
 
-  useEffect(() => {
-    if (!relinkOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setRelinkOpen(null);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [relinkOpen]);
-
   const onRename = (assetKind: AssetKind, assetId: string) => {
     const existing = assetKind === 'audio'
       ? project.audio?.sounds?.[assetId]
@@ -302,45 +289,43 @@ export function AssetsDock({
     dispatch({ type: 'remove-asset', assetKind, assetId } as any);
   };
 
-  const openRelink = (assetKind: AssetKind, assetId: string) => {
-    setRelinkError(undefined);
-    setRelinkPathDraft('');
-    setRelinkSourceMode('path');
-    setRelinkOpen({ assetKind, assetId });
-  };
+  const toggleAssetSource = async (assetKind: AssetKind, assetId: string, source: AssetFileSource) => {
+    if (disabled) return;
+    const key = `${assetKind}:${assetId}`;
+    if (sourceToggleBusy === key) return;
 
-  const applyRelink = async () => {
-    if (!relinkOpen) return;
-    setRelinkError(undefined);
+    if (source.kind === 'embedded') {
+      const path = typeof (source as any).path === 'string' ? String((source as any).path).trim() : '';
+      if (!path) {
+        dispatch({ type: 'set-error', error: 'Asset has no path stored; cannot switch to path-only.' } as any);
+        return;
+      }
+      dispatch({ type: 'relink-asset-source', assetKind, assetId, source: { kind: 'path', path } } as any);
+      return;
+    }
+
+    const path = source.path.trim();
+    if (!path) return;
+    setSourceToggleBusy(key);
     try {
-      const { assetKind, assetId } = relinkOpen;
-      let source: AssetFileSource;
-      if (relinkSourceMode === 'path') {
-        const nextPath = relinkPathDraft.trim();
-        if (!nextPath) {
-          setRelinkError('Enter an asset path.');
-          return;
-        }
-        source = { kind: 'path', path: nextPath };
-      } else {
-        const input = relinkFileInputRef.current;
-        const file = input?.files?.[0];
-        if (!file) {
-          setRelinkError('Choose a file.');
-          return;
-        }
-        const dataUrl = await readAsDataUrl(file);
-        source = {
+      const { dataUrl, mimeType } = await readUrlAsDataUrl(path);
+      const originalName = path.split('/').pop() ?? 'asset';
+      dispatch({
+        type: 'relink-asset-source',
+        assetKind,
+        assetId,
+        source: {
           kind: 'embedded',
           dataUrl,
-          originalName: file.name,
-          ...(file.type ? { mimeType: file.type } : {}),
-        };
-      }
-      dispatch({ type: 'relink-asset-source', assetKind, assetId, source } as any);
-      setRelinkOpen(null);
+          path,
+          originalName,
+          ...(mimeType ? { mimeType } : {}),
+        },
+      } as any);
     } catch (err) {
-      setRelinkError(err instanceof Error ? err.message : 'Failed to relink asset');
+      dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to embed asset from path' } as any);
+    } finally {
+      setSourceToggleBusy((cur) => (cur === key ? null : cur));
     }
   };
 
@@ -473,7 +458,34 @@ export function AssetsDock({
                 ) : null}
                 <span className="assets-dock-label">{label}</span>
                 <span className="assets-dock-badges">
-                  {sourceBadge ? <span className="badge badge-inline">{sourceBadge}</span> : null}
+                  {sourceBadge && asset?.source ? (
+                    <span
+                      className="badge badge-inline"
+                      role={disabled ? undefined : 'button'}
+                      tabIndex={disabled ? undefined : 0}
+                      aria-label={disabled ? undefined : `Toggle ${assetKind} source`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (disabled) return;
+                        void toggleAssetSource(assetKind, assetId, asset.source);
+                      }}
+                      onKeyDown={(e) => {
+                        if (disabled) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void toggleAssetSource(assetKind, assetId, asset.source);
+                        }
+                      }}
+                      style={{
+                        cursor: disabled ? 'default' : 'pointer',
+                        opacity: sourceToggleBusy === `${assetKind}:${assetId}` ? 0.7 : 1,
+                      }}
+                    >
+                      {sourceBadge}
+                    </span>
+                  ) : null}
                   {sheetBadge.map((b) => <span key={b} className="badge badge-inline">{b}</span>)}
                   {audioBadges.map((b) => <span key={b} className="badge badge-inline">{b}</span>)}
                 </span>
@@ -544,19 +556,6 @@ export function AssetsDock({
           >
             Rename…
           </button>
-          <button
-            type="button"
-            className="scene-graph-menu-item"
-            role="menuitem"
-            data-testid="assets-dock-row-menu-relink"
-            onClick={() => {
-              const next = rowMenu;
-              setRowMenu(null);
-              openRelink(next.assetKind, next.assetId);
-            }}
-          >
-            Relink…
-          </button>
           <div className="scene-graph-menu-divider" />
           <button
             type="button"
@@ -571,82 +570,6 @@ export function AssetsDock({
           >
             Delete…
           </button>
-        </div>
-      )}
-
-      {relinkOpen && (
-        <div
-          className="modal-overlay"
-          data-testid="asset-relink-modal"
-          role="dialog"
-          aria-label="Relink asset"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setRelinkOpen(null);
-          }}
-        >
-          <div className="modal-card">
-            <div className="panel-header">
-              <p className="eyebrow">Assets</p>
-              <h2 className="panel-title">Relink Asset</h2>
-              <p className="panel-description">
-                Relink keeps the same assetId so existing references remain intact.
-              </p>
-              <div className="muted" style={{ marginTop: 6 }}>
-                Asset: <span className="mono">{relinkOpen.assetKind}:{relinkOpen.assetId}</span>
-              </div>
-            </div>
-
-            <div className="panel-scroll" style={{ overflow: 'auto', paddingRight: 2 }}>
-              <div className="field">
-                <span>New source</span>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <input type="radio" checked={relinkSourceMode === 'embedded'} onChange={() => setRelinkSourceMode('embedded')} />
-                    Embedded file
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <input type="radio" checked={relinkSourceMode === 'path'} onChange={() => setRelinkSourceMode('path')} />
-                    Asset path
-                  </label>
-                </div>
-              </div>
-
-              {relinkSourceMode === 'path' ? (
-                <div className="field">
-                  <span>Asset Path</span>
-                  <input
-                    className="text-input"
-                    data-testid="asset-relink-path-input"
-                    type="text"
-                    value={relinkPathDraft}
-                    onChange={(e) => setRelinkPathDraft(e.target.value)}
-                    placeholder="/assets/images/hero.png"
-                  />
-                </div>
-              ) : (
-                <div className="field">
-                  <span>Embedded File</span>
-                  <input
-                    ref={relinkFileInputRef}
-                    data-testid="asset-relink-file-input"
-                    type="file"
-                    accept={relinkOpen.assetKind === 'audio' ? 'audio/*' : relinkOpen.assetKind === 'font' ? '' : 'image/*'}
-                  />
-                </div>
-              )}
-
-              {relinkError && <div className="toolbar-error" role="alert">{relinkError}</div>}
-            </div>
-
-            <div className="toolbar-actions" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
-              <button className="button" type="button" onClick={() => setRelinkOpen(null)} data-testid="asset-relink-cancel">
-                Cancel
-              </button>
-              <button className="button" type="button" onClick={() => void applyRelink()} data-testid="asset-relink-apply">
-                Relink
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

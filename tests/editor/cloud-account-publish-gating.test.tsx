@@ -73,7 +73,7 @@ describe('CloudAccountPanel publish gating', () => {
     });
 
     const view = renderIntoDom(
-      <CloudAccountPanel state={baseState()} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
     );
     try {
       await flushEffects();
@@ -92,7 +92,7 @@ describe('CloudAccountPanel publish gating', () => {
     api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: false, error: 'github_not_linked' });
 
     const view = renderIntoDom(
-      <CloudAccountPanel state={baseState()} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
     );
     try {
       await flushEffects();
@@ -113,7 +113,7 @@ describe('CloudAccountPanel publish gating', () => {
     api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/', repo: 'alice/alice.github.io' });
 
     const view = renderIntoDom(
-      <CloudAccountPanel state={baseState()} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
     );
     try {
       await flushEffects();

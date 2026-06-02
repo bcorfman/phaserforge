@@ -115,6 +115,24 @@ describe('project YAML serialization', () => {
     expect(reserialized).not.toMatch(/\nmacros:\n/);
   });
 
+  it('round-trips optional project title and GitHub Pages route', () => {
+    const project = {
+      id: 'project-1',
+      title: 'My Game',
+      publishGithubPagesRoute: 'mygame',
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
+      audio: { sounds: {} },
+      inputMaps: {},
+      scenes: { 'scene-1': { ...sampleScene, backgroundLayers: [] } },
+      initialSceneId: 'scene-1',
+    };
+
+    const yaml = serializeProjectToYaml(project as any);
+    expect(yaml).toMatch(/\ntitle:\s*My Game\n/);
+    expect(yaml).toMatch(/\npublishGithubPagesRoute:\s*mygame\n/);
+    expect(parseProjectYaml(yaml)).toEqual(project);
+  });
+
   it('drops sceneMeta entries that reference unknown scenes', () => {
     const yaml = serializeProjectToYaml({
       id: 'project-1',

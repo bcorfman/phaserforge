@@ -71,7 +71,7 @@ test('Cloud tab shows Publish to GitHub Pages UI and blocks when path assets exi
   await cloudTab.click();
   await expect(page.getByTestId('cloud-panel')).toBeVisible();
 
-  await page.getByLabel('Game').selectOption('g1');
+  await page.getByLabel('Title').fill('My Game');
   await page.getByLabel('Publish route').fill('mygame');
 
   await expect(page.getByTestId('cloud-publish-pages-button')).toBeDisabled();
