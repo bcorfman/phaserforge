@@ -165,6 +165,14 @@ export type InputBindingSpec =
 
 export interface ProjectSpec {
   id: Id;
+  /**
+   * Optional human-friendly project title (editor metadata; serialized to YAML).
+   */
+  title?: string;
+  /**
+   * Optional GitHub Pages publish route (editor metadata; serialized to YAML).
+   */
+  publishGithubPagesRoute?: string;
   assets: {
     images: Record<Id, ImageAssetSpec>;
     spriteSheets: Record<Id, SpriteSheetAssetSpec>;
@@ -258,6 +266,10 @@ export type AssetFileSource =
   | {
       kind: 'embedded';
       dataUrl: string;
+      /**
+       * Optional original path/URL. Used for toggling between embedded and path sources.
+       */
+      path?: string;
       originalName?: string;
       mimeType?: string;
     }
