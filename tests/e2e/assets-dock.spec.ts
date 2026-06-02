@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dispatchAction, dragAssetToCanvas, dragDropByTestIdAtClientPoint, dropAssetOnTestId, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, waitForViewportToSettle, worldToClient } from './helpers';
+import { dismissViewHint, dispatchAction, dragAssetToCanvas, dragDropByTestIdAtClientPoint, dropAssetOnTestId, entityClientCenter, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, waitForViewportToSettle, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test.describe.configure({ timeout: 120000 });
@@ -72,6 +72,27 @@ test.describe('Assets dock', () => {
     const before = await getSceneSnapshot<any>(page);
     expect(before).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
+    // Anchor a marker entity and assert its screen position doesn't move across the asset drop.
+    // This is more stable than comparing raw scroll values, and matches the user-visible invariant:
+    // the viewport should not jump.
+    const beforeIds = await page.evaluate(() => {
+      const state: any = (window as any).__PHASER_FORGE_TEST__?.getState?.();
+      return Object.keys(state?.scene?.entities ?? {});
+    });
+    await dispatchAction(page, { type: 'create-text-entity', at: { x: 120, y: 90 } } as any);
+    let markerId: string | null = null;
+    await expect.poll(async () => {
+      markerId = await page.evaluate((existingIds) => {
+        const state: any = (window as any).__PHASER_FORGE_TEST__?.getState?.();
+        const ids = Object.keys(state?.scene?.entities ?? {});
+        const added = ids.filter((id) => !(existingIds as string[]).includes(id));
+        return added[0] ?? null;
+      }, beforeIds);
+      return markerId;
+    }).toBeTruthy();
+    if (typeof markerId !== 'string') throw new Error('Failed to create marker entity');
+    const markerClientBefore = await entityClientCenter(page, markerId);
+
     // Use the same drag/drop path across browsers. Our helper uses a synthetic HTML5 drop for WebKit
     // to avoid flakiness from native `dragTo` while still exercising the real drop handler.
     await dragAssetToCanvas(page, 'image', 'enemy-a');
@@ -82,10 +103,11 @@ test.describe('Assets dock', () => {
 
     // Minor subpixel/camera rounding differences are acceptable; ensure the viewport is effectively preserved.
     expect(Math.abs((after.zoom ?? 0) - (before.zoom ?? 0))).toBeLessThanOrEqual(1e-3);
+    const markerClientAfter = await entityClientCenter(page, markerId);
     expect(
       Math.max(
-        Math.abs((after.scrollX ?? 0) - (before.scrollX ?? 0)),
-        Math.abs((after.scrollY ?? 0) - (before.scrollY ?? 0)),
+        Math.abs(markerClientAfter.x - markerClientBefore.x),
+        Math.abs(markerClientAfter.y - markerClientBefore.y),
       ),
     ).toBeLessThanOrEqual(5);
   });

@@ -131,13 +131,15 @@ export class BootScene extends Phaser.Scene {
 
   private captureViewStateForProjectReload(mode: 'edit' | 'play'): void {
     try {
-      if (mode === 'edit' && (this.scene.isActive('EditorScene') || this.scene.isSleeping('EditorScene'))) {
-        const editor = this.scene.get('EditorScene') as EditorScene;
-        this.lastViewState = editor.getViewState();
-      } else if (mode === 'play' && (this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene'))) {
-        const game = this.scene.get('GameScene') as GameScene;
-        this.lastViewState = game.getViewState();
+      // Some browsers (notably WebKit) can transiently mark scenes as neither active nor sleeping
+      // during drag/drop or focus transitions. Prefer a best-effort capture if the scene exists.
+      if (mode === 'edit') {
+        const editor = this.scene.get('EditorScene') as unknown as { getViewState?: () => any } | undefined;
+        if (editor?.getViewState) this.lastViewState = editor.getViewState();
+        return;
       }
+      const game = this.scene.get('GameScene') as unknown as { getViewState?: () => any } | undefined;
+      if (game?.getViewState) this.lastViewState = game.getViewState();
     } catch {
       // ignore view capture errors (scene may not be ready yet)
     }
@@ -215,17 +217,16 @@ export class BootScene extends Phaser.Scene {
 
   private captureViewStateForModeSwitch(nextMode: 'edit' | 'play'): void {
     if (this.mode === nextMode) return;
-    if (nextMode === 'edit') {
-      if (this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene')) {
-        const game = this.scene.get('GameScene') as GameScene;
-        this.lastViewState = game.getViewState();
+    try {
+      if (nextMode === 'edit') {
+        const game = this.scene.get('GameScene') as unknown as { getViewState?: () => any } | undefined;
+        if (game?.getViewState) this.lastViewState = game.getViewState();
+        return;
       }
-      return;
-    }
-
-    if (this.scene.isActive('EditorScene') || this.scene.isSleeping('EditorScene')) {
-      const editor = this.scene.get('EditorScene') as EditorScene;
-      this.lastViewState = editor.getViewState();
+      const editor = this.scene.get('EditorScene') as unknown as { getViewState?: () => any } | undefined;
+      if (editor?.getViewState) this.lastViewState = editor.getViewState();
+    } catch {
+      // ignore view capture errors
     }
   }
 
