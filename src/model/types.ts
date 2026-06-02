@@ -270,6 +270,11 @@ export type AssetFileSource =
        * Optional original path/URL. Used for toggling between embedded and path sources.
        */
       path?: string;
+      /**
+       * Optional import hint retained for device imports where the browser does not expose
+       * a reloadable file URL/path.
+       */
+      pathHint?: string;
       originalName?: string;
       mimeType?: string;
     }

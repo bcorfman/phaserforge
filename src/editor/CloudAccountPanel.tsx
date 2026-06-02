@@ -600,7 +600,6 @@ export function CloudAccountPanel({
             <div className="cloud-prereqs" aria-label="Publish prerequisites">
               <span className="cloud-badge">Signed in</span>
               <span className="cloud-badge">GitHub linked</span>
-              <span className="cloud-badge warn">Embedded assets only</span>
             </div>
             <div className="cloud-row">
               <label className="field">
@@ -697,7 +696,6 @@ export function CloudAccountPanel({
             <div className="cloud-prereqs" aria-label="Publish prerequisites">
               <span className="cloud-badge ok">Signed in</span>
               <span className={`cloud-badge ${publishInfo?.ok ? 'ok' : ''}`}>GitHub linked</span>
-              <span className={`cloud-badge ${projectHasPathAssets ? 'warn' : 'ok'}`}>Embedded assets only</span>
             </div>
             <div className="cloud-row">
               <label className="field">
