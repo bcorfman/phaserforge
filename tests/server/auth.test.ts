@@ -2,6 +2,7 @@ import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../../server/src/server/app';
+import { createMemoryRepositories } from '../../server/src/server/repositories/memory';
 
 function makeApp(settingsOverrides: Partial<Parameters<typeof createApp>[0]['settings']> = {}) {
   const app = createApp({
@@ -281,10 +282,11 @@ describe('auth', () => {
     const setCookies2 = (startRes2.headers['set-cookie'] ?? []) as string[];
     const oauthState2 = setCookies2.find((c) => c.startsWith('pa_oauth_state='))?.split(';')[0];
     const returnTo2 = setCookies2.find((c) => c.startsWith('pa_return_to='))?.split(';')[0];
-    await request(app)
+    const callbackRes = await request(app)
       .get(`/api/v1/auth/github/callback?code=def&state=${encodeURIComponent(state2!)}`)
       .set('Cookie', [sessionCookie!, oauthState2!, returnTo2!])
-      .expect(409, { error: 'github_already_linked_different_account' });
+      .expect(302);
+    expect(callbackRes.headers.location).toBe('https://bcorfman.github.io/phaserforge/?githubAuthError=github_already_linked_different_account');
   });
 
   it('allows switching GitHub accounts when forceSwitch=1 is set', async () => {
@@ -351,6 +353,148 @@ describe('auth', () => {
       .get(`/api/v1/auth/github/callback?code=def&state=${encodeURIComponent(state2!)}`)
       .set('Cookie', [sessionCookie!, oauthState2!, forceSwitch2!, returnTo2!])
       .expect(302);
+  });
+
+  it('redirects back to the frontend with an auth error when the GitHub account is already linked to another user', async () => {
+    const { app } = makeApp({
+      cookieSameSite: 'none',
+      frontendBaseUrl: 'https://bcorfman.github.io/phaserforge',
+      publicBaseUrl: 'https://phaseractions-studio-production.up.railway.app',
+      githubOAuth: { clientId: 'cid', clientSecret: 'csecret' },
+    });
+
+    const { csrf: csrf1, csrfCookie: csrfCookie1 } = await getCsrfWithCookie(app);
+    const signupRes1 = await request(app)
+      .post('/api/v1/auth/signup')
+      .set('Cookie', [csrfCookie1])
+      .set('x-csrf-token', csrf1)
+      .send({ email: 'alice@example.com', password: 'password123' })
+      .expect(200);
+    const sessionCookie1 = ((signupRes1.headers['set-cookie'] ?? []) as string[]).find((c) => c.startsWith('pa_session='))?.split(';')[0];
+    expect(sessionCookie1).toBeTruthy();
+
+    const { csrf: csrf2, csrfCookie: csrfCookie2 } = await getCsrfWithCookie(app);
+    const signupRes2 = await request(app)
+      .post('/api/v1/auth/signup')
+      .set('Cookie', [csrfCookie2])
+      .set('x-csrf-token', csrf2)
+      .send({ email: 'bob@example.com', password: 'password123' })
+      .expect(200);
+    const sessionCookie2 = ((signupRes2.headers['set-cookie'] ?? []) as string[]).find((c) => c.startsWith('pa_session='))?.split(';')[0];
+    expect(sessionCookie2).toBeTruthy();
+
+    const fetchMock = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'https://github.com/login/oauth/access_token') {
+        return new Response(JSON.stringify({ access_token: 'at' }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === 'https://api.github.com/user') {
+        return new Response(JSON.stringify({ id: 123, login: 'alice' }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === 'https://api.github.com/user/emails') {
+        return new Response(JSON.stringify([{ email: 'alice@example.com', primary: true, verified: true }]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response('not found', { status: 404 });
+    };
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    const ownerStartRes = await request(app).get('/api/v1/auth/github/start?returnTo=%2Fphaserforge%2F').set('Cookie', [sessionCookie1!]).expect(302);
+    const ownerState = new URL(ownerStartRes.headers.location as string).searchParams.get('state');
+    const ownerSetCookies = (ownerStartRes.headers['set-cookie'] ?? []) as string[];
+    const ownerOauthState = ownerSetCookies.find((c) => c.startsWith('pa_oauth_state='))?.split(';')[0];
+    const ownerReturnTo = ownerSetCookies.find((c) => c.startsWith('pa_return_to='))?.split(';')[0];
+    await request(app)
+      .get(`/api/v1/auth/github/callback?code=abc&state=${encodeURIComponent(ownerState!)}`)
+      .set('Cookie', [sessionCookie1!, ownerOauthState!, ownerReturnTo!])
+      .expect(302);
+
+    const contenderStartRes = await request(app).get('/api/v1/auth/github/start?returnTo=%2Fphaserforge%2F').set('Cookie', [sessionCookie2!]).expect(302);
+    const contenderState = new URL(contenderStartRes.headers.location as string).searchParams.get('state');
+    const contenderSetCookies = (contenderStartRes.headers['set-cookie'] ?? []) as string[];
+    const contenderOauthState = contenderSetCookies.find((c) => c.startsWith('pa_oauth_state='))?.split(';')[0];
+    const contenderReturnTo = contenderSetCookies.find((c) => c.startsWith('pa_return_to='))?.split(';')[0];
+    const callbackRes = await request(app)
+      .get(`/api/v1/auth/github/callback?code=def&state=${encodeURIComponent(contenderState!)}`)
+      .set('Cookie', [sessionCookie2!, contenderOauthState!, contenderReturnTo!])
+      .expect(302);
+
+    expect(callbackRes.headers.location).toBe('https://bcorfman.github.io/phaserforge/?githubAuthError=github_account_in_use');
+  });
+
+  it('reclaims an orphaned GitHub link when reconnecting from the current account', async () => {
+    const repositories = createMemoryRepositories();
+    await repositories.oauth.create({
+      id: 'oa_stale',
+      userId: 'user_stale',
+      provider: 'github',
+      providerAccountId: '123',
+      providerLogin: 'alice',
+      accessToken: 'old-token',
+      createdAt: new Date().toISOString(),
+    });
+
+    const appWithRepos = createApp({
+      settings: {
+        corsAllowOrigins: ['http://localhost:5173'],
+        cookieName: 'pa_session',
+        csrfCookieName: 'pa_csrf',
+        cookieSecure: false,
+        cookieSameSite: 'none',
+        sessionTtlMs: 1000 * 60 * 60,
+        trustProxy: false,
+        publicBaseUrl: 'https://phaseractions-studio-production.up.railway.app',
+        frontendBaseUrl: 'https://bcorfman.github.io/phaserforge',
+        inviteOnly: false,
+        inviteTtlMs: 1000 * 60 * 60,
+        githubOAuth: { clientId: 'cid', clientSecret: 'csecret' },
+      },
+      repositories,
+    });
+
+    const { csrf, csrfCookie } = await getCsrfWithCookie(appWithRepos);
+    const signupRes = await request(appWithRepos)
+      .post('/api/v1/auth/signup')
+      .set('Cookie', [csrfCookie])
+      .set('x-csrf-token', csrf)
+      .send({ email: 'alice@example.com', password: 'password123' })
+      .expect(200);
+    const sessionCookie = ((signupRes.headers['set-cookie'] ?? []) as string[]).find((c) => c.startsWith('pa_session='))?.split(';')[0];
+    expect(sessionCookie).toBeTruthy();
+
+    const fetchMock = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'https://github.com/login/oauth/access_token') {
+        return new Response(JSON.stringify({ access_token: 'at' }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === 'https://api.github.com/user') {
+        return new Response(JSON.stringify({ id: 123, login: 'alice' }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === 'https://api.github.com/user/emails') {
+        return new Response(JSON.stringify([{ email: 'alice@example.com', primary: true, verified: true }]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response('not found', { status: 404 });
+    };
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    const startRes = await request(appWithRepos).get('/api/v1/auth/github/start?returnTo=%2Fphaserforge%2F').set('Cookie', [sessionCookie!]).expect(302);
+    const state = new URL(startRes.headers.location as string).searchParams.get('state');
+    const setCookies = (startRes.headers['set-cookie'] ?? []) as string[];
+    const oauthState = setCookies.find((c) => c.startsWith('pa_oauth_state='))?.split(';')[0];
+    const returnTo = setCookies.find((c) => c.startsWith('pa_return_to='))?.split(';')[0];
+    await request(appWithRepos)
+      .get(`/api/v1/auth/github/callback?code=abc&state=${encodeURIComponent(state!)}`)
+      .set('Cookie', [sessionCookie!, oauthState!, returnTo!])
+      .expect(302);
+
+    const link = await repositories.oauth.findByProviderAccount('github', '123');
+    expect(link?.userId).toBe(signupRes.body.user.id);
+    expect(link?.accessToken).toBe('at');
   });
 
   it('disconnects GitHub account via authenticated endpoint', async () => {
