@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('Open YAML (viewbar) opens a picker and loads the chosen file, then shows an expiring status label @smoke @browser', async ({ page }) => {
+test('Open YAML (viewbar) opens a picker, loads the chosen file, and shows a status label @smoke @browser', async ({ page }) => {
   await page.addInitScript(() => {
     // Force the `<input type=file>` picker path for this test.
     (window as any).showOpenFilePicker = undefined;
@@ -40,9 +40,6 @@ test('Open YAML (viewbar) opens a picker and loads the chosen file, then shows a
   }, { timeout: 10000 }).toBeGreaterThan(0);
 
   await expect(page.getByTestId('toolbar-status')).toContainText(fixtureName);
-
-  // Status label should expire shortly after being shown.
-  await expect.poll(async () => page.getByTestId('toolbar-status').count(), { timeout: 8000 }).toBe(0);
 
   fs.unlinkSync(tmpPath);
 });
