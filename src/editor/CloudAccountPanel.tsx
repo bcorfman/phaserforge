@@ -12,7 +12,11 @@ let cachedCloudAccountUser: CloudAccountUser | undefined;
 let cachedCloudAccountUserPromise: Promise<CloudAccountUser> | null = null;
 const cachedPublishInfoByUserId = new Map<string, CloudPublishInfo>();
 
-function resolveCachedCloudAccountUser(): Promise<CloudAccountUser> {
+export function getCachedCloudAccountUserSnapshot(): CloudAccountUser | undefined {
+  return cachedCloudAccountUser;
+}
+
+export function resolveCachedCloudAccountUser(): Promise<CloudAccountUser> {
   if (cachedCloudAccountUser !== undefined) return Promise.resolve(cachedCloudAccountUser);
   if (cachedCloudAccountUserPromise) return cachedCloudAccountUserPromise;
   cachedCloudAccountUserPromise = me()

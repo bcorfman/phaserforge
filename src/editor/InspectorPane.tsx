@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useEditorStore } from './EditorStore';
 import { Inspector } from './Inspector';
-import { CloudAccountPanel } from './CloudAccountPanel';
+import { CloudAccountPanel, getCachedCloudAccountUserSnapshot, resolveCachedCloudAccountUser } from './CloudAccountPanel';
 import { isLocalHostname } from '../util/isLocalHostname';
 
 export type InspectorPaneTab = 'inspector' | 'cloud';
@@ -56,14 +56,39 @@ export function InspectorPaneView({
 
 export function InspectorPane() {
   const { state, dispatch } = useEditorStore();
-  const [tab, setTab] = useState<'inspector' | 'cloud'>('inspector');
   const cloudEnabled = !isLocalHostname(globalThis.location?.hostname);
+  const [tab, setTab] = useState<'inspector' | 'cloud'>(() => {
+    if (!cloudEnabled) return 'inspector';
+    const cachedUser = getCachedCloudAccountUserSnapshot();
+    return cachedUser ? 'inspector' : 'cloud';
+  });
+  const userSelectedTabRef = useRef(false);
+
+  useEffect(() => {
+    if (!cloudEnabled) return;
+    if (getCachedCloudAccountUserSnapshot() !== undefined) return;
+
+    let cancelled = false;
+    void resolveCachedCloudAccountUser().then((user) => {
+      if (cancelled || userSelectedTabRef.current) return;
+      setTab(user ? 'inspector' : 'cloud');
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cloudEnabled]);
+
+  const handleSelectTab = (nextTab: InspectorPaneTab) => {
+    userSelectedTabRef.current = true;
+    setTab(nextTab);
+  };
 
   return (
     <InspectorPaneView
       cloudEnabled={cloudEnabled}
       activeTab={tab}
-      onSelectTab={setTab}
+      onSelectTab={handleSelectTab}
       inspectorContent={<Inspector />}
       cloudContent={(
         <CloudAccountPanel
