@@ -1191,6 +1191,15 @@ html[data-theme='dark'] .phaser-frame {
   gap: 0.9rem;
 }
 
+.cloud-auth-tabs {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.cloud-auth-tabs > .button {
+  flex: 1;
+}
+
 .cloud-auth-actions {
   display: flex;
   gap: 0.75rem;
