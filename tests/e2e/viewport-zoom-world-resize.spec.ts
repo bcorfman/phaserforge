@@ -26,14 +26,18 @@ test('after resizing the world, zoom can increase until the world frame nearly f
     return snap.ready;
   }).toBe(true);
 
-  // Drive the zoom-in button until the zoom stops increasing (hits its max clamp).
-  for (let i = 0; i < 120; i += 1) {
+  const beforeZoom = await getSceneSnapshot<{ zoom: number; maxZoom?: number }>(page);
+  const zoomSteps = Math.max(1, Math.ceil(((beforeZoom.maxZoom ?? beforeZoom.zoom) - beforeZoom.zoom) / 0.2) + 1);
+
+  // Drive the zoom-in button only as far as needed to reach the quantized max clamp.
+  for (let i = 0; i < zoomSteps; i += 1) {
     await page.getByTestId('zoom-in-button').click();
   }
 
   const final = await getSceneSnapshot<{ zoom: number; maxZoom?: number; viewportWidth: number; viewportHeight: number; worldWidth?: number; worldHeight?: number }>(page);
   const viewportFillZoom = Math.min(final.viewportWidth / 200, final.viewportHeight / 150);
   const minExpectedZoom = viewportFillZoom - 0.15;
+  expect(final.zoom).toBeCloseTo(final.maxZoom ?? final.zoom, 2);
   if (final.zoom < minExpectedZoom) {
     throw new Error(
       [

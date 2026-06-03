@@ -5,8 +5,12 @@ import { exportYamlToDisk } from './yamlFileExport';
 import { getYamlFileHandle, getYamlFileSourceLabel, getYamlPickerStartIn, setYamlFileHandle, setYamlFileSourceLabel, setYamlPickerStartIn } from './yamlPickerState';
 import { getOpenFilePicker, readFileHandleText, writeTextToHandle } from './yamlFileHandles';
 
-export function ViewbarYamlControls() {
-  const { state, dispatch } = useEditorStore();
+type ViewbarYamlControlsViewProps = {
+  project: ReturnType<typeof useEditorStore>['state']['project'];
+  dispatch: ReturnType<typeof useEditorStore>['dispatch'];
+};
+
+export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlControlsViewProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const openFromPicker = async () => {
@@ -77,7 +81,7 @@ export function ViewbarYamlControls() {
       return;
     }
     try {
-      await writeTextToHandle(handle, serializeProjectToYaml(state.project));
+      await writeTextToHandle(handle, serializeProjectToYaml(project));
       dispatch({ type: 'mark-saved' });
       dispatch({ type: 'set-status', message: `Saved YAML: ${getYamlFileSourceLabel() ?? 'file'}`, expiresAt: Date.now() + 4000 });
     } catch (err) {
@@ -88,7 +92,7 @@ export function ViewbarYamlControls() {
   const saveAs = async () => {
     dispatch({ type: 'set-error', error: undefined });
     try {
-      const result = await exportYamlToDisk(serializeProjectToYaml(state.project), { startIn: getYamlPickerStartIn() });
+      const result = await exportYamlToDisk(serializeProjectToYaml(project), { startIn: getYamlPickerStartIn() });
       if (result.kind === 'saved') {
         setYamlPickerStartIn(result.handle);
         setYamlFileHandle(result.handle);
@@ -135,4 +139,9 @@ export function ViewbarYamlControls() {
       />
     </div>
   );
+}
+
+export function ViewbarYamlControls() {
+  const { state, dispatch } = useEditorStore();
+  return <ViewbarYamlControlsView project={state.project} dispatch={dispatch} />;
 }
