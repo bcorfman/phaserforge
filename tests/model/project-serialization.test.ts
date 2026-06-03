@@ -186,4 +186,42 @@ describe('project YAML serialization', () => {
     const parsed = parseProjectYaml(yaml);
     expect((parsed.scenes as any)['scene-1'].spriteOrder).toEqual(['e2', 'e1']);
   });
+
+  it('round-trips embedded asset path hints for publish and relink flows', () => {
+    const project = {
+      id: 'project-1',
+      assets: {
+        images: {
+          enemy: {
+            id: 'enemy',
+            width: 16,
+            height: 16,
+            source: {
+              kind: 'embedded',
+              dataUrl: 'data:image/png;base64,AAAA',
+              originalName: 'enemy.png',
+              mimeType: 'image/png',
+              pathHint: 'demo-pack/enemy.png',
+            },
+          },
+        },
+        spriteSheets: {},
+        fonts: {},
+      },
+      audio: { sounds: {} },
+      inputMaps: {},
+      scenes: { 'scene-1': { ...sampleScene, backgroundLayers: [] } },
+      initialSceneId: 'scene-1',
+      patterns: {},
+    } as any;
+
+    const yaml = serializeProjectToYaml(project);
+    expect(yaml).toMatch(/\n\s+pathHint:\s*demo-pack\/enemy\.png\n/);
+
+    const parsed = parseProjectYaml(yaml);
+    expect(parsed.assets.images.enemy.source).toMatchObject({
+      kind: 'embedded',
+      pathHint: 'demo-pack/enemy.png',
+    });
+  });
 });

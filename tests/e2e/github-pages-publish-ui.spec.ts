@@ -72,7 +72,9 @@ test('Cloud tab shows Publish to GitHub Pages UI and blocks when path assets exi
   await expect(page.getByTestId('cloud-panel')).toBeVisible();
 
   await page.getByLabel('Title').fill('My Game');
+  await expect(page.getByTestId('cloud-publish-pages-target')).toContainText('https://alice.github.io/<route>/');
   await page.getByLabel('Publish route').fill('mygame');
+  await expect(page.getByTestId('cloud-publish-pages-target')).toContainText('https://alice.github.io/mygame/');
 
   await expect(page.getByTestId('cloud-publish-pages-button')).toBeDisabled();
   await expect(page.getByTestId('cloud-publish-pages-help')).toContainText('Path assets detected');

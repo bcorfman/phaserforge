@@ -3,6 +3,18 @@ import { defineConfig, devices } from '@playwright/test';
 type E2EProjectName = 'chromium' | 'firefox' | 'webkit' | 'msedge';
 type EnvLike = Record<string, string | undefined>;
 
+export function resolveE2EWebServerConfig(env: EnvLike): { command: string; port: number; reuseExistingServer: boolean; timeout: number } | undefined {
+  if (env.PW_EXTERNAL_WEBSERVER === '1') return undefined;
+  return {
+    command: 'npx vite --config vite/config.dev.mjs --host 127.0.0.1 --port 4173',
+    port: 4173,
+    // Reusing an existing dev server across runs can leave Playwright attached to a stale/bad state,
+    // which shows up as intermittent "app never boots" timeouts. Prefer a fresh server per run.
+    reuseExistingServer: false,
+    timeout: env.CI ? 180000 : 120000,
+  };
+}
+
 export function resolveE2EProjectNames(env: EnvLike): E2EProjectName[] {
   const explicitProjects = env.PW_PROJECTS?.split(',')
     .map((value) => value.trim())
@@ -49,14 +61,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-  webServer: {
-    command: 'npx vite --config vite/config.dev.mjs --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173',
-    // Reusing an existing dev server across runs can leave Playwright attached to a stale/bad state,
-    // which shows up as intermittent "app never boots" timeouts. Prefer a fresh server per run.
-    reuseExistingServer: false,
-    timeout: process.env.CI ? 180000 : 120000,
-  },
+  ...(resolveE2EWebServerConfig(process.env) ? { webServer: resolveE2EWebServerConfig(process.env) } : {}),
   projects: projectNames.map((name) => {
     switch (name) {
       case 'chromium':
