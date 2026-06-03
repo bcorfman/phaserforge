@@ -238,19 +238,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     const userId = (req as unknown as { userId: string }).userId;
     const existingLinked = await repositories.oauth.findByUserIdProvider(userId, provider);
     const existingByAccount = await repositories.oauth.findByProviderAccount(provider, providerAccountId);
-    const currentUser = await repositories.users.findById(userId);
     if (existingByAccount && existingByAccount.userId !== userId) {
-      const existingOwner = await repositories.users.findById(existingByAccount.userId);
-      const canReclaimExistingLink =
-        !existingOwner ||
-        (currentUser &&
-          existingOwner.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase());
-      if (canReclaimExistingLink) {
-        await repositories.oauth.deleteByUserIdProvider(existingByAccount.userId, provider);
-      } else {
-        redirectToFrontendWithError(res, returnTo, 'github_account_in_use');
-        return;
-      }
+      await repositories.oauth.deleteByUserIdProvider(existingByAccount.userId, provider);
     }
     if (existingLinked && existingLinked.providerAccountId !== providerAccountId) {
       const allowSwitch = forceSwitchCookie === '1';
