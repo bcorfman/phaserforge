@@ -75,6 +75,22 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     res.clearCookie('pa_return_to', { path: '/' });
   }
 
+  function resolveFrontendRedirectUrl(returnTo: string): string {
+    try {
+      const base = new URL(settings.frontendBaseUrl ?? '/');
+      const target = new URL(returnTo.startsWith('/') ? returnTo : '/', base);
+      return target.origin === base.origin ? target.toString() : new URL(base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`, base).toString();
+    } catch {
+      return '/';
+    }
+  }
+
+  function redirectToFrontendWithError(res: express.Response, returnTo: string, error: string) {
+    const redirectUrl = new URL(resolveFrontendRedirectUrl(returnTo));
+    redirectUrl.searchParams.set('githubAuthError', error);
+    res.redirect(302, redirectUrl.toString());
+  }
+
   async function createSession(userId: string, res: express.Response) {
     const now = new Date().toISOString();
     const sessionToken = randomToken(32);
@@ -222,14 +238,24 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     const userId = (req as unknown as { userId: string }).userId;
     const existingLinked = await repositories.oauth.findByUserIdProvider(userId, provider);
     const existingByAccount = await repositories.oauth.findByProviderAccount(provider, providerAccountId);
+    const currentUser = await repositories.users.findById(userId);
     if (existingByAccount && existingByAccount.userId !== userId) {
-      res.status(409).json({ error: 'github_account_in_use' });
-      return;
+      const existingOwner = await repositories.users.findById(existingByAccount.userId);
+      const canReclaimExistingLink =
+        !existingOwner ||
+        (currentUser &&
+          existingOwner.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase());
+      if (canReclaimExistingLink) {
+        await repositories.oauth.deleteByUserIdProvider(existingByAccount.userId, provider);
+      } else {
+        redirectToFrontendWithError(res, returnTo, 'github_account_in_use');
+        return;
+      }
     }
     if (existingLinked && existingLinked.providerAccountId !== providerAccountId) {
       const allowSwitch = forceSwitchCookie === '1';
       if (!allowSwitch) {
-        res.status(409).json({ error: 'github_already_linked_different_account' });
+        redirectToFrontendWithError(res, returnTo, 'github_already_linked_different_account');
         return;
       }
       await repositories.oauth.deleteByUserIdProvider(userId, provider);
@@ -250,15 +276,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
       });
     }
 
-    let redirectUrl: string;
-    try {
-      const base = new URL(settings.frontendBaseUrl);
-      const target = new URL(returnTo.startsWith('/') ? returnTo : '/', base);
-      redirectUrl = target.origin === base.origin ? target.toString() : new URL(base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`, base).toString();
-    } catch {
-      redirectUrl = '/';
-    }
-    res.redirect(302, redirectUrl);
+    res.redirect(302, resolveFrontendRedirectUrl(returnTo));
   });
 
   router.post('/github/disconnect', requireAuth(settings, repositories), async (req, res) => {

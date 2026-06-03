@@ -348,4 +348,25 @@ describe('CloudAccountPanel publish gating', () => {
       secondView.cleanup();
     }
   });
+
+  it('surfaces GitHub auth callback errors from the URL and then scrubs them', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: false, error: 'github_not_linked' });
+
+    const onError = vi.fn();
+    window.history.replaceState({}, '', '/?githubAuthError=github_account_in_use#cloud');
+
+    const view = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={onError} />,
+    );
+    try {
+      await flushEffects();
+      expect(onError).toHaveBeenCalledWith('That GitHub account is already linked to a different PhaserForge account.');
+      expect(window.location.search).toBe('');
+      expect(window.location.hash).toBe('#cloud');
+    } finally {
+      view.cleanup();
+      window.history.replaceState({}, '', '/');
+    }
+  });
 });

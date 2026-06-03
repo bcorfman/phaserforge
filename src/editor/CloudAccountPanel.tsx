@@ -76,6 +76,19 @@ export function buildGithubStartHref(params: {
   return `${normalized}/api/v1/auth/github/start?returnTo=${encodeURIComponent(returnTo)}${forceSwitch}`;
 }
 
+function mapGithubAuthError(error: string): string {
+  switch (error) {
+    case 'github_account_in_use':
+      return 'That GitHub account is already linked to a different PhaserForge account.';
+    case 'github_already_linked_different_account':
+      return 'A different GitHub account is already linked here. Use "Switch GitHub account" if you want to replace it.';
+    case 'github_email_unavailable':
+      return 'GitHub did not provide a verified primary email for this account.';
+    default:
+      return error;
+  }
+}
+
 export function CloudAccountPanel({
   state,
   dispatch,
@@ -129,6 +142,22 @@ export function CloudAccountPanel({
     const locationHref = typeof window !== 'undefined' ? window.location.href : undefined;
     return buildGithubStartHref({ apiBaseUrl: apiBase, baseUrl, locationHref, forceSwitch: true });
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let url: URL;
+    try {
+      url = new URL(window.location.href);
+    } catch {
+      return;
+    }
+    const githubAuthError = url.searchParams.get('githubAuthError');
+    if (!githubAuthError) return;
+    onError(mapGithubAuthError(githubAuthError));
+    url.searchParams.delete('githubAuthError');
+    const nextPath = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState({}, '', nextPath || '/');
+  }, [onError]);
 
   useEffect(() => {
     let cancelled = false;
