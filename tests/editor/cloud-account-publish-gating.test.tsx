@@ -92,6 +92,52 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
+  it('defaults to the Log in tab and keeps invite-only signup fields out of the primary path', async () => {
+    api.me.mockImplementationOnce(async () => {
+      throw new Error('not_signed_in');
+    });
+
+    const view = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    try {
+      await flushEffects();
+      expect(document.querySelector('[role="tablist"][aria-label="Cloud account mode"]')).toBeTruthy();
+      expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Log in');
+      expect(document.querySelector('[aria-label="Invite code"]')).toBeFalsy();
+      expect(document.body.textContent).toContain('Log in to access your cloud projects and publishing tools.');
+      expect(document.querySelector('[data-testid="cloud-account-submit"]')?.textContent).toContain('Log in');
+      expect(document.body.textContent).toContain('Create account');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('switches to the Create account tab to show invite-code signup fields and copy', async () => {
+    api.me.mockImplementationOnce(async () => {
+      throw new Error('not_signed_in');
+    });
+
+    const view = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    try {
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[role="tab"][aria-label="Create account"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+
+      expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Create account');
+      expect(document.querySelector('[aria-label="Invite code"]')).toBeTruthy();
+      expect(document.body.textContent).toContain('Create your account with your invite code.');
+      expect(document.querySelector('[data-testid="cloud-account-submit"]')?.textContent).toContain('Create account');
+      expect(document.body.textContent).toContain('Already have an account?');
+    } finally {
+      view.cleanup();
+    }
+  });
+
   it('shows Connect GitHub CTA (and hides the form) when signed in but GitHub is not linked', async () => {
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
     api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: false, error: 'github_not_linked' });
@@ -104,6 +150,7 @@ describe('CloudAccountPanel publish gating', () => {
       const publish = document.querySelector('[data-testid="cloud-publish-pages-section"]') as HTMLElement | null;
       expect(publish).toBeTruthy();
       expect(document.querySelector('[aria-label="Publish route"]')).toBeFalsy();
+      expect(document.body.textContent).toContain('Your account is ready. Connect GitHub to enable publishing.');
       const cta = document.querySelector('[data-testid="cloud-publish-connect-github-cta"]') as HTMLButtonElement | null;
       expect(cta).toBeTruthy();
       act(() => cta!.click());
