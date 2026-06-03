@@ -12,6 +12,8 @@ const cloudPanelSpy = vi.hoisted(() => ({
   onLoadYaml: undefined as ((yaml: string, sourceLabel: string) => void) | undefined,
   onStatus: undefined as ((message: string) => void) | undefined,
   onError: undefined as ((message: string) => void) | undefined,
+  cachedUser: undefined as { id: string; email: string } | null | undefined,
+  resolveUser: vi.fn<() => Promise<{ id: string; email: string } | null>>(),
 }));
 
 vi.mock('../../src/editor/EditorStore', () => ({
@@ -26,6 +28,8 @@ vi.mock('../../src/editor/Inspector', () => ({
 }));
 
 vi.mock('../../src/editor/CloudAccountPanel', () => ({
+  getCachedCloudAccountUserSnapshot: () => cloudPanelSpy.cachedUser,
+  resolveCachedCloudAccountUser: cloudPanelSpy.resolveUser,
   CloudAccountPanel: (props: {
     onLoadYaml: (yaml: string, sourceLabel: string) => void;
     onStatus: (message: string) => void;
@@ -49,6 +53,8 @@ describe('InspectorPane tabs', () => {
     cloudPanelSpy.onLoadYaml = undefined;
     cloudPanelSpy.onStatus = undefined;
     cloudPanelSpy.onError = undefined;
+    cloudPanelSpy.cachedUser = undefined;
+    cloudPanelSpy.resolveUser.mockReset();
   });
 
   it('hides cloud tab controls on localhost and renders the inspector', () => {
@@ -63,6 +69,7 @@ describe('InspectorPane tabs', () => {
   it('switches to cloud and routes panel callbacks back through dispatch', () => {
     (globalThis as { location?: { hostname: string } }).location = { hostname: 'phaserforge.app' };
     vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    cloudPanelSpy.cachedUser = { id: 'u1', email: 'alice@example.com' };
 
     render(<InspectorPane />);
 
@@ -87,5 +94,35 @@ describe('InspectorPane tabs', () => {
       type: 'set-error',
       error: 'Denied',
     });
+  });
+
+  it('starts on Cloud while auth is unresolved, then switches to Inspector for authenticated users', async () => {
+    (globalThis as { location?: { hostname: string } }).location = { hostname: 'phaserforge.app' };
+    let resolveAuth: ((user: { id: string; email: string } | null) => void) | null = null;
+    cloudPanelSpy.resolveUser.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveAuth = resolve;
+        }),
+    );
+
+    render(<InspectorPane />);
+
+    expect(screen.getByTestId('mock-cloud-panel').textContent).toBe('Cloud body');
+
+    resolveAuth?.({ id: 'u1', email: 'alice@example.com' });
+
+    expect(await screen.findByTestId('mock-inspector')).toBeTruthy();
+  });
+
+  it('stays on Cloud after auth resolves when no user is signed in', async () => {
+    (globalThis as { location?: { hostname: string } }).location = { hostname: 'phaserforge.app' };
+    cloudPanelSpy.resolveUser.mockResolvedValueOnce(null);
+
+    render(<InspectorPane />);
+
+    expect(screen.getByTestId('mock-cloud-panel').textContent).toBe('Cloud body');
+    expect(await screen.findByTestId('mock-cloud-panel')).toBeTruthy();
+    expect(screen.queryByTestId('mock-inspector')).toBeNull();
   });
 });
