@@ -335,18 +335,33 @@ export function CloudAccountPanel({
   const routeValue = state.project.publishGithubPagesRoute ?? '';
   const publishRoutePreview = publishInfo?.ok ? `${publishInfo.pagesBaseUrl}${routeValue.trim() || '<route>'}/` : null;
 
-  const ensureCsrf = async () => {
-    if (csrfToken) return csrfToken;
+  const ensureCsrf = async (options?: { forceRefresh?: boolean }) => {
+    if (!options?.forceRefresh && csrfToken) return csrfToken;
     const csrf = await fetchCsrfToken();
     setCsrfToken(csrf);
     return csrf;
   };
 
+  const runWithCsrfRetry = async <T,>(fn: (csrf: string) => Promise<T>): Promise<T> => {
+    try {
+      return await fn(await ensureCsrf());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      if (message !== 'csrf_required') throw err;
+      return await fn(await ensureCsrf({ forceRefresh: true }));
+    }
+  };
+
+  const runWithCsrfResultRetry = async <T extends { ok: boolean; error?: string },>(fn: (csrf: string) => Promise<T>): Promise<T> => {
+    const first = await fn(await ensureCsrf());
+    if (first.ok || first.error !== 'csrf_required') return first;
+    return await fn(await ensureCsrf({ forceRefresh: true }));
+  };
+
   const handleSignup = async () => {
     setBusy(true);
     try {
-      const csrf = await ensureCsrf();
-      const res = await signup(email, password, csrf, inviteToken.trim() || undefined);
+      const res = await runWithCsrfRetry((csrf) => signup(email, password, csrf, inviteToken.trim() || undefined));
       setCachedCloudAccountUser(res.user);
       setUser(res.user);
       setAuthResolved(true);
@@ -364,8 +379,7 @@ export function CloudAccountPanel({
   const handleLogin = async () => {
     setBusy(true);
     try {
-      const csrf = await ensureCsrf();
-      const res = await login(email, password, csrf);
+      const res = await runWithCsrfRetry((csrf) => login(email, password, csrf));
       setCachedCloudAccountUser(res.user);
       setUser(res.user);
       setAuthResolved(true);
@@ -380,8 +394,7 @@ export function CloudAccountPanel({
   const handleLogout = async () => {
     setBusy(true);
     try {
-      const csrf = await ensureCsrf();
-      await logout(csrf);
+      await runWithCsrfRetry((csrf) => logout(csrf));
       setCachedCloudAccountUser(null);
       if (user?.id) cachedPublishInfoByUserId.delete(user.id);
       setUser(null);
@@ -405,8 +418,7 @@ export function CloudAccountPanel({
     if (!user) return;
     setBusy(true);
     try {
-      const csrf = await ensureCsrf();
-      await disconnectGithub(csrf);
+      await runWithCsrfRetry((csrf) => disconnectGithub(csrf));
       const info = { ok: false, error: 'github_not_linked' } satisfies CloudPublishInfo;
       if (user?.id) cachedPublishInfoByUserId.set(user.id, info);
       setPublishInfo(info);
@@ -435,12 +447,11 @@ export function CloudAccountPanel({
     if (!user) return null;
     const yaml = serializeProjectToYaml(state.project);
     const title = state.project.title?.trim() || 'Untitled';
-    const csrf = await ensureCsrf();
     if (cloudGameId) {
-      await updateGame(cloudGameId, { title, yaml }, csrf);
+      await runWithCsrfRetry((csrf) => updateGame(cloudGameId, { title, yaml }, csrf));
       return cloudGameId;
     }
-    const created = await createGame(title, yaml, csrf);
+    const created = await runWithCsrfRetry((csrf) => createGame(title, yaml, csrf));
     const id = created.game.id;
     setCloudGameId(id);
     persistCloudGameId(state.project.id, id);
@@ -479,8 +490,9 @@ export function CloudAccountPanel({
         onError('Enter a route to publish (example: mygame)');
         return;
       }
-      const csrf = await ensureCsrf();
-      const result = await publishToGithubPages(gameId, route, csrf, { ...(allowOverwrite ? { allowOverwrite: true } : {}) });
+      const result = await runWithCsrfResultRetry((csrf) =>
+        publishToGithubPages(gameId, route, csrf, { ...(allowOverwrite ? { allowOverwrite: true } : {}) }),
+      );
       if (!result.ok) {
         if (result.error === 'target_exists') {
           onError('That GitHub Pages URL already exists. Choose a different route or confirm overwrite.');
