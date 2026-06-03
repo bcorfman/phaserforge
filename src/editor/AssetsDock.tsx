@@ -3,6 +3,7 @@ import type { ProjectSpec } from '../model/types';
 import type { EditorAction, Selection } from './EditorStore';
 import { getAssetReferences, type AssetKind } from './assetReferences';
 import { ASSET_DRAG_MIME } from './dragAssets';
+import { fileToDataUrl } from './fileDataUrl';
 import { loadImageMetadataFromFile, type LoadedImageMetadata } from './imageMetadata';
 
 const DEMO_PACK_IMAGES = import.meta.glob('../../res/images/*.png', {
@@ -12,12 +13,7 @@ const DEMO_PACK_IMAGES = import.meta.glob('../../res/images/*.png', {
 }) as Record<string, string>;
 
 async function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.readAsDataURL(file);
-  });
+  return fileToDataUrl(file);
 }
 
 type LoadedImage = {
