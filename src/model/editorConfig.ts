@@ -11,6 +11,13 @@ export const EMPTY_EDITOR_REGISTRY: EditorRegistryConfig = {
   conditions: [],
 };
 
+export function resolvePublicAssetPath(path: string, baseUrl?: string): string {
+  const rawBaseUrl = baseUrl ?? ((import.meta as ImportMeta | undefined)?.env?.BASE_URL ?? '/');
+  const normalizedBaseUrl = rawBaseUrl.endsWith('/') ? rawBaseUrl : `${rawBaseUrl}/`;
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${normalizedBaseUrl}${normalizedPath}`;
+}
+
 async function fetchYaml<T>(url: string, fallback: T): Promise<T> {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -26,7 +33,7 @@ async function fetchYaml<T>(url: string, fallback: T): Promise<T> {
 }
 
 export async function loadEditorConfig(): Promise<EditorConfig> {
-  const config = await fetchYaml<Partial<EditorConfig>>('/editor-config.yaml', DEFAULT_EDITOR_CONFIG);
+  const config = await fetchYaml<Partial<EditorConfig>>(resolvePublicAssetPath('/editor-config.yaml'), DEFAULT_EDITOR_CONFIG);
   const startupMode = config.startupMode;
   return {
     startupMode: startupMode === 'new_empty_scene' || startupMode === 'reload_last_yaml'
@@ -36,7 +43,7 @@ export async function loadEditorConfig(): Promise<EditorConfig> {
 }
 
 export async function loadEditorRegistry(): Promise<EditorRegistryConfig> {
-  const registry = await fetchYaml<Partial<EditorRegistryConfig>>('/editor-registry.yaml', EMPTY_EDITOR_REGISTRY);
+  const registry = await fetchYaml<Partial<EditorRegistryConfig>>(resolvePublicAssetPath('/editor-registry.yaml'), EMPTY_EDITOR_REGISTRY);
   return {
     arrange: Array.isArray(registry.arrange) ? registry.arrange : [],
     actions: Array.isArray(registry.actions) ? registry.actions : [],
