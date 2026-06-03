@@ -5,11 +5,22 @@ import { Inspector } from './Inspector';
 import { CloudAccountPanel } from './CloudAccountPanel';
 import { isLocalHostname } from '../util/isLocalHostname';
 
-export function InspectorPane() {
-  const { state, dispatch } = useEditorStore();
-  const [tab, setTab] = useState<'inspector' | 'cloud'>('inspector');
-  const cloudEnabled = !isLocalHostname(globalThis.location?.hostname);
-  const effectiveTab: 'inspector' | 'cloud' = cloudEnabled ? tab : 'inspector';
+export type InspectorPaneTab = 'inspector' | 'cloud';
+
+export function InspectorPaneView({
+  cloudEnabled,
+  activeTab,
+  onSelectTab,
+  inspectorContent,
+  cloudContent,
+}: {
+  cloudEnabled: boolean;
+  activeTab: InspectorPaneTab;
+  onSelectTab: (tab: InspectorPaneTab) => void;
+  inspectorContent: React.ReactNode;
+  cloudContent: React.ReactNode;
+}) {
+  const effectiveTab: InspectorPaneTab = cloudEnabled ? activeTab : 'inspector';
 
   return (
     <>
@@ -21,7 +32,7 @@ export function InspectorPane() {
             type="button"
             role="tab"
             aria-selected={effectiveTab === 'inspector'}
-            onClick={() => setTab('inspector')}
+            onClick={() => onSelectTab('inspector')}
           >
             Inspector
           </button>
@@ -31,18 +42,30 @@ export function InspectorPane() {
             type="button"
             role="tab"
             aria-selected={effectiveTab === 'cloud'}
-            onClick={() => setTab('cloud')}
+            onClick={() => onSelectTab('cloud')}
           >
             Cloud
           </button>
         </div>
       ) : null}
 
-      {effectiveTab === 'inspector' ? (
-        <>
-          <Inspector />
-        </>
-      ) : (
+      {effectiveTab === 'inspector' ? inspectorContent : cloudContent}
+    </>
+  );
+}
+
+export function InspectorPane() {
+  const { state, dispatch } = useEditorStore();
+  const [tab, setTab] = useState<'inspector' | 'cloud'>('inspector');
+  const cloudEnabled = !isLocalHostname(globalThis.location?.hostname);
+
+  return (
+    <InspectorPaneView
+      cloudEnabled={cloudEnabled}
+      activeTab={tab}
+      onSelectTab={setTab}
+      inspectorContent={<Inspector />}
+      cloudContent={(
         <CloudAccountPanel
           state={state}
           dispatch={dispatch}
@@ -51,6 +74,6 @@ export function InspectorPane() {
           onError={(message) => dispatch({ type: 'set-error', error: message })}
         />
       )}
-    </>
+    />
   );
 }

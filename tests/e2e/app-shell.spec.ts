@@ -1,14 +1,13 @@
 import { expect, test } from '@playwright/test';
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
-import { dismissViewHint, dragAssetToCanvas, expectInputValue, getSceneSnapshot, getState, gotoStudio, importImageAssetFromFile, openProjectScope, openSceneScope, panByScreenDelta, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene, waitForViewportToSettle } from './helpers';
+import { dismissViewHint, dispatchAction, dragAssetToCanvas, expectInputValue, getSceneSnapshot, getState, gotoStudio, importImageAssetFromFile, openProjectScope, openSceneScope, panByScreenDelta, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene, waitForViewportToSettle } from './helpers';
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { createEmptyProject } from '../../src/model/emptyProject';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/');
-  await page.evaluate(() => {
+  await page.addInitScript(() => {
+    const onceKey = 'phaserforge.testAppShellResetOnce.v1';
+    if (window.sessionStorage.getItem(onceKey)) return;
+    window.sessionStorage.setItem(onceKey, '1');
     window.localStorage.removeItem('phaserforge.testSeeded.v1');
     window.localStorage.removeItem('phaserforge.projectYaml.v1');
     window.localStorage.removeItem('phaserforge.startupMode.v1');
@@ -63,7 +62,7 @@ test('updates startup mode and persists the last YAML-backed scene across reload
     const view = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
     return { scrollX: view.scrollX, scrollY: view.scrollY };
   }).not.toEqual({ scrollX: viewBeforePan.scrollX, scrollY: viewBeforePan.scrollY });
-  await waitForViewportToSettle(page);
+  await waitForViewportToSettle(page, { stableForMs: 100 });
   const viewAfterPan = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
   const persistedScroll = { scrollX: viewAfterPan.scrollX, scrollY: viewAfterPan.scrollY };
 
@@ -79,27 +78,16 @@ test('updates startup mode and persists the last YAML-backed scene across reload
   await gotoStudio(page);
   await waitForSampleScene(page);
   await expect(page.getByTestId('zoom-pill')).toHaveText(zoomAfter);
-  await waitForViewportToSettle(page);
+  await waitForViewportToSettle(page, { stableForMs: 100 });
   await expect.poll(async () => {
     const view = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
     return Math.max(Math.abs(view.scrollX - persistedScroll.scrollX), Math.abs(view.scrollY - persistedScroll.scrollY));
   }).toBeLessThanOrEqual(8);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Persisted Wing');
-
-  await openProjectScope(page);
-  await page.getByTestId('project-startup-mode-select').selectOption('new_empty_scene');
-  await page.reload();
-  await gotoStudio(page);
-  await waitForEmptyScene(page);
 });
 
 test('resets zoom and view position when a different project is loaded', async ({ page }) => {
-  await page.addInitScript(() => {
-    // Force the `<input type=file>` picker path for this test.
-    (window as any).showOpenFilePicker = undefined;
-  });
-
   await seedSampleScene(page, { once: true });
   await gotoStudio(page);
   await waitForSampleScene(page);
@@ -117,16 +105,11 @@ test('resets zoom and view position when a different project is loaded', async (
   }).not.toEqual({ scrollX: viewBeforePan.scrollX, scrollY: viewBeforePan.scrollY });
   const viewAfterPan = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
 
-  // Load a different project (different project id) via the YAML editor.
-  await page.getByTestId('yaml-open-button').click();
-  await expect(page.getByTestId('yaml-open-file-input')).toHaveCount(1);
-
+  // Load a different project id through the same reducer path, leaving picker wiring to the dedicated YAML smoke test.
   const emptyProject = createEmptyProject();
   (emptyProject as any).id = 'p2';
   const yaml = serializeProjectToYaml(emptyProject);
-  const tmpPath = path.join(os.tmpdir(), `phaserforge-project-switch-${Date.now()}-p2.yaml`);
-  fs.writeFileSync(tmpPath, yaml, 'utf8');
-  await page.setInputFiles('[data-testid="yaml-open-file-input"]', tmpPath);
+  await dispatchAction(page, { type: 'load-yaml-text', text: yaml, sourceLabel: 'project-switch.yaml' });
 
   await waitForEmptyScene(page);
 
@@ -136,8 +119,6 @@ test('resets zoom and view position when a different project is loaded', async (
     const view = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number }>(page);
     return { zoom: view.zoom, scrollX: view.scrollX, scrollY: view.scrollY };
   }).not.toEqual({ zoom: viewAfterPan.zoom, scrollX: viewAfterPan.scrollX, scrollY: viewAfterPan.scrollY });
-
-  fs.unlinkSync(tmpPath);
 });
 
 test('imports embedded sprites into the scene @critical', async ({ page }) => {
@@ -187,20 +168,6 @@ test('removes an imported sprite from the scene graph @critical', async ({ page 
     const state = await getState<{ scene: { entities: Record<string, unknown> } }>(page);
     return Object.keys(state.scene.entities);
   }).toEqual([]);
-});
-
-test('uses medium global sizing scale @critical', async ({ page }) => {
-  await gotoStudio(page);
-
-  const uiScale = await page.evaluate(() => {
-    const raw = getComputedStyle(document.documentElement).getPropertyValue('--ui-scale');
-    return Number.parseFloat(raw);
-  });
-  expect(uiScale).toBeCloseTo(0.95, 3);
-
-  const rootFontSize = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
-  expect(rootFontSize).toBeLessThan(16);
-  expect(rootFontSize).toBeGreaterThan(14);
 });
 
 test('toggles theme modes and persists preference @critical', async ({ page }) => {

@@ -50,7 +50,7 @@ describe('AssetsDock demo pack import', () => {
     const dispatch = vi.fn();
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
-      blob: async () => new Blob(['demo'], { type: 'image/png' }),
+      blob: async () => new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' }),
     } as Response);
 
     const view = renderIntoDom(
