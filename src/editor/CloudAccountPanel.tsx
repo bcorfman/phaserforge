@@ -7,6 +7,7 @@ import { summarizeYamlWorkspace } from './workspaceSummary';
 
 type CloudAccountUser = { id: string; email: string } | null;
 type CloudPublishInfo = { ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string };
+type CloudAuthMode = 'login' | 'signup';
 
 let cachedCloudAccountUser: CloudAccountUser | undefined;
 let cachedCloudAccountUserPromise: Promise<CloudAccountUser> | null = null;
@@ -114,6 +115,7 @@ export function CloudAccountPanel({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [inviteToken, setInviteToken] = useState('');
+  const [authMode, setAuthMode] = useState<CloudAuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [publishInfo, setPublishInfo] = useState<CloudPublishInfo | null>(
@@ -654,11 +656,39 @@ export function CloudAccountPanel({
           <div className="cloud-section-card" data-testid="cloud-account-section">
             <div className="cloud-section-title">ACCOUNT</div>
             <div className="cloud-auth">
+              <div className="cloud-auth-tabs" role="tablist" aria-label="Cloud account mode">
+                <button
+                  className="button"
+                  type="button"
+                  role="tab"
+                  aria-selected={authMode === 'login'}
+                  aria-label="Log in"
+                  onClick={() => setAuthMode('login')}
+                >
+                  Log in
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  role="tab"
+                  aria-selected={authMode === 'signup'}
+                  aria-label="Create account"
+                  onClick={() => setAuthMode('signup')}
+                >
+                  Create account
+                </button>
+              </div>
+              <div className="cloud-help">
+                {authMode === 'login'
+                  ? 'Log in to access your cloud projects and publishing tools.'
+                  : 'Create your account with your invite code.'}
+              </div>
               <label className="field">
                 <span>Email</span>
                 <input
                   ref={emailInputRef}
                   value={email}
+                  aria-label="Email"
                   autoComplete="email"
                   inputMode="email"
                   onChange={(e) => setEmail(e.target.value)}
@@ -670,7 +700,8 @@ export function CloudAccountPanel({
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    autoComplete="current-password"
+                    aria-label="Password"
+                    autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <button
@@ -691,23 +722,47 @@ export function CloudAccountPanel({
                   </button>
                 </span>
               </label>
-              <label className="field">
-                <span>Invite code</span>
-                <input value={inviteToken} autoComplete="off" onChange={(e) => setInviteToken(e.target.value)} />
-              </label>
-              <div className="cloud-help">
-                Sign up requires an invite code emailed to you. After that, use Log in to access cloud saves and publishing.
-              </div>
+              {authMode === 'signup' ? (
+                <>
+                  <label className="field">
+                    <span>Invite code</span>
+                    <input
+                      value={inviteToken}
+                      aria-label="Invite code"
+                      autoComplete="off"
+                      onChange={(e) => setInviteToken(e.target.value)}
+                    />
+                  </label>
+                  <div className="cloud-help">Invite codes are emailed separately and are only required for first-time signup.</div>
+                </>
+              ) : null}
               <div className="cloud-auth-actions">
-                <button className="button" type="button" disabled={busy} onClick={handleSignup}>
-                  Sign up
-                </button>
-                <button className="button" type="button" disabled={busy} onClick={handleLogin}>
-                  Log in
+                <button
+                  className="button primary"
+                  type="button"
+                  data-testid="cloud-account-submit"
+                  disabled={busy}
+                  onClick={authMode === 'signup' ? handleSignup : handleLogin}
+                >
+                  {authMode === 'signup' ? 'Create account' : 'Log in'}
                 </button>
               </div>
               <div className="cloud-help">
-                Create an account (email + password + invite code), then connect GitHub to enable publishing.
+                {authMode === 'signup' ? (
+                  <>
+                    Already have an account?{' '}
+                    <button className="button button-compact" type="button" disabled={busy} onClick={() => setAuthMode('login')}>
+                      Log in
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Need an account first?{' '}
+                    <button className="button button-compact" type="button" disabled={busy} onClick={() => setAuthMode('signup')}>
+                      Create account
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -769,7 +824,7 @@ export function CloudAccountPanel({
                     ? 'GitHub: checking connection…'
                     : publishInfo.ok
                       ? `GitHub: connected as ${publishInfo.login}.`
-                      : 'GitHub: not connected (required to publish).'}
+                      : 'Your account is ready. Connect GitHub to enable publishing.'}
                 </div>
                 {githubEnabled ? (
                   !publishInfo?.ok ? (

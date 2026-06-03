@@ -183,22 +183,30 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### A53 — Cloud Save YAML
 - Cloud panel → `Save` (saves current YAML to the selected/active cloud project).
 
-### A54 — Manage Counters (Project + Scene)
+### A54 — Cloud Account Access
+- Cloud panel → `Log in` tab (default) → enter email/password → `Log in`.
+- First-time access: Cloud panel → `Create account` tab → enter email/password/invite code → `Create account`.
+
+### A55 — Connect GitHub for Publishing
+- Cloud panel → once signed in, click `Connect GitHub` → confirm redirect → finish OAuth in GitHub.
+- If a different GitHub account is already linked, use `Switch GitHub…` from the signed-in account section.
+
+### A56 — Manage Counters (Project + Scene)
 - Scene State → Counters → `+ Add Global Counter` / `+ Add Scene Counter` → edit name/scope/value; delete via row controls.
 
-### A55 — Manage Collections
+### A57 — Manage Collections
 - Scene State → Collections → `+ Add Collection` → edit derived-from + members; delete via row controls.
 
-### A56 — Pin Selection While Dragging (Inspector)
+### A58 — Pin Selection While Dragging (Inspector)
 - Inspector → enable `Pin selection while dragging` (selection stays stable while manipulating UI).
 
-### A57 — Reset Project to New Empty Scene
+### A59 — Reset Project to New Empty Scene
 - Project tab → Startup & Reset → `Reset Now → New Empty Scene` (confirm).
 
-### A58 — Clear Scene Contents
+### A60 — Clear Scene Contents
 - Scene tab → Scenes → overflow menu `⋯` → `Clear Scene…` (confirm).
 
-### A59 — Layout Selection (Arrange / Position)
+### A61 — Layout Selection (Arrange / Position)
 - With 2+ sprites selected: on-canvas selection bar → `Layout…`
 - **Arrange items** (changes internal spacing):
   - `Distribute X/Y` spaces items evenly between endpoints (stable sort along the chosen axis).
@@ -210,10 +218,10 @@ These are the smallest user-visible workflows. Larger workflows below reference 
   - `Stack …` intentionally overlaps by aligning item centers to the anchor item.
   - `Match … edges` aligns item edges to the anchor item.
 
-### A60 — Create Text Entity
+### A62 — Create Text Entity
 - Entity List → Scenes → Text → `+ Add`.
 
-### A61 — Right Pane Startup Routing
+### A63 — Right Pane Startup Routing
 - On cloud deployments, if auth is unresolved or no user is signed in, the right pane starts on `Cloud`.
 - On cloud deployments, if a user is already signed in, the right pane starts on `Inspector`.
 - On localhost/local deploys, the right pane stays `Inspector` only (no Cloud tab).
@@ -258,6 +266,9 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 
 ### W13 — Cloud Round-trip Loop
 - A53 cloud save → refresh/load on another device/session → A52 cloud load → A7 test → A24/A25 local export (optional).
+
+### W14 — Cloud Publish Setup Loop
+- A54 access cloud account → A55 connect GitHub for publishing → A53 cloud save (if needed) → publish from the Cloud panel.
 
 ### W14 — Event Authoring (discover → create handler → attach actions)
 - A27/A28 select target → Events panel: pick an event from Events list → create handler on target → use A35 to add/edit action steps → A36 apply pattern (optional) → A7 test.
