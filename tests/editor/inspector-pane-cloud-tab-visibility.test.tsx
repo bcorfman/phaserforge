@@ -13,6 +13,14 @@ vi.mock('../../src/editor/Inspector', () => {
   };
 });
 
+vi.mock('../../src/editor/CloudAccountPanel', () => {
+  return {
+    getCachedCloudAccountUserSnapshot: () => undefined,
+    resolveCachedCloudAccountUser: async () => null,
+    CloudAccountPanel: () => null,
+  };
+});
+
 import { InspectorPane } from '../../src/editor/InspectorPane';
 
 function setHostname(hostname: string) {

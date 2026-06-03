@@ -213,6 +213,11 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### A60 — Create Text Entity
 - Entity List → Scenes → Text → `+ Add`.
 
+### A61 — Right Pane Startup Routing
+- On cloud deployments, if auth is unresolved or no user is signed in, the right pane starts on `Cloud`.
+- On cloud deployments, if a user is already signed in, the right pane starts on `Inspector`.
+- On localhost/local deploys, the right pane stays `Inspector` only (no Cloud tab).
+
 ## Composite Workflows (built from atomic workflows)
 
 ### W1 — Basic Scene Layout (blocking + spacing)
