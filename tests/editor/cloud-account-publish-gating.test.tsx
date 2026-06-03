@@ -136,6 +136,67 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
+  it('renders the publish URL preview below Route and updates it as the route changes', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+      repo: 'bcorfman/bcorfman.github.io',
+    });
+
+    function Harness() {
+      const [state, setState] = React.useState<any>(baseState());
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRoute === 'string'
+                  ? { publishGithubPagesRoute: action.publishGithubPagesRoute }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+
+      const routeInput = document.querySelector('[aria-label="Publish route"]') as HTMLInputElement | null;
+      const preview = document.querySelector('[data-testid="cloud-publish-pages-target"]') as HTMLElement | null;
+
+      expect(routeInput).toBeTruthy();
+      expect(preview).toBeTruthy();
+      expect(routeInput?.compareDocumentPosition(preview!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(preview?.textContent).toContain('https://bcorfman.github.io/<route>/');
+
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+        if (setter) setter.call(routeInput, 'zoof');
+        else routeInput!.value = 'zoof';
+        routeInput!.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        routeInput!.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        await Promise.resolve();
+      });
+
+      expect(preview?.textContent).toContain('https://bcorfman.github.io/zoof/');
+    } finally {
+      view.cleanup();
+    }
+  });
+
   it('shows a neutral loading state until auth resolves', async () => {
     let resolveMe: ((value: { user: { id: string; email: string } }) => void) | null = null;
     api.me.mockImplementationOnce(

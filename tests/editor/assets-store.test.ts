@@ -67,4 +67,69 @@ describe('EditorStore assets actions', () => {
     const entity = Object.values(sceneOf(relinked).entities)[0] as any;
     expect(entity.asset?.source).toEqual({ kind: 'asset', assetId: 'player' });
   });
+
+  it('does not overwrite an existing image during ensure-image-asset-from-file', () => {
+    const state = initState();
+    const withExisting = reducer(state, {
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'enemy_A.png',
+        mimeType: 'image/png',
+        width: 16,
+        height: 16,
+      },
+    } as any);
+
+    const ensured = reducer(withExisting, {
+      type: 'ensure-image-asset-from-file',
+      assetId: 'enemy-a',
+      file: {
+        dataUrl: 'data:image/png;base64,BBBB',
+        originalName: 'enemy_A.png',
+        mimeType: 'image/png',
+        width: 32,
+        height: 32,
+      },
+    } as any);
+
+    expect(ensured).toBe(withExisting);
+    expect(ensured.project.assets.images['enemy-a'].source).toMatchObject({
+      dataUrl: 'data:image/png;base64,AAAA',
+    });
+  });
+
+  it('reassigns an entity sprite asset without creating a new entity', () => {
+    const state = initState();
+    const withPlayer = reducer(state, {
+      type: 'add-image-asset-from-path',
+      path: '/assets/images/player.png',
+      suggestedId: 'player',
+      width: 32,
+      height: 32,
+    } as any);
+    const withMeteor = reducer(withPlayer, {
+      type: 'add-image-asset-from-path',
+      path: '/assets/images/meteor.png',
+      suggestedId: 'meteor',
+      width: 48,
+      height: 48,
+    } as any);
+    const withEntity = reducer(withMeteor, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'player' } as any);
+    const entityId = Object.keys(sceneOf(withEntity).entities)[0];
+
+    const reassigned = reducer(withEntity, {
+      type: 'assign-asset-to-target',
+      assetKind: 'image',
+      assetId: 'meteor',
+      target: { kind: 'entity-sprite', sceneId: withEntity.currentSceneId, entityId },
+    } as any);
+
+    expect(Object.keys(sceneOf(reassigned).entities)).toEqual([entityId]);
+    expect(sceneOf(reassigned).entities[entityId].asset).toMatchObject({
+      imageType: 'image',
+      source: { kind: 'asset', assetId: 'meteor' },
+      frame: { kind: 'single' },
+    });
+  });
 });
