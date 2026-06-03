@@ -54,7 +54,7 @@
         "argon2": "^0.44.0",
         "cookie-parser": "^1.4.7",
         "express": "^5.1.0",
-        "express-rate-limit": "^8.1.0",
+        "express-rate-limit": "^8.5.2",
         "helmet": "^8.1.0",
         "ip-address": "^10.2.0",
         "pg": "^8.20.0",
