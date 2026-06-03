@@ -2,13 +2,19 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
-import { coerceStartupMode } from '../../src/model/editorConfig';
+import { coerceStartupMode, resolvePublicAssetPath } from '../../src/model/editorConfig';
 
 describe('editor config helpers', () => {
   it('coerces startup mode with fallback', () => {
     expect(coerceStartupMode('reload_last_yaml', 'new_empty_scene')).toBe('reload_last_yaml');
     expect(coerceStartupMode('new_empty_scene', 'reload_last_yaml')).toBe('new_empty_scene');
     expect(coerceStartupMode('unknown', 'reload_last_yaml')).toBe('reload_last_yaml');
+  });
+
+  it('resolves public asset paths relative to the app base path', () => {
+    expect(resolvePublicAssetPath('/editor-registry.yaml', '/')).toBe('/editor-registry.yaml');
+    expect(resolvePublicAssetPath('/editor-registry.yaml', '/phaserforge/')).toBe('/phaserforge/editor-registry.yaml');
+    expect(resolvePublicAssetPath('editor-config.yaml', '/cloud')).toBe('/cloud/editor-config.yaml');
   });
 
   it('includes property target metadata for planned sprite actions', () => {
