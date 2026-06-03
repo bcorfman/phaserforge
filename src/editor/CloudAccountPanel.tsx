@@ -333,6 +333,7 @@ export function CloudAccountPanel({
 
   const titleValue = state.project.title ?? '';
   const routeValue = state.project.publishGithubPagesRoute ?? '';
+  const publishRoutePreview = publishInfo?.ok ? `${publishInfo.pagesBaseUrl}${routeValue.trim() || '<route>'}/` : null;
 
   const ensureCsrf = async () => {
     if (csrfToken) return csrfToken;
@@ -799,11 +800,6 @@ export function CloudAccountPanel({
             ) : (
               <>
                 <div className="cloud-row">
-                  <div className="cloud-help">
-                    Publishes to <span className="mono">{`${publishInfo.pagesBaseUrl}<route>/`}</span>
-                  </div>
-                </div>
-                <div className="cloud-row">
                   <label className="field">
                     <span>Route</span>
                     <input
@@ -822,6 +818,11 @@ export function CloudAccountPanel({
                   >
                     Publish
                   </button>
+                </div>
+                <div className="cloud-row">
+                  <div className="cloud-help" data-testid="cloud-publish-pages-target">
+                    Publishes to <span className="mono">{publishRoutePreview}</span>
+                  </div>
                 </div>
                 <div className="cloud-row">
                   <div className="cloud-help" data-testid="cloud-publish-pages-help">

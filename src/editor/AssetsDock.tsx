@@ -62,6 +62,14 @@ function assetIdBaseFromOriginalName(name: string | undefined, fallbackBase: str
     .replace(/-+$/, '') || fallbackBase;
 }
 
+async function readUrlAsDataUrl(url: string): Promise<{ dataUrl: string; mimeType?: string }> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load asset (${res.status})`);
+  const blob = await res.blob();
+  const file = new File([blob], url.split('/').pop() ?? 'asset', { type: blob.type || undefined });
+  return { dataUrl: await readAsDataUrl(file), ...(blob.type ? { mimeType: blob.type } : {}) };
+}
+
 export function AssetsDock({
   project,
   sceneId,

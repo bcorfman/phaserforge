@@ -6,6 +6,7 @@ import { sampleProject } from '../../src/model/sampleProject';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { getDefaultApiStubResponse } from '../support/apiMocks';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number; centerX?: number; centerY?: number };
@@ -85,53 +86,12 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
     // responses so the editor can boot deterministically without a backend.
     await page.context().route('**/api/**', async (route) => {
       const req = route.request();
-      const url = new URL(req.url());
-      const pathname = url.pathname;
-      const method = req.method().toUpperCase();
-
-      const json = (status: number, body: any) =>
-        route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-
-      // Minimal endpoints used by the app on boot / cloud tab.
-      if (method === 'GET' && pathname === '/api/v1/auth/csrf') return json(200, { csrfToken: 'e2e-csrf' });
-      if (method === 'GET' && pathname === '/api/v1/auth/me') return json(401, { error: 'unauthorized' });
-
-      // Games: default to empty list, and 404 for individual games.
-      if (method === 'GET' && pathname === '/api/v1/games') return json(200, { games: [] });
-      if (method === 'GET' && pathname.startsWith('/api/v1/games/')) {
-        const id = pathname.split('/').pop() || 'g';
-        // Provide a minimal valid project YAML so play-only views can boot without special stubbing.
-        const emptyProjectYaml = [
-          'id: p1',
-          'assets:',
-          '  images: {}',
-          '  spriteSheets: {}',
-          '  fonts: {}',
-          'audio:',
-          '  sounds: {}',
-          'inputMaps: {}',
-          'scenes:',
-          '  s1:',
-          '    id: s1',
-          '    entities: {}',
-          '    groups: {}',
-          '    attachments: {}',
-          '    behaviors: {}',
-          '    actions: {}',
-          '    conditions: {}',
-          'initialSceneId: s1',
-        ].join('\n');
-        return json(200, {
-          game: { id, title: 'E2E Stub Game', yaml: emptyProjectYaml, created_at: 'c', updated_at: 'u' },
-        });
-      }
-
-      // Publish: default to "not linked" so UI stays disabled unless tests stub it.
-      if (method === 'GET' && pathname === '/api/v1/publish/github-pages/info') return json(400, { error: 'github_not_linked' });
-      if (method === 'POST' && pathname === '/api/v1/publish/github-pages/check') return json(400, { error: 'github_not_linked' });
-      if (method === 'POST' && pathname === '/api/v1/publish/github-pages') return json(400, { error: 'github_not_linked' });
-
-      return json(503, { error: 'e2e_api_stub_unhandled' });
+      const response = getDefaultApiStubResponse(req.url(), req.method());
+      return route.fulfill({
+        status: response.status,
+        contentType: 'application/json',
+        body: JSON.stringify(response.body),
+      });
     });
   }
 
