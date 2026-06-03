@@ -355,12 +355,24 @@ describe('auth', () => {
       .expect(302);
   });
 
-  it('redirects back to the frontend with an auth error when the GitHub account is already linked to another user', async () => {
-    const { app } = makeApp({
-      cookieSameSite: 'none',
-      frontendBaseUrl: 'https://bcorfman.github.io/phaserforge',
-      publicBaseUrl: 'https://phaseractions-studio-production.up.railway.app',
-      githubOAuth: { clientId: 'cid', clientSecret: 'csecret' },
+  it('reassigns a GitHub account to the current PhaserForge user after OAuth succeeds', async () => {
+    const repositories = createMemoryRepositories();
+    const app = createApp({
+      settings: {
+        corsAllowOrigins: ['http://localhost:5173'],
+        cookieName: 'pa_session',
+        csrfCookieName: 'pa_csrf',
+        cookieSecure: false,
+        cookieSameSite: 'none',
+        sessionTtlMs: 1000 * 60 * 60,
+        trustProxy: false,
+        publicBaseUrl: 'https://phaseractions-studio-production.up.railway.app',
+        frontendBaseUrl: 'https://bcorfman.github.io/phaserforge',
+        inviteOnly: false,
+        inviteTtlMs: 1000 * 60 * 60,
+        githubOAuth: { clientId: 'cid', clientSecret: 'csecret' },
+      },
+      repositories,
     });
 
     const { csrf: csrf1, csrfCookie: csrfCookie1 } = await getCsrfWithCookie(app);
@@ -421,7 +433,14 @@ describe('auth', () => {
       .set('Cookie', [sessionCookie2!, contenderOauthState!, contenderReturnTo!])
       .expect(302);
 
-    expect(callbackRes.headers.location).toBe('https://bcorfman.github.io/phaserforge/?githubAuthError=github_account_in_use');
+    expect(callbackRes.headers.location).toBe('https://bcorfman.github.io/phaserforge/');
+
+    const reassignedLink = await repositories.oauth.findByProviderAccount('github', '123');
+    expect(reassignedLink?.userId).toBe(signupRes2.body.user.id);
+    expect(reassignedLink?.accessToken).toBe('at');
+
+    const originalOwnerLink = await repositories.oauth.findByUserIdProvider(signupRes1.body.user.id, 'github');
+    expect(originalOwnerLink).toBeNull();
   });
 
   it('reclaims an orphaned GitHub link when reconnecting from the current account', async () => {
