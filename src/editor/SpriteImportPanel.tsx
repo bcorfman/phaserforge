@@ -5,6 +5,7 @@ import { resolveEntityDefaults } from '../model/entityDefaults';
 import { getSceneWorld } from './sceneWorld';
 import { clampHitboxToEntity, computeHitboxFromImageData } from './hitboxAuto';
 import type { GameSceneSpec } from '../model/types';
+import { fileToDataUrl } from './fileDataUrl';
 import { readImageDimensionsFromFile } from './imageMetadata';
 
 type LoadedImage = {
@@ -89,12 +90,7 @@ export function SpriteImportPanelView({
     if (!file) return;
     try {
       const parsed = await readImageDimensionsFromFile(file);
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('Unable to read file'));
-        reader.readAsDataURL(file);
-      });
+      const dataUrl = await fileToDataUrl(file);
       const metadata = await loadImageMetadata(dataUrl, file.name, file.type, 'embedded');
       if (parsed && (metadata.width <= 0 || metadata.height <= 0)) {
         metadata.width = parsed.width;
