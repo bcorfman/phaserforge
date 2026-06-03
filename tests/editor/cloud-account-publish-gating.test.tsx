@@ -23,7 +23,7 @@ const api = vi.hoisted(() => {
     updateGame: vi.fn(async () => ({ game: { id: 'g1', title: 'G', created_at: 'c', updated_at: 'u' } })),
     disconnectGithub: vi.fn(async () => {}),
     getGithubPagesPublishInfo: vi.fn(async () => ({ ok: false, error: 'github_not_linked' })),
-    checkGithubPagesTarget: vi.fn(async () => ({ url: 'https://x', exists: false, status: 404 })),
+    checkGithubPagesTarget: vi.fn(async () => ({ ok: true, url: 'https://x', exists: false, status: 404 })),
     publishToGithubPages: vi.fn(async () => ({ ok: true, url: 'https://x' })),
   };
 });
@@ -219,6 +219,79 @@ describe('CloudAccountPanel publish gating', () => {
 
       expect(document.querySelector('[data-testid="cloud-account-loading"]')).toBeFalsy();
       expect(document.querySelector('.cloud-signed-in')?.textContent).toContain('a@b.c');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('refreshes csrf and retries publish once when the cached token is stale', async () => {
+    api.fetchCsrfToken.mockReset();
+    api.fetchCsrfToken.mockResolvedValueOnce('stale-csrf').mockResolvedValueOnce('fresh-csrf');
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+      repo: 'bcorfman/bcorfman.github.io',
+    });
+    api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
+    api.publishToGithubPages.mockResolvedValueOnce({ ok: false, error: 'csrf_required' }).mockResolvedValueOnce({ ok: true, url: 'https://x' });
+
+    const onStatus = vi.fn();
+    const onError = vi.fn();
+
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRoute: 'patterndemo',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRoute === 'string'
+                  ? { publishGithubPagesRoute: action.publishGithubPagesRoute }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={onStatus}
+          onError={onError}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[data-testid="cloud-publish-pages-button"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+
+      expect(api.fetchCsrfToken).toHaveBeenCalledTimes(2);
+      expect(api.publishToGithubPages).toHaveBeenNthCalledWith(1, 'g1', 'patterndemo', 'stale-csrf', {});
+      expect(api.publishToGithubPages).toHaveBeenNthCalledWith(2, 'g1', 'patterndemo', 'fresh-csrf', {});
+      expect(onError).not.toHaveBeenCalledWith('csrf_required');
+      expect(onStatus).toHaveBeenCalledWith('Published to https://x');
     } finally {
       view.cleanup();
     }
