@@ -37,6 +37,8 @@ jobs:
       - name: Unit Tests
         run: npm run test:unit
 
+      - name: Storybook Tests
+        run: npm run test:stories
+
       - name: Build
         run: npm run build
-

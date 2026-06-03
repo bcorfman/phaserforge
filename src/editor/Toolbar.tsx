@@ -1,8 +1,11 @@
 import { useEditorStore } from './EditorStore';
 
-export function Toolbar() {
-  const { state, dispatch } = useEditorStore();
+type ToolbarViewProps = {
+  state: Pick<ReturnType<typeof useEditorStore>['state'], 'dirty' | 'uiScale' | 'themeMode' | 'error' | 'statusMessage'>;
+  dispatch: ReturnType<typeof useEditorStore>['dispatch'];
+};
 
+export function ToolbarView({ state, dispatch }: ToolbarViewProps) {
   return (
     <header className="toolbar" data-testid="toolbar">
       <div className="toolbar-left">
@@ -97,4 +100,9 @@ export function Toolbar() {
       {state.statusMessage && <div className="toolbar-status" data-testid="toolbar-status" role="status">{state.statusMessage}</div>}
     </header>
   );
+}
+
+export function Toolbar() {
+  const { state, dispatch } = useEditorStore();
+  return <ToolbarView state={state} dispatch={dispatch} />;
 }
