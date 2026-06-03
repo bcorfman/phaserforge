@@ -62,9 +62,6 @@ test('Cloud GitHub connect link uses path-only returnTo (no absolute URL) @smoke
     await route.fulfill({ status: 200, body: JSON.stringify({ csrfToken: 'csrf' }), contentType: 'application/json' });
   });
   await page.route('**/api/v1/auth/me', async (route) => {
-    await route.fulfill({ status: 401, body: JSON.stringify({ error: 'not_logged_in' }), contentType: 'application/json' });
-  });
-  await page.route('**/api/v1/auth/login', async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ user: { id: 'u1', email: 'a@b.c' } }), contentType: 'application/json' });
   });
   await page.route('**/api/v1/games', async (route) => {
@@ -82,11 +79,11 @@ test('Cloud GitHub connect link uses path-only returnTo (no absolute URL) @smoke
   }
 
   await cloudTab.click();
-  await page.getByLabel('Email').fill('a@b.c');
-  await page.locator('input[autocomplete="current-password"]').fill('pw');
-  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('cloud-account-section')).toContainText('Signed in');
+  await expect(page.getByTestId('cloud-account-section')).toContainText('a@b.c');
+  await expect(page.getByTestId('cloud-github-connection')).toContainText('not connected');
 
-  await page.getByRole('button', { name: 'Connect GitHub' }).click();
+  await page.getByRole('button', { name: 'Connect GitHub', exact: true }).click();
   await expect(page.getByTestId('github-connect-modal')).toBeVisible();
   const link = page.getByTestId('github-connect-confirm');
   const href = (await link.getAttribute('href')) ?? '';
