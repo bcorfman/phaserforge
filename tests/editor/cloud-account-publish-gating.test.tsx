@@ -23,8 +23,8 @@ const api = vi.hoisted(() => {
     updateGame: vi.fn(async () => ({ game: { id: 'g1', title: 'G', created_at: 'c', updated_at: 'u' } })),
     disconnectGithub: vi.fn(async () => {}),
     getGithubPagesPublishInfo: vi.fn(async () => ({ ok: false, error: 'github_not_linked' })),
-    checkGithubPagesTarget: vi.fn(async () => ({ ok: true, url: 'https://x', exists: false, status: 404 })),
-    publishToGithubPages: vi.fn(async () => ({ ok: true, url: 'https://x' })),
+    checkGithubPagesTarget: vi.fn(async () => ({ ok: true, url: 'https://x', exists: false, pagesConfigured: false, deploymentStatus: null })),
+    publishToGithubPages: vi.fn(async () => ({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' })),
   };
 });
 
@@ -77,15 +77,46 @@ describe('CloudAccountPanel publish gating', () => {
       throw new Error('not_signed_in');
     });
 
-    const view = renderIntoDom(
-      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
-    );
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRepo: 'zoof',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
     try {
       await flushEffects();
       const publish = document.querySelector('[data-testid="cloud-publish-pages-section"]') as HTMLElement | null;
       expect(publish).toBeTruthy();
       expect(publish?.textContent).toContain('PUBLISH');
-      expect(document.querySelector('[aria-label="Publish route"]')).toBeFalsy();
+      expect(document.querySelector('[aria-label="Publish repository"]')).toBeFalsy();
       expect(document.querySelector('[data-testid="cloud-publish-signin-cta"]')).toBeTruthy();
     } finally {
       view.cleanup();
@@ -97,9 +128,40 @@ describe('CloudAccountPanel publish gating', () => {
       throw new Error('not_signed_in');
     });
 
-    const view = renderIntoDom(
-      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
-    );
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRepo: 'zoof',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
     try {
       await flushEffects();
       expect(document.querySelector('[role="tablist"][aria-label="Cloud account mode"]')).toBeTruthy();
@@ -119,7 +181,21 @@ describe('CloudAccountPanel publish gating', () => {
     });
 
     const view = renderIntoDom(
-      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+      <CloudAccountPanel
+        state={{
+          project: {
+            id: 'p1',
+            title: 'Pattern demo',
+            publishGithubPagesRepo: 'zoof',
+            assets: { images: {}, spriteSheets: {}, fonts: {} },
+            audio: { sounds: {} },
+          },
+        }}
+        dispatch={() => {}}
+        onLoadYaml={() => {}}
+        onStatus={() => {}}
+        onError={() => {}}
+      />,
     );
     try {
       await flushEffects();
@@ -143,13 +219,27 @@ describe('CloudAccountPanel publish gating', () => {
     api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: false, error: 'github_not_linked' });
 
     const view = renderIntoDom(
-      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+      <CloudAccountPanel
+        state={{
+          project: {
+            id: 'p1',
+            title: 'Pattern demo',
+            publishGithubPagesRepo: 'zoof',
+            assets: { images: {}, spriteSheets: {}, fonts: {} },
+            audio: { sounds: {} },
+          },
+        }}
+        dispatch={() => {}}
+        onLoadYaml={() => {}}
+        onStatus={() => {}}
+        onError={() => {}}
+      />,
     );
     try {
       await flushEffects();
       const publish = document.querySelector('[data-testid="cloud-publish-pages-section"]') as HTMLElement | null;
       expect(publish).toBeTruthy();
-      expect(document.querySelector('[aria-label="Publish route"]')).toBeFalsy();
+      expect(document.querySelector('[aria-label="Publish repository"]')).toBeFalsy();
       expect(document.body.textContent).toContain('Your account is ready. Connect GitHub to enable publishing.');
       const cta = document.querySelector('[data-testid="cloud-publish-connect-github-cta"]') as HTMLButtonElement | null;
       expect(cta).toBeTruthy();
@@ -187,7 +277,6 @@ describe('CloudAccountPanel publish gating', () => {
       ok: true,
       login: 'alice',
       pagesBaseUrl: 'https://alice.github.io/',
-      repo: 'alice/alice.github.io',
     });
 
     const view = renderIntoDom(
@@ -210,7 +299,6 @@ describe('CloudAccountPanel publish gating', () => {
       ok: true,
       login: 'alice',
       pagesBaseUrl: 'https://alice.github.io/',
-      repo: 'alice/alice.github.io',
     });
 
     const view = renderIntoDom(
@@ -232,7 +320,7 @@ describe('CloudAccountPanel publish gating', () => {
 
   it('shows the Publish form when signed in and GitHub is linked', async () => {
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
-    api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/', repo: 'alice/alice.github.io' });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/' });
 
     const view = renderIntoDom(
       <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
@@ -241,7 +329,7 @@ describe('CloudAccountPanel publish gating', () => {
       await flushEffects();
       const publish = document.querySelector('[data-testid="cloud-publish-pages-section"]') as HTMLElement | null;
       expect(publish).toBeTruthy();
-      expect(document.querySelector('[aria-label="Publish route"]')).toBeTruthy();
+      expect(document.querySelector('[aria-label="Publish repository"]')).toBeTruthy();
       expect(document.querySelector('[data-testid="cloud-publish-connect-github-cta"]')).toBeFalsy();
       expect(document.querySelector('[data-testid="cloud-publish-pages-help"]')?.textContent).not.toContain('Public repo:');
       expect(document.querySelector('[data-testid="cloud-publish-pages-help"]')?.textContent).not.toContain('Embedded assets only.');
@@ -253,13 +341,12 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
-  it('renders the publish URL preview below Route and updates it as the route changes', async () => {
+  it('renders the publish URL preview below Repository and updates it as the repo changes', async () => {
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
-    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+    api.getGithubPagesPublishInfo.mockResolvedValue({
       ok: true,
       login: 'bcorfman',
       pagesBaseUrl: 'https://bcorfman.github.io/',
-      repo: 'bcorfman/bcorfman.github.io',
     });
 
     function Harness() {
@@ -274,8 +361,8 @@ describe('CloudAccountPanel publish gating', () => {
               project: {
                 ...current.project,
                 ...(typeof action.title === 'string' ? { title: action.title } : {}),
-                ...(typeof action.publishGithubPagesRoute === 'string'
-                  ? { publishGithubPagesRoute: action.publishGithubPagesRoute }
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
                   : {}),
               },
             }));
@@ -291,13 +378,13 @@ describe('CloudAccountPanel publish gating', () => {
     try {
       await flushEffects();
 
-      const routeInput = document.querySelector('[aria-label="Publish route"]') as HTMLInputElement | null;
+      const routeInput = document.querySelector('[aria-label="Publish repository"]') as HTMLInputElement | null;
       const preview = document.querySelector('[data-testid="cloud-publish-pages-target"]') as HTMLElement | null;
 
       expect(routeInput).toBeTruthy();
       expect(preview).toBeTruthy();
       expect(routeInput?.compareDocumentPosition(preview!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-      expect(preview?.textContent).toContain('https://bcorfman.github.io/<route>/');
+      expect(preview?.textContent).toContain('https://bcorfman.github.io/<repo>/');
 
       await act(async () => {
         const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
@@ -349,10 +436,11 @@ describe('CloudAccountPanel publish gating', () => {
       ok: true,
       login: 'bcorfman',
       pagesBaseUrl: 'https://bcorfman.github.io/',
-      repo: 'bcorfman/bcorfman.github.io',
     });
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
-    api.publishToGithubPages.mockResolvedValueOnce({ ok: false, error: 'csrf_required' }).mockResolvedValueOnce({ ok: true, url: 'https://x' });
+    api.publishToGithubPages
+      .mockResolvedValueOnce({ ok: false, error: 'csrf_required' })
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' });
 
     const onStatus = vi.fn();
     const onError = vi.fn();
@@ -362,7 +450,7 @@ describe('CloudAccountPanel publish gating', () => {
         project: {
           id: 'p1',
           title: 'Pattern demo',
-          publishGithubPagesRoute: 'patterndemo',
+          publishGithubPagesRepo: 'patterndemo',
           assets: { images: {}, spriteSheets: {}, fonts: {} },
           audio: { sounds: {} },
         },
@@ -377,8 +465,8 @@ describe('CloudAccountPanel publish gating', () => {
               project: {
                 ...current.project,
                 ...(typeof action.title === 'string' ? { title: action.title } : {}),
-                ...(typeof action.publishGithubPagesRoute === 'string'
-                  ? { publishGithubPagesRoute: action.publishGithubPagesRoute }
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
                   : {}),
               },
             }));
@@ -393,49 +481,52 @@ describe('CloudAccountPanel publish gating', () => {
     const view = renderIntoDom(<Harness />);
     try {
       await flushEffects();
+      await flushEffects();
       await act(async () => {
         (document.querySelector('[data-testid="cloud-publish-pages-button"]') as HTMLButtonElement).click();
         await Promise.resolve();
       });
       await flushEffects();
+      await flushEffects();
       await act(async () => {
-        (document.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement).click();
+        (view.container.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement).click();
         await Promise.resolve();
       });
       await flushEffects();
 
       expect(api.fetchCsrfToken).toHaveBeenCalledTimes(2);
-      expect(api.publishToGithubPages).toHaveBeenNthCalledWith(1, 'g1', 'patterndemo', 'stale-csrf', {});
-      expect(api.publishToGithubPages).toHaveBeenNthCalledWith(2, 'g1', 'patterndemo', 'fresh-csrf', {});
+      expect(api.publishToGithubPages).toHaveBeenNthCalledWith(1, 'g1', 'patterndemo', 'stale-csrf');
+      expect(api.publishToGithubPages).toHaveBeenNthCalledWith(2, 'g1', 'patterndemo', 'fresh-csrf');
       expect(onError).not.toHaveBeenCalledWith('csrf_required');
-      expect(onStatus).toHaveBeenCalledWith('Published to https://x');
+      expect(onStatus).toHaveBeenCalledWith('Published zoof to https://x. GitHub Pages may take about a minute to go live.');
     } finally {
       view.cleanup();
     }
   });
 
-  it('refreshes csrf and retries the publish check when the cached token is stale', async () => {
-    api.fetchCsrfToken.mockReset();
-    api.fetchCsrfToken.mockResolvedValueOnce('stale-csrf').mockResolvedValueOnce('fresh-csrf');
+  it('shows explicit publish progress while GitHub Pages upload is running', async () => {
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
-    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+    api.getGithubPagesPublishInfo.mockResolvedValue({
       ok: true,
       login: 'bcorfman',
       pagesBaseUrl: 'https://bcorfman.github.io/',
-      repo: 'bcorfman/bcorfman.github.io',
     });
-    api.checkGithubPagesTarget
-      .mockResolvedValueOnce({ ok: false, error: 'csrf_required' })
-      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, status: 404 });
+    api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
 
-    const onError = vi.fn();
+    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }) => void) | null = null;
+    api.publishToGithubPages.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePublish = resolve;
+        }),
+    );
 
     function Harness() {
       const [state, setState] = React.useState<any>({
         project: {
           id: 'p1',
           title: 'Pattern demo',
-          publishGithubPagesRoute: 'patterndemo',
+          publishGithubPagesRepo: 'zoof',
           assets: { images: {}, spriteSheets: {}, fonts: {} },
           audio: { sounds: {} },
         },
@@ -450,8 +541,150 @@ describe('CloudAccountPanel publish gating', () => {
               project: {
                 ...current.project,
                 ...(typeof action.title === 'string' ? { title: action.title } : {}),
-                ...(typeof action.publishGithubPagesRoute === 'string'
-                  ? { publishGithubPagesRoute: action.publishGithubPagesRoute }
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[data-testid="cloud-publish-pages-button"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+      await flushEffects();
+      await act(async () => {
+        (view.container.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+
+      expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Uploading files and workflow to GitHub');
+      expect(document.querySelector('[data-testid="publish-confirm-submit"]')?.textContent).toContain('Publishing');
+
+      await act(async () => {
+        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' });
+        await Promise.resolve();
+      });
+      await flushEffects();
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('keeps a deployment note visible after publish succeeds', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValue({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+    });
+    api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
+    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' });
+
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRepo: 'zoof',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[data-testid="cloud-publish-pages-button"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+      await act(async () => {
+        (view.container.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+
+      expect(document.querySelector('[data-testid="cloud-publish-pages-help"]')?.textContent).toContain(
+        'GitHub Pages accepted the deployment for zoof',
+      );
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('refreshes csrf and retries the publish check when the cached token is stale', async () => {
+    api.fetchCsrfToken.mockReset();
+    api.fetchCsrfToken.mockResolvedValueOnce('stale-csrf').mockResolvedValueOnce('fresh-csrf');
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+    });
+    api.checkGithubPagesTarget
+      .mockResolvedValueOnce({ ok: false, error: 'csrf_required' })
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, pagesConfigured: false, deploymentStatus: null });
+
+    const onError = vi.fn();
+
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRepo: 'patterndemo',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
                   : {}),
               },
             }));
@@ -511,7 +744,6 @@ describe('CloudAccountPanel publish gating', () => {
       ok: true,
       login: 'alice',
       pagesBaseUrl: 'https://alice.github.io/',
-      repo: 'alice/alice.github.io',
     });
 
     const firstView = renderIntoDom(
@@ -526,7 +758,7 @@ describe('CloudAccountPanel publish gating', () => {
     try {
       expect(document.querySelector('[data-testid="cloud-github-connection"]')?.textContent).toContain('connected as alice');
       expect(document.querySelector('[data-testid="cloud-publish-connect-github-cta"]')).toBeFalsy();
-      expect(document.querySelector('[aria-label="Publish route"]')).toBeTruthy();
+      expect(document.querySelector('[aria-label="Publish repository"]')).toBeTruthy();
       expect(document.body.textContent).not.toContain('Checking GitHub connection');
       expect(api.getGithubPagesPublishInfo).toHaveBeenCalledTimes(1);
     } finally {

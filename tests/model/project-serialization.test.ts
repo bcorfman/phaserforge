@@ -115,11 +115,11 @@ describe('project YAML serialization', () => {
     expect(reserialized).not.toMatch(/\nmacros:\n/);
   });
 
-  it('round-trips optional project title and GitHub Pages route', () => {
+  it('round-trips optional project title and GitHub Pages repo', () => {
     const project = {
       id: 'project-1',
       title: 'My Game',
-      publishGithubPagesRoute: 'mygame',
+      publishGithubPagesRepo: 'mygame',
       assets: { images: {}, spriteSheets: {}, fonts: {} },
       audio: { sounds: {} },
       inputMaps: {},
@@ -129,8 +129,25 @@ describe('project YAML serialization', () => {
 
     const yaml = serializeProjectToYaml(project as any);
     expect(yaml).toMatch(/\ntitle:\s*My Game\n/);
-    expect(yaml).toMatch(/\npublishGithubPagesRoute:\s*mygame\n/);
+    expect(yaml).toMatch(/\npublishGithubPagesRepo:\s*mygame\n/);
     expect(parseProjectYaml(yaml)).toEqual(project);
+  });
+
+  it('migrates legacy GitHub Pages route metadata into the repo field', () => {
+    const yaml = serializeProjectToYaml({
+      id: 'project-1',
+      title: 'My Game',
+      publishGithubPagesRepo: 'legacy-route',
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
+      audio: { sounds: {} },
+      inputMaps: {},
+      scenes: { 'scene-1': { ...sampleScene, backgroundLayers: [] } },
+      initialSceneId: 'scene-1',
+    } as any).replace('publishGithubPagesRepo:', 'publishGithubPagesRoute:');
+
+    const parsed = parseProjectYaml(yaml);
+    expect(parsed.publishGithubPagesRepo).toBe('legacy-route');
+    expect((parsed as any).publishGithubPagesRoute).toBeUndefined();
   });
 
   it('drops sceneMeta entries that reference unknown scenes', () => {

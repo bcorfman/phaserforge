@@ -18,7 +18,7 @@ function CloudAccountPanelStoryHarness({ initialProject }: { initialProject?: an
         setProject((current: any) => ({
           ...current,
           ...(typeof action.title === 'string' ? { title: action.title } : {}),
-          ...(typeof action.publishGithubPagesRoute === 'string' ? { publishGithubPagesRoute: action.publishGithubPagesRoute } : {}),
+          ...(typeof action.publishGithubPagesRepo === 'string' ? { publishGithubPagesRepo: action.publishGithubPagesRepo } : {}),
         }));
       }}
       onLoadYaml={() => {}}
@@ -102,19 +102,75 @@ export const PublishBlockedByPathAssets: Story = {
     msw: {
       handlers: createCloudAuthHandlers({
         user: { id: 'u1', email: 'a@b.c' },
-        publishInfo: { ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/', repo: 'alice/alice.github.io' },
+        publishInfo: { ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/' },
       }),
     },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(() => expect(canvas.getByLabelText('Publish route')).toBeTruthy());
-    await userEvent.clear(canvas.getByLabelText('Publish route'));
-    await userEvent.type(canvas.getByLabelText('Publish route'), 'mygame');
+    await waitFor(() => expect(canvas.getByLabelText('Publish repository')).toBeTruthy());
+    await userEvent.clear(canvas.getByLabelText('Publish repository'));
+    await userEvent.type(canvas.getByLabelText('Publish repository'), 'mygame');
     await waitFor(() => {
       expect(canvas.getByTestId('cloud-publish-pages-target').textContent).toContain('https://alice.github.io/mygame/');
       expect((canvas.getByTestId('cloud-publish-pages-button') as HTMLButtonElement).disabled).toBe(true);
       expect(canvas.getByTestId('cloud-publish-pages-help').textContent).toContain('Path assets detected');
     });
+  },
+};
+
+export const PublishReady: Story = {
+  args: {
+    initialProject: {
+      id: 'project-1',
+      title: 'Zoof',
+      publishGithubPagesRepo: 'zoof',
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
+      audio: { sounds: {} },
+    },
+  },
+  parameters: {
+    msw: {
+      handlers: createCloudAuthHandlers({
+        user: { id: 'u1', email: 'a@b.c' },
+        publishInfo: { ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/' },
+      }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByLabelText('Publish repository')).toBeTruthy());
+    expect(canvas.getByTestId('cloud-publish-prereq').textContent).toContain('Before first publish');
+    expect(canvas.getByTestId('cloud-publish-pages-target').textContent).toContain('https://alice.github.io/zoof/');
+  },
+};
+
+export const PublishFailure: Story = {
+  args: {
+    initialProject: {
+      id: 'project-1',
+      title: 'Zoof',
+      publishGithubPagesRepo: 'zoof',
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
+      audio: { sounds: {} },
+    },
+  },
+  parameters: {
+    msw: {
+      handlers: createCloudAuthHandlers({
+        user: { id: 'u1', email: 'a@b.c' },
+        publishInfo: { ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/' },
+        publishCheck: { ok: true, url: 'https://alice.github.io/zoof/', exists: true, pagesConfigured: true, deploymentStatus: 'built' },
+        publishResult: { ok: false, error: 'github_pages_permission_required' },
+      }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId('cloud-publish-pages-button')).toBeTruthy());
+    await userEvent.click(canvas.getByTestId('cloud-publish-pages-button'));
+    await waitFor(() => expect(canvas.getByTestId('publish-confirm-modal')).toBeTruthy());
+    await userEvent.click(canvas.getByTestId('publish-confirm-submit'));
+    await waitFor(() => expect(canvas.getByTestId('cloud-publish-pages-help').textContent).toContain('GitHub denied GitHub Pages management access'));
   },
 };
