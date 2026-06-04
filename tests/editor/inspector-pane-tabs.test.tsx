@@ -28,6 +28,7 @@ vi.mock('../../src/editor/Inspector', () => ({
 }));
 
 vi.mock('../../src/editor/CloudAccountPanel', () => ({
+  CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY: 'phaserforge.cloud.return_to_cloud_after_auth',
   getCachedCloudAccountUserSnapshot: () => cloudPanelSpy.cachedUser,
   resolveCachedCloudAccountUser: cloudPanelSpy.resolveUser,
   CloudAccountPanel: (props: {
@@ -124,5 +125,27 @@ describe('InspectorPane tabs', () => {
     expect(screen.getByTestId('mock-cloud-panel').textContent).toBe('Cloud body');
     expect(await screen.findByTestId('mock-cloud-panel')).toBeTruthy();
     expect(screen.queryByTestId('mock-inspector')).toBeNull();
+  });
+
+  it('stays on Cloud after auth resolves when the OAuth return marker is set', async () => {
+    (globalThis as { location?: { hostname: string } }).location = { hostname: 'phaserforge.app' };
+    window.sessionStorage.setItem('phaserforge.cloud.return_to_cloud_after_auth', '1');
+    let resolveAuth: ((user: { id: string; email: string } | null) => void) | null = null;
+    cloudPanelSpy.resolveUser.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveAuth = resolve;
+        }),
+    );
+
+    render(<InspectorPane />);
+
+    expect(screen.getByTestId('mock-cloud-panel').textContent).toBe('Cloud body');
+
+    resolveAuth?.({ id: 'u1', email: 'alice@example.com' });
+
+    expect(await screen.findByTestId('mock-cloud-panel')).toBeTruthy();
+    expect(screen.queryByTestId('mock-inspector')).toBeNull();
+    expect(window.sessionStorage.getItem('phaserforge.cloud.return_to_cloud_after_auth')).toBeNull();
   });
 });
