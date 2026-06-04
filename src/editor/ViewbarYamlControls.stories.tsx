@@ -9,6 +9,8 @@ import { setYamlFileHandle, setYamlFileSourceLabel, setYamlPickerStartIn } from 
 function YamlControlsStoryHarness() {
   const [project, setProject] = useState<any>(sampleProject);
   const dispatch = fn((action: any) => {
+    const storyState = (window as any).__YAML_STORY_STATE__;
+    if (storyState) storyState.dispatchCalls.push(action);
     if (action.type === 'load-yaml-text') {
       setProject((current: any) => ({ ...current, id: action.sourceLabel.replace(/\.ya?ml$/i, '') || current.id }));
     }
@@ -40,6 +42,7 @@ export const OpenAndSaveSharePickerHandle: Story = {
         close: async () => {},
       }),
     };
+    (window as any).__YAML_STORY_STATE__ = { dispatchCalls: [] };
     (window as any).__YAML_PICKER_STORY__ = { openCalls: [], saveCalls: [], openHandle, saveHandle };
     (window as any).showOpenFilePicker = async (options: any) => {
       (window as any).__YAML_PICKER_STORY__.openCalls.push(options);
@@ -76,6 +79,7 @@ export const SaveExistingHandle: Story = {
     setYamlPickerStartIn(undefined);
     setYamlFileHandle(saveHandle);
     setYamlFileSourceLabel('scene.yaml');
+    (window as any).__YAML_STORY_STATE__ = { dispatchCalls: [] };
     (window as any).__YAML_SAVE_STORY__ = { writes, saveHandle };
     (window as any).showSaveFilePicker = async () => saveHandle;
     (window as any).showOpenFilePicker = undefined;
@@ -84,5 +88,12 @@ export const SaveExistingHandle: Story = {
     await waitFor(() => {
       expect((window as any).__YAML_SAVE_STORY__.writes.length).toBe(1);
     });
+    expect((window as any).__YAML_STORY_STATE__.dispatchCalls).toEqual(
+      expect.arrayContaining([
+        { type: 'set-error', error: undefined },
+        { type: 'mark-saved' },
+        expect.objectContaining({ type: 'set-status', message: 'Saved YAML: scene.yaml' }),
+      ]),
+    );
   },
 };

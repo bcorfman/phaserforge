@@ -12,6 +12,8 @@ import * as toolbarStories from '../../src/editor/Toolbar.stories';
 import * as inspectorPaneStories from '../../src/editor/InspectorPane.stories';
 import * as cloudAccountPanelStories from '../../src/editor/CloudAccountPanel.stories';
 import * as yamlStories from '../../src/editor/ViewbarYamlControls.stories';
+import * as entityListStories from '../../src/editor/EntityList.stories';
+import * as workspaceConflictModalStories from '../../src/editor/WorkspaceConflictModal.stories';
 
 setProjectAnnotations(preview);
 
@@ -21,6 +23,8 @@ const composedToolbarStories = composeStories(toolbarStories);
 const composedInspectorStories = composeStories(inspectorPaneStories);
 const composedCloudStories = composeStories(cloudAccountPanelStories);
 const composedYamlStories = composeStories(yamlStories);
+const composedEntityListStories = composeStories(entityListStories);
+const composedWorkspaceConflictStories = composeStories(workspaceConflictModalStories);
 
 async function renderStoryAndPlay(Story: React.ComponentType & { play?: (context: { canvasElement: HTMLElement }) => Promise<void>; parameters?: any }) {
   __resetCloudAccountPanelAuthCacheForTests();
@@ -75,6 +79,8 @@ describe('storybook interaction stories', () => {
   it('runs the cloud publish-ready and failure stories', async () => {
     let container = await renderStoryAndPlay(composedCloudStories.PublishReady as any);
     expect(container.textContent).toContain('Before first publish');
+    container = await renderStoryAndPlay(composedCloudStories.PublishFirstTimeSuccess as any);
+    expect(container.textContent).toContain('GitHub Pages accepted the deployment for zoof');
     container = await renderStoryAndPlay(composedCloudStories.PublishFailure as any);
     expect(container.textContent).toContain('GitHub denied GitHub Pages management access');
   });
@@ -82,6 +88,18 @@ describe('storybook interaction stories', () => {
   it('runs the YAML picker sync stories', async () => {
     await renderStoryAndPlay(composedYamlStories.OpenAndSaveSharePickerHandle as any);
     await renderStoryAndPlay(composedYamlStories.SaveExistingHandle as any);
+    expect(true).toBe(true);
+  });
+
+  it('runs the entity list scope and startup mode stories', async () => {
+    await renderStoryAndPlay(composedEntityListStories.SceneScopeDefault as any);
+    await renderStoryAndPlay(composedEntityListStories.ProjectScopeStartupMode as any);
+    expect(true).toBe(true);
+  });
+
+  it('runs the workspace conflict stories', async () => {
+    await renderStoryAndPlay(composedWorkspaceConflictStories.PreviewAndChooseCloud as any);
+    await renderStoryAndPlay(composedWorkspaceConflictStories.ExportBothAndChooseDevice as any);
     expect(true).toBe(true);
   });
 });
