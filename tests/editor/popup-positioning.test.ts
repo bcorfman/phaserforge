@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampPopupToViewport, constrainPopupSizeToViewport, placePopupNearRect } from '../../src/editor/popupPositioning';
+import { clampPopupToViewport, constrainPopupSizeToViewport, fitPopupWithinViewport, placePopupNearRect } from '../../src/editor/popupPositioning';
 
 describe('placePopupNearRect', () => {
   it('places above the anchor when there is room', () => {
@@ -125,5 +125,23 @@ describe('constrainPopupSizeToViewport', () => {
         padding: 12,
       })
     ).toEqual({ width: 800 - 24, height: 600 - 24 });
+  });
+});
+
+describe('fitPopupWithinViewport', () => {
+  it('re-clamps an existing position when the rendered popup is taller than the initial estimate', () => {
+    const viewportSize = { width: 820, height: 520 };
+
+    expect(
+      fitPopupWithinViewport({
+        position: { x: 448, y: 240 },
+        popupSize: { width: 360, height: 345 },
+        viewportSize,
+        padding: 12,
+      })
+    ).toEqual({
+      position: { x: 448, y: 163 },
+      popupSize: { width: 360, height: 345 },
+    });
   });
 });
