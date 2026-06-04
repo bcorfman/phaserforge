@@ -160,6 +160,76 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
+  it('uses neutral reconnect copy in the Connect GitHub modal', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: false, error: 'github_not_linked' });
+
+    const view = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    try {
+      await flushEffects();
+      act(() => {
+        (document.querySelector('[data-testid="cloud-publish-connect-github-cta"]') as HTMLButtonElement).click();
+      });
+      const modal = document.querySelector('[data-testid="github-connect-modal"]') as HTMLElement | null;
+      expect(modal?.textContent).toContain('Continue to GitHub to connect your account.');
+      expect(modal?.textContent).toContain('the connection may complete immediately');
+      expect(modal?.textContent).not.toContain('authorize PhaserForge');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('explains that disconnect only removes the PhaserForge link and exposes a GitHub settings link', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+      ok: true,
+      login: 'alice',
+      pagesBaseUrl: 'https://alice.github.io/',
+      repo: 'alice/alice.github.io',
+    });
+
+    const view = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    try {
+      await flushEffects();
+      expect(document.body.textContent).toContain('Disconnect only removes the GitHub link from PhaserForge.');
+      const settingsLink = document.querySelector('[data-testid="github-authorized-apps-link"]') as HTMLAnchorElement | null;
+      expect(settingsLink).toBeTruthy();
+      expect(settingsLink?.href).toBe('https://github.com/settings/connections/applications');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('uses non-guaranteed switching copy in the Switch GitHub modal', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+      ok: true,
+      login: 'alice',
+      pagesBaseUrl: 'https://alice.github.io/',
+      repo: 'alice/alice.github.io',
+    });
+
+    const view = renderIntoDom(
+      <CloudAccountPanel state={baseState()} dispatch={() => {}} onLoadYaml={() => {}} onStatus={() => {}} onError={() => {}} />,
+    );
+    try {
+      await flushEffects();
+      act(() => {
+        (document.querySelector('[aria-label="Switch GitHub account"]') as HTMLButtonElement).click();
+      });
+      const modal = document.querySelector('[data-testid="github-connect-modal"]') as HTMLElement | null;
+      expect(modal?.textContent).toContain('If you are already signed into the target GitHub account, the switch may complete immediately.');
+      expect(modal?.textContent).toContain('use a private window');
+      expect(modal?.textContent).not.toContain('Currently linked: alice. Continuing may change the linked account.');
+    } finally {
+      view.cleanup();
+    }
+  });
+
   it('shows the Publish form when signed in and GitHub is linked', async () => {
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
     api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/', repo: 'alice/alice.github.io' });
