@@ -170,9 +170,9 @@ export interface ProjectSpec {
    */
   title?: string;
   /**
-   * Optional GitHub Pages publish route (editor metadata; serialized to YAML).
+   * Optional GitHub Pages publish repository name (editor metadata; serialized to YAML).
    */
-  publishGithubPagesRoute?: string;
+  publishGithubPagesRepo?: string;
   assets: {
     images: Record<Id, ImageAssetSpec>;
     spriteSheets: Record<Id, SpriteSheetAssetSpec>;

@@ -7,7 +7,7 @@ export type ApiStubResponse = {
 
 export type MockCloudUser = { id: string; email: string } | null;
 export type MockPublishInfo =
-  | { ok: true; login: string; pagesBaseUrl: string; repo: string }
+  | { ok: true; login: string; pagesBaseUrl: string }
   | { ok: false; error: string };
 
 const EMPTY_PROJECT_YAML = [
@@ -79,9 +79,15 @@ export function createCloudAuthHandlers(options: {
   publishInfo?: MockPublishInfo;
   loginUser?: { id: string; email: string };
   games?: Array<{ id: string; title: string; created_at: string; updated_at: string }>;
+  publishCheck?: { ok: true; url: string; exists: boolean; pagesConfigured: boolean; deploymentStatus: string | null } | { ok: false; error: string };
+  publishResult?:
+    | { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }
+    | { ok: false; error: string; url?: string };
 }) {
   const publishInfo = options.publishInfo ?? { ok: false as const, error: 'github_not_linked' };
   const games = options.games ?? [];
+  const publishCheck = options.publishCheck ?? { ok: false as const, error: 'github_not_linked' };
+  const publishResult = options.publishResult ?? { ok: false as const, error: 'github_not_linked' };
   return [
     http.get(/.*\/api\/v1\/auth\/me/, () => {
       if (!options.user) {
@@ -98,8 +104,20 @@ export function createCloudAuthHandlers(options: {
     http.get(/.*\/api\/v1\/games/, () => {
       return HttpResponse.json({ games }, { status: 200 });
     }),
+    http.post(/.*\/api\/v1\/games/, async () => {
+      return HttpResponse.json({ game: { id: 'g1', title: 'Storybook Game', created_at: 'c', updated_at: 'u' } }, { status: 201 });
+    }),
+    http.put(/.*\/api\/v1\/games\/[^/]+/, async () => {
+      return HttpResponse.json({ updated_at: 'u' }, { status: 200 });
+    }),
     http.get(/.*\/api\/v1\/publish\/github-pages\/info/, () => {
       return HttpResponse.json(publishInfo, { status: publishInfo.ok ? 200 : 400 });
+    }),
+    http.post(/.*\/api\/v1\/publish\/github-pages\/check/, () => {
+      return HttpResponse.json(publishCheck, { status: publishCheck.ok ? 200 : 400 });
+    }),
+    http.post(/.*\/api\/v1\/publish\/github-pages/, () => {
+      return HttpResponse.json(publishResult, { status: publishResult.ok ? 200 : 400 });
     }),
   ];
 }

@@ -144,7 +144,7 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     authUrl.searchParams.set('client_id', settings.githubOAuth.clientId);
     authUrl.searchParams.set('redirect_uri', callbackUrl);
     authUrl.searchParams.set('state', state);
-    authUrl.searchParams.set('scope', 'user:email,public_repo');
+    authUrl.searchParams.set('scope', 'user:email,repo,workflow');
 
     res.redirect(302, authUrl.toString());
   });
