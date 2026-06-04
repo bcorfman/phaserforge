@@ -2,7 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 
 import type { Repositories } from '../types';
-import type { Settings } from '../../settings';
+import { resolveCookiePolicy, type Settings } from '../../settings';
 import { randomToken, safeEqual, sha256Base64Url } from '../../security/crypto';
 import { requireAuth } from '../auth/sessionAuth';
 import { AuthSchemas, loginWithPassword, logout, setSessionCookie, signupWithPassword } from '../services/authService';
@@ -10,8 +10,7 @@ import { newId } from '../../security/ids';
 
 export function authRouter(settings: Settings, repositories: Repositories) {
   const router = express.Router();
-  const cookieSameSite = settings.cookieSameSite === 'none' ? 'none' : 'lax';
-  const cookieSecure = settings.cookieSameSite === 'none' ? true : settings.cookieSecure;
+  const cookiePolicy = resolveCookiePolicy(settings);
 
   const authLimiter = rateLimit({
     windowMs: 60_000,
@@ -24,8 +23,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
     const csrfToken = randomToken(24);
     res.cookie(settings.csrfCookieName, csrfToken, {
       httpOnly: false,
-      secure: cookieSecure,
-      sameSite: cookieSameSite,
+      secure: cookiePolicy.secure,
+      sameSite: cookiePolicy.sameSite,
       path: '/',
       ...(settings.cookieDomain ? { domain: settings.cookieDomain } : {}),
       maxAge: 24 * 60 * 60 * 1000,
@@ -36,8 +35,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
   function setOAuthStateCookie(res: express.Response, token: string) {
     res.cookie('pa_oauth_state', token, {
       httpOnly: true,
-      secure: cookieSecure,
-      sameSite: cookieSameSite,
+      secure: cookiePolicy.secure,
+      sameSite: cookiePolicy.sameSite,
       path: '/',
       maxAge: 10 * 60 * 1000,
     });
@@ -50,8 +49,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
   function setOAuthForceSwitchCookie(res: express.Response, enabled: boolean) {
     res.cookie('pa_oauth_force_switch', enabled ? '1' : '0', {
       httpOnly: true,
-      secure: cookieSecure,
-      sameSite: cookieSameSite,
+      secure: cookiePolicy.secure,
+      sameSite: cookiePolicy.sameSite,
       path: '/',
       maxAge: 10 * 60 * 1000,
     });
@@ -64,8 +63,8 @@ export function authRouter(settings: Settings, repositories: Repositories) {
   function setReturnToCookie(res: express.Response, returnTo: string) {
     res.cookie('pa_return_to', returnTo, {
       httpOnly: true,
-      secure: cookieSecure,
-      sameSite: cookieSameSite,
+      secure: cookiePolicy.secure,
+      sameSite: cookiePolicy.sameSite,
       path: '/',
       maxAge: 10 * 60 * 1000,
     });

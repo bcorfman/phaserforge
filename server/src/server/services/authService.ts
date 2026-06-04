@@ -2,7 +2,7 @@ import type { Response } from 'express';
 import { z } from 'zod';
 
 import type { Repositories } from '../types';
-import type { Settings } from '../../settings';
+import { resolveCookiePolicy, type Settings } from '../../settings';
 import { newId } from '../../security/ids';
 import { randomToken, sha256Base64Url } from '../../security/crypto';
 import { hashPassword, verifyPassword } from '../../security/passwords';
@@ -20,12 +20,11 @@ export function normalizeEmail(email: string): string {
 }
 
 export function setSessionCookie(res: Response, settings: Settings, token: string) {
-  const sameSite = settings.cookieSameSite === 'none' ? 'none' : 'lax';
-  const secure = settings.cookieSameSite === 'none' ? true : settings.cookieSecure;
+  const cookiePolicy = resolveCookiePolicy(settings);
   res.cookie(settings.cookieName, token, {
     httpOnly: true,
-    secure,
-    sameSite,
+    secure: cookiePolicy.secure,
+    sameSite: cookiePolicy.sameSite,
     path: '/',
     ...(settings.cookieDomain ? { domain: settings.cookieDomain } : {}),
   });
