@@ -60,4 +60,10 @@ describe('Toolbar', () => {
     expect(toolbarStore.dispatch).toHaveBeenNthCalledWith(2, { type: 'set-ui-scale', uiScale: 1.1 });
     expect(screen.getByText('100%')).toBeTruthy();
   });
+
+  it('marks the summary copy as single-line on wide layouts', () => {
+    render(<Toolbar />);
+
+    expect(screen.getByText(/Move entities on the canvas/).className).toContain('toolbar-summary-single-line');
+  });
 });

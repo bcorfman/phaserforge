@@ -14,7 +14,7 @@ export function ToolbarView({ state, dispatch }: ToolbarViewProps) {
           <h1 className="brand">PhaserForge</h1>
           {state.dirty && <span className="badge" data-testid="dirty-badge">Unsaved</span>}
         </div>
-        <p className="toolbar-summary">
+        <p className="toolbar-summary toolbar-summary-single-line">
           Move entities on the canvas, tune formations in the inspector, and round-trip YAML without leaving the editor.
         </p>
       </div>
