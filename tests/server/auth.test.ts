@@ -86,6 +86,31 @@ describe('auth', () => {
     expect(sessionSetCookie).toContain('secure');
   });
 
+  it('emits SameSite=None; Secure cookies automatically for cross-origin frontend deployments', async () => {
+    const { app } = makeApp({
+      cookieSameSite: 'lax',
+      cookieSecure: false,
+      frontendBaseUrl: 'https://bcorfman.github.io/phaserforge',
+      publicBaseUrl: 'https://phaseractions-studio-production.up.railway.app',
+    });
+    const csrfRes = await request(app).get('/api/v1/auth/csrf').expect(200);
+    const csrfSetCookie = (csrfRes.headers['set-cookie'] ?? []).join(';').toLowerCase();
+    expect(csrfSetCookie).toContain('samesite=none');
+    expect(csrfSetCookie).toContain('secure');
+
+    const csrf = csrfRes.body.csrfToken as string;
+    const signupRes = await request(app)
+      .post('/api/v1/auth/signup')
+      .set('Cookie', [`pa_csrf=${csrf}`])
+      .set('x-csrf-token', csrf)
+      .send({ email: 'alice@example.com', password: 'password123' })
+      .expect(200);
+
+    const sessionSetCookie = (signupRes.headers['set-cookie'] ?? []).join(';').toLowerCase();
+    expect(sessionSetCookie).toContain('samesite=none');
+    expect(sessionSetCookie).toContain('secure');
+  });
+
   it('rejects missing CSRF on signup', async () => {
     const { app } = makeApp();
     const agent = request.agent(app);

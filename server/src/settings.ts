@@ -17,6 +17,29 @@ export type Settings = {
   };
 };
 
+export function resolveCookiePolicy(settings: Pick<Settings, 'cookieSameSite' | 'cookieSecure' | 'frontendBaseUrl' | 'publicBaseUrl'>): {
+  sameSite: 'lax' | 'none';
+  secure: boolean;
+} {
+  if (settings.cookieSameSite === 'none') return { sameSite: 'none', secure: true };
+
+  const frontendBaseUrl = settings.frontendBaseUrl?.trim();
+  const publicBaseUrl = settings.publicBaseUrl?.trim();
+  if (frontendBaseUrl && publicBaseUrl) {
+    try {
+      const frontendUrl = new URL(frontendBaseUrl);
+      const publicUrl = new URL(publicBaseUrl);
+      if (frontendUrl.protocol === 'https:' && publicUrl.protocol === 'https:' && frontendUrl.origin !== publicUrl.origin) {
+        return { sameSite: 'none', secure: true };
+      }
+    } catch {
+      // Fall back to explicit settings when URLs are not parseable.
+    }
+  }
+
+  return { sameSite: 'lax', secure: settings.cookieSecure };
+}
+
 export function loadSettingsFromEnv(env: NodeJS.ProcessEnv): Settings {
   const corsAllowOrigins = String(env.CORS_ALLOW_ORIGINS ?? '')
     .split(',')
