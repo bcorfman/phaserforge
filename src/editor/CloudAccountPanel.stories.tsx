@@ -145,6 +145,36 @@ export const PublishReady: Story = {
   },
 };
 
+export const PublishFirstTimeSuccess: Story = {
+  args: {
+    initialProject: {
+      id: 'project-1',
+      title: 'Zoof',
+      publishGithubPagesRepo: 'zoof',
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
+      audio: { sounds: {} },
+    },
+  },
+  parameters: {
+    msw: {
+      handlers: createCloudAuthHandlers({
+        user: { id: 'u1', email: 'a@b.c' },
+        publishInfo: { ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/' },
+        publishCheck: { ok: true, url: 'https://alice.github.io/zoof/', exists: false, pagesConfigured: false, deploymentStatus: null },
+        publishResult: { ok: true, url: 'https://alice.github.io/zoof/', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' },
+      }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId('cloud-publish-pages-button')).toBeTruthy());
+    await userEvent.click(canvas.getByTestId('cloud-publish-pages-button'));
+    await waitFor(() => expect(canvas.getByTestId('publish-confirm-modal').textContent).toContain('A new repository will be created'));
+    await userEvent.click(canvas.getByTestId('publish-confirm-submit'));
+    await waitFor(() => expect(canvas.getByTestId('cloud-publish-pages-help').textContent).toContain('GitHub Pages accepted the deployment for zoof'));
+  },
+};
+
 export const PublishFailure: Story = {
   args: {
     initialProject: {
