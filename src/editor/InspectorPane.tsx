@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useEditorStore } from './EditorStore';
 import { Inspector } from './Inspector';
-import { CloudAccountPanel, getCachedCloudAccountUserSnapshot, resolveCachedCloudAccountUser } from './CloudAccountPanel';
+import {
+  CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY,
+  CloudAccountPanel,
+  getCachedCloudAccountUserSnapshot,
+  resolveCachedCloudAccountUser,
+} from './CloudAccountPanel';
 import { isLocalHostname } from '../util/isLocalHostname';
 
 export type InspectorPaneTab = 'inspector' | 'cloud';
@@ -64,6 +69,16 @@ export function InspectorPane() {
   });
   const userSelectedTabRef = useRef(false);
 
+  const consumeReturnToCloudAfterAuth = (): boolean => {
+    try {
+      if (window.sessionStorage.getItem(CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY) !== '1') return false;
+      window.sessionStorage.removeItem(CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (!cloudEnabled) return;
     if (getCachedCloudAccountUserSnapshot() !== undefined) return;
@@ -71,6 +86,10 @@ export function InspectorPane() {
     let cancelled = false;
     void resolveCachedCloudAccountUser().then((user) => {
       if (cancelled || userSelectedTabRef.current) return;
+      if (user && consumeReturnToCloudAfterAuth()) {
+        setTab('cloud');
+        return;
+      }
       setTab(user ? 'inspector' : 'cloud');
     });
 

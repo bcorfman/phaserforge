@@ -188,25 +188,29 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 - First-time access: Cloud panel → `Create account` tab → enter email/password/invite code → `Create account`.
 
 ### A55 — Connect GitHub for Publishing
-- Cloud panel → once signed in, click `Connect GitHub` → confirm redirect → finish OAuth in GitHub.
-- If a different GitHub account is already linked, use `Switch GitHub…` from the signed-in account section.
+- Cloud panel → once signed in, click `Connect GitHub` → continue to GitHub. If GitHub already recognizes the authorization, the connection may complete immediately.
+- If a different GitHub account is already linked, use `Switch GitHub…` from the signed-in account section. To actually switch accounts, first sign into that GitHub account in the browser or use a private window.
 
-### A56 — Manage Counters (Project + Scene)
+### A56 — Disconnect GitHub from PhaserForge
+- Cloud panel → `Disconnect` removes the stored GitHub link/token from PhaserForge only.
+- To revoke GitHub-side authorization entirely, follow the `GitHub authorized OAuth apps` link from the Cloud panel.
+
+### A57 — Manage Counters (Project + Scene)
 - Scene State → Counters → `+ Add Global Counter` / `+ Add Scene Counter` → edit name/scope/value; delete via row controls.
 
-### A57 — Manage Collections
+### A58 — Manage Collections
 - Scene State → Collections → `+ Add Collection` → edit derived-from + members; delete via row controls.
 
-### A58 — Pin Selection While Dragging (Inspector)
+### A59 — Pin Selection While Dragging (Inspector)
 - Inspector → enable `Pin selection while dragging` (selection stays stable while manipulating UI).
 
-### A59 — Reset Project to New Empty Scene
+### A60 — Reset Project to New Empty Scene
 - Project tab → Startup & Reset → `Reset Now → New Empty Scene` (confirm).
 
-### A60 — Clear Scene Contents
+### A61 — Clear Scene Contents
 - Scene tab → Scenes → overflow menu `⋯` → `Clear Scene…` (confirm).
 
-### A61 — Layout Selection (Arrange / Position)
+### A62 — Layout Selection (Arrange / Position)
 - With 2+ sprites selected: on-canvas selection bar → `Layout…`
 - **Arrange items** (changes internal spacing):
   - `Distribute X/Y` spaces items evenly between endpoints (stable sort along the chosen axis).
@@ -218,12 +222,13 @@ These are the smallest user-visible workflows. Larger workflows below reference 
   - `Stack …` intentionally overlaps by aligning item centers to the anchor item.
   - `Match … edges` aligns item edges to the anchor item.
 
-### A62 — Create Text Entity
+### A63 — Create Text Entity
 - Entity List → Scenes → Text → `+ Add`.
 
-### A63 — Right Pane Startup Routing
+### A64 — Right Pane Startup Routing
 - On cloud deployments, if auth is unresolved or no user is signed in, the right pane starts on `Cloud`.
 - On cloud deployments, if a user is already signed in, the right pane starts on `Inspector`.
+- After starting GitHub connect/switch from the Cloud panel, the right pane stays on `Cloud` after auth returns so the success state remains visible.
 - On localhost/local deploys, the right pane stays `Inspector` only (no Cloud tab).
 
 ## Composite Workflows (built from atomic workflows)
