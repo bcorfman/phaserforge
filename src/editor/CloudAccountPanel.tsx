@@ -8,6 +8,8 @@ import { summarizeYamlWorkspace } from './workspaceSummary';
 type CloudAccountUser = { id: string; email: string } | null;
 type CloudPublishInfo = { ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string };
 type CloudAuthMode = 'login' | 'signup';
+export const CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY = 'phaserforge.cloud.return_to_cloud_after_auth';
+const GITHUB_AUTHORIZED_APPS_SETTINGS_URL = 'https://github.com/settings/connections/applications';
 
 let cachedCloudAccountUser: CloudAccountUser | undefined;
 let cachedCloudAccountUserPromise: Promise<CloudAccountUser> | null = null;
@@ -91,6 +93,15 @@ function mapGithubAuthError(error: string): string {
       return 'GitHub did not provide a verified primary email for this account.';
     default:
       return error;
+  }
+}
+
+function markReturnToCloudAfterAuth() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY, '1');
+  } catch {
+    // ignore
   }
 }
 
@@ -857,7 +868,22 @@ export function CloudAccountPanel({
               </div>
               <div className="cloud-row">
                 <div className="cloud-help">
-                  GitHub authorization is required for publishing to GitHub Pages. Make sure the correct GitHub account is signed into this browser.
+                  {publishInfo?.ok ? (
+                    <>
+                      Disconnect only removes the GitHub link from PhaserForge. To revoke GitHub authorization entirely, remove PhaserForge from{' '}
+                      <a
+                        href={GITHUB_AUTHORIZED_APPS_SETTINGS_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid="github-authorized-apps-link"
+                      >
+                        GitHub authorized OAuth apps
+                      </a>
+                      .
+                    </>
+                  ) : (
+                    'GitHub authorization is required for publishing to GitHub Pages.'
+                  )}
                 </div>
               </div>
             </div>
@@ -994,14 +1020,24 @@ export function CloudAccountPanel({
                 Close
               </button>
             </div>
-            <div className="cloud-help">
-              You’ll be redirected to GitHub to authorize PhaserForge to publish to GitHub Pages.
-            </div>
-            <div className="cloud-help">
-              {publishInfo?.ok
-                ? `Currently linked: ${publishInfo.login}. Continuing may change the linked account.`
-                : 'Make sure the correct GitHub account is signed into this browser.'}
-            </div>
+            {showGithubConfirm.mode === 'switch' ? (
+              <>
+                <div className="cloud-help">Continue to GitHub to reconnect with the account you want PhaserForge to use for publishing.</div>
+                <div className="cloud-help">
+                  If you are already signed into the target GitHub account, the switch may complete immediately.
+                </div>
+                <div className="cloud-help">
+                  To switch to a different GitHub account, sign into that account in GitHub first or use a private window.
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="cloud-help">Continue to GitHub to connect your account.</div>
+                <div className="cloud-help">
+                  If GitHub already recognizes this authorization, the connection may complete immediately.
+                </div>
+              </>
+            )}
             <div className="cloud-row">
               <button className="button" type="button" onClick={() => setShowGithubConfirm(null)}>
                 Cancel
@@ -1010,7 +1046,10 @@ export function CloudAccountPanel({
                 className="button primary"
                 data-testid="github-connect-confirm"
                 href={showGithubConfirm.mode === 'switch' ? githubSwitchHref : githubStartHref}
-                onClick={() => setShowGithubConfirm(null)}
+                onClick={() => {
+                  markReturnToCloudAfterAuth();
+                  setShowGithubConfirm(null);
+                }}
               >
                 Continue to GitHub
               </a>
