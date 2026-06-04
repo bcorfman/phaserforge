@@ -57,13 +57,14 @@ describe('cloud api', () => {
       expect(String(input)).toBe('/api/v1/publish/github-pages/check');
       expect(init?.method).toBe('POST');
       expect(init?.credentials).toBe('include');
+      expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
       expect((init?.headers as any)['content-type']).toBe('application/json');
       expect(init?.body).toBe(JSON.stringify({ route: 'mygame' }));
       return new Response(JSON.stringify({ ok: true, url: 'u', exists: false, status: 404 }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock as any);
 
-    await expect(checkGithubPagesTarget('mygame')).resolves.toEqual({ ok: true, url: 'u', exists: false, status: 404 });
+    await expect(checkGithubPagesTarget('mygame', 'csrf')).resolves.toEqual({ ok: true, url: 'u', exists: false, status: 404 });
   });
 
   it('publishToGithubPages sends csrf header', async () => {

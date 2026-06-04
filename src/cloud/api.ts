@@ -126,10 +126,14 @@ export async function getGithubPagesPublishInfo(): Promise<{ ok: true; login: st
   }
 }
 
-export async function checkGithubPagesTarget(route: string): Promise<{ ok: true; url: string; exists: boolean; status: number | null } | { ok: false; error: string }> {
+export async function checkGithubPagesTarget(
+  route: string,
+  csrfToken: string,
+): Promise<{ ok: true; url: string; exists: boolean; status: number | null } | { ok: false; error: string }> {
   try {
     const json = await api<{ ok: true; url: string; exists: boolean; status: number | null }>('/api/v1/publish/github-pages/check', {
       method: 'POST',
+      headers: { 'x-csrf-token': csrfToken },
       body: JSON.stringify({ route }),
     });
     return json;
