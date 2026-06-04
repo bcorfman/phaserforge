@@ -1,5 +1,8 @@
 import request from 'supertest';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 import { createApp } from '../../server/src/server/app';
 import { createMemoryRepositories } from '../../server/src/server/repositories/memory';
@@ -81,6 +84,28 @@ async function addGame(repositories: ReturnType<typeof createMemoryRepositories>
 }
 
 describe('publish github pages', () => {
+  let originalCwd = '';
+  let tempDir = '';
+
+  beforeEach(async () => {
+    originalCwd = process.cwd();
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'phaserforge-publish-test-'));
+    const distDir = path.join(tempDir, 'dist');
+    await fs.mkdir(path.join(distDir, 'assets'), { recursive: true });
+    await fs.writeFile(path.join(distDir, 'index.html'), '<!doctype html><html><head></head><body><div id="root"></div></body></html>');
+    await fs.writeFile(path.join(distDir, 'style.css'), 'body{margin:0;}');
+    await fs.writeFile(path.join(distDir, 'assets', 'game.js'), 'console.log("game");');
+    process.chdir(tempDir);
+  });
+
+  afterEach(async () => {
+    process.chdir(originalCwd);
+    if (tempDir) {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+    vi.unstubAllGlobals();
+  });
+
   it('requires auth', async () => {
     const { app } = makeApp();
     const agent = request.agent(app);
