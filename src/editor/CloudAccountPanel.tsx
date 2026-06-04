@@ -515,7 +515,7 @@ export function CloudAccountPanel({
       onError('Requires GitHub login to publish.');
       return;
     }
-    const check = await checkGithubPagesTarget(route);
+    const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(route, csrf));
     if (!check.ok) {
       onError(check.error);
       return;
