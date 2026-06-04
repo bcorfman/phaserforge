@@ -6,37 +6,49 @@ import type { Repositories } from '../types';
 type Ok<T> = T & { ok: true };
 type Err<E extends string> = { ok: false; error: E; url?: string };
 
-function normalizeRoute(route: string): string {
-  return route.replace(/^\/+/, '').replace(/\/+$/, '');
+type PublishInfoOk = Ok<{ login: string; pagesBaseUrl: string }>;
+type PublishError =
+  | 'github_not_linked'
+  | 'github_token_missing'
+  | 'github_repo_permission_required'
+  | 'github_workflow_permission_required'
+  | 'github_pages_permission_required'
+  | 'github_pages_build_failed'
+  | 'repo_unavailable'
+  | 'not_found'
+  | 'path_assets_unsupported'
+  | 'dist_missing'
+  | 'github_failed';
+
+type GitHubRepoRecord = {
+  name: string;
+  full_name: string;
+  private?: boolean;
+  default_branch?: string;
+  owner?: { login?: string };
+};
+
+type GitRefRecord = { object?: { sha?: string } };
+type GitCommitRecord = { sha?: string; tree?: { sha?: string } };
+type WorkflowRunsResponse = {
+  workflow_runs?: Array<{
+    head_sha?: string;
+    status?: string | null;
+    conclusion?: string | null;
+  }>;
+};
+
+const GITHUB_API_VERSION = '2022-11-28';
+const PAGES_WORKFLOW_PATH = '.github/workflows/deploy-phaserforge-pages.yml';
+
+function normalizeRepoName(repo: string): string {
+  return repo.trim();
 }
 
-async function githubApi<T>(
-  accessToken: string,
-  url: string,
-  init: RequestInit = {},
-): Promise<{ ok: true; json: T; status: number } | { ok: false; status: number; text: string }> {
-  const res = await fetch(url, {
-    ...init,
-    headers: {
-      accept: 'application/vnd.github+json',
-      authorization: `Bearer ${accessToken}`,
-      'user-agent': 'phaserforge',
-      ...(init.headers ?? {}),
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) return { ok: false, status: res.status, text };
-  try {
-    return { ok: true, status: res.status, json: (text ? (JSON.parse(text) as T) : ({} as T)) };
-  } catch {
-    return { ok: false, status: 502, text: 'invalid_json' };
-  }
-}
-
-function pagesUrlFor(login: string, route: string): string {
+function pagesUrlFor(login: string, repo: string): string {
   const base = `https://${login}.github.io/`;
-  const r = normalizeRoute(route);
-  return r ? new URL(`${r.replace(/\/+$/, '')}/`, base).toString() : base;
+  const normalizedRepo = normalizeRepoName(repo).replace(/^\/+/, '').replace(/\/+$/, '');
+  return normalizedRepo ? new URL(`${normalizedRepo}/`, base).toString() : base;
 }
 
 function projectHasPathAssets(yamlText: string): boolean {
@@ -56,14 +68,12 @@ function projectHasPathAssets(yamlText: string): boolean {
     }
     return false;
   } catch {
-    // If YAML is malformed, publishing should fail earlier anyway; treat as unsafe.
     return true;
   }
 }
 
 async function readPublishableDistFiles(): Promise<Array<{ relPath: string; bytes: Uint8Array }>> {
   const distRoot = path.resolve(process.cwd(), 'dist');
-
   const allowTop = new Set(['index.html', 'favicon.png', 'style.css', 'editor-config.yaml', 'editor-registry.yaml']);
   const files: Array<{ relPath: string; bytes: Uint8Array }> = [];
 
@@ -98,113 +108,379 @@ async function readPublishableDistFiles(): Promise<Array<{ relPath: string; byte
 }
 
 function buildPlayIndexHtml(distIndexHtml: string): string {
-  // Ensure PlayApp loads without query params on GH Pages.
   const meta = `<meta name="phaserforge-mode" content="play" />`;
   const boot = `<script>window.__PHASER_FORGE_PLAY_YAML_URL = './game.yaml';</script>`;
   if (distIndexHtml.includes('name="phaserforge-mode"')) return distIndexHtml;
   return distIndexHtml.replace('</title>', `</title>\n  ${meta}\n  ${boot}`);
 }
 
-async function putContentFile(params: {
-  accessToken: string;
-  owner: string;
-  repo: string;
-  branch: string;
-  path: string;
-  message: string;
-  bytes: Uint8Array;
-}) {
-  const url = `https://api.github.com/repos/${encodeURIComponent(params.owner)}/${encodeURIComponent(params.repo)}/contents/${params.path
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/')}`;
-
-  // Fetch sha if file exists
-  const existing = await githubApi<{ sha?: string }>(params.accessToken, `${url}?ref=${encodeURIComponent(params.branch)}`);
-  const sha = existing.ok ? existing.json.sha : undefined;
-
-  const body = {
-    message: params.message,
-    content: Buffer.from(params.bytes).toString('base64'),
-    branch: params.branch,
-    ...(sha ? { sha } : {}),
-  };
-
-  const res = await githubApi<any>(params.accessToken, url, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(`github_put_failed_${res.status}`);
+function buildPagesWorkflowYaml(): string {
+  return [
+    'name: Deploy PhaserForge game to GitHub Pages',
+    '',
+    'on:',
+    '  push:',
+    '    branches: ["main"]',
+    '  workflow_dispatch:',
+    '',
+    'permissions:',
+    '  contents: read',
+    '  pages: write',
+    '  id-token: write',
+    '',
+    'concurrency:',
+    '  group: "pages"',
+    '  cancel-in-progress: true',
+    '',
+    'jobs:',
+    '  build:',
+    '    runs-on: ubuntu-latest',
+    '    steps:',
+    '      - name: Checkout',
+    '        uses: actions/checkout@v6',
+    '      - name: Setup Pages',
+    '        uses: actions/configure-pages@v5',
+    '      - name: Collect site files',
+    '        shell: bash',
+    '        run: |',
+    '          mkdir -p .pages-artifact',
+    '          shopt -s dotglob nullglob',
+    '          for entry in *; do',
+    '            if [ "$entry" != ".github" ]; then',
+    '              cp -R "$entry" .pages-artifact/',
+    '            fi',
+    '          done',
+    '      - name: Upload artifact',
+    '        uses: actions/upload-pages-artifact@v4',
+    '        with:',
+    '          path: .pages-artifact',
+    '  deploy:',
+    '    needs: build',
+    '    runs-on: ubuntu-latest',
+    '    environment:',
+    '      name: github-pages',
+    '      url: ${{ steps.deployment.outputs.page_url }}',
+    '    steps:',
+    '      - name: Deploy to GitHub Pages',
+    '        id: deployment',
+    '        uses: actions/deploy-pages@v4',
+    '',
+  ].join('\n');
 }
 
-export async function publishInfo(
+function parseGithubMessage(text: string): string {
+  try {
+    const parsed = JSON.parse(text) as { message?: unknown };
+    return typeof parsed.message === 'string' ? parsed.message : text;
+  } catch {
+    return text;
+  }
+}
+
+async function githubApi<T>(
+  accessToken: string,
+  url: string,
+  init: RequestInit = {},
+): Promise<{ ok: true; json: T; status: number } | { ok: false; status: number; text: string }> {
+  const res = await fetch(url, {
+    ...init,
+    headers: {
+      accept: 'application/vnd.github+json',
+      authorization: `Bearer ${accessToken}`,
+      'user-agent': 'phaserforge',
+      'x-github-api-version': GITHUB_API_VERSION,
+      ...(init.headers ?? {}),
+    },
+  });
+  const text = await res.text();
+  if (!res.ok) return { ok: false, status: res.status, text };
+  try {
+    return { ok: true, status: res.status, json: (text ? (JSON.parse(text) as T) : ({} as T)) };
+  } catch {
+    return { ok: false, status: 502, text: 'invalid_json' };
+  }
+}
+
+async function resolveGithubToken(
   repositories: Repositories,
   userId: string,
-): Promise<Ok<{ login: string; pagesBaseUrl: string; repo: string }> | Err<'github_not_linked' | 'github_token_missing'>> {
+): Promise<PublishInfoOk | Err<'github_not_linked' | 'github_token_missing'>> {
   const oauth = await repositories.oauth.findByUserIdProvider(userId, 'github');
   if (!oauth) return { ok: false, error: 'github_not_linked' };
   const login = oauth.providerLogin ?? '';
   if (!login) return { ok: false, error: 'github_not_linked' };
   const token = oauth.accessToken ?? '';
   if (!token) return { ok: false, error: 'github_token_missing' };
-  return { ok: true, login, pagesBaseUrl: `https://${login}.github.io/`, repo: `${login}/${login}.github.io` };
+  return { ok: true, login, pagesBaseUrl: `https://${login}.github.io/` };
+}
+
+async function getRepo(accessToken: string, owner: string, repo: string) {
+  return githubApi<GitHubRepoRecord>(accessToken, `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`);
+}
+
+async function ensureRepo(accessToken: string, owner: string, repo: string): Promise<Ok<{ defaultBranch: string; existed: boolean }> | Err<'github_repo_permission_required' | 'repo_unavailable' | 'github_failed'>> {
+  const existing = await getRepo(accessToken, owner, repo);
+  if (existing.ok) {
+    return { ok: true, defaultBranch: existing.json.default_branch || 'main', existed: true };
+  }
+
+  if (existing.status !== 404) {
+    if (existing.status === 401 || existing.status === 403) return { ok: false, error: 'github_repo_permission_required' };
+    return { ok: false, error: 'github_failed' };
+  }
+
+  const created = await githubApi<GitHubRepoRecord>(accessToken, 'https://api.github.com/user/repos', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      name: repo,
+      private: false,
+      auto_init: true,
+      homepage: pagesUrlFor(owner, repo),
+    }),
+  });
+  if (!created.ok) {
+    if (created.status === 401 || created.status === 403) return { ok: false, error: 'github_repo_permission_required' };
+    if (created.status === 422) return { ok: false, error: 'repo_unavailable' };
+    return { ok: false, error: 'github_failed' };
+  }
+
+  return { ok: true, defaultBranch: created.json.default_branch || 'main', existed: false };
+}
+
+async function ensurePagesConfigured(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  branch: string,
+): Promise<Ok<{ url: string }> | Err<'github_pages_permission_required' | 'github_failed'>> {
+  const site = await githubApi<{ html_url?: string }>(accessToken, `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pages`);
+  if (site.ok) {
+    const updated = await githubApi<Record<string, never>>(
+      accessToken,
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pages`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ build_type: 'workflow', source: { branch, path: '/' } }),
+      },
+    );
+    if (!updated.ok) {
+      if (updated.status === 401 || updated.status === 403) return { ok: false, error: 'github_pages_permission_required' };
+      return { ok: false, error: 'github_failed' };
+    }
+    return { ok: true, url: site.json.html_url || pagesUrlFor(owner, repo).replace(/\/$/, '') };
+  }
+
+  if (site.status !== 404) {
+    if (site.status === 401 || site.status === 403) return { ok: false, error: 'github_pages_permission_required' };
+    return { ok: false, error: 'github_failed' };
+  }
+
+  const created = await githubApi<{ html_url?: string }>(
+    accessToken,
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pages`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ build_type: 'workflow', source: { branch, path: '/' } }),
+    },
+  );
+  if (!created.ok) {
+    if (created.status === 401 || created.status === 403) return { ok: false, error: 'github_pages_permission_required' };
+    return { ok: false, error: 'github_failed' };
+  }
+  return { ok: true, url: created.json.html_url || pagesUrlFor(owner, repo).replace(/\/$/, '') };
+}
+
+async function getHeadCommit(accessToken: string, owner: string, repo: string, branch: string): Promise<Ok<{ commitSha: string; treeSha: string }> | Err<'github_failed'>> {
+  const ref = await githubApi<GitRefRecord>(
+    accessToken,
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/ref/heads/${encodeURIComponent(branch)}`,
+  );
+  if (!ref.ok || !ref.json.object?.sha) return { ok: false, error: 'github_failed' };
+
+  const commit = await githubApi<GitCommitRecord>(
+    accessToken,
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/commits/${encodeURIComponent(ref.json.object.sha)}`,
+  );
+  if (!commit.ok || !commit.json.tree?.sha || !commit.json.sha) return { ok: false, error: 'github_failed' };
+  return { ok: true, commitSha: commit.json.sha, treeSha: commit.json.tree.sha };
+}
+
+async function commitFiles(params: {
+  accessToken: string;
+  owner: string;
+  repo: string;
+  branch: string;
+  message: string;
+  files: Array<{ path: string; bytes: Uint8Array }>;
+}): Promise<Ok<{ commitSha: string }> | Err<'github_workflow_permission_required' | 'github_failed'>> {
+  const head = await getHeadCommit(params.accessToken, params.owner, params.repo, params.branch);
+  if (!head.ok) return head;
+
+  const treeEntries: Array<{ path: string; mode: '100644'; type: 'blob'; sha: string }> = [];
+  for (const file of params.files) {
+    const blob = await githubApi<{ sha?: string }>(
+      params.accessToken,
+      `https://api.github.com/repos/${encodeURIComponent(params.owner)}/${encodeURIComponent(params.repo)}/git/blobs`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ content: Buffer.from(file.bytes).toString('base64'), encoding: 'base64' }),
+      },
+    );
+    if (!blob.ok || !blob.json.sha) {
+      const message = parseGithubMessage(blob.text);
+      if (blob.status === 401 || blob.status === 403 || /workflow/i.test(message)) {
+        return { ok: false, error: 'github_workflow_permission_required' };
+      }
+      return { ok: false, error: 'github_failed' };
+    }
+    treeEntries.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.json.sha });
+  }
+
+  const tree = await githubApi<{ sha?: string }>(
+    params.accessToken,
+    `https://api.github.com/repos/${encodeURIComponent(params.owner)}/${encodeURIComponent(params.repo)}/git/trees`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ base_tree: head.treeSha, tree: treeEntries }),
+    },
+  );
+  if (!tree.ok || !tree.json.sha) return { ok: false, error: 'github_failed' };
+
+  const commit = await githubApi<{ sha?: string }>(
+    params.accessToken,
+    `https://api.github.com/repos/${encodeURIComponent(params.owner)}/${encodeURIComponent(params.repo)}/git/commits`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message: params.message, tree: tree.json.sha, parents: [head.commitSha] }),
+    },
+  );
+  if (!commit.ok || !commit.json.sha) return { ok: false, error: 'github_failed' };
+
+  const updatedRef = await githubApi<Record<string, never>>(
+    params.accessToken,
+    `https://api.github.com/repos/${encodeURIComponent(params.owner)}/${encodeURIComponent(params.repo)}/git/refs/heads/${encodeURIComponent(params.branch)}`,
+    {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sha: commit.json.sha, force: false }),
+    },
+  );
+  if (!updatedRef.ok) return { ok: false, error: 'github_failed' };
+
+  return { ok: true, commitSha: commit.json.sha };
+}
+
+async function waitForDeploymentAcceptance(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  commitSha: string,
+): Promise<Ok<{ deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }> | Err<'github_pages_build_failed' | 'github_failed'>> {
+  const deadline = Date.now() + 12_000;
+  while (Date.now() < deadline) {
+    const runs = await githubApi<WorkflowRunsResponse>(
+      accessToken,
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/runs?head_sha=${encodeURIComponent(commitSha)}&event=push&per_page=5`,
+    );
+    if (!runs.ok) {
+      if (runs.status === 404) return { ok: true, deploymentStatus: 'configured' };
+      return { ok: false, error: 'github_failed' };
+    }
+    const match = (runs.json.workflow_runs ?? []).find((run) => run.head_sha === commitSha);
+    if (!match) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      continue;
+    }
+    if (match.status === 'completed') {
+      if (match.conclusion === 'success') return { ok: true, deploymentStatus: 'built' };
+      return { ok: false, error: 'github_pages_build_failed' };
+    }
+    if (match.status === 'in_progress') return { ok: true, deploymentStatus: 'building' };
+    if (match.status === 'queued' || match.status === 'waiting' || match.status === 'requested' || match.status == null) {
+      return { ok: true, deploymentStatus: 'queued' };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  return { ok: true, deploymentStatus: 'configured' };
+}
+
+export async function publishInfo(
+  repositories: Repositories,
+  userId: string,
+): Promise<PublishInfoOk | Err<'github_not_linked' | 'github_token_missing'>> {
+  return resolveGithubToken(repositories, userId);
 }
 
 export async function checkGithubPagesTarget(
   repositories: Repositories,
   userId: string,
-  route: string,
-): Promise<Ok<{ url: string; exists: boolean; status: number | null }> | Err<'github_not_linked' | 'github_token_missing'>> {
-  const info = await publishInfo(repositories, userId);
+  repo: string,
+): Promise<Ok<{ url: string; exists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }> | Err<'github_not_linked' | 'github_token_missing' | 'github_repo_permission_required' | 'github_failed'>> {
+  const info = await resolveGithubToken(repositories, userId);
   if (!info.ok) return info;
-  const url = pagesUrlFor(info.login, route);
-  try {
-    const res = await fetch(url, { method: 'HEAD', redirect: 'follow' });
-    if (res.status === 404) return { ok: true, url, exists: false, status: 404 };
-    return { ok: true, url, exists: true, status: res.status };
-  } catch {
-    return { ok: true, url, exists: false, status: null };
+  const oauth = await repositories.oauth.findByUserIdProvider(userId, 'github');
+  const accessToken = oauth?.accessToken ?? '';
+  if (!accessToken) return { ok: false, error: 'github_token_missing' };
+
+  const normalizedRepo = normalizeRepoName(repo);
+  const repoRes = await getRepo(accessToken, info.login, normalizedRepo);
+  if (!repoRes.ok) {
+    if (repoRes.status === 404) {
+      return { ok: true, url: pagesUrlFor(info.login, normalizedRepo), exists: false, pagesConfigured: false, deploymentStatus: null };
+    }
+    if (repoRes.status === 401 || repoRes.status === 403) return { ok: false, error: 'github_repo_permission_required' };
+    return { ok: false, error: 'github_failed' };
   }
+
+  const pageRes = await githubApi<{ status?: string }>(
+    accessToken,
+    `https://api.github.com/repos/${encodeURIComponent(info.login)}/${encodeURIComponent(normalizedRepo)}/pages`,
+  );
+  if (!pageRes.ok) {
+    if (pageRes.status === 404) {
+      return { ok: true, url: pagesUrlFor(info.login, normalizedRepo), exists: true, pagesConfigured: false, deploymentStatus: null };
+    }
+    return { ok: true, url: pagesUrlFor(info.login, normalizedRepo), exists: true, pagesConfigured: false, deploymentStatus: null };
+  }
+
+  return {
+    ok: true,
+    url: pagesUrlFor(info.login, normalizedRepo),
+    exists: true,
+    pagesConfigured: true,
+    deploymentStatus: pageRes.json.status ?? null,
+  };
 }
 
 export async function publishGameToGithubPages(
   repositories: Repositories,
   userId: string,
-  input: { gameId: string; route: string; allowOverwrite?: boolean },
-): Promise<Ok<{ url: string }> | Err<'github_not_linked' | 'github_token_missing' | 'target_exists' | 'not_found' | 'path_assets_unsupported' | 'dist_missing' | 'github_failed'>> {
-  const info = await publishInfo(repositories, userId);
+  input: { gameId: string; repo: string },
+): Promise<Ok<{ url: string; repo: string; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; repoCreated: boolean }> | Err<PublishError>> {
+  const info = await resolveGithubToken(repositories, userId);
   if (!info.ok) return info;
-  const route = normalizeRoute(input.route);
-  const url = pagesUrlFor(info.login, route);
-
-  const check = await checkGithubPagesTarget(repositories, userId, route);
-  if (!check.ok) return check;
-  if (check.exists && !input.allowOverwrite) return { ok: false, error: 'target_exists', url };
+  const normalizedRepo = normalizeRepoName(input.repo);
+  const url = pagesUrlFor(info.login, normalizedRepo);
 
   const game = await repositories.games.findByIdForUser(input.gameId, userId);
   if (!game) return { ok: false, error: 'not_found' };
   if (projectHasPathAssets(game.yaml)) return { ok: false, error: 'path_assets_unsupported' };
 
-  const token = info.ok ? (await repositories.oauth.findByUserIdProvider(userId, 'github'))?.accessToken ?? '' : '';
-  if (!token) return { ok: false, error: 'github_token_missing' };
+  const oauth = await repositories.oauth.findByUserIdProvider(userId, 'github');
+  const accessToken = oauth?.accessToken ?? '';
+  if (!accessToken) return { ok: false, error: 'github_token_missing' };
 
-  const owner = info.login;
-  const repo = `${info.login}.github.io`;
-  const branch = 'main';
+  const ensuredRepo = await ensureRepo(accessToken, info.login, normalizedRepo);
+  if (!ensuredRepo.ok) return { ok: false, error: ensuredRepo.error, url };
 
-  // Ensure repo exists (create if missing)
-  try {
-    const repoRes = await githubApi<any>(token, `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`);
-    if (!repoRes.ok && repoRes.status === 404) {
-      const created = await githubApi<any>(token, 'https://api.github.com/user/repos', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: repo, private: false, auto_init: true }),
-      });
-      if (!created.ok) return { ok: false, error: 'github_failed', url };
-    } else if (!repoRes.ok) {
-      return { ok: false, error: 'github_failed', url };
-    }
-  } catch {
-    return { ok: false, error: 'github_failed', url };
-  }
+  const pages = await ensurePagesConfigured(accessToken, info.login, normalizedRepo, ensuredRepo.defaultBranch);
+  if (!pages.ok) return { ok: false, error: pages.error, url };
 
   let distFiles: Array<{ relPath: string; bytes: Uint8Array }>;
   try {
@@ -214,56 +490,40 @@ export async function publishGameToGithubPages(
   }
   if (distFiles.length === 0) return { ok: false, error: 'dist_missing' };
 
-  const indexEntry = distFiles.find((f) => f.relPath === 'index.html');
+  const indexEntry = distFiles.find((file) => file.relPath === 'index.html');
   if (!indexEntry) return { ok: false, error: 'dist_missing' };
-  const distIndexHtml = Buffer.from(indexEntry.bytes).toString('utf8');
-  const playIndex = buildPlayIndexHtml(distIndexHtml);
 
-  const publishPrefix = route ? `${route}/` : '';
-  const message = `Publish PhaserForge game ${input.gameId} to ${route || '/'} (play-only)`;
+  const playIndex = buildPlayIndexHtml(Buffer.from(indexEntry.bytes).toString('utf8'));
+  const yamlNormalized = stringifyYaml(parseYaml(game.yaml));
+  const files: Array<{ path: string; bytes: Uint8Array }> = [
+    { path: PAGES_WORKFLOW_PATH, bytes: Buffer.from(buildPagesWorkflowYaml(), 'utf8') },
+    { path: 'index.html', bytes: Buffer.from(playIndex, 'utf8') },
+    { path: 'game.yaml', bytes: Buffer.from(yamlNormalized, 'utf8') },
+  ];
 
-  try {
-    // index.html (play-only wrapper)
-    await putContentFile({
-      accessToken: token,
-      owner,
-      repo,
-      branch,
-      path: `${publishPrefix}index.html`,
-      message,
-      bytes: Buffer.from(playIndex, 'utf8'),
-    });
-
-    // game.yaml
-    const yamlNormalized = stringifyYaml(parseYaml(game.yaml));
-    await putContentFile({
-      accessToken: token,
-      owner,
-      repo,
-      branch,
-      path: `${publishPrefix}game.yaml`,
-      message,
-      bytes: Buffer.from(yamlNormalized, 'utf8'),
-    });
-
-    // assets + static support files
-    for (const file of distFiles) {
-      if (file.relPath === 'index.html') continue;
-      const outPath = `${publishPrefix}${file.relPath}`;
-      await putContentFile({
-        accessToken: token,
-        owner,
-        repo,
-        branch,
-        path: outPath,
-        message,
-        bytes: file.bytes,
-      });
-    }
-  } catch {
-    return { ok: false, error: 'github_failed', url };
+  for (const file of distFiles) {
+    if (file.relPath === 'index.html') continue;
+    files.push({ path: file.relPath, bytes: file.bytes });
   }
 
-  return { ok: true, url };
-}
+  const commit = await commitFiles({
+    accessToken,
+    owner: info.login,
+    repo: normalizedRepo,
+    branch: ensuredRepo.defaultBranch,
+    message: `Publish PhaserForge game ${input.gameId} to ${normalizedRepo}`,
+    files,
+  });
+  if (!commit.ok) return { ok: false, error: commit.error, url };
 
+  const deployment = await waitForDeploymentAcceptance(accessToken, info.login, normalizedRepo, commit.commitSha);
+  if (!deployment.ok) return { ok: false, error: deployment.error, url };
+
+  return {
+    ok: true,
+    url,
+    repo: normalizedRepo,
+    repoCreated: !ensuredRepo.existed,
+    deploymentStatus: deployment.deploymentStatus,
+  };
+}

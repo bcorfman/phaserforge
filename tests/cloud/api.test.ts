@@ -59,12 +59,18 @@ describe('cloud api', () => {
       expect(init?.credentials).toBe('include');
       expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
       expect((init?.headers as any)['content-type']).toBe('application/json');
-      expect(init?.body).toBe(JSON.stringify({ route: 'mygame' }));
-      return new Response(JSON.stringify({ ok: true, url: 'u', exists: false, status: 404 }), { status: 200 });
+      expect(init?.body).toBe(JSON.stringify({ repo: 'mygame' }));
+      return new Response(JSON.stringify({ ok: true, url: 'u', exists: false, pagesConfigured: false, deploymentStatus: null }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock as any);
 
-    await expect(checkGithubPagesTarget('mygame', 'csrf')).resolves.toEqual({ ok: true, url: 'u', exists: false, status: 404 });
+    await expect(checkGithubPagesTarget('mygame', 'csrf')).resolves.toEqual({
+      ok: true,
+      url: 'u',
+      exists: false,
+      pagesConfigured: false,
+      deploymentStatus: null,
+    });
   });
 
   it('publishToGithubPages sends csrf header', async () => {
@@ -77,11 +83,17 @@ describe('cloud api', () => {
       expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
       expect((init?.headers as any)['content-type']).toBe('application/json');
       expect(init?.credentials).toBe('include');
-      expect(init?.body).toBe(JSON.stringify({ gameId: 'g1', route: 'r1' }));
-      return new Response(JSON.stringify({ ok: true, url: 'https://x' }), { status: 200 });
+      expect(init?.body).toBe(JSON.stringify({ gameId: 'g1', repo: 'r1' }));
+      return new Response(JSON.stringify({ ok: true, url: 'https://x', repo: 'r1', repoCreated: true, deploymentStatus: 'queued' }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock as any);
 
-    await expect(publishToGithubPages('g1', 'r1', 'csrf')).resolves.toEqual({ ok: true, url: 'https://x' });
+    await expect(publishToGithubPages('g1', 'r1', 'csrf')).resolves.toEqual({
+      ok: true,
+      url: 'https://x',
+      repo: 'r1',
+      repoCreated: true,
+      deploymentStatus: 'queued',
+    });
   });
 });
