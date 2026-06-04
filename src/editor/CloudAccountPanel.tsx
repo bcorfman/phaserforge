@@ -6,7 +6,7 @@ import { WorkspaceConflictModal } from './WorkspaceConflictModal';
 import { summarizeYamlWorkspace } from './workspaceSummary';
 
 type CloudAccountUser = { id: string; email: string } | null;
-type CloudPublishInfo = { ok: true; login: string; pagesBaseUrl: string; repo: string } | { ok: false; error: string };
+type CloudPublishInfo = { ok: true; login: string; pagesBaseUrl: string } | { ok: false; error: string };
 type CloudAuthMode = 'login' | 'signup';
 export const CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY = 'phaserforge.cloud.return_to_cloud_after_auth';
 const GITHUB_AUTHORIZED_APPS_SETTINGS_URL = 'https://github.com/settings/connections/applications';
@@ -96,6 +96,27 @@ function mapGithubAuthError(error: string): string {
   }
 }
 
+function mapPublishError(error: string): string {
+  switch (error) {
+    case 'github_repo_permission_required':
+      return 'GitHub denied repository access. Reconnect GitHub and ensure this account can create repositories.';
+    case 'github_workflow_permission_required':
+      return 'GitHub denied workflow access. Reconnect GitHub to grant workflow permissions, then try again.';
+    case 'github_pages_permission_required':
+      return 'GitHub denied GitHub Pages management access. Reconnect GitHub and ensure this account can manage GitHub Pages.';
+    case 'github_pages_build_failed':
+      return 'GitHub Pages deployment failed. Open the target repository Actions tab for details.';
+    case 'repo_unavailable':
+      return 'That repository name is unavailable. Choose a different repository name.';
+    case 'path_assets_unsupported':
+      return 'Publishing requires embedded assets only. Convert path assets to embedded before publishing.';
+    case 'not_found':
+      return 'The cloud game record was not found. Save again and retry.';
+    default:
+      return error;
+  }
+}
+
 function markReturnToCloudAfterAuth() {
   if (typeof window === 'undefined') return;
   try {
@@ -132,10 +153,15 @@ export function CloudAccountPanel({
   const [publishInfo, setPublishInfo] = useState<CloudPublishInfo | null>(
     cachedCloudAccountUser?.id ? cachedPublishInfoByUserId.get(cachedCloudAccountUser.id) ?? null : null,
   );
-  const [publishCheck, setPublishCheck] = useState<{ url: string; exists: boolean; status: number | null } | null>(null);
+  const [publishCheck, setPublishCheck] = useState<{ url: string; exists: boolean; pagesConfigured: boolean; deploymentStatus: string | null } | null>(
+    null,
+  );
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showGithubConfirm, setShowGithubConfirm] = useState<null | { mode: 'connect' | 'switch' }>(null);
   const [lastPublish, setLastPublish] = useState<{ url: string; publishedAtMs: number } | null>(null);
+  const [publishBusyLabel, setPublishBusyLabel] = useState<string | null>(null);
+  const [publishDeploymentNote, setPublishDeploymentNote] = useState('');
+  const [publishInlineError, setPublishInlineError] = useState('');
   const [cloudGameId, setCloudGameId] = useState<string | null>(null);
   const [workspaceConflict, setWorkspaceConflict] = useState<{
     cloud: { yaml: string; updatedAt: string; label: string };
@@ -378,8 +404,11 @@ export function CloudAccountPanel({
   }, [state.project]);
 
   const titleValue = state.project.title ?? '';
-  const routeValue = state.project.publishGithubPagesRoute ?? '';
-  const publishRoutePreview = publishInfo?.ok ? `${publishInfo.pagesBaseUrl}${routeValue.trim() || '<route>'}/` : null;
+  const repoValue = state.project.publishGithubPagesRepo ?? '';
+  const publishRoutePreview = publishInfo?.ok ? `${publishInfo.pagesBaseUrl}${repoValue.trim() || '<repo>'}/` : null;
+  const publishHelpText = [projectHasPathAssets ? 'Path assets detected; publishing is disabled.' : '', publishDeploymentNote, publishInlineError]
+    .filter(Boolean)
+    .join(' ');
 
   const ensureCsrf = async (options?: { forceRefresh?: boolean }) => {
     if (!options?.forceRefresh && csrfToken) return csrfToken;
@@ -505,50 +534,71 @@ export function CloudAccountPanel({
   };
 
   const handlePublishCheck = async () => {
-    const route = state.project.publishGithubPagesRoute?.trim() ?? '';
-    if (!route) {
-      onError('Enter a route to publish (example: mygame)');
+    const repo = state.project.publishGithubPagesRepo?.trim() ?? '';
+    if (!repo) {
+      const message = 'Enter a repository name to publish (example: zoof)';
+      setPublishInlineError(message);
+      onError(message);
       return;
     }
+    setBusy(true);
+    setPublishInlineError('');
+    setPublishBusyLabel('Checking repository availability…');
     const info = await ensurePublishInfo();
     if (!info.ok) {
-      onError('Requires GitHub login to publish.');
+      setBusy(false);
+      setPublishBusyLabel(null);
+      const message = 'Requires GitHub login to publish.';
+      setPublishInlineError(message);
+      onError(message);
       return;
     }
-    const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(route, csrf));
-    if (!check.ok) {
-      onError(check.error);
-      return;
+    try {
+      const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(repo, csrf));
+      if (!check.ok) {
+        const message = mapPublishError(check.error);
+        setPublishInlineError(message);
+        onError(message);
+        return;
+      }
+      setPublishCheck(check);
+      setShowPublishConfirm(true);
+    } finally {
+      setBusy(false);
+      setPublishBusyLabel(null);
     }
-    setPublishCheck({ url: check.url, exists: check.exists, status: check.status });
-    if (check.exists) setShowPublishConfirm(true);
-    else setShowPublishConfirm(true);
   };
 
-  const handlePublish = async (allowOverwrite: boolean) => {
+  const handlePublish = async () => {
     if (!user) return;
     setBusy(true);
+    setPublishBusyLabel('Saving project to cloud…');
+    setPublishDeploymentNote('');
+    setPublishInlineError('');
     try {
       const gameId = await ensureCloudGameSaved();
       if (!gameId) return;
-      const route = state.project.publishGithubPagesRoute?.trim() ?? '';
-      if (!route) {
-        onError('Enter a route to publish (example: mygame)');
+      const repo = state.project.publishGithubPagesRepo?.trim() ?? '';
+      if (!repo) {
+        const message = 'Enter a repository name to publish (example: zoof)';
+        setPublishInlineError(message);
+        onError(message);
         return;
       }
-      const result = await runWithCsrfResultRetry((csrf) =>
-        publishToGithubPages(gameId, route, csrf, { ...(allowOverwrite ? { allowOverwrite: true } : {}) }),
-      );
+      setPublishBusyLabel('Uploading files and workflow to GitHub…');
+      const result = await runWithCsrfResultRetry((csrf) => publishToGithubPages(gameId, repo, csrf));
       if (!result.ok) {
-        if (result.error === 'target_exists') {
-          onError('That GitHub Pages URL already exists. Choose a different route or confirm overwrite.');
-        } else if (result.error === 'path_assets_unsupported') {
-          onError('Publishing requires embedded assets only. Convert path assets to embedded before publishing.');
-        } else {
-          onError(result.error);
-        }
+        const message = mapPublishError(result.error);
+        setPublishInlineError(message);
+        onError(message);
         return;
       }
+      setPublishBusyLabel('Configuring GitHub Pages…');
+      setPublishDeploymentNote(
+        result.deploymentStatus === 'built'
+          ? `Repository ${result.repo} is live at ${result.url}`
+          : `GitHub Pages accepted the deployment for ${result.repo}. If the URL is not live yet, wait about a minute and reload.`,
+      );
       try {
         const publishedAtMs = Date.now();
         window.localStorage.setItem(LAST_PUBLISH_STORAGE_KEY, JSON.stringify({ url: result.url, publishedAtMs }));
@@ -556,10 +606,15 @@ export function CloudAccountPanel({
       } catch {
         // ignore
       }
-      onStatus(`Published to ${result.url}`);
+      onStatus(
+        result.deploymentStatus === 'built'
+          ? `Published ${result.repo} to ${result.url}`
+          : `Published ${result.repo} to ${result.url}. GitHub Pages may take about a minute to go live.`,
+      );
       window.open(result.url, '_blank', 'noopener,noreferrer');
     } finally {
       setBusy(false);
+      setPublishBusyLabel(null);
       setShowPublishConfirm(false);
     }
   };
@@ -927,23 +982,31 @@ export function CloudAccountPanel({
               <>
                 <div className="cloud-row">
                   <label className="field">
-                    <span>Route</span>
+                    <span>Repository</span>
                     <input
-                      value={routeValue}
-                      placeholder="mygame"
-                      onChange={(e) => dispatch({ type: 'set-project-metadata', publishGithubPagesRoute: e.target.value })}
-                      aria-label="Publish route"
+                      value={repoValue}
+                      placeholder="zoof"
+                      onChange={(e) => {
+                        setPublishInlineError('');
+                        dispatch({ type: 'set-project-metadata', publishGithubPagesRepo: e.target.value });
+                      }}
+                      aria-label="Publish repository"
                     />
                   </label>
                   <button
                     className="button primary"
                     type="button"
                     data-testid="cloud-publish-pages-button"
-                    disabled={busy || !routeValue.trim() || projectHasPathAssets}
+                    disabled={busy || !repoValue.trim() || projectHasPathAssets}
                     onClick={() => void handlePublishCheck()}
                   >
                     Publish
                   </button>
+                </div>
+                <div className="cloud-row">
+                  <div className="cloud-help" data-testid="cloud-publish-prereq">
+                    Before first publish: your GitHub account must be allowed to create repositories and manage GitHub Pages.
+                  </div>
                 </div>
                 <div className="cloud-row">
                   <div className="cloud-help" data-testid="cloud-publish-pages-target">
@@ -952,9 +1015,17 @@ export function CloudAccountPanel({
                 </div>
                 <div className="cloud-row">
                   <div className="cloud-help" data-testid="cloud-publish-pages-help">
-                    {projectHasPathAssets ? 'Path assets detected; publishing is disabled.' : ''}
+                    {publishHelpText}
                   </div>
                 </div>
+                {publishBusyLabel ? (
+                  <div className="cloud-row">
+                    <div className="cloud-publish-status" data-testid="cloud-publish-progress" role="status" aria-live="polite">
+                      <div className="cloud-publish-progress-bar" aria-hidden="true" />
+                      <span>{publishBusyLabel}</span>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="cloud-row">
                   <label className="field">
                     <span>Last publish</span>
@@ -994,15 +1065,26 @@ export function CloudAccountPanel({
             </div>
             <div className="cloud-help">
               {publishCheck.exists
-                ? `A page already exists at this URL (HTTP ${publishCheck.status ?? 'unknown'}). Publishing may overwrite it.`
-                : 'No existing page detected at this URL.'}
+                ? 'This repository already exists. Publishing will update its PhaserForge Pages workflow and site files.'
+                : 'A new repository will be created and configured for GitHub Pages.'}
             </div>
+            <div className="cloud-help">
+              {publishCheck.pagesConfigured
+                ? `GitHub Pages is already configured${publishCheck.deploymentStatus ? ` (${publishCheck.deploymentStatus})` : ''}.`
+                : 'GitHub Pages will be configured automatically during publish.'}
+            </div>
+            {publishBusyLabel ? (
+              <div className="cloud-publish-status" data-testid="cloud-publish-progress" role="status" aria-live="polite">
+                <div className="cloud-publish-progress-bar" aria-hidden="true" />
+                <span>{publishBusyLabel}</span>
+              </div>
+            ) : null}
             <div className="cloud-row">
               <button className="button" type="button" onClick={() => setShowPublishConfirm(false)}>
                 Cancel
               </button>
-              <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={() => void handlePublish(Boolean(publishCheck.exists))}>
-                {publishCheck.exists ? 'Publish anyway' : 'Publish'}
+              <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={() => void handlePublish()}>
+                {busy ? 'Publishing…' : publishCheck.exists ? 'Update repository' : 'Create repo and publish'}
               </button>
             </div>
           </div>

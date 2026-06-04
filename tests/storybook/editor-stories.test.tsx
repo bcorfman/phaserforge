@@ -72,6 +72,13 @@ describe('storybook interaction stories', () => {
     expect(container.textContent).toContain('Path assets detected');
   });
 
+  it('runs the cloud publish-ready and failure stories', async () => {
+    let container = await renderStoryAndPlay(composedCloudStories.PublishReady as any);
+    expect(container.textContent).toContain('Before first publish');
+    container = await renderStoryAndPlay(composedCloudStories.PublishFailure as any);
+    expect(container.textContent).toContain('GitHub denied GitHub Pages management access');
+  });
+
   it('runs the YAML picker sync stories', async () => {
     await renderStoryAndPlay(composedYamlStories.OpenAndSaveSharePickerHandle as any);
     await renderStoryAndPlay(composedYamlStories.SaveExistingHandle as any);
