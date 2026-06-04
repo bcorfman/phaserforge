@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { EventBus, getActiveScene } from '../phaser/EventBus';
 import { useEditorStore, type Selection } from './EditorStore';
 import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
 import { getNextFormationName } from './behaviorCommands';
-import { clampPopupToViewport, constrainPopupSizeToViewport, placePopupNearRect, type Size } from './popupPositioning';
+import { clampPopupToViewport, constrainPopupSizeToViewport, fitPopupWithinViewport, placePopupNearRect, type Size } from './popupPositioning';
 import { CreateFormationDraftPanel } from './CreateFormationDraftPanel';
 import {
   alignByBounds,
@@ -432,6 +432,34 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     setLayoutSetX(String(Math.round(bounds.centerX)));
     setLayoutSetY(String(Math.round(bounds.centerY)));
   }, [layoutOpen, state.mode, state.selection, state.currentSceneId]);
+
+  useLayoutEffect(() => {
+    if (!layoutOpen || !layoutPosition) return;
+
+    const root = layoutRootRef.current;
+    if (!root) return;
+
+    const rect = root.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const fit = fitPopupWithinViewport({
+      position: layoutPosition,
+      popupSize: {
+        width: Math.ceil(rect.width),
+        height: Math.ceil(rect.height),
+      },
+      viewportSize: { width: window.innerWidth, height: window.innerHeight },
+      padding: 12,
+    });
+
+    if (!layoutPopupSize || layoutPopupSize.width !== fit.popupSize.width || layoutPopupSize.height !== fit.popupSize.height) {
+      setLayoutPopupSize(fit.popupSize);
+    }
+
+    if (layoutPosition.x !== fit.position.x || layoutPosition.y !== fit.position.y) {
+      setLayoutPosition(fit.position);
+    }
+  }, [layoutOpen, layoutPosition, layoutPopupSize]);
 
   const applyLayoutPositions = (positions: Array<{ id: string; x: number; y: number }>) => {
     const final = gridSnapEnabled ? snapPositions(positions, 8) : positions;
