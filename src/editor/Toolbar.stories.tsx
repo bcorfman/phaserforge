@@ -13,8 +13,10 @@ const meta = {
       themeMode: 'system',
       error: undefined,
       statusMessage: 'Draft autosaved',
+      syncMode: 'online',
     },
     dispatch: fn(),
+    onToggleSyncMode: fn(),
   },
 } satisfies Meta<typeof ToolbarView>;
 
