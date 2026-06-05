@@ -224,6 +224,13 @@ textarea:focus-visible {
   margin-top: 0.6rem;
 }
 
+@media (min-width: 1181px) {
+  .toolbar-summary-single-line {
+    max-width: none;
+    white-space: nowrap;
+  }
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
