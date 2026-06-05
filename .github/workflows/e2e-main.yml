@@ -17,6 +17,9 @@ jobs:
   e2e-main-chromium:
     name: E2E Main Chromium (shard ${{ matrix.shard }}/${{ matrix.shards }})
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      options: --ipc=host
     strategy:
       fail-fast: false
       matrix:
@@ -34,9 +37,6 @@ jobs:
 
       - name: Install
         run: npm ci
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
 
       - name: E2E Tests
         env:
@@ -55,6 +55,9 @@ jobs:
   e2e-main-cross-browser:
     name: E2E Main Cross-browser (shard ${{ matrix.shard }}/${{ matrix.shards }})
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      options: --ipc=host
     strategy:
       fail-fast: false
       matrix:
@@ -73,10 +76,6 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Install Playwright Browsers
-        # `msedge` project uses the Chromium engine unless PW_EDGE_CHANNEL is set.
-        run: npx playwright install --with-deps chromium firefox webkit
-
       - name: E2E Tests
         env:
           PW_PROJECTS: firefox,webkit,msedge
@@ -90,4 +89,3 @@ jobs:
           path: |
             playwright-report
             test-results
-
