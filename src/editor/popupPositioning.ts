@@ -50,6 +50,34 @@ export function constrainPopupSizeToViewport({
   };
 }
 
+export function fitPopupWithinViewport({
+  position,
+  popupSize,
+  viewportSize,
+  padding = 12,
+}: {
+  position: Point;
+  popupSize: Size;
+  viewportSize: Size;
+  padding?: number;
+}): { position: Point; popupSize: Size } {
+  const constrainedSize = constrainPopupSizeToViewport({
+    popupSize,
+    viewportSize,
+    padding,
+  });
+
+  return {
+    position: clampPopupToViewport({
+      position,
+      popupSize: constrainedSize,
+      viewportSize,
+      padding,
+    }),
+    popupSize: constrainedSize,
+  };
+}
+
 export function placePopupNearRect({
   anchorRect,
   popupSize,
