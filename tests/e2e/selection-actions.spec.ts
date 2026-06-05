@@ -49,8 +49,10 @@ test('selection bar groups ungrouped entities and can add to an existing group @
   const promptBox = await page.getByTestId('canvas-group-prompt').boundingBox();
   const nameLabelBox = await page.getByTestId('canvas-group-prompt').getByText('Name').boundingBox();
   const nameInputBox = await page.getByTestId('group-name-input').boundingBox();
+  const nameInputOffsetWidth = await page.getByTestId('group-name-input').evaluate((node) => (node as HTMLElement).offsetWidth);
   if (!promptBox || !nameLabelBox || !nameInputBox) throw new Error('Group prompt bounds unavailable');
-  expect(nameInputBox.width).toBeGreaterThanOrEqual(160);
+  // Use layout width rather than transformed screen width so the assertion remains valid under UI scale changes.
+  expect(nameInputOffsetWidth).toBeGreaterThanOrEqual(160);
   expect(nameInputBox.x - (nameLabelBox.x + nameLabelBox.width)).toBeLessThanOrEqual(24);
   const viewport = page.viewportSize();
   if (!promptBox || !viewport) throw new Error('Viewport or prompt bounds unavailable');

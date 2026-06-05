@@ -1023,6 +1023,8 @@ html[data-theme='dark'] .phaser-frame {
 
 .canvas-group-prompt .canvas-submenu-field input {
   width: 13rem;
+  min-width: 160px;
+  flex: 1 0 160px;
 }
 
 .canvas-group-prompt .canvas-submenu-field {
