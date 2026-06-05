@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import {
   CollisionRuleSpec,
   EditorRegistryConfig,
@@ -45,6 +45,9 @@ import { getAssetReferences } from './assetReferences';
 import { buildDefaultDraftParams, type FormationDraftSpec, type FormationTemplateSource } from './formationDraft';
 import { measureTextEntityPixels, resolveTextEntityDefaults, resolveTextFontFamily } from './textEntity';
 import { allocDuplicateName } from './duplicateNaming';
+import { type ProjectSyncMode, type StoredProjectRecord, buildStoredProjectRecord, projectPersistence } from './projectPersistence';
+import type { ProjectLibraryEntry } from './projectLibrary';
+import { getGame, listGames, me } from '../cloud/api';
 
 export const PROJECT_STORAGE_KEY = 'phaserforge.projectYaml.v1';
 export const PROJECT_LAST_SAVED_AT_STORAGE_KEY = 'phaserforge.projectLastSavedAtMs.v1';
@@ -147,6 +150,7 @@ export interface EditorState {
   themeMode: ThemeMode;
   uiScale: number;
   showHitboxOverlay: boolean;
+  syncMode: ProjectSyncMode;
   registry: EditorRegistryConfig;
   initialized: boolean;
   pendingGroupRestore?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec> };
@@ -159,8 +163,9 @@ export type ImportedEntityDraft = {
 };
 
 export type EditorAction =
-  | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; registry: EditorRegistryConfig }
+  | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; syncMode: ProjectSyncMode; registry: EditorRegistryConfig }
   | { type: 'set-startup-mode'; startupMode: StartupMode }
+  | { type: 'set-sync-mode'; syncMode: ProjectSyncMode }
   | { type: 'reset-project' }
   | { type: 'set-project-metadata'; title?: string; publishGithubPagesRepo?: string }
   | { type: 'set-theme-mode'; themeMode: ThemeMode }
@@ -435,6 +440,16 @@ function removeGroupKeepMembers(
 const EditorContext = createContext<{
   state: EditorState;
   dispatch: React.Dispatch<EditorAction>;
+  persistence: {
+    localProjects: ProjectLibraryEntry[];
+    cloudProjects: ProjectLibraryEntry[];
+    activeProjectId: string | null;
+    createProject: () => Promise<void>;
+    duplicateCurrentProject: () => Promise<void>;
+    openProject: (projectId: string) => Promise<void>;
+    refreshCloudProjects: () => Promise<void>;
+    toggleSyncMode: () => Promise<void>;
+  };
 } | null>(null);
 
 function defaultState(): EditorState {
@@ -456,6 +471,7 @@ function defaultState(): EditorState {
     themeMode: 'system',
     uiScale: DEFAULT_UI_SCALE,
     showHitboxOverlay: true,
+    syncMode: 'online',
     registry: EMPTY_EDITOR_REGISTRY,
     initialized: false,
     pendingGroupRestore: undefined,
@@ -1052,6 +1068,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           themeMode: action.themeMode,
           uiScale: coerceUiScale(String(action.uiScale), DEFAULT_UI_SCALE),
           showHitboxOverlay: action.showHitboxOverlay ?? true,
+          syncMode: action.syncMode,
           registry: action.registry,
           initialized: true,
         };
@@ -1060,6 +1077,11 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         startupMode: action.startupMode,
+      };
+    case 'set-sync-mode':
+      return {
+        ...state,
+        syncMode: action.syncMode,
       };
     case 'reset-project': {
       const project = createEmptyProject();
@@ -3431,30 +3453,84 @@ function loadStoredProjectYaml(): ProjectSpec | null {
 export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, initState);
   const statusTimeoutRef = React.useRef<number | null>(null);
+  const [localProjects, setLocalProjects] = useState<ProjectLibraryEntry[]>([]);
+  const [cloudProjects, setCloudProjects] = useState<ProjectLibraryEntry[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const activeRecordRef = React.useRef<StoredProjectRecord | null>(null);
+
+  const mapStoredProject = (record: StoredProjectRecord): ProjectLibraryEntry => ({
+    id: record.id,
+    projectId: record.projectId,
+    title: record.title,
+    updatedAt: record.updatedAt,
+    sceneCount: record.sceneCount,
+    source: record.origin === 'cloud-cache' || Boolean(record.cloudProjectId) ? 'cloud' : 'local',
+    status: record.syncStatus,
+    isCurrent: record.id === activeProjectId,
+    cloudProjectId: record.cloudProjectId,
+  });
 
   useEffect(() => {
     let cancelled = false;
 
     const initialize = async () => {
-      const [config, registry] = await Promise.all([loadEditorConfig(), loadEditorRegistry()]);
+      const [config, registry, snapshot] = await Promise.all([loadEditorConfig(), loadEditorRegistry(), projectPersistence.load()]);
       if (cancelled) return;
 
-      const storedMode = typeof window !== 'undefined'
-        ? coerceStartupMode(window.localStorage.getItem(STARTUP_MODE_STORAGE_KEY), config.startupMode)
-        : config.startupMode;
-      const storedThemeMode = typeof window !== 'undefined'
-        ? coerceThemeMode(window.localStorage.getItem(THEME_MODE_STORAGE_KEY))
-        : 'system';
-      const storedUiScale = typeof window !== 'undefined'
-        ? coerceUiScale(window.localStorage.getItem(UI_SCALE_STORAGE_KEY), DEFAULT_UI_SCALE)
-        : DEFAULT_UI_SCALE;
-      const storedShowHitboxOverlay = typeof window !== 'undefined'
-        ? window.localStorage.getItem(SHOW_HITBOX_OVERLAY_STORAGE_KEY) !== '0'
-        : true;
-      const project = storedMode === 'reload_last_yaml' ? (loadStoredProjectYaml() ?? createEmptyProject()) : createEmptyProject();
+      const storedMode = snapshot.preferences?.startupMode ?? (
+        typeof window !== 'undefined'
+          ? coerceStartupMode(window.localStorage.getItem(STARTUP_MODE_STORAGE_KEY), config.startupMode)
+          : config.startupMode
+      );
+      const storedThemeMode = snapshot.preferences?.themeMode ?? (
+        typeof window !== 'undefined'
+          ? coerceThemeMode(window.localStorage.getItem(THEME_MODE_STORAGE_KEY))
+          : 'system'
+      );
+      const storedUiScale = snapshot.preferences?.uiScale ?? (
+        typeof window !== 'undefined'
+          ? coerceUiScale(window.localStorage.getItem(UI_SCALE_STORAGE_KEY), DEFAULT_UI_SCALE)
+          : DEFAULT_UI_SCALE
+      );
+      const storedShowHitboxOverlay = snapshot.preferences?.showHitboxOverlay ?? (
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(SHOW_HITBOX_OVERLAY_STORAGE_KEY) !== '0'
+          : true
+      );
+      const legacyProject = storedMode === 'reload_last_yaml' ? loadStoredProjectYaml() : null;
+      const initialRecord = legacyProject
+        ? buildStoredProjectRecord(legacyProject, {
+          id: legacyProject.id,
+          origin: activeRecordRef.current?.origin ?? 'anonymous',
+          syncStatus: activeRecordRef.current?.syncStatus ?? 'local',
+          cloudProjectId: activeRecordRef.current?.cloudProjectId,
+        })
+        : (
+          snapshot.localProjects.find((record) => record.id === snapshot.workspace.activeProjectId)
+          ?? snapshot.localProjects[0]
+          ?? await projectPersistence.createLocalProject(createEmptyProject())
+        );
+      if (legacyProject) {
+        await projectPersistence.saveProjectRecord(initialRecord);
+        await projectPersistence.setActiveProject(initialRecord.id, snapshot.workspace.syncMode);
+      }
+      activeRecordRef.current = initialRecord;
+      setActiveProjectId(initialRecord.id);
+      setLocalProjects((snapshot.localProjects.length > 0 ? snapshot.localProjects : [initialRecord]).map(mapStoredProject));
+      const project = parseProjectYaml(initialRecord.yaml);
       const currentSceneId = project.initialSceneId;
 
-      dispatch({ type: 'initialize', project, currentSceneId, startupMode: storedMode, themeMode: storedThemeMode, uiScale: storedUiScale, showHitboxOverlay: storedShowHitboxOverlay, registry });
+      dispatch({
+        type: 'initialize',
+        project,
+        currentSceneId,
+        startupMode: storedMode,
+        themeMode: storedThemeMode,
+        uiScale: storedUiScale,
+        showHitboxOverlay: storedShowHitboxOverlay,
+        syncMode: snapshot.workspace.syncMode,
+        registry,
+      });
     };
 
     void initialize();
@@ -3507,7 +3583,120 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore storage errors
     }
-  }, [state.initialized, state.project]);
+    const currentRecordId = activeProjectId ?? state.project.id;
+    const previous = activeRecordRef.current;
+    const nextRecord = buildStoredProjectRecord(state.project, {
+      id: currentRecordId,
+      origin: previous?.origin ?? 'local-only',
+      syncStatus: state.syncMode === 'offline'
+        ? (previous?.cloudProjectId ? 'unsynced' : 'local')
+        : (previous?.cloudProjectId ? 'cloud' : 'local'),
+      cloudProjectId: previous?.cloudProjectId,
+    });
+    activeRecordRef.current = nextRecord;
+    void projectPersistence.saveProjectRecord(nextRecord).then((records) => {
+      setLocalProjects(records.map(mapStoredProject));
+      void projectPersistence.setActiveProject(currentRecordId, state.syncMode);
+    });
+  }, [activeProjectId, state.initialized, state.project, state.syncMode]);
+
+  useEffect(() => {
+    if (!state.initialized) return;
+    void projectPersistence.savePreferences({
+      startupMode: state.startupMode,
+      themeMode: state.themeMode,
+      uiScale: state.uiScale,
+      showHitboxOverlay: state.showHitboxOverlay,
+    });
+  }, [state.initialized, state.showHitboxOverlay, state.startupMode, state.themeMode, state.uiScale]);
+
+  const refreshCloudProjects = async () => {
+    try {
+      await me();
+      const response = await listGames();
+      setCloudProjects(response.games.map((game) => ({
+        id: game.id,
+        projectId: game.id,
+        title: game.title?.trim() || 'Untitled Project',
+        updatedAt: game.updated_at,
+        sceneCount: 0,
+        source: 'cloud',
+        status: 'cloud',
+        isCurrent: Boolean(activeRecordRef.current?.cloudProjectId && activeRecordRef.current.cloudProjectId === game.id),
+        cloudProjectId: game.id,
+      })));
+    } catch {
+      setCloudProjects([]);
+    }
+  };
+
+  useEffect(() => {
+    void refreshCloudProjects();
+  }, []);
+
+  const openProject = async (projectId: string) => {
+    const local = await projectPersistence.loadProjectById(projectId);
+    if (local) {
+      activeRecordRef.current = local;
+      setActiveProjectId(local.id);
+      dispatch({ type: 'load-yaml-text', text: local.yaml, sourceLabel: local.title });
+      const nextSyncMode: ProjectSyncMode = local.cloudProjectId ? 'online' : state.syncMode;
+      dispatch({ type: 'set-sync-mode', syncMode: nextSyncMode });
+      await projectPersistence.setActiveProject(local.id, nextSyncMode);
+      setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
+      return;
+    }
+
+    const cloud = await getGame(projectId);
+    if (!cloud?.game?.yaml) return;
+    const parsed = parseProjectYaml(cloud.game.yaml);
+    const cacheRecord = buildStoredProjectRecord(parsed, {
+      id: `cloud:${cloud.game.id}`,
+      yaml: cloud.game.yaml,
+      origin: 'cloud-cache',
+      syncStatus: state.syncMode === 'offline' ? 'unsynced' : 'cloud',
+      cloudProjectId: cloud.game.id,
+    });
+    await projectPersistence.saveProjectRecord(cacheRecord);
+    activeRecordRef.current = cacheRecord;
+    setActiveProjectId(cacheRecord.id);
+    dispatch({ type: 'load-yaml-text', text: cloud.game.yaml, sourceLabel: cloud.game.title });
+    dispatch({ type: 'set-sync-mode', syncMode: 'online' });
+    await projectPersistence.setActiveProject(cacheRecord.id, 'online');
+    setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
+  };
+
+  const createProject = async () => {
+    const record = await projectPersistence.createLocalProject();
+    activeRecordRef.current = record;
+    setActiveProjectId(record.id);
+    dispatch({ type: 'load-yaml-text', text: record.yaml, sourceLabel: record.title });
+    dispatch({ type: 'set-sync-mode', syncMode: 'online' });
+    setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
+  };
+
+  const duplicateCurrentProject = async () => {
+    const current = activeRecordRef.current ?? buildStoredProjectRecord(state.project, { id: activeProjectId ?? state.project.id });
+    const duplicate = await projectPersistence.duplicateProject(current);
+    activeRecordRef.current = duplicate;
+    setActiveProjectId(duplicate.id);
+    dispatch({ type: 'load-yaml-text', text: duplicate.yaml, sourceLabel: duplicate.title });
+    dispatch({ type: 'set-sync-mode', syncMode: 'online' });
+    setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
+  };
+
+  const toggleSyncMode = async () => {
+    const next: ProjectSyncMode = state.syncMode === 'online' ? 'offline' : 'online';
+    dispatch({ type: 'set-sync-mode', syncMode: next });
+    await projectPersistence.setSyncMode(activeProjectId ?? state.project.id, next);
+    if (!activeRecordRef.current) return;
+    const nextRecord = {
+      ...activeRecordRef.current,
+      syncStatus: next === 'offline' && activeRecordRef.current.cloudProjectId ? 'unsynced' : activeRecordRef.current.syncStatus,
+    } satisfies StoredProjectRecord;
+    activeRecordRef.current = nextRecord;
+    setLocalProjects((await projectPersistence.saveProjectRecord(nextRecord)).map(mapStoredProject));
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -3530,12 +3719,29 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     };
   }, [state.statusExpiresAt, state.statusMessage]);
 
-  const value = useMemo(() => ({ state, dispatch }), [state]);
+  const value = useMemo(() => ({
+    state,
+    dispatch,
+    persistence: {
+      localProjects,
+      cloudProjects,
+      activeProjectId,
+      createProject,
+      duplicateCurrentProject,
+      openProject,
+      refreshCloudProjects,
+      toggleSyncMode,
+    },
+  }), [state, localProjects, cloudProjects, activeProjectId]);
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
 }
 
-export function useEditorStore(): { state: EditorState; dispatch: React.Dispatch<EditorAction> } {
+export function useEditorStore(): {
+  state: EditorState;
+  dispatch: React.Dispatch<EditorAction>;
+  persistence: NonNullable<React.ContextType<typeof EditorContext>>['persistence'];
+} {
   const ctx = useContext(EditorContext);
   if (!ctx) throw new Error('EditorStore not found');
   return ctx;

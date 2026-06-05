@@ -177,40 +177,52 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 ### A51 — Change Theme (System/Light/Dark)
 - Toolbar → theme toggle buttons.
 
-### A52 — Cloud Load YAML
+### A52 — Open / Switch Project
+- Project tab → `Projects` picker → optionally search/filter → `Open`.
+- The picker now merges Local and Cloud-backed cached projects into one recent surface, while `Cloud` remains account/publish only.
+
+### A53 — Create or Duplicate Project
+- Project tab → `New Project` creates a new local project and switches the editor to it.
+- Project tab → `Active Project Summary` → `Duplicate` creates a local copy and opens it.
+
+### A54 — Cloud Load YAML
 - Cloud panel → select a saved project → `Load`.
 
-### A53 — Cloud Save YAML
+### A55 — Cloud Save YAML
 - Cloud panel → `Save` (saves current YAML to the selected/active cloud project).
 
-### A54 — Cloud Account Access
+### A56 — Cloud Account Access
 - Cloud panel → `Log in` tab (default) → enter email/password → `Log in`.
 - First-time access: Cloud panel → `Create account` tab → enter email/password/invite code → `Create account`.
 
-### A55 — Connect GitHub for Publishing
+### A57 — Connect GitHub for Publishing
 - Cloud panel → once signed in, click `Connect GitHub` → continue to GitHub. If GitHub already recognizes the authorization, the connection may complete immediately.
 - If a different GitHub account is already linked, use `Switch GitHub…` from the signed-in account section. To actually switch accounts, first sign into that GitHub account in the browser or use a private window.
 
-### A56 — Disconnect GitHub from PhaserForge
+### A58 — Disconnect GitHub from PhaserForge
 - Cloud panel → `Disconnect` removes the stored GitHub link/token from PhaserForge only.
 - To revoke GitHub-side authorization entirely, follow the `GitHub authorized OAuth apps` link from the Cloud panel.
 
-### A57 — Manage Counters (Project + Scene)
+### A59 — Toggle Project Sync Mode
+- Toolbar badge or Project tab header → `Online` / `Offline`.
+- `Offline` marks the current working session as local-first; `Online` restores normal cloud-backed intent for linked projects.
+
+### A60 — Manage Counters (Project + Scene)
 - Scene State → Counters → `+ Add Global Counter` / `+ Add Scene Counter` → edit name/scope/value; delete via row controls.
 
-### A58 — Manage Collections
+### A61 — Manage Collections
 - Scene State → Collections → `+ Add Collection` → edit derived-from + members; delete via row controls.
 
-### A59 — Pin Selection While Dragging (Inspector)
+### A62 — Pin Selection While Dragging (Inspector)
 - Inspector → enable `Pin selection while dragging` (selection stays stable while manipulating UI).
 
-### A60 — Reset Project to New Empty Scene
+### A63 — Reset Project to New Empty Scene
 - Project tab → Startup & Reset → `Reset Now → New Empty Scene` (confirm).
 
-### A61 — Clear Scene Contents
+### A64 — Clear Scene Contents
 - Scene tab → Scenes → overflow menu `⋯` → `Clear Scene…` (confirm).
 
-### A62 — Layout Selection (Arrange / Position)
+### A65 — Layout Selection (Arrange / Position)
 - With 2+ sprites selected: on-canvas selection bar → `Layout…`
 - **Arrange items** (changes internal spacing):
   - `Distribute X/Y` spaces items evenly between endpoints (stable sort along the chosen axis).
@@ -222,10 +234,10 @@ These are the smallest user-visible workflows. Larger workflows below reference 
   - `Stack …` intentionally overlaps by aligning item centers to the anchor item.
   - `Match … edges` aligns item edges to the anchor item.
 
-### A63 — Create Text Entity
+### A66 — Create Text Entity
 - Entity List → Scenes → Text → `+ Add`.
 
-### A64 — Right Pane Startup Routing
+### A67 — Right Pane Startup Routing
 - On cloud deployments, if auth is unresolved or no user is signed in, the right pane starts on `Cloud`.
 - On cloud deployments, if a user is already signed in, the right pane starts on `Inspector`.
 - After starting GitHub connect/switch from the Cloud panel, the right pane stays on `Cloud` after auth returns so the success state remains visible.
@@ -238,6 +250,11 @@ These are the smallest user-visible workflows. Larger workflows below reference 
 
 ### W2 — Formation Authoring (grouping existing sprites)
 - A2 select multiple sprites → A16 create group → A11 move formation → A28 convert/tune layout → A17/A18 adjust membership.
+
+### W3 — Project Switching / Recovery
+- A52 search/filter/open an existing project or A53 create/duplicate one.
+- A59 toggle `Online` / `Offline` as needed.
+- A49/A63 remain below the picker for startup/reset behavior on the active project.
 
 ### W3 — Formation Authoring (generate/cloned formation)
 - A26 create formation (arrange+template) → A1 select formation → A28 tune layout params → A11/A12 position.
