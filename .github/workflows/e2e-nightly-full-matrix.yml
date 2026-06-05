@@ -10,6 +10,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  HOME: /root
 
 permissions:
   contents: read
@@ -18,6 +19,9 @@ jobs:
   e2e-nightly-full-matrix:
     name: E2E Full Matrix (shard ${{ matrix.shard }}/${{ matrix.shards }})
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      options: --ipc=host
     strategy:
       fail-fast: false
       matrix:
@@ -36,10 +40,6 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Install Playwright Browsers
-        # `msedge` project uses the Chromium engine unless PW_EDGE_CHANNEL is set.
-        run: npx playwright install --with-deps chromium firefox webkit
-
       - name: E2E Tests
         env:
           PW_PROJECTS: chromium,firefox,webkit,msedge
@@ -53,4 +53,3 @@ jobs:
           path: |
             playwright-report
             test-results
-
