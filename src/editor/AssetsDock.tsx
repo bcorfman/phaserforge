@@ -154,20 +154,19 @@ export function AssetsDock({
       for (const file of files) {
         const lower = file.name.toLowerCase();
         const isFont = /\.(ttf|otf|woff|woff2)$/.test(lower);
-        const sourcePathHint = file.webkitRelativePath?.trim() || file.name;
         if (file.type.startsWith('image/')) {
           const dataUrl = await readAsDataUrl(file);
           const meta = toLoadedImage(await loadImageMetadataFromFile(file, dataUrl));
           dispatch({
             type: 'add-image-asset-from-file',
-            file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, pathHint: sourcePathHint, width: meta.width, height: meta.height },
+            file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, width: meta.width, height: meta.height },
           } as any);
         } else if (file.type.startsWith('audio/')) {
           const dataUrl = await readAsDataUrl(file);
-          dispatch({ type: 'add-audio-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, pathHint: sourcePathHint } } as any);
+          dispatch({ type: 'add-audio-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined } } as any);
         } else if (isFont) {
           const dataUrl = await readAsDataUrl(file);
-          dispatch({ type: 'add-font-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined, pathHint: sourcePathHint } } as any);
+          dispatch({ type: 'add-font-asset-from-file', file: { dataUrl, originalName: file.name, mimeType: file.type || undefined } } as any);
         }
       }
     } catch (err) {
@@ -387,7 +386,7 @@ export function AssetsDock({
           const audioBadges = assetKind === 'audio' ? usageBadgesForAudio(project, assetId) : [];
           const sheetBadge = assetKind === 'spritesheet' ? ['SHEET'] : [];
           const thumbnailSrc = (assetKind === 'image' || assetKind === 'spritesheet') && asset?.source
-            ? (asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path)
+            ? asset.source.dataUrl
             : '';
 
           return (

@@ -15,10 +15,10 @@ type LoadedImage = {
   width: number;
   height: number;
   image: HTMLImageElement;
-  sourceKind: 'embedded' | 'path';
+  sourceKind: 'embedded';
 };
 
-function loadImageMetadata(src: string, name: string, mimeType: string | undefined, sourceKind: LoadedImage['sourceKind']): Promise<LoadedImage> {
+function loadImageMetadata(src: string, name: string, mimeType: string | undefined): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = async () => {
@@ -55,9 +55,7 @@ export function SpriteImportPanelView({
   selection: Selection;
   dispatch: (action: any) => void;
 }) {
-  const [sourceMode, setSourceMode] = useState<'embedded' | 'path'>('embedded');
   const [loadedImage, setLoadedImage] = useState<LoadedImage | null>(null);
-  const [assetPath, setAssetPath] = useState('');
   const [imageType, setImageType] = useState<'image' | 'spritesheet'>('image');
   const [frameWidth, setFrameWidth] = useState(32);
   const [frameHeight, setFrameHeight] = useState(32);
@@ -91,7 +89,7 @@ export function SpriteImportPanelView({
     try {
       const parsed = await readImageDimensionsFromFile(file);
       const dataUrl = await fileToDataUrl(file);
-      const metadata = await loadImageMetadata(dataUrl, file.name, file.type, 'embedded');
+      const metadata = await loadImageMetadata(dataUrl, file.name, file.type);
       if (parsed && (metadata.width <= 0 || metadata.height <= 0)) {
         metadata.width = parsed.width;
         metadata.height = parsed.height;
@@ -103,30 +101,15 @@ export function SpriteImportPanelView({
     }
   };
 
-  const handleLoadPath = async () => {
-    try {
-      const metadata = await loadImageMetadata(assetPath, assetPath.split('/').pop() ?? assetPath, undefined, 'path');
-      setLoadedImage(metadata);
-      setError(undefined);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load path');
-    }
-  };
-
   const importSprites = () => {
     if (!loadedImage) return;
 
-    const source: SpriteAssetSource = loadedImage.sourceKind === 'embedded'
-      ? {
-          kind: 'embedded',
-          dataUrl: loadedImage.src,
-          originalName: loadedImage.name,
-          mimeType: loadedImage.mimeType,
-        }
-      : {
-          kind: 'path',
-          path: loadedImage.src,
-        };
+    const source: SpriteAssetSource = {
+      kind: 'embedded',
+      dataUrl: loadedImage.src,
+      originalName: loadedImage.name,
+      mimeType: loadedImage.mimeType,
+    };
 
     const frames = imageType === 'spritesheet' && grid
       ? (selectedFrames.length > 0 ? selectedFrames : [0])
@@ -192,44 +175,15 @@ export function SpriteImportPanelView({
     <div className="inspector-block" data-testid="sprite-import-panel">
       <div className="inspector-title">Import Sprites</div>
       <label className="field">
-        <span>Source</span>
-        <select
-          aria-label="Sprite import source"
-          data-testid="sprite-import-source-select"
-          value={sourceMode}
-          onChange={(e) => setSourceMode(e.target.value as 'embedded' | 'path')}
-        >
-          <option value="embedded">Embedded File</option>
-          <option value="path">Asset Path</option>
-        </select>
+        <span>Image File</span>
+        <input
+          aria-label="Sprite image file"
+          data-testid="sprite-file-input"
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          onChange={(e) => void handleFileChange(e)}
+        />
       </label>
-      {sourceMode === 'embedded' ? (
-        <label className="field">
-          <span>Image File</span>
-          <input
-            aria-label="Sprite image file"
-            data-testid="sprite-file-input"
-            type="file"
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            onChange={(e) => void handleFileChange(e)}
-          />
-        </label>
-      ) : (
-        <div className="field">
-          <span>Asset Path</span>
-          <input
-            aria-label="Sprite asset path"
-            data-testid="sprite-path-input"
-            type="text"
-            value={assetPath}
-            onChange={(e) => setAssetPath(e.target.value)}
-            placeholder="/images/my-spritesheet.png"
-          />
-          <button className="button" data-testid="load-sprite-path-button" type="button" onClick={() => void handleLoadPath()}>
-            Load Path
-          </button>
-        </div>
-      )}
       {loadedImage && (
         <>
           <div className="inspector-row" data-testid="sprite-import-meta">

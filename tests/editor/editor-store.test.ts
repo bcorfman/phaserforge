@@ -104,7 +104,7 @@ describe('EditorStore reducer', () => {
     expect(next.error).toBeUndefined();
   });
 
-  it('persists source path metadata when importing an embedded image from device', () => {
+  it('persists embedded image metadata when importing from device', () => {
     const state = seededState();
 
     const next = reducer(state, {
@@ -112,7 +112,6 @@ describe('EditorStore reducer', () => {
       file: {
         dataUrl: 'data:image/png;base64,AAAA',
         originalName: 'spaceship.png',
-        pathHint: 'spaceship.png',
         mimeType: 'image/png',
         width: 32,
         height: 32,
@@ -123,7 +122,6 @@ describe('EditorStore reducer', () => {
     expect(asset).toBeDefined();
     expect(asset.source).toMatchObject({
       kind: 'embedded',
-      pathHint: 'spaceship.png',
       originalName: 'spaceship.png',
       mimeType: 'image/png',
     });
@@ -787,7 +785,7 @@ describe('EditorStore reducer', () => {
   it('sets an asset on multiple entities at once', () => {
     const state = seededState();
     const asset = {
-      source: { kind: 'path', path: '/images/enemy_A.png' },
+      source: { kind: 'embedded', dataUrl: 'data:image/png;base64,AAAA', originalName: 'enemy_A.png', mimeType: 'image/png' },
       imageType: 'image',
       frame: { kind: 'single' },
     } as any;

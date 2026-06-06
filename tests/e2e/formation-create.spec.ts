@@ -8,7 +8,16 @@ test('creates a formation via the new draft workflow from Formations + Add @crit
   await openSceneScope(page);
 
   // Keep this test fast: avoid file-picker + image decoding work (covered by assets-dock specs).
-  await dispatchAction(page, { type: 'add-image-asset-from-path', path: 'res/images/enemy_A.png', suggestedId: 'enemy-a', width: 64, height: 64 } as any);
+  await dispatchAction(page, {
+    type: 'add-image-asset-from-file',
+    file: {
+      dataUrl: 'data:image/png;base64,AAAA',
+      originalName: 'enemy_A.png',
+      mimeType: 'image/png',
+      width: 64,
+      height: 64,
+    },
+  } as any);
 
   const before = await getState<{ scene: { entities: Record<string, unknown>; groups: Record<string, unknown> } }>(page);
   const beforeEntityCount = Object.keys(before.scene.entities).length;
