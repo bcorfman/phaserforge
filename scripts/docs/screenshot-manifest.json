@@ -1,38 +1,39 @@
 [
   {
     "id": "entity-list-scene-scope",
-    "source": "storybook",
-    "storyId": "editor-entitylist--scene-scope-default",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "assets-dock",
     "selector": "[data-testid=\"assets-dock\"]",
-    "readySelector": "[data-testid=\"assets-dock-item-image-enemy_A\"]",
-    "viewport": { "width": 900, "height": 900 },
-    "output": "docs/assets/screenshots/storybook/entity-list-scene-scope.png"
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/entity-list-scene-scope.png"
   },
   {
     "id": "toolbar-theme-and-scale",
-    "source": "storybook",
-    "storyId": "editor-toolbar--theme-and-scale",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "toolbar",
     "selector": "[data-testid=\"toolbar\"]",
     "viewport": { "width": 1280, "height": 220 },
-    "output": "docs/assets/screenshots/storybook/toolbar-theme-and-scale.png"
+    "output": "docs/assets/screenshots/playwright/toolbar-theme-and-scale.png"
   },
   {
     "id": "yaml-controls-save",
-    "source": "storybook",
-    "storyId": "editor-viewbaryamlcontrols--save-existing-handle",
-    "selector": "#storybook-root",
-    "readySelector": "[data-testid=\"yaml-save-button\"]",
-    "viewport": { "width": 900, "height": 240 },
-    "output": "docs/assets/screenshots/storybook/yaml-controls-save.png"
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "yaml-controls",
+    "selector": "[data-testid=\"yaml-save-as-button\"]",
+    "viewport": { "width": 1440, "height": 320 },
+    "output": "docs/assets/screenshots/playwright/yaml-controls-save.png"
   },
   {
     "id": "cloud-publish-ready",
-    "source": "storybook",
-    "storyId": "editor-cloudaccountpanel--publish-ready",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "cloud-publish",
     "selector": "[data-testid=\"cloud-publish-pages-section\"]",
-    "readySelector": "[data-testid=\"cloud-publish-pages-button\"]",
-    "viewport": { "width": 900, "height": 900 },
-    "output": "docs/assets/screenshots/storybook/cloud-publish-ready.png"
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/cloud-publish-ready.png"
   },
   {
     "id": "layout-popover",

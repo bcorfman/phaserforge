@@ -16,7 +16,7 @@ The exact workflow family behind this guide is `W16` in the [Editor Workflow Ref
 
 Open the right-side Cloud pane. If you are signed out, log in first. After that, connect your GitHub account if it is not already linked.
 
-![Cloud publish section](../assets/screenshots/storybook/cloud-publish-ready.png)
+![Cloud publish section](../assets/screenshots/playwright/cloud-publish-ready.png)
 
 Success check:
 - The Cloud pane shows you as signed in.
@@ -55,7 +55,7 @@ Success check:
 
 After a successful first publish, the Cloud pane should report that GitHub Pages accepted the deployment and show the resulting target URL.
 
-![Cloud publish section](../assets/screenshots/storybook/cloud-publish-ready.png)
+![Cloud publish section](../assets/screenshots/playwright/cloud-publish-ready.png)
 
 Success check:
 - The Cloud pane reports a successful deployment handoff.
