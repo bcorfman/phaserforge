@@ -6,12 +6,18 @@ on:
       - main
     paths:
       - 'docs/**'
+      - 'src/docs/**'
+      - 'scripts/docs/**'
+      - '.plans/editor-workflows-inventory.md'
       - '.github/workflows/docs-build.yml'
       - 'package.json'
       - 'package-lock.json'
   pull_request:
     paths:
       - 'docs/**'
+      - 'src/docs/**'
+      - 'scripts/docs/**'
+      - '.plans/editor-workflows-inventory.md'
       - '.github/workflows/docs-build.yml'
       - 'package.json'
       - 'package-lock.json'
