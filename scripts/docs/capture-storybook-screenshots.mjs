@@ -53,7 +53,7 @@ async function captureStorybookScreenshots() {
       for (const entry of manifest) {
         const page = await browser.newPage({
           viewport: entry.viewport ?? { width: 1280, height: 900 },
-          deviceScaleFactor: 1,
+          deviceScaleFactor: 2,
         });
         const storyUrl = `${STORYBOOK_URL}/iframe.html?id=${encodeURIComponent(entry.storyId)}&viewMode=story`;
         await page.goto(storyUrl, { waitUntil: 'networkidle', timeout: 120000 });
