@@ -9,6 +9,7 @@ export default defineConfig({
     nav: [
       { text: 'Getting Started', link: '/getting-started/' },
       { text: 'Reference', link: '/reference/editor-workflows' },
+      { text: 'Troubleshooting', link: '/troubleshooting/github-pages-publish' },
     ],
     sidebar: [
       {
@@ -21,7 +22,14 @@ export default defineConfig({
       },
       {
         text: 'Reference',
-        items: [{ text: 'Editor Workflows', link: '/reference/editor-workflows' }],
+        items: [
+          { text: 'Editor Workflows', link: '/reference/editor-workflows' },
+          { text: 'Workflow Glossary', link: '/reference/workflow-glossary' },
+        ],
+      },
+      {
+        text: 'Troubleshooting',
+        items: [{ text: 'GitHub Pages Publish', link: '/troubleshooting/github-pages-publish' }],
       },
     ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/bcorfman/phaserforge' }],

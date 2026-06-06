@@ -27,6 +27,8 @@ dist-ssr
 .codegraph/
 playwright-report/
 test-results/
+docs/.vitepress/.temp/
+docs/.vitepress/dist/
 
 # Private local notes (never commit)
 .plans/private/

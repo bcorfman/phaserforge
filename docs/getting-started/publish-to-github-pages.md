@@ -1,27 +1,89 @@
 # Publish to GitHub Pages
 
-This page will become the publish walkthrough for taking a finished PhaserForge demo and publishing it to GitHub Pages from the Cloud pane.
+This walkthrough takes a finished PhaserForge project and publishes it to GitHub Pages from the Cloud pane. It assumes you already have a saved project, such as the one from [Pattern Demo](./pattern-demo).
 
-## Planned Structure
+## What Publishing Requires
 
-1. Sign in to PhaserForge
-2. Connect GitHub
-3. Open the Cloud pane
-4. Enter the project title and repository name
-5. Run publish precheck
-6. Publish and confirm any overwrite/update prompt
-7. Verify the resulting Pages URL
+Before you start, make sure:
 
-## Source Material
+- you can sign in to PhaserForge Cloud
+- the GitHub account you intend to use is available
+- your project already has a title and working content
 
-- [Editor Workflow Reference](../reference/editor-workflows)
-- `W16` Cloud Publish Loop
-- `A63` through `A66` account, GitHub, and publish workflows
+The exact workflow family behind this guide is `W16` in the [Editor Workflow Reference](../reference/editor-workflows).
 
-## Phase 1 Status
+## 1. Sign In and Connect GitHub
 
-This is a scaffold page. In later phases it will gain:
+Open the right-side Cloud pane. If you are signed out, log in first. After that, connect your GitHub account if it is not already linked.
 
-- a user-facing walkthrough
-- close-up screenshots of the Cloud pane
-- troubleshooting for common publish failures
+![Cloud publish section](../assets/screenshots/storybook/cloud-publish-ready.png)
+
+Success check:
+- The Cloud pane shows you as signed in.
+- The publish section is available instead of only showing a sign-in prompt.
+
+## 2. Fill in the Publish Details
+
+In the publish section, confirm or edit:
+
+- the project title
+- the publish repository name
+
+The repository name becomes part of the final URL. Pick a simple slug that you are comfortable exposing publicly.
+
+Practical advice:
+
+- keep the repo name short and lowercase
+- avoid spaces and punctuation you do not want in a URL
+- if you are publishing the pattern demo, choose a name that clearly identifies it as a demo
+
+Success check:
+- The publish button is enabled.
+- The target URL preview matches the repository name you want.
+
+## 3. Run the Precheck and Start Publish
+
+Use the publish action in the Cloud pane. PhaserForge runs a precheck so you can see whether the target repository already exists and whether Pages is already configured.
+
+If the tool reports that it will create a repository, that is expected for a first publish. If it reports that it will update an existing repository, read the prompt carefully and confirm only if that repository is the one you intend to reuse.
+
+Success check:
+- The precheck completes without a blocking error.
+- You understand whether the publish will create or update a repository.
+
+## 4. Confirm the Publish Result
+
+After a successful first publish, the Cloud pane should report that GitHub Pages accepted the deployment and show the resulting target URL.
+
+![Cloud publish section](../assets/screenshots/storybook/cloud-publish-ready.png)
+
+Success check:
+- The Cloud pane reports a successful deployment handoff.
+- The target URL shown by PhaserForge matches the GitHub Pages site you expect.
+
+## 5. Verify the Site in the Browser
+
+Open the GitHub Pages URL and confirm:
+
+- the page loads without a GitHub 404
+- your game boots
+- the expected scene appears
+- controls or motion behave the same way they did locally
+
+If the page exists but shows stale content, give GitHub Pages a short time to finish deployment and refresh again.
+
+## Common Failure Modes
+
+- `GitHub not linked`
+  Use the Cloud pane to connect GitHub first.
+
+- Publish button disabled
+  Check that the project has the required metadata and that the repository field is valid.
+
+- GitHub Pages permission error
+  Your connected GitHub account may not have granted the permissions PhaserForge needs to manage Pages for that repository.
+
+- Wrong repository targeted
+  Stop and correct the repository field before confirming an overwrite or update.
+
+For more detail, see [GitHub Pages Publish Troubleshooting](../troubleshooting/github-pages-publish).
