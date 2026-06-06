@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getSceneSnapshot, seedSampleScene, getState } from './helpers';
+import { dismissViewHint, entityClientCenter, getSceneSnapshot, seedSampleScene, getState } from './helpers';
 
 test('Edit and Preview preserve camera view state @critical', async ({ page }) => {
   await seedSampleScene(page);
@@ -18,6 +18,15 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
   expect(editSnapshot.sceneKey).toBe('EditorScene');
   expect(editSnapshot.ready).toBe(true);
   expect(editSnapshot.zoom).toBeGreaterThan(editBefore.zoom);
+  const canvas = page.locator('#game-container canvas');
+  await expect(canvas).toBeVisible();
+  const editCanvasBox = await canvas.boundingBox();
+  if (!editCanvasBox) throw new Error('Canvas bounding box unavailable');
+  const editAnchor = await entityClientCenter(page, 'e1');
+  const editAnchorNormalized = {
+    x: (editAnchor.x - editCanvasBox.x) / editCanvasBox.width,
+    y: (editAnchor.y - editCanvasBox.y) / editCanvasBox.height,
+  };
 
   await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('play');
@@ -26,8 +35,18 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
 
   const playSnapshot = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number }>(page);
   expect(Math.abs(playSnapshot.zoom - editSnapshot.zoom)).toBeLessThanOrEqual(0.01);
-  // The mode switch invariant is the preserved camera state. Screen-space projection has proven brittle
-  // under transformed UI scale and headless layout timing even when the underlying camera state is identical.
-  expect(Math.abs(playSnapshot.scrollX - editSnapshot.scrollX)).toBeLessThanOrEqual(0.01);
-  expect(Math.abs(playSnapshot.scrollY - editSnapshot.scrollY)).toBeLessThanOrEqual(0.01);
+  await expect
+    .poll(async () => {
+      const playCanvasBox = await canvas.boundingBox();
+      if (!playCanvasBox) return Number.POSITIVE_INFINITY;
+      const playAnchor = await entityClientCenter(page, 'e1');
+      const playAnchorNormalized = {
+        x: (playAnchor.x - playCanvasBox.x) / playCanvasBox.width,
+        y: (playAnchor.y - playCanvasBox.y) / playCanvasBox.height,
+      };
+      const dx = Math.abs(playAnchorNormalized.x - editAnchorNormalized.x);
+      const dy = Math.abs(playAnchorNormalized.y - editAnchorNormalized.y);
+      return Math.max(dx, dy);
+    })
+    .toBeLessThanOrEqual(0.02);
 });
