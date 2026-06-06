@@ -153,7 +153,13 @@ export function CloudAccountPanel({
   const [publishInfo, setPublishInfo] = useState<CloudPublishInfo | null>(
     cachedCloudAccountUser?.id ? cachedPublishInfoByUserId.get(cachedCloudAccountUser.id) ?? null : null,
   );
-  const [publishCheck, setPublishCheck] = useState<{ url: string; exists: boolean; pagesConfigured: boolean; deploymentStatus: string | null } | null>(
+  const [publishCheck, setPublishCheck] = useState<{
+    url: string;
+    exists: boolean;
+    routeExists: boolean;
+    pagesConfigured: boolean;
+    deploymentStatus: string | null;
+  } | null>(
     null,
   );
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
@@ -1064,9 +1070,11 @@ export function CloudAccountPanel({
               Target: <span className="mono">{publishCheck.url}</span>
             </div>
             <div className="cloud-help">
-              {publishCheck.exists
-                ? 'This repository already exists. Publishing will update its PhaserForge Pages workflow and site files.'
-                : 'A new repository will be created and configured for GitHub Pages.'}
+              {publishCheck.routeExists
+                ? 'Content already exists at this GitHub Pages route. Publishing will overwrite the files currently served there.'
+                : publishCheck.exists
+                  ? 'This repository already exists. Publishing will update its PhaserForge Pages workflow and site files.'
+                  : 'A new repository will be created and configured for GitHub Pages.'}
             </div>
             <div className="cloud-help">
               {publishCheck.pagesConfigured
@@ -1084,7 +1092,7 @@ export function CloudAccountPanel({
                 Cancel
               </button>
               <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={() => void handlePublish()}>
-                {busy ? 'Publishing…' : publishCheck.exists ? 'Update repository' : 'Create repo and publish'}
+                {busy ? 'Publishing…' : publishCheck.routeExists ? 'Overwrite route and publish' : publishCheck.exists ? 'Update repository' : 'Create repo and publish'}
               </button>
             </div>
           </div>

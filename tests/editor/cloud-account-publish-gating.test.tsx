@@ -23,7 +23,7 @@ const api = vi.hoisted(() => {
     updateGame: vi.fn(async () => ({ game: { id: 'g1', title: 'G', created_at: 'c', updated_at: 'u' } })),
     disconnectGithub: vi.fn(async () => {}),
     getGithubPagesPublishInfo: vi.fn(async () => ({ ok: false, error: 'github_not_linked' })),
-    checkGithubPagesTarget: vi.fn(async () => ({ ok: true, url: 'https://x', exists: false, pagesConfigured: false, deploymentStatus: null })),
+    checkGithubPagesTarget: vi.fn(async () => ({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null })),
     publishToGithubPages: vi.fn(async () => ({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' })),
   };
 });
@@ -659,7 +659,7 @@ describe('CloudAccountPanel publish gating', () => {
     });
     api.checkGithubPagesTarget
       .mockResolvedValueOnce({ ok: false, error: 'csrf_required' })
-      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, pagesConfigured: false, deploymentStatus: null });
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null });
 
     const onError = vi.fn();
 
@@ -710,6 +710,73 @@ describe('CloudAccountPanel publish gating', () => {
       expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'patterndemo', 'fresh-csrf');
       expect(onError).not.toHaveBeenCalledWith('csrf_required');
       expect(document.querySelector('[data-testid="publish-confirm-submit"]')).toBeTruthy();
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('warns before overwriting an existing route', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+    });
+    api.checkGithubPagesTarget.mockResolvedValueOnce({
+      ok: true,
+      url: 'https://bcorfman.github.io/zoof/',
+      exists: false,
+      routeExists: true,
+      pagesConfigured: false,
+      deploymentStatus: null,
+    });
+
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRepo: 'zoof',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[data-testid="cloud-publish-pages-button"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+
+      expect(document.querySelector('[data-testid="publish-confirm-modal"]')?.textContent).toContain(
+        'Content already exists at this GitHub Pages route. Publishing will overwrite the files currently served there.',
+      );
+      expect(document.querySelector('[data-testid="publish-confirm-submit"]')?.textContent).toContain('Overwrite route and publish');
     } finally {
       view.cleanup();
     }
