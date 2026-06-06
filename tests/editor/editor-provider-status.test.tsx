@@ -16,7 +16,7 @@ import { EditorProvider, useEditorStore } from '../../src/editor/EditorStore';
 import { ToolbarView } from '../../src/editor/Toolbar';
 
 function StatusHarness() {
-  const { state, dispatch } = useEditorStore();
+  const { state, dispatch, persistence } = useEditorStore();
 
   useEffect(() => {
     if (!state.initialized || state.statusMessage) return;
@@ -27,7 +27,7 @@ function StatusHarness() {
     });
   }, [dispatch, state.initialized, state.statusMessage]);
 
-  return <ToolbarView state={state} dispatch={dispatch} />;
+  return <ToolbarView state={state} dispatch={dispatch} onToggleSyncMode={() => void persistence.toggleSyncMode()} />;
 }
 
 describe('EditorProvider status expiry', () => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import { useEditorStore, type Selection } from './EditorStore';
 import { summarizeSceneGroups } from './grouping';
 import type { GameSceneSpec, ProjectSpec } from '../model/types';
@@ -6,6 +6,11 @@ import { countAttachmentsForTarget } from './sceneGraphCommands';
 import { InputMapsPanel } from './InputMapsPanel';
 import type { Id, TriggerZoneSpec } from '../model/types';
 import { AssetsDock } from './AssetsDock';
+import { ProjectPickerPanel } from './ProjectPickerPanel';
+import { buildProjectPickerModel, type ProjectPickerFilter } from './projectLibrary';
+import { exportYamlToDisk } from './yamlFileExport';
+import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
+import { serializeProjectToYaml } from '../model/serialization';
 
 const ENTITY_DRAG_MIME = 'application/x-phaserforge-entity-ids';
 const ASSETS_DOCK_HEIGHT_STORAGE_KEY = 'phaserforge.assetsDockHeight.v1';
@@ -51,9 +56,41 @@ function countTriggerHooks(zone: TriggerZoneSpec): { enter: boolean; exit: boole
 }
 
 export function EntityList() {
-  const { state, dispatch } = useEditorStore();
+  const { state, dispatch, persistence } = useEditorStore();
   const { project, currentSceneId, selection, sidebarScope, expandedGroups, mode, startupMode } = state;
   const scene = project.scenes[currentSceneId];
+  const [projectSearch, setProjectSearch] = useState('');
+  const [projectFilter, setProjectFilter] = useState<ProjectPickerFilter>('recent');
+  const projectModel = buildProjectPickerModel({
+    localProjects: persistence.localProjects,
+    cloudProjects: persistence.cloudProjects,
+    activeProjectId: persistence.activeProjectId,
+    search: projectSearch,
+    filter: projectFilter,
+  });
+  const activeProject = [...persistence.localProjects, ...persistence.cloudProjects].find((entry) => entry.id === persistence.activeProjectId) ?? null;
+
+  const importYaml = async () => {
+    const picker = getOpenFilePicker();
+    if (picker) {
+      try {
+        const handles = await picker({
+          multiple: false,
+          types: [{ description: 'YAML', accept: { 'application/x-yaml': ['.yaml', '.yml'] } }],
+        });
+        const handle = handles?.[0];
+        if (handle) {
+          const { text, label } = await readFileHandleText(handle);
+          dispatch({ type: 'load-yaml-text', text, sourceLabel: label });
+          return;
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+      }
+    }
+    dispatch({ type: 'set-error', error: 'File picker unavailable' });
+  };
+
   return (
     <EntityListView
       project={project}
@@ -65,6 +102,23 @@ export function EntityList() {
       mode={mode}
       startupMode={startupMode}
       dispatch={dispatch}
+      projectPicker={sidebarScope === 'project' ? {
+        projects: projectModel.visibleProjects,
+        counts: projectModel.counts,
+        activeProject,
+        search: projectSearch,
+        filter: projectFilter,
+        syncMode: state.syncMode,
+        onSearchChange: setProjectSearch,
+        onFilterChange: setProjectFilter,
+        onOpenProject: (projectId: string) => void persistence.openProject(projectId),
+        onCreateProject: () => void persistence.createProject(),
+        onImportYaml: () => void importYaml(),
+        onRefreshCloudProjects: () => void persistence.refreshCloudProjects(),
+        onDuplicateProject: () => void persistence.duplicateCurrentProject(),
+        onExportYaml: () => void exportYamlToDisk(serializeProjectToYaml(project), { suggestedName: `${project.title?.trim() || project.id}.yaml` }),
+        onToggleSyncMode: () => void persistence.toggleSyncMode(),
+      } : undefined}
     />
   );
 }
@@ -79,6 +133,7 @@ export function EntityListView({
   mode,
   startupMode,
   dispatch,
+  projectPicker,
 }: {
   project: ProjectSpec;
   currentSceneId: string;
@@ -89,6 +144,7 @@ export function EntityListView({
   mode: 'edit' | 'play';
   startupMode: 'reload_last_yaml' | 'new_empty_scene';
   dispatch: (action: any) => void;
+  projectPicker?: ComponentProps<typeof ProjectPickerPanel>;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [assetsDockHeight, setAssetsDockHeight] = useState(() => {
@@ -1149,6 +1205,7 @@ export function EntityListView({
 
       {sidebarScope === 'project' ? (
         <>
+          {projectPicker ? <ProjectPickerPanel {...projectPicker} /> : null}
           <section className="panel-section" aria-labelledby="project-startup" data-testid="project-startup-panel">
             <div className="panel-heading-row">
               <h3 className="panel-heading" id="project-startup">Startup &amp; Reset</h3>

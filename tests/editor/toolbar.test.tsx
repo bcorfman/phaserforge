@@ -10,14 +10,19 @@ const toolbarStore = vi.hoisted(() => ({
     themeMode: 'system',
     error: undefined as string | undefined,
     statusMessage: undefined as string | undefined,
+    syncMode: 'online' as 'online' | 'offline',
   },
   dispatch: vi.fn(),
+  persistence: {
+    toggleSyncMode: vi.fn(),
+  },
 }));
 
 vi.mock('../../src/editor/EditorStore', () => ({
   useEditorStore: () => ({
     state: toolbarStore.state,
     dispatch: toolbarStore.dispatch,
+    persistence: toolbarStore.persistence,
   }),
 }));
 
@@ -33,6 +38,8 @@ describe('Toolbar', () => {
     toolbarStore.state.themeMode = 'system';
     toolbarStore.state.error = undefined;
     toolbarStore.state.statusMessage = undefined;
+    toolbarStore.state.syncMode = 'online';
+    toolbarStore.persistence.toggleSyncMode.mockReset();
   });
 
   it('renders dirty/status/error state from the editor store', () => {
@@ -42,7 +49,7 @@ describe('Toolbar', () => {
 
     render(<Toolbar />);
 
-    expect(screen.getByTestId('dirty-badge').textContent).toBe('Unsaved');
+    expect(screen.getByTestId('project-sync-badge').textContent).toBe('Online');
     expect(screen.getByTestId('toolbar-error').textContent).toBe('Broken');
     expect(screen.getByTestId('toolbar-status').textContent).toBe('Saved');
   });
@@ -59,6 +66,17 @@ describe('Toolbar', () => {
     expect(toolbarStore.dispatch).toHaveBeenNthCalledWith(1, { type: 'set-theme-mode', themeMode: 'dark' });
     expect(toolbarStore.dispatch).toHaveBeenNthCalledWith(2, { type: 'set-ui-scale', uiScale: 1.1 });
     expect(screen.getByText('100%')).toBeTruthy();
+  });
+
+  it('toggles sync mode from the toolbar badge', () => {
+    toolbarStore.state.syncMode = 'offline';
+
+    render(<Toolbar />);
+
+    fireEvent.click(screen.getByTestId('project-sync-badge'));
+
+    expect(toolbarStore.persistence.toggleSyncMode).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('project-sync-badge').textContent).toBe('Offline');
   });
 
   it('marks the summary copy as single-line on wide layouts', () => {
