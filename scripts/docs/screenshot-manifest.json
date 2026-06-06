@@ -36,6 +36,33 @@
     "output": "docs/assets/screenshots/playwright/cloud-publish-ready.png"
   },
   {
+    "id": "cloud-account-login",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "cloud-login",
+    "selector": "[data-testid=\"cloud-account-section\"]",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/cloud-account-login.png"
+  },
+  {
+    "id": "cloud-account-signup",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "cloud-signup",
+    "selector": "[data-testid=\"cloud-account-section\"]",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/cloud-account-signup.png"
+  },
+  {
+    "id": "cloud-account-linked",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "cloud-account-linked",
+    "selector": "[data-testid=\"cloud-account-section\"]",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/cloud-account-linked.png"
+  },
+  {
     "id": "layout-popover",
     "source": "playwright",
     "scene": "sample",

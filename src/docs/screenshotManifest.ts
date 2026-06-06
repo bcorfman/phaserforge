@@ -18,7 +18,16 @@ export type StorybookScreenshotManifestEntry = ScreenshotManifestEntryBase & {
 export type PlaywrightScreenshotManifestEntry = ScreenshotManifestEntryBase & {
   source: 'playwright';
   scene?: 'sample';
-  capture?: 'layout-popover' | 'selection-bar';
+  capture?:
+    | 'layout-popover'
+    | 'selection-bar'
+    | 'assets-dock'
+    | 'toolbar'
+    | 'yaml-controls'
+    | 'cloud-publish'
+    | 'cloud-login'
+    | 'cloud-signup'
+    | 'cloud-account-linked';
 };
 
 export type ScreenshotManifestEntry =

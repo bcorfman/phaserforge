@@ -1,26 +1,26 @@
 # Publish to GitHub Pages
 
-This walkthrough takes a finished PhaserForge project and publishes it to GitHub Pages from the Cloud pane. It assumes you already have a saved project, such as the one from [Pattern Demo](./pattern-demo).
+This walkthrough takes a finished PhaserForge project and publishes it to GitHub Pages from the Cloud pane. It assumes you already completed [Cloud Account Setup](./cloud-account-setup) and already have a saved project, such as the one from [Pattern Demo](./pattern-demo).
 
 ## What Publishing Requires
 
 Before you start, make sure:
 
-- you can sign in to PhaserForge Cloud
-- the GitHub account you intend to use is available
+- you are already signed in to PhaserForge Cloud
+- the GitHub account you intend to use is already connected or ready to connect
 - your project already has a title and working content
 
 The exact workflow family behind this guide is `W16` in the [Editor Workflow Reference](../reference/editor-workflows).
 
-## 1. Sign In and Connect GitHub
+## 1. Confirm Sign-In and GitHub Connection
 
-Open the right-side Cloud pane. If you are signed out, log in first. After that, connect your GitHub account if it is not already linked.
+Open the right-side Cloud pane and confirm you are still signed in. If GitHub is not linked yet, connect it now before continuing.
 
 ![Cloud publish section](../assets/screenshots/playwright/cloud-publish-ready.png)
 
 Success check:
 - The Cloud pane shows you as signed in.
-- The publish section is available instead of only showing a sign-in prompt.
+- The publish section is available instead of only showing a sign-in or connect-GitHub prompt.
 
 ## 2. Fill in the Publish Details
 

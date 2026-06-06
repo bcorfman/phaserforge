@@ -2,6 +2,8 @@
 
 This walkthrough recreates the `pattern_demo` scene in PhaserForge, then saves the result as YAML. It is the recommended first exercise because it touches the main editor loop without requiring custom code.
 
+It is based on the current version of `.plans/pattern_demo_workflow.md`, which has been updated to match the current editor workflow inventory.
+
 ## What You Will Build
 
 - seven ship sprites arranged in two rows
@@ -14,7 +16,7 @@ This walkthrough recreates the `pattern_demo` scene in PhaserForge, then saves t
 ## Before You Start
 
 - Start PhaserForge locally.
-- Reset to a new empty scene from `Project -> Startup & Reset` if you are continuing from old work.
+- Reset to a new empty scene from `Project -> Startup & Reset` if you are continuing from old work. This matches **A59 — Configure Startup / Reset** in the workflow inventory.
 - Keep the [Editor Workflow Reference](../reference/editor-workflows) nearby if you want the exact names for controls like `Layout…`, `Save YAML As…`, or `Toggle Edit / Play`.
 
 Success check:
@@ -22,9 +24,9 @@ Success check:
 
 ## 1. Import the Ship Asset and Create the Sprites
 
-Use the Assets Dock on the left side to bring in one ship image, then drag it to the canvas to create the first sprite. If you are following the original demo closely, `res/images/ship_sidesA.png` is the asset the workflow plan references.
+Use the Assets Dock on the left side to bring in one ship image, then drag it to the canvas to create the first sprite. In workflow terms, this is **A36 — Import Assets** followed by **A37 — Drag Asset to a Target**. If you are following the original demo closely, `res/images/ship_sidesA.png` is the asset the workflow plan references.
 
-After the first sprite exists, duplicate it until you have seven ships total. The fastest path is `Alt`-drag on the canvas. If you prefer a menu path, use the entity row `⋯` menu and choose `Duplicate…`.
+After the first sprite exists, duplicate it until you have seven ships total. The fastest path is **A14 — Duplicate by Alt-drag**. If you prefer a menu path, use **A15 — Duplicate via Scene Graph Dialog**.
 
 Name the seven ships:
 
@@ -36,7 +38,7 @@ Name the seven ships:
 6. `Bounce`
 7. `Patrol`
 
-Use inline rename in the entity list for the cleanest pass.
+Use **A4 — Rename Item Inline** in the scene graph for the cleanest pass.
 
 Success check:
 - You can see seven separate sprite entities in the scene graph.
@@ -44,7 +46,7 @@ Success check:
 
 ## 2. Position the Ships with Selection Tools and Layout
 
-Rough-place the ships first, then use multi-selection and `Layout…` to clean up spacing. The pattern demo uses two rows:
+Rough-place the ships first, then use **A18 — Open Layout Popover** and **A19 — Apply Layout Operations** to clean up spacing. The pattern demo uses two rows:
 
 - top row at `y = 200`: `Spiral`, `Bounce`, `Patrol`
 - bottom row at `y = 450`: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
@@ -77,7 +79,7 @@ Success check:
 
 ## 3. Add the Text Labels
 
-Create one text entity from `Scene -> Text -> + Add`, then edit its content and styling in the Inspector. After the first label looks right, duplicate it and move each copy above the correct ship.
+Create one text entity with **A33 — Create Text Entity**, then edit its content and styling in the Inspector. After the first label looks right, duplicate it and move each copy above the correct ship.
 
 Recommended baseline settings:
 
@@ -92,7 +94,13 @@ Success check:
 
 ## 4. Attach the Movement Patterns
 
-Select each ship, open `Actions/Events`, and attach the movement pattern described in the original workflow. The pattern demo uses scene-start handlers and these mappings:
+Select each ship, open `Actions/Events`, and attach the movement pattern described in the revised workflow plan. The current editor workflow here is:
+
+- **A42 — Create / Edit Event Blocks**
+- **A43 — Create / Edit Action Steps**
+- **A45 — Create / Apply Patterns and Loop Templates**
+
+The pattern demo uses scene-start handlers and these mappings:
 
 - `Wave` -> Wave pattern
 - `Zigzag` -> Zigzag pattern
@@ -102,7 +110,7 @@ Select each ship, open `Actions/Events`, and attach the movement pattern describ
 - `Bounce` -> Bounce pattern with bounds
 - `Patrol` -> Patrol pattern with bounds
 
-This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once. For the exact parameter values, use `.plans/pattern_demo_workflow.md` as the canonical recipe.
+This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once. For the exact parameter values, use `.plans/pattern_demo_workflow.md` as the canonical recipe for the current editor.
 
 Practical order:
 
@@ -116,7 +124,7 @@ Success check:
 
 ## 5. Run the Demo in Play Mode
 
-Toggle into Play mode with `Tab` or the toolbar button and let the scene run long enough to verify all seven motions.
+Toggle into Play mode with `Tab` or the toolbar button using **A7 — Toggle Edit / Play**, and let the scene run long enough to verify all seven motions.
 
 ![Toolbar close-up](../assets/screenshots/playwright/toolbar-theme-and-scale.png)
 
@@ -134,7 +142,7 @@ Success check:
 
 ## 6. Save the YAML
 
-Use the viewbar YAML controls to save the project once the demo behaves correctly. `Save YAML As…` is the safest first save because it gives you an explicit file on disk.
+Use **A60 — Open / Save YAML from the Viewbar** to save the project once the demo behaves correctly. `Save YAML As…` is the safest first save because it gives you an explicit file on disk.
 
 ![YAML controls close-up](../assets/screenshots/playwright/yaml-controls-save.png)
 
