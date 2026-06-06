@@ -8,7 +8,16 @@ function sceneOf(state: any) {
 describe('EditorStore assets actions', () => {
   it('adds an image asset and creates an entity referencing it', () => {
     const state = initState();
-    const withAsset = reducer(state, { type: 'add-image-asset-from-path', path: '/assets/images/player.png', width: 256, height: 128 } as any);
+    const withAsset = reducer(state, {
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'player.png',
+        mimeType: 'image/png',
+        width: 256,
+        height: 128,
+      },
+    } as any);
     expect(withAsset.project.assets.images.player).toBeDefined();
 
     const withEntity = reducer(withAsset, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'player', at: { x: 10, y: 20 } } as any);
@@ -28,7 +37,14 @@ describe('EditorStore assets actions', () => {
 
   it('blocks deletion of referenced assets', () => {
     const state = initState();
-    const withAsset = reducer(state, { type: 'add-image-asset-from-path', path: '/assets/images/bg.png', suggestedId: 'bg' } as any);
+    const withAsset = reducer(state, {
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'bg.png',
+        mimeType: 'image/png',
+      },
+    } as any);
     const withEntity = reducer(withAsset, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'bg' } as any);
 
     const blocked = reducer(withEntity, { type: 'remove-asset', assetKind: 'image', assetId: 'bg' } as any);
@@ -38,7 +54,14 @@ describe('EditorStore assets actions', () => {
 
   it('assigns audio asset to scene music', () => {
     const state = initState();
-    const withAudio = reducer(state, { type: 'add-audio-asset-from-path', path: '/assets/audio/theme.mp3', suggestedId: 'theme' } as any);
+    const withAudio = reducer(state, {
+      type: 'add-audio-asset-from-file',
+      file: {
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any);
     expect(withAudio.project.audio.sounds.theme).toBeDefined();
 
     const assigned = reducer(withAudio, {
@@ -49,23 +72,6 @@ describe('EditorStore assets actions', () => {
     } as any);
 
     expect(sceneOf(assigned).music?.assetId).toBe('theme');
-  });
-
-  it('relinks an asset source while keeping assetId stable', () => {
-    const state = initState();
-    const withAsset = reducer(state, { type: 'add-image-asset-from-path', path: '/assets/images/player.png', suggestedId: 'player' } as any);
-    const withEntity = reducer(withAsset, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'player' } as any);
-
-    const relinked = reducer(withEntity, {
-      type: 'relink-asset-source',
-      assetKind: 'image',
-      assetId: 'player',
-      source: { kind: 'path', path: '/assets/images/player_v2.png' },
-    } as any);
-
-    expect(relinked.project.assets.images.player.source).toEqual({ kind: 'path', path: '/assets/images/player_v2.png' });
-    const entity = Object.values(sceneOf(relinked).entities)[0] as any;
-    expect(entity.asset?.source).toEqual({ kind: 'asset', assetId: 'player' });
   });
 
   it('does not overwrite an existing image during ensure-image-asset-from-file', () => {
@@ -102,18 +108,24 @@ describe('EditorStore assets actions', () => {
   it('reassigns an entity sprite asset without creating a new entity', () => {
     const state = initState();
     const withPlayer = reducer(state, {
-      type: 'add-image-asset-from-path',
-      path: '/assets/images/player.png',
-      suggestedId: 'player',
-      width: 32,
-      height: 32,
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'player.png',
+        mimeType: 'image/png',
+        width: 32,
+        height: 32,
+      },
     } as any);
     const withMeteor = reducer(withPlayer, {
-      type: 'add-image-asset-from-path',
-      path: '/assets/images/meteor.png',
-      suggestedId: 'meteor',
-      width: 48,
-      height: 48,
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,BBBB',
+        originalName: 'meteor.png',
+        mimeType: 'image/png',
+        width: 48,
+        height: 48,
+      },
     } as any);
     const withEntity = reducer(withMeteor, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'player' } as any);
     const entityId = Object.keys(sceneOf(withEntity).entities)[0];

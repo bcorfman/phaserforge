@@ -12,7 +12,7 @@ function makeProjectWithAsset() {
     enemy_A: {
       id: 'enemy_A',
       name: 'enemy_A',
-      source: { kind: 'path', path: '/enemy_A.png' },
+      source: { kind: 'embedded', dataUrl: 'data:image/png;base64,AAAA', originalName: 'enemy_A.png', mimeType: 'image/png' },
     },
   };
   return project;

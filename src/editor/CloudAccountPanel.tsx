@@ -108,8 +108,6 @@ function mapPublishError(error: string): string {
       return 'GitHub Pages deployment failed. Open the target repository Actions tab for details.';
     case 'repo_unavailable':
       return 'That repository name is unavailable. Choose a different repository name.';
-    case 'path_assets_unsupported':
-      return 'Publishing requires embedded assets only. Convert path assets to embedded before publishing.';
     case 'not_found':
       return 'The cloud game record was not found. Save again and retry.';
     default:
@@ -398,21 +396,10 @@ export function CloudAccountPanel({
     return info;
   };
 
-  const projectHasPathAssets = useMemo(() => {
-    const assets = state.project.assets;
-    const audio = state.project.audio;
-    const anyPath =
-      Object.values(assets.images).some((a) => (a as any)?.source?.kind === 'path') ||
-      Object.values(assets.spriteSheets).some((a) => (a as any)?.source?.kind === 'path') ||
-      Object.values(assets.fonts).some((a) => (a as any)?.source?.kind === 'path') ||
-      Object.values(audio.sounds).some((a) => (a as any)?.source?.kind === 'path');
-    return anyPath;
-  }, [state.project]);
-
   const titleValue = state.project.title ?? '';
   const repoValue = state.project.publishGithubPagesRepo ?? '';
   const publishRoutePreview = publishInfo?.ok ? `${publishInfo.pagesBaseUrl}${repoValue.trim() || '<repo>'}/` : null;
-  const publishHelpText = [projectHasPathAssets ? 'Path assets detected; publishing is disabled.' : '', publishDeploymentNote, publishInlineError]
+  const publishHelpText = [publishDeploymentNote, publishInlineError]
     .filter(Boolean)
     .join(' ');
 
@@ -970,7 +957,6 @@ export function CloudAccountPanel({
               <>
                 <div className="cloud-help">
                   {publishInfo == null ? 'Checking GitHub connection…' : 'Connect GitHub to enable publishing to GitHub Pages.'}
-                  {projectHasPathAssets ? ' Path assets detected; publishing will remain disabled until assets are embedded.' : ''}
                 </div>
                 <div className="cloud-row">
                   <button
@@ -1003,7 +989,7 @@ export function CloudAccountPanel({
                     className="button primary"
                     type="button"
                     data-testid="cloud-publish-pages-button"
-                    disabled={busy || !repoValue.trim() || projectHasPathAssets}
+                    disabled={busy || !repoValue.trim()}
                     onClick={() => void handlePublishCheck()}
                   >
                     Publish

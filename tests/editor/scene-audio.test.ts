@@ -38,48 +38,53 @@ describe('scene audio authoring', () => {
   it('sets scene music and ambience', () => {
     const state = seededState();
     const withLibrary = reducer(state, {
-      type: 'add-audio-asset-from-path',
-      path: '/assets/audio/theme.mp3',
-      suggestedId: 'music_theme',
+      type: 'add-audio-asset-from-file',
+      file: {
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'music_theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
     } as any);
 
     const withMusic = reducer(withLibrary, {
       type: 'set-scene-music',
-      music: { assetId: 'music_theme', loop: true, volume: 0.65, fadeMs: 250 },
+      music: { assetId: 'music-theme', loop: true, volume: 0.65, fadeMs: 250 },
     } as any);
 
     const withAmbience = reducer(withMusic, {
       type: 'set-scene-ambience',
-      ambience: [{ assetId: 'music_theme', loop: true, volume: 0.35 }],
+      ambience: [{ assetId: 'music-theme', loop: true, volume: 0.35 }],
     } as any);
 
-    expect(sceneOf(withAmbience).music).toEqual({ assetId: 'music_theme', loop: true, volume: 0.65, fadeMs: 250 });
-    expect(sceneOf(withAmbience).ambience).toEqual([{ assetId: 'music_theme', loop: true, volume: 0.35 }]);
+    expect(sceneOf(withAmbience).music).toEqual({ assetId: 'music-theme', loop: true, volume: 0.65, fadeMs: 250 });
+    expect(sceneOf(withAmbience).ambience).toEqual([{ assetId: 'music-theme', loop: true, volume: 0.35 }]);
   });
 
   it('removing an audio asset clears scene references', () => {
     const state = seededState();
     const withLibrary = reducer(state, {
-      type: 'add-audio-asset-from-path',
-      path: '/assets/audio/theme.mp3',
-      suggestedId: 'music_theme',
+      type: 'add-audio-asset-from-file',
+      file: {
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'music_theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
     } as any);
 
     const withSceneAudio = reducer(
       reducer(withLibrary, {
         type: 'set-scene-music',
-        music: { assetId: 'music_theme', loop: true, volume: 1, fadeMs: 0 },
+        music: { assetId: 'music-theme', loop: true, volume: 1, fadeMs: 0 },
       } as any),
       {
         type: 'set-scene-ambience',
-        ambience: [{ assetId: 'music_theme', loop: true, volume: 0.3 }],
+        ambience: [{ assetId: 'music-theme', loop: true, volume: 0.3 }],
       } as any,
     );
 
-    const removed = reducer(withSceneAudio, { type: 'remove-audio-asset', assetId: 'music_theme' } as any);
-    expect(removed.project.audio.sounds['music_theme']).toBeUndefined();
+    const removed = reducer(withSceneAudio, { type: 'remove-audio-asset', assetId: 'music-theme' } as any);
+    expect(removed.project.audio.sounds['music-theme']).toBeUndefined();
     expect(sceneOf(removed).music).toBeUndefined();
     expect(sceneOf(removed).ambience ?? []).toEqual([]);
   });
 });
-

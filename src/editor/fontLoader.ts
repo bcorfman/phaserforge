@@ -2,7 +2,6 @@ import type { AssetFileSource, FontAssetSpec } from '../model/types';
 
 function toFontFaceSourceUrl(source: AssetFileSource): string | null {
   if (source.kind === 'embedded') return source.dataUrl;
-  if (source.kind === 'path') return source.path;
   return null;
 }
 
@@ -32,4 +31,3 @@ export async function loadProjectFonts(fonts: Record<string, FontAssetSpec> | un
     }
   }
 }
-

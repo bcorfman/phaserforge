@@ -14,7 +14,7 @@ describe('text entities', () => {
       assets: {
         ...state.project.assets,
         fonts: {
-          f1: { id: 'f1', source: { kind: 'path', path: './fonts/MyFont.woff2' }, name: 'MyFont' },
+          f1: { id: 'f1', source: { kind: 'embedded', dataUrl: 'data:font/woff2;base64,AAAA', originalName: 'MyFont.woff2', mimeType: 'font/woff2' }, name: 'MyFont' },
         },
       },
     };
@@ -45,4 +45,3 @@ describe('text entities', () => {
     expect(nextEntity.width).toBeGreaterThanOrEqual(entity.width);
   });
 });
-
