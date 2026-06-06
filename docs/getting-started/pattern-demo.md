@@ -9,7 +9,7 @@ This walkthrough recreates the `pattern_demo` scene in PhaserForge, then saves t
 - one movement pattern attached to each ship
 - a saved YAML project you can publish in the next guide
 
-![Assets dock close-up](../assets/screenshots/storybook/entity-list-scene-scope.png)
+![Assets dock close-up](../assets/screenshots/playwright/entity-list-scene-scope.png)
 
 ## Before You Start
 
@@ -118,7 +118,7 @@ Success check:
 
 Toggle into Play mode with `Tab` or the toolbar button and let the scene run long enough to verify all seven motions.
 
-![Toolbar close-up](../assets/screenshots/storybook/toolbar-theme-and-scale.png)
+![Toolbar close-up](../assets/screenshots/playwright/toolbar-theme-and-scale.png)
 
 Look for these outcomes:
 
@@ -136,7 +136,7 @@ Success check:
 
 Use the viewbar YAML controls to save the project once the demo behaves correctly. `Save YAML As…` is the safest first save because it gives you an explicit file on disk.
 
-![YAML controls close-up](../assets/screenshots/storybook/yaml-controls-save.png)
+![YAML controls close-up](../assets/screenshots/playwright/yaml-controls-save.png)
 
 Success check:
 - You have a saved `.yaml` file for the project.
