@@ -1,6 +1,6 @@
 # Getting Started
 
-Use these pages in order if you are new to PhaserForge.
+Use these pages in order if you are new to PhaserForge and want one concrete path from blank scene to published demo.
 
 ## Recommended Path
 
@@ -11,6 +11,6 @@ Use these pages in order if you are new to PhaserForge.
 
 - You can run PhaserForge locally.
 - You want a concrete first project instead of a broad feature tour.
-- You may need reference links back to editor workflow names and controls.
+- You may need reference links back to editor workflow names and controls while you work.
 
-The pages in this section are placeholders for the fuller guided tutorial content planned in later phases.
+Keep the [Editor Workflow Reference](../reference/editor-workflows) open if you want the exact names for controls, shortcuts, and fallback entry points.

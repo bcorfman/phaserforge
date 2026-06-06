@@ -1,28 +1,147 @@
 # Pattern Demo
 
-This page will become the primary first-time-user walkthrough for recreating the `pattern_demo` project in PhaserForge.
+This walkthrough recreates the `pattern_demo` scene in PhaserForge, then saves the result as YAML. It is the recommended first exercise because it touches the main editor loop without requiring custom code.
 
-## Planned Structure
+## What You Will Build
 
-1. Start a new empty scene
-2. Import the ship asset
-3. Create and name the seven sprites
-4. Position the sprites with snap and layout tools
-5. Add text labels
-6. Attach movement patterns
-7. Verify the demo in Play mode
-8. Save the YAML
+- seven ship sprites arranged in two rows
+- a text label above each ship
+- one movement pattern attached to each ship
+- a saved YAML project you can publish in the next guide
 
-## Source Material
+![Assets dock close-up](../assets/screenshots/storybook/entity-list-scene-scope.png)
 
-- `.plans/pattern_demo_workflow.md`
-- [Editor Workflow Reference](../reference/editor-workflows)
+## Before You Start
 
-## Phase 1 Status
+- Start PhaserForge locally.
+- Reset to a new empty scene from `Project -> Startup & Reset` if you are continuing from old work.
+- Keep the [Editor Workflow Reference](../reference/editor-workflows) nearby if you want the exact names for controls like `Layout…`, `Save YAML As…`, or `Toggle Edit / Play`.
 
-This is a scaffold page. In later phases it will gain:
+Success check:
+- The canvas is empty and the scene graph does not show leftover sprites or formations.
 
-- step-by-step instructions
-- panel-level screenshots
-- success checks after each step
-- links to generated workflow anchors
+## 1. Import the Ship Asset and Create the Sprites
+
+Use the Assets Dock on the left side to bring in one ship image, then drag it to the canvas to create the first sprite. If you are following the original demo closely, `res/images/ship_sidesA.png` is the asset the workflow plan references.
+
+After the first sprite exists, duplicate it until you have seven ships total. The fastest path is `Alt`-drag on the canvas. If you prefer a menu path, use the entity row `⋯` menu and choose `Duplicate…`.
+
+Name the seven ships:
+
+1. `Wave`
+2. `Zigzag`
+3. `Figure-8`
+4. `Orbit`
+5. `Spiral`
+6. `Bounce`
+7. `Patrol`
+
+Use inline rename in the entity list for the cleanest pass.
+
+Success check:
+- You can see seven separate sprite entities in the scene graph.
+- Their names match the list above.
+
+## 2. Position the Ships with Selection Tools and Layout
+
+Rough-place the ships first, then use multi-selection and `Layout…` to clean up spacing. The pattern demo uses two rows:
+
+- top row at `y = 200`: `Spiral`, `Bounce`, `Patrol`
+- bottom row at `y = 450`: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
+
+For the top row, select the three ships and use `Layout…` to:
+
+- apply `Spacing X = 200`
+- set `Y = 200`
+- center the row on the world center
+
+For the bottom row, set the whole row to `Y = 450`, then fine-tune the X positions manually to match the original demo.
+
+![Selection bar close-up](../assets/screenshots/playwright/canvas-selection-bar.png)
+
+![Layout popover close-up](../assets/screenshots/playwright/layout-popover.png)
+
+Exact sprite centers from the original workflow:
+
+- `Wave`: `x=150`, `y=450`
+- `Zigzag`: `x=300`, `y=450`
+- `Figure-8`: `x=500`, `y=450`
+- `Orbit`: `x=650`, `y=450`
+- `Spiral`: `x=200`, `y=200`
+- `Bounce`: `x=400`, `y=200`
+- `Patrol`: `x=600`, `y=200`
+
+Success check:
+- The three top-row ships form an even row.
+- The four bottom-row ships sit on the same baseline.
+
+## 3. Add the Text Labels
+
+Create one text entity from `Scene -> Text -> + Add`, then edit its content and styling in the Inspector. After the first label looks right, duplicate it and move each copy above the correct ship.
+
+Recommended baseline settings:
+
+- content: ship name
+- anchor: `center`
+- color: `#FFFFFF`
+- position: `x = ship.x`, `y = ship.y - 80`
+
+Success check:
+- Each ship has one readable label above it.
+- Labels stay visually aligned with the ships in Edit mode.
+
+## 4. Attach the Movement Patterns
+
+Select each ship, open `Actions/Events`, and attach the movement pattern described in the original workflow. The pattern demo uses scene-start handlers and these mappings:
+
+- `Wave` -> Wave pattern
+- `Zigzag` -> Zigzag pattern
+- `Figure-8` -> Figure-8 pattern
+- `Orbit` -> Orbit pattern
+- `Spiral` -> Spiral pattern
+- `Bounce` -> Bounce pattern with bounds
+- `Patrol` -> Patrol pattern with bounds
+
+This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once. For the exact parameter values, use `.plans/pattern_demo_workflow.md` as the canonical recipe.
+
+Practical order:
+
+1. Finish `Wave`, `Figure-8`, and `Spiral` first because they are the most direct.
+2. Add `Zigzag` and `Orbit` next because they need setup steps before the repeating motion.
+3. Finish with `Bounce` and `Patrol` because they also need bounds configuration.
+
+Success check:
+- Every ship shows a handler/action flow in the editor.
+- `Bounce` and `Patrol` have their bounds configured, not just the pattern action itself.
+
+## 5. Run the Demo in Play Mode
+
+Toggle into Play mode with `Tab` or the toolbar button and let the scene run long enough to verify all seven motions.
+
+![Toolbar close-up](../assets/screenshots/storybook/toolbar-theme-and-scale.png)
+
+Look for these outcomes:
+
+- all seven ships animate simultaneously
+- labels remain static
+- no ship leaves the scene unexpectedly
+- `Bounce` and `Patrol` stay inside their intended travel areas
+
+If a ship is motionless, go back to its handler and confirm the action flow exists and the parameters match the workflow plan.
+
+Success check:
+- The scene behaves like a motion sampler rather than a static layout.
+
+## 6. Save the YAML
+
+Use the viewbar YAML controls to save the project once the demo behaves correctly. `Save YAML As…` is the safest first save because it gives you an explicit file on disk.
+
+![YAML controls close-up](../assets/screenshots/storybook/yaml-controls-save.png)
+
+Success check:
+- You have a saved `.yaml` file for the project.
+- Reopening it restores the same pattern demo scene.
+
+## What to Do Next
+
+Continue to [Publish to GitHub Pages](./publish-to-github-pages) to turn the saved demo into a hosted playable page.

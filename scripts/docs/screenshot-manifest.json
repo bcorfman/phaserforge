@@ -1,0 +1,55 @@
+[
+  {
+    "id": "entity-list-scene-scope",
+    "source": "storybook",
+    "storyId": "editor-entitylist--scene-scope-default",
+    "selector": "[data-testid=\"assets-dock\"]",
+    "readySelector": "[data-testid=\"assets-dock-item-image-enemy_A\"]",
+    "viewport": { "width": 900, "height": 900 },
+    "output": "docs/assets/screenshots/storybook/entity-list-scene-scope.png"
+  },
+  {
+    "id": "toolbar-theme-and-scale",
+    "source": "storybook",
+    "storyId": "editor-toolbar--theme-and-scale",
+    "selector": "[data-testid=\"toolbar\"]",
+    "viewport": { "width": 1280, "height": 220 },
+    "output": "docs/assets/screenshots/storybook/toolbar-theme-and-scale.png"
+  },
+  {
+    "id": "yaml-controls-save",
+    "source": "storybook",
+    "storyId": "editor-viewbaryamlcontrols--save-existing-handle",
+    "selector": "#storybook-root",
+    "readySelector": "[data-testid=\"yaml-save-button\"]",
+    "viewport": { "width": 900, "height": 240 },
+    "output": "docs/assets/screenshots/storybook/yaml-controls-save.png"
+  },
+  {
+    "id": "cloud-publish-ready",
+    "source": "storybook",
+    "storyId": "editor-cloudaccountpanel--publish-ready",
+    "selector": "[data-testid=\"cloud-publish-pages-section\"]",
+    "readySelector": "[data-testid=\"cloud-publish-pages-button\"]",
+    "viewport": { "width": 900, "height": 900 },
+    "output": "docs/assets/screenshots/storybook/cloud-publish-ready.png"
+  },
+  {
+    "id": "layout-popover",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "layout-popover",
+    "selector": "[data-testid=\"canvas-layout-popover\"]",
+    "viewport": { "width": 1280, "height": 900 },
+    "output": "docs/assets/screenshots/playwright/layout-popover.png"
+  },
+  {
+    "id": "canvas-selection-bar",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "selection-bar",
+    "selector": "[data-testid=\"canvas-selection-bar\"]",
+    "viewport": { "width": 1280, "height": 900 },
+    "output": "docs/assets/screenshots/playwright/canvas-selection-bar.png"
+  }
+]
