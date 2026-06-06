@@ -40,7 +40,7 @@ describe('EntityList Sprites + Add menu', () => {
         ...sampleProject.assets,
         images: {
           ...(sampleProject.assets.images ?? {}),
-          hero: { source: { kind: 'path', path: '/assets/images/hero.png' } },
+          hero: { source: { kind: 'embedded', dataUrl: 'data:image/png;base64,AAAA', originalName: 'hero.png', mimeType: 'image/png' } },
         },
       },
     };

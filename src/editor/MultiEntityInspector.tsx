@@ -164,7 +164,6 @@ export function MultiEntityInspector({
       const asset = (e as any).asset as SpriteAssetSpec | undefined;
       if (!asset) return '__none__';
       if (asset.source.kind === 'asset') return `asset:${asset.source.assetId}`;
-      if (asset.source.kind === 'path') return `path:${asset.source.path}`;
       return `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
     });
     const first = keys[0] ?? '__none__';

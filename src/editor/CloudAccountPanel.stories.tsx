@@ -89,7 +89,7 @@ export const PublishBlockedByPathAssets: Story = {
         images: {
           i1: {
             id: 'i1',
-            source: { kind: 'path', path: '/img.png' },
+            source: { kind: 'embedded', dataUrl: 'data:image/png;base64,AAAA', originalName: 'img.png', mimeType: 'image/png' },
           },
         },
         spriteSheets: {},

@@ -256,7 +256,16 @@ test('creates a formation from imported sprites and arranges it into a grid @cri
   await resetScene(page);
   // Avoid file-picker + asset decoding work here (covered elsewhere) so this stays fast and stable in CI.
   // Add an image asset by path and create two sprites from it.
-  await dispatchAction(page, { type: 'add-image-asset-from-path', path: 'res/images/mainwindow.png', suggestedId: 'mainwindow', width: 64, height: 64 } as any);
+  await dispatchAction(page, {
+    type: 'add-image-asset-from-file',
+    file: {
+      dataUrl: 'data:image/png;base64,AAAA',
+      originalName: 'mainwindow.png',
+      mimeType: 'image/png',
+      width: 64,
+      height: 64,
+    },
+  } as any);
   await dispatchAction(page, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'mainwindow', at: { x: 220, y: 160 } } as any);
   await dispatchAction(page, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'mainwindow', at: { x: 320, y: 200 } } as any);
 

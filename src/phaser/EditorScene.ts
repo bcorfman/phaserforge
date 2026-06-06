@@ -1397,9 +1397,7 @@ export class EditorScene extends Phaser.Scene {
 
   private getTextureKey(asset: SpriteAssetSpec): string {
     const resolved = this.resolveSpriteAssetSource(asset);
-    const sourceKey = resolved
-      ? (resolved.source.kind === 'embedded' ? resolved.source.dataUrl : resolved.source.path)
-      : 'missing';
+    const sourceKey = resolved ? resolved.source.dataUrl : 'missing';
     const suffix = resolved?.grid
       ? `:${resolved.grid.frameWidth}x${resolved.grid.frameHeight}`
       : '';
@@ -1498,7 +1496,7 @@ export class EditorScene extends Phaser.Scene {
           if (!pendingBackgrounds.some((b) => b.key === key)) {
             pendingBackgrounds.push({
               key,
-              url: asset.source.kind === 'embedded' ? asset.source.dataUrl : asset.source.path,
+              url: asset.source.dataUrl,
             });
           }
         }
@@ -1512,12 +1510,12 @@ export class EditorScene extends Phaser.Scene {
       const resolved = this.resolveSpriteAssetSource(asset);
       if (!resolved) continue;
       if (asset.imageType === 'spritesheet' && resolved.grid) {
-        this.load.spritesheet(key, resolved.source.kind === 'embedded' ? resolved.source.dataUrl : resolved.source.path, {
+        this.load.spritesheet(key, resolved.source.dataUrl, {
           frameWidth: resolved.grid.frameWidth,
           frameHeight: resolved.grid.frameHeight,
         });
       } else {
-        this.load.image(key, resolved.source.kind === 'embedded' ? resolved.source.dataUrl : resolved.source.path);
+        this.load.image(key, resolved.source.dataUrl);
       }
     }
 

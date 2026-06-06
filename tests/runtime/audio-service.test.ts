@@ -57,8 +57,8 @@ describe('BasicAudioService', () => {
     const project = {
       audio: {
         sounds: {
-          music_theme: { id: 'music_theme', source: { kind: 'path', path: '/x.mp3' } },
-          forest: { id: 'forest', source: { kind: 'path', path: '/y.ogg' } },
+          music_theme: { id: 'music_theme', source: { kind: 'embedded', dataUrl: 'data:audio/mp3;base64,AAAA', originalName: 'x.mp3', mimeType: 'audio/mpeg' } },
+          forest: { id: 'forest', source: { kind: 'embedded', dataUrl: 'data:audio/ogg;base64,BBBB', originalName: 'y.ogg', mimeType: 'audio/ogg' } },
         },
       },
     } as any;
@@ -77,7 +77,7 @@ describe('BasicAudioService', () => {
   it('clears state when scene spec has no audio', () => {
     const manager = new FakeSoundManager();
     const svc = new BasicAudioService(manager, (id) => `audio:${id}`);
-    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'path', path: '/a.mp3' } } } } } as any;
+    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'embedded', dataUrl: 'data:audio/mp3;base64,AAAA', originalName: 'a.mp3', mimeType: 'audio/mpeg' } } } } } as any;
 
     svc.applySceneAudio({ music: { assetId: 'a', loop: true, volume: 1, fadeMs: 0 } } as any, project);
     expect(svc.getSnapshot().musicAssetId).toBe('a');
@@ -97,7 +97,7 @@ describe('BasicAudioService', () => {
     };
 
     const svc = new BasicAudioService(manager, (id) => `audio:${id}`);
-    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'path', path: '/a.mp3' } } } } } as any;
+    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'embedded', dataUrl: 'data:audio/mp3;base64,AAAA', originalName: 'a.mp3', mimeType: 'audio/mpeg' } } } } } as any;
 
     svc.applySceneAudio({ music: { assetId: 'a', loop: true, volume: 1, fadeMs: 0 } } as any, project);
     expect(svc.getSnapshot()).toEqual({ musicAssetId: 'a', ambienceAssetIds: [] });
@@ -123,7 +123,7 @@ describe('BasicAudioService', () => {
     };
 
     const svc = new BasicAudioService(manager, (id) => `audio:${id}`);
-    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'path', path: '/a.mp3' } } } } } as any;
+    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'embedded', dataUrl: 'data:audio/mp3;base64,AAAA', originalName: 'a.mp3', mimeType: 'audio/mpeg' } } } } } as any;
 
     svc.applySceneAudio({ ambience: [{ assetId: 'a', loop: true, volume: 0.4 }] } as any, project);
     expect(svc.getSnapshot()).toEqual({ musicAssetId: undefined, ambienceAssetIds: ['a'] });

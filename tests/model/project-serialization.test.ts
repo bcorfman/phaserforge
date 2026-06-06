@@ -10,7 +10,7 @@ describe('project YAML serialization', () => {
       assets: { images: {}, spriteSheets: {}, fonts: {} },
       audio: {
         sounds: {
-          music_theme: { id: 'music_theme', source: { kind: 'path', path: '/assets/audio/theme.mp3' } },
+          music_theme: { id: 'music_theme', source: { kind: 'embedded', dataUrl: 'data:audio/mp3;base64,AAAA', originalName: 'theme.mp3', mimeType: 'audio/mpeg' } },
           forest_ambience: { id: 'forest_ambience', source: { kind: 'embedded', dataUrl: 'data:audio/wav;base64,AAAA', originalName: 'forest.wav', mimeType: 'audio/wav' } },
         },
       },
@@ -218,7 +218,6 @@ describe('project YAML serialization', () => {
               dataUrl: 'data:image/png;base64,AAAA',
               originalName: 'enemy.png',
               mimeType: 'image/png',
-              pathHint: 'demo-pack/enemy.png',
             },
           },
         },
@@ -233,12 +232,10 @@ describe('project YAML serialization', () => {
     } as any;
 
     const yaml = serializeProjectToYaml(project);
-    expect(yaml).toMatch(/\n\s+pathHint:\s*demo-pack\/enemy\.png\n/);
-
     const parsed = parseProjectYaml(yaml);
     expect(parsed.assets.images.enemy.source).toMatchObject({
       kind: 'embedded',
-      pathHint: 'demo-pack/enemy.png',
+      originalName: 'enemy.png',
     });
   });
 });
