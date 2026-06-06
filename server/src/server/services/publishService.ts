@@ -51,6 +51,15 @@ function pagesUrlFor(login: string, repo: string): string {
   return normalizedRepo ? new URL(`${normalizedRepo}/`, base).toString() : base;
 }
 
+async function routeExists(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { method: 'HEAD', redirect: 'manual' });
+    return res.status >= 200 && res.status < 400;
+  } catch {
+    return false;
+  }
+}
+
 function projectHasPathAssets(yamlText: string): boolean {
   try {
     const parsed = parseYaml(yamlText) as any;
@@ -421,7 +430,10 @@ export async function checkGithubPagesTarget(
   repositories: Repositories,
   userId: string,
   repo: string,
-): Promise<Ok<{ url: string; exists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }> | Err<'github_not_linked' | 'github_token_missing' | 'github_repo_permission_required' | 'github_failed'>> {
+): Promise<
+  Ok<{ url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }>
+  | Err<'github_not_linked' | 'github_token_missing' | 'github_repo_permission_required' | 'github_failed'>
+> {
   const info = await resolveGithubToken(repositories, userId);
   if (!info.ok) return info;
   const oauth = await repositories.oauth.findByUserIdProvider(userId, 'github');
@@ -429,10 +441,12 @@ export async function checkGithubPagesTarget(
   if (!accessToken) return { ok: false, error: 'github_token_missing' };
 
   const normalizedRepo = normalizeRepoName(repo);
+  const url = pagesUrlFor(info.login, normalizedRepo);
+  const publicRouteExists = await routeExists(url);
   const repoRes = await getRepo(accessToken, info.login, normalizedRepo);
   if (!repoRes.ok) {
     if (repoRes.status === 404) {
-      return { ok: true, url: pagesUrlFor(info.login, normalizedRepo), exists: false, pagesConfigured: false, deploymentStatus: null };
+      return { ok: true, url, exists: false, routeExists: publicRouteExists, pagesConfigured: false, deploymentStatus: null };
     }
     if (repoRes.status === 401 || repoRes.status === 403) return { ok: false, error: 'github_repo_permission_required' };
     return { ok: false, error: 'github_failed' };
@@ -444,15 +458,16 @@ export async function checkGithubPagesTarget(
   );
   if (!pageRes.ok) {
     if (pageRes.status === 404) {
-      return { ok: true, url: pagesUrlFor(info.login, normalizedRepo), exists: true, pagesConfigured: false, deploymentStatus: null };
+      return { ok: true, url, exists: true, routeExists: publicRouteExists, pagesConfigured: false, deploymentStatus: null };
     }
-    return { ok: true, url: pagesUrlFor(info.login, normalizedRepo), exists: true, pagesConfigured: false, deploymentStatus: null };
+    return { ok: true, url, exists: true, routeExists: publicRouteExists, pagesConfigured: false, deploymentStatus: null };
   }
 
   return {
     ok: true,
-    url: pagesUrlFor(info.login, normalizedRepo),
+    url,
     exists: true,
+    routeExists: publicRouteExists,
     pagesConfigured: true,
     deploymentStatus: pageRes.json.status ?? null,
   };

@@ -160,7 +160,7 @@ export const PublishFirstTimeSuccess: Story = {
       handlers: createCloudAuthHandlers({
         user: { id: 'u1', email: 'a@b.c' },
         publishInfo: { ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/' },
-        publishCheck: { ok: true, url: 'https://alice.github.io/zoof/', exists: false, pagesConfigured: false, deploymentStatus: null },
+        publishCheck: { ok: true, url: 'https://alice.github.io/zoof/', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null },
         publishResult: { ok: true, url: 'https://alice.github.io/zoof/', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' },
       }),
     },
@@ -190,7 +190,7 @@ export const PublishFailure: Story = {
       handlers: createCloudAuthHandlers({
         user: { id: 'u1', email: 'a@b.c' },
         publishInfo: { ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/' },
-        publishCheck: { ok: true, url: 'https://alice.github.io/zoof/', exists: true, pagesConfigured: true, deploymentStatus: 'built' },
+        publishCheck: { ok: true, url: 'https://alice.github.io/zoof/', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built' },
         publishResult: { ok: false, error: 'github_pages_permission_required' },
       }),
     },

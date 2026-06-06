@@ -79,7 +79,9 @@ export function createCloudAuthHandlers(options: {
   publishInfo?: MockPublishInfo;
   loginUser?: { id: string; email: string };
   games?: Array<{ id: string; title: string; created_at: string; updated_at: string }>;
-  publishCheck?: { ok: true; url: string; exists: boolean; pagesConfigured: boolean; deploymentStatus: string | null } | { ok: false; error: string };
+  publishCheck?:
+    | { ok: true; url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }
+    | { ok: false; error: string };
   publishResult?:
     | { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }
     | { ok: false; error: string; url?: string };
