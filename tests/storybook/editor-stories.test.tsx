@@ -72,8 +72,8 @@ describe('storybook interaction stories', () => {
 
   it('runs the cloud account login and publish-gating stories', async () => {
     await renderStoryAndPlay(composedCloudStories.EmailLogin as any);
-    const container = await renderStoryAndPlay(composedCloudStories.PublishBlockedByPathAssets as any);
-    expect(container.textContent).toContain('Path assets detected');
+    const container = await renderStoryAndPlay(composedCloudStories.PublishRepoEntryReady as any);
+    expect(container.textContent).toContain('https://alice.github.io/mygame/');
   });
 
   it('runs the cloud publish-ready and failure stories', async () => {

@@ -80,7 +80,7 @@ export const SignedInGithubUnlinked: Story = {
   },
 };
 
-export const PublishBlockedByPathAssets: Story = {
+export const PublishRepoEntryReady: Story = {
   args: {
     initialProject: {
       id: 'project-1',
@@ -113,8 +113,8 @@ export const PublishBlockedByPathAssets: Story = {
     await userEvent.type(canvas.getByLabelText('Publish repository'), 'mygame');
     await waitFor(() => {
       expect(canvas.getByTestId('cloud-publish-pages-target').textContent).toContain('https://alice.github.io/mygame/');
-      expect((canvas.getByTestId('cloud-publish-pages-button') as HTMLButtonElement).disabled).toBe(true);
-      expect(canvas.getByTestId('cloud-publish-pages-help').textContent).toContain('Path assets detected');
+      expect((canvas.getByTestId('cloud-publish-pages-button') as HTMLButtonElement).disabled).toBe(false);
+      expect(canvas.getByTestId('cloud-publish-pages-help').textContent ?? '').toBe('');
     });
   },
 };
