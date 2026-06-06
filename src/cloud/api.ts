@@ -129,9 +129,12 @@ export async function getGithubPagesPublishInfo(): Promise<{ ok: true; login: st
 export async function checkGithubPagesTarget(
   repo: string,
   csrfToken: string,
-): Promise<{ ok: true; url: string; exists: boolean; pagesConfigured: boolean; deploymentStatus: string | null } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }
+  | { ok: false; error: string }
+> {
   try {
-    const json = await api<{ ok: true; url: string; exists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }>(
+    const json = await api<{ ok: true; url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }>(
       '/api/v1/publish/github-pages/check',
       {
       method: 'POST',
