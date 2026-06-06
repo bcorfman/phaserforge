@@ -196,6 +196,7 @@ describe('publish github pages', () => {
     await addGame(repositories, userId);
 
     const treeBodies: any[] = [];
+    const blobBodies: Array<{ content: string; encoding: string }> = [];
     let blobIndex = 0;
     vi.stubGlobal(
       'fetch',
@@ -223,6 +224,7 @@ describe('publish github pages', () => {
         }
         if (url === 'https://api.github.com/repos/alice/zoof/git/blobs') {
           expect(init?.method).toBe('POST');
+          blobBodies.push(JSON.parse(String(init?.body)));
           blobIndex += 1;
           return new Response(JSON.stringify({ sha: `blob-${blobIndex}` }), { status: 201 });
         }
@@ -267,6 +269,11 @@ describe('publish github pages', () => {
     expect(treeBodies[0].tree.some((entry: any) => entry.path === '.github/workflows/deploy-phaserforge-pages.yml')).toBe(true);
     expect(treeBodies[0].tree.some((entry: any) => entry.path === 'index.html')).toBe(true);
     expect(treeBodies[0].tree.some((entry: any) => entry.path === 'game.yaml')).toBe(true);
+    const workflowBlob = blobBodies
+      .map((blob) => Buffer.from(blob.content, 'base64').toString('utf8'))
+      .find((content) => content.includes('Deploy PhaserForge game to GitHub Pages'));
+    expect(workflowBlob).toContain('FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true');
+    expect(workflowBlob).toContain('[ "$entry" != ".pages-artifact" ]');
   });
 
   it('publish surfaces Pages permission failures distinctly', async () => {
