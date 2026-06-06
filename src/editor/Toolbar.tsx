@@ -1,18 +1,26 @@
 import { useEditorStore } from './EditorStore';
 
 type ToolbarViewProps = {
-  state: Pick<ReturnType<typeof useEditorStore>['state'], 'dirty' | 'uiScale' | 'themeMode' | 'error' | 'statusMessage'>;
+  state: Pick<ReturnType<typeof useEditorStore>['state'], 'dirty' | 'uiScale' | 'themeMode' | 'error' | 'statusMessage' | 'syncMode'>;
   dispatch: ReturnType<typeof useEditorStore>['dispatch'];
+  onToggleSyncMode: () => void;
 };
 
-export function ToolbarView({ state, dispatch }: ToolbarViewProps) {
+export function ToolbarView({ state, dispatch, onToggleSyncMode }: ToolbarViewProps) {
   return (
     <header className="toolbar" data-testid="toolbar">
       <div className="toolbar-left">
         <p className="toolbar-kicker">Browser Editor</p>
         <div className="toolbar-title-row">
           <h1 className="brand">PhaserForge</h1>
-          {state.dirty && <span className="badge" data-testid="dirty-badge">Unsaved</span>}
+          <button
+            className={`badge toolbar-sync-badge ${state.syncMode === 'offline' ? 'toolbar-sync-badge-offline' : ''}`}
+            data-testid="project-sync-badge"
+            type="button"
+            onClick={onToggleSyncMode}
+          >
+            {state.syncMode === 'offline' ? 'Offline' : 'Online'}
+          </button>
         </div>
         <p className="toolbar-summary toolbar-summary-single-line">
           Move entities on the canvas, tune formations in the inspector, and round-trip YAML without leaving the editor.
@@ -103,6 +111,6 @@ export function ToolbarView({ state, dispatch }: ToolbarViewProps) {
 }
 
 export function Toolbar() {
-  const { state, dispatch } = useEditorStore();
-  return <ToolbarView state={state} dispatch={dispatch} />;
+  const { state, dispatch, persistence } = useEditorStore();
+  return <ToolbarView state={state} dispatch={dispatch} onToggleSyncMode={() => void persistence.toggleSyncMode()} />;
 }
