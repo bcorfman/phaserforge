@@ -29,6 +29,10 @@
         "build": "node log.js build & vite build --config vite/config.prod.mjs",
         "dev-nolog": "vite --config vite/config.dev.mjs",
         "build-nolog": "vite build --config vite/config.prod.mjs",
+        "docs:dev": "vitepress dev docs",
+        "docs:build": "vitepress build docs",
+        "docs:preview": "vitepress preview docs",
+        "docs:stage": "node scripts/docs/stage-docs-for-pages.mjs",
         "server:dev": "node --import tsx server/src/index.ts",
         "server:start": "node --import tsx server/src/index.ts",
         "prisma:generate": "prisma generate",
@@ -93,6 +97,7 @@
         "typescript": "~6.0.3",
         "typescript-eslint": "^8.60.1",
         "vite": "^8.0.10",
+        "vitepress": "^2.0.0-alpha.12",
         "vitest": "^4.1.5"
     },
     "overrides": {
