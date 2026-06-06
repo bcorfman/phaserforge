@@ -80,12 +80,10 @@ function validateAsset(asset: SpriteAssetSpec, entityId: string): void {
     if (!asset.source.assetId) {
       throw new Error(`Entity ${entityId} asset reference requires an assetId`);
     }
-  } else if (asset.source.kind === 'embedded') {
+  } else {
     if (!asset.source.dataUrl.startsWith('data:')) {
       throw new Error(`Entity ${entityId} embedded asset must use a data URL`);
     }
-  } else if (!asset.source.path) {
-    throw new Error(`Entity ${entityId} path asset requires a path`);
   }
 
   if (asset.imageType === 'spritesheet') {

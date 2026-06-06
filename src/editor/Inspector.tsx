@@ -75,16 +75,12 @@ export function Inspector() {
       const asset = candidate.asset;
       const key = asset.source.kind === 'asset'
         ? `asset:${asset.source.assetId}`
-        : asset.source.kind === 'path'
-          ? `path:${asset.source.path}`
-          : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
+        : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const label = asset.source.kind === 'asset'
         ? `asset:${asset.source.assetId}`
-        : asset.source.kind === 'path'
-          ? (asset.source.path.split('/').pop() ?? asset.source.path)
-          : (asset.source.originalName ?? 'embedded');
+        : (asset.source.originalName ?? 'embedded');
       options.push({ key, label });
     }
     options.sort((a, b) => a.label.localeCompare(b.label));
@@ -404,9 +400,7 @@ function EntityInspector({
   const keyForAsset = (asset: SpriteAssetSpec): string => {
     const base = asset.source.kind === 'asset'
       ? `asset:${asset.source.assetId}`
-      : asset.source.kind === 'path'
-        ? `path:${asset.source.path}`
-        : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
+      : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
     const grid = asset.imageType === 'spritesheet' && asset.grid
       ? `:${asset.grid.frameWidth}x${asset.grid.frameHeight}:${asset.grid.columns}x${asset.grid.rows}`
       : '';
@@ -416,9 +410,7 @@ function EntityInspector({
   const labelForAsset = (asset: SpriteAssetSpec): string => {
     const name = asset.source.kind === 'asset'
       ? `asset:${asset.source.assetId}`
-      : asset.source.kind === 'path'
-        ? (asset.source.path.split('/').pop() ?? asset.source.path)
-        : (asset.source.originalName ?? 'embedded');
+      : (asset.source.originalName ?? 'embedded');
     return `${name} (${asset.imageType})`;
   };
 
@@ -1098,9 +1090,7 @@ function EntityInspector({
           <div className="inspector-row">
             Source: {resolved.asset.source.kind === 'asset'
               ? `asset:${resolved.asset.source.assetId}`
-              : resolved.asset.source.kind === 'embedded'
-                ? (resolved.asset.source.originalName ?? 'embedded')
-                : resolved.asset.source.path}
+              : (resolved.asset.source.originalName ?? 'embedded')}
           </div>
 	          {resolved.asset.imageType === 'spritesheet' ? (
 	            <>

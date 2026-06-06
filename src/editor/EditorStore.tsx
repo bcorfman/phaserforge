@@ -263,15 +263,11 @@ export type EditorAction =
   | { type: 'convert-group-layout-arrange'; id: Id; arrangeKind: string }
   | { type: 'remove-scene-graph-item'; item: { kind: 'entity' | 'group' | 'attachment'; id: Id } }
   | { type: 'add-background-layer-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; defaults?: { layout?: BackgroundLayerSpec['layout'] } }
-  | { type: 'add-image-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string; width?: number; height?: number } }
-  | { type: 'ensure-image-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string; width?: number; height?: number } }
-  | { type: 'add-image-asset-from-path'; path: string; suggestedId?: string; width?: number; height?: number }
-  | { type: 'add-spritesheet-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string }; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
-  | { type: 'add-spritesheet-asset-from-path'; path: string; suggestedId?: string; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
-  | { type: 'add-font-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string } }
-  | { type: 'add-font-asset-from-path'; path: string; suggestedId?: string }
+  | { type: 'add-image-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; width?: number; height?: number } }
+  | { type: 'ensure-image-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string; width?: number; height?: number } }
+  | { type: 'add-spritesheet-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
+  | { type: 'add-font-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
   | { type: 'set-asset-display-name'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id; name?: string }
-  | { type: 'relink-asset-source'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id; source: AssetFileSource }
   | { type: 'remove-asset'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id }
   | { type: 'create-entity-from-asset'; assetKind: 'image' | 'spritesheet'; assetId: Id; at?: { x: number; y: number } }
   | {
@@ -284,8 +280,7 @@ export type EditorAction =
         | { kind: 'scene-ambience'; sceneId: Id; index?: number }
         | { kind: 'entity-sprite'; sceneId: Id; entityId: Id };
     }
-  | { type: 'add-audio-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; path?: string; pathHint?: string } }
-  | { type: 'add-audio-asset-from-path'; path: string; suggestedId?: string }
+  | { type: 'add-audio-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
   | { type: 'remove-audio-asset'; assetId: Id }
   | { type: 'set-scene-music'; music: GameSceneSpec['music'] | undefined }
   | { type: 'set-scene-ambience'; ambience: NonNullable<GameSceneSpec['ambience']> }
@@ -741,17 +736,13 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'load-yaml-text':
     case 'add-background-layer-from-file':
     case 'add-image-asset-from-file':
-    case 'add-image-asset-from-path':
     case 'add-spritesheet-asset-from-file':
-    case 'add-spritesheet-asset-from-path':
     case 'add-font-asset-from-file':
-    case 'add-font-asset-from-path':
     case 'set-asset-display-name':
     case 'remove-asset':
     case 'create-entity-from-asset':
     case 'assign-asset-to-target':
     case 'add-audio-asset-from-file':
-    case 'add-audio-asset-from-path':
     case 'remove-audio-asset':
     case 'set-scene-music':
     case 'set-scene-ambience':
@@ -786,15 +777,11 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'clear-scene':
     case 'add-background-layer-from-file':
     case 'add-image-asset-from-file':
-    case 'add-image-asset-from-path':
     case 'add-spritesheet-asset-from-file':
-    case 'add-spritesheet-asset-from-path':
     case 'add-font-asset-from-file':
-    case 'add-font-asset-from-path':
     case 'set-asset-display-name':
     case 'remove-asset':
     case 'add-audio-asset-from-file':
-    case 'add-audio-asset-from-path':
     case 'remove-audio-asset':
     case 'create-input-map':
     case 'duplicate-input-map':
@@ -1412,37 +1399,9 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
               source: {
                 kind: 'embedded',
                 dataUrl: action.file.dataUrl,
-                ...(action.file.path ? { path: action.file.path } : {}),
-                ...(action.file.pathHint ? { pathHint: action.file.pathHint } : {}),
                 ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
                 ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
               },
-            },
-          },
-        },
-      };
-      return {
-        ...state,
-        project: nextProject,
-        dirty: true,
-        error: undefined,
-      };
-    }
-    case 'add-audio-asset-from-path': {
-      const sounds = state.project.audio?.sounds ?? {};
-      const rawSuggested = (action.suggestedId ?? '').trim();
-      const derived = action.path.split('/').pop() ?? action.path;
-      const base = rawSuggested.length > 0 ? rawSuggested : assetIdBaseFromOriginalName(derived, 'sound');
-      const assetId = allocUniqueId(sounds, base);
-      const nextProject: ProjectSpec = {
-        ...state.project,
-        audio: {
-          ...state.project.audio,
-          sounds: {
-            ...sounds,
-            [assetId]: {
-              id: assetId,
-              source: { kind: 'path', path: action.path },
             },
           },
         },
@@ -1678,8 +1637,6 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
               source: {
                 kind: 'embedded',
                 dataUrl: action.file.dataUrl,
-                ...(action.file.path ? { path: action.file.path } : {}),
-                ...(action.file.pathHint ? { pathHint: action.file.pathHint } : {}),
                 ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
                 ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
               },
@@ -1723,8 +1680,6 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
               source: {
                 kind: 'embedded',
                 dataUrl: action.file.dataUrl,
-                ...(action.file.path ? { path: action.file.path } : {}),
-                ...(action.file.pathHint ? { pathHint: action.file.pathHint } : {}),
                 ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
                 ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
               },
@@ -1756,38 +1711,9 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
               source: {
                 kind: 'embedded',
                 dataUrl: action.file.dataUrl,
-                ...(action.file.path ? { path: action.file.path } : {}),
-                ...(action.file.pathHint ? { pathHint: action.file.pathHint } : {}),
                 ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
                 ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
               },
-            },
-          },
-        },
-      };
-      return { ...state, project: nextProject, dirty: true, error: undefined };
-    }
-    case 'add-image-asset-from-path': {
-      const images = state.project.assets.images ?? {};
-      const rawSuggested = (action.suggestedId ?? '').trim();
-      const derived = action.path.split('/').pop() ?? action.path;
-      const base = rawSuggested.length > 0 ? rawSuggested : assetIdBaseFromOriginalName(derived, 'image');
-      const assetId = allocUniqueId(images, base);
-      const rawName = derived.replace(/\.[a-z0-9]+$/i, '').trim();
-      const width = action.width;
-      const height = action.height;
-      const nextProject: ProjectSpec = {
-        ...state.project,
-        assets: {
-          ...state.project.assets,
-          images: {
-            ...images,
-            [assetId]: {
-              id: assetId,
-              ...(rawName ? { name: rawName } : {}),
-              ...(typeof width === 'number' && Number.isFinite(width) && width > 0 ? { width } : {}),
-              ...(typeof height === 'number' && Number.isFinite(height) && height > 0 ? { height } : {}),
-              source: { kind: 'path', path: action.path },
             },
           },
         },
@@ -1826,35 +1752,6 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       };
       return { ...state, project: nextProject, dirty: true, error: undefined };
     }
-    case 'add-spritesheet-asset-from-path': {
-      const spriteSheets = state.project.assets.spriteSheets ?? {};
-      const rawSuggested = (action.suggestedId ?? '').trim();
-      const derived = action.path.split('/').pop() ?? action.path;
-      const base = rawSuggested.length > 0 ? rawSuggested : assetIdBaseFromOriginalName(derived, 'spritesheet');
-      const assetId = allocUniqueId(spriteSheets, base);
-      const rawName = derived.replace(/\.[a-z0-9]+$/i, '').trim();
-      const nextProject: ProjectSpec = {
-        ...state.project,
-        assets: {
-          ...state.project.assets,
-          spriteSheets: {
-            ...spriteSheets,
-            [assetId]: {
-              id: assetId,
-              ...(rawName ? { name: rawName } : {}),
-              source: { kind: 'path', path: action.path },
-              grid: {
-                frameWidth: Math.max(1, Math.floor(action.grid.frameWidth)),
-                frameHeight: Math.max(1, Math.floor(action.grid.frameHeight)),
-                columns: Math.max(1, Math.floor(action.grid.columns)),
-                rows: Math.max(1, Math.floor(action.grid.rows)),
-              },
-            },
-          },
-        },
-      };
-      return { ...state, project: nextProject, dirty: true, error: undefined };
-    }
     case 'add-font-asset-from-file': {
       const fonts = state.project.assets.fonts ?? {};
       const base = assetIdBaseFromOriginalName(action.file.originalName, 'font');
@@ -1875,29 +1772,6 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
                 ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
                 ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
               },
-            },
-          },
-        },
-      };
-      return { ...state, project: nextProject, dirty: true, error: undefined };
-    }
-    case 'add-font-asset-from-path': {
-      const fonts = state.project.assets.fonts ?? {};
-      const rawSuggested = (action.suggestedId ?? '').trim();
-      const derived = action.path.split('/').pop() ?? action.path;
-      const base = rawSuggested.length > 0 ? rawSuggested : assetIdBaseFromOriginalName(derived, 'font');
-      const assetId = allocUniqueId(fonts, base);
-      const rawName = derived.replace(/\.[a-z0-9]+$/i, '').trim();
-      const nextProject: ProjectSpec = {
-        ...state.project,
-        assets: {
-          ...state.project.assets,
-          fonts: {
-            ...fonts,
-            [assetId]: {
-              id: assetId,
-              ...(rawName ? { name: rawName } : {}),
-              source: { kind: 'path', path: action.path },
             },
           },
         },
@@ -1950,55 +1824,6 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
             void _name;
             return rest;
           })()),
-        },
-      };
-
-      const nextProject: ProjectSpec = {
-        ...state.project,
-        assets: {
-          ...assets,
-          ...(action.assetKind === 'image' ? { images: nextCollection } : {}),
-          ...(action.assetKind === 'spritesheet' ? { spriteSheets: nextCollection } : {}),
-          ...(action.assetKind === 'font' ? { fonts: nextCollection } : {}),
-        },
-      };
-      return { ...state, project: nextProject, dirty: true, error: undefined };
-    }
-    case 'relink-asset-source': {
-      if (action.assetKind === 'audio') {
-        const sounds = state.project.audio?.sounds ?? {};
-        const existing = sounds[action.assetId];
-        if (!existing) return state;
-        const nextProject: ProjectSpec = {
-          ...state.project,
-          audio: {
-            ...state.project.audio,
-            sounds: {
-              ...sounds,
-              [action.assetId]: {
-                ...existing,
-                source: action.source,
-              },
-            },
-          },
-        };
-        return { ...state, project: nextProject, dirty: true, error: undefined };
-      }
-
-      const assets = state.project.assets;
-      const collection = action.assetKind === 'image'
-        ? assets.images
-        : action.assetKind === 'spritesheet'
-          ? assets.spriteSheets
-          : assets.fonts;
-      const existing = collection?.[action.assetId];
-      if (!existing) return state;
-
-      const nextCollection: any = {
-        ...(collection ?? {}),
-        [action.assetId]: {
-          ...existing,
-          source: action.source,
         },
       };
 
