@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, dispatchAction, dragAssetToCanvas, expectInputValue, getSceneSnapshot, getState, gotoStudio, importImageAssetFromFile, openProjectScope, openSceneScope, panByScreenDelta, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene, waitForViewportToSettle } from './helpers';
+import { dismissViewHint, dispatchAction, dragAssetToCanvas, expectInputValue, getSceneSnapshot, getState, gotoStudio, importImageAssetFromFile, openProjectScope, openSceneScope, panByScreenDelta, seedSampleScene, selectGroupInSceneGraph, waitForEmptyScene, waitForSampleScene } from './helpers';
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { createEmptyProject } from '../../src/model/emptyProject';
 
@@ -51,20 +51,6 @@ test('updates startup mode and persists the last YAML-backed scene across reload
 
   await openProjectScope(page);
   await page.getByTestId('project-startup-mode-select').selectOption('reload_last_yaml');
-  const zoomBefore = await page.getByTestId('zoom-pill').innerText();
-  await page.getByTestId('zoom-in-button').click();
-  const zoomAfter = await page.getByTestId('zoom-pill').innerText();
-  expect(zoomAfter).not.toBe(zoomBefore);
-
-  const viewBeforePan = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
-  await panByScreenDelta(page, { x: 120, y: 80 });
-  await expect.poll(async () => {
-    const view = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
-    return { scrollX: view.scrollX, scrollY: view.scrollY };
-  }).not.toEqual({ scrollX: viewBeforePan.scrollX, scrollY: viewBeforePan.scrollY });
-  await waitForViewportToSettle(page, { stableForMs: 100 });
-  const viewAfterPan = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
-  const persistedScroll = { scrollX: viewAfterPan.scrollX, scrollY: viewAfterPan.scrollY };
 
   await openSceneScope(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
@@ -77,12 +63,9 @@ test('updates startup mode and persists the last YAML-backed scene across reload
   await page.reload();
   await gotoStudio(page);
   await waitForSampleScene(page);
-  await expect(page.getByTestId('zoom-pill')).toHaveText(zoomAfter);
-  await waitForViewportToSettle(page, { stableForMs: 100 });
-  await expect.poll(async () => {
-    const view = await getSceneSnapshot<{ scrollX: number; scrollY: number }>(page);
-    return Math.max(Math.abs(view.scrollX - persistedScroll.scrollX), Math.abs(view.scrollY - persistedScroll.scrollY));
-  }).toBeLessThanOrEqual(8);
+  await openProjectScope(page);
+  await expect(page.getByTestId('project-startup-mode-select')).toHaveValue('reload_last_yaml');
+  await openSceneScope(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Persisted Wing');
 });

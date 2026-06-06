@@ -144,6 +144,45 @@ describe('publish github pages', () => {
       ok: true,
       url: 'https://alice.github.io/mygame/',
       exists: false,
+      routeExists: false,
+      pagesConfigured: false,
+      deploymentStatus: null,
+    });
+  });
+
+  it('check reports when the target route already serves content', async () => {
+    const { app, repositories } = makeApp();
+    const agent = request.agent(app);
+    const { userId, csrf } = await signup(agent);
+    await linkGithub(repositories, userId);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === 'https://api.github.com/repos/alice/zoof') {
+          expect(init?.method ?? 'GET').toBe('GET');
+          return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
+        }
+        if (url === 'https://alice.github.io/zoof/') {
+          expect(init?.method).toBe('HEAD');
+          return new Response('', { status: 200 });
+        }
+        throw new Error(`Unhandled fetch ${url}`);
+      }) as any,
+    );
+
+    const res = await agent
+      .post('/api/v1/publish/github-pages/check')
+      .set('x-csrf-token', csrf)
+      .send({ repo: 'zoof' })
+      .expect(200);
+
+    expect(res.body).toEqual({
+      ok: true,
+      url: 'https://alice.github.io/zoof/',
+      exists: false,
+      routeExists: true,
       pagesConfigured: false,
       deploymentStatus: null,
     });

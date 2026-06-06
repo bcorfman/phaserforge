@@ -60,7 +60,7 @@ describe('cloud api', () => {
       expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
       expect((init?.headers as any)['content-type']).toBe('application/json');
       expect(init?.body).toBe(JSON.stringify({ repo: 'mygame' }));
-      return new Response(JSON.stringify({ ok: true, url: 'u', exists: false, pagesConfigured: false, deploymentStatus: null }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, url: 'u', exists: false, routeExists: true, pagesConfigured: false, deploymentStatus: null }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock as any);
 
@@ -68,6 +68,7 @@ describe('cloud api', () => {
       ok: true,
       url: 'u',
       exists: false,
+      routeExists: true,
       pagesConfigured: false,
       deploymentStatus: null,
     });
