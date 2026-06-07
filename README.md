@@ -45,6 +45,7 @@ The claim is narrow on purpose. This is not “a better everything-editor.” It
 | `npm run dev:cloud` | Start the dev server + local API (Vite proxies `/api/*` to the API) |
 | `npm run build` | Create a production build in `dist/` |
 | `npm test` | Run unit tests (Vitest) |
+| `npm run test:stories` | Run Storybook-focused tests |
 | `npm run test:e2e` | Run Playwright end-to-end tests |
 | `npm run test:all` | Run unit + e2e tests |
 | `npm run docs:dev` | Start the docs site locally |
