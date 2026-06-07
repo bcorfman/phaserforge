@@ -63,6 +63,15 @@
     "output": "docs/assets/screenshots/playwright/cloud-account-linked.png"
   },
   {
+    "id": "actions-events-panel",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "actions-events",
+    "selector": "[data-testid=\"events-panel\"]",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/actions-events-panel.png"
+  },
+  {
     "id": "layout-popover",
     "source": "playwright",
     "scene": "sample",
