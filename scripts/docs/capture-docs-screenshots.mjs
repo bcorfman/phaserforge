@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { chromium } from '@playwright/test';
 
 import { getScreenshotsBySource, parseScreenshotManifest } from '../../src/docs/screenshotManifest.ts';
-import { dispatchAction, dismissViewHint, getEntityWorldRect, gotoStudio, seedSampleScene, tapWorld } from '../../tests/e2e/helpers.ts';
+import { clearSelectionByClickingEmptyCanvas, dispatchAction, dismissViewHint, getEntityWorldRect, gotoStudio, seedSampleScene, tapWorld } from '../../tests/e2e/helpers.ts';
 import { getDefaultApiStubResponse } from '../../tests/support/apiMocks.ts';
 
 const APP_PORT = 4173;
@@ -72,6 +72,12 @@ async function prepareSampleScene(page, capture) {
 
   if (capture === 'yaml-controls') {
     await page.waitForSelector('[data-testid="yaml-save-as-button"]', { state: 'visible', timeout: 10000 });
+  }
+
+  if (capture === 'actions-events') {
+    await clearSelectionByClickingEmptyCanvas(page);
+    await tapWorld(page, { x: r1.centerX ?? (r1.minX + r1.maxX) / 2, y: r1.centerY ?? (r1.minY + r1.maxY) / 2 });
+    await page.waitForSelector('[data-testid="events-panel"]', { state: 'visible', timeout: 10000 });
   }
 
   if (capture === 'cloud-publish') {
