@@ -2,78 +2,35 @@
 
 Project docs: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bcorfman/phaserforge)
 
-**PhaserForge** is a gameplay behavior editor for Phaser that targets the real bottleneck in experienced teams: **orchestration**.
+**Design the scene. Compose the behavior. Tune it live.**
 
-You already know how to write movement, firing, and collisions. What slows you down is everything *between* those ideas and a shippable result: timers, flags, ad-hoc state machines, event ordering bugs, copy/paste drift, and the constant cost of “just one more exception” in `update()`.
+**PhaserForge** is a gameplay behavior editor for Phaser built around one bet: the real slowdown is not movement code, collision code, or rendering code. It is **orchestration**.
 
-Instead of hand-wiring that glue, you attach **composable actions** to entities or groups, then drive them with **conditions** and **events**. The editor is the multiplier: you can **tune parameters live while the runtime is running**, duplicate behavior with intent (not just sprites), and keep gameplay logic **inspectable and data-driven** via YAML round-trip. This is less “nice tooling” and more a change in what you author: **behavior becomes content**.
+The drag comes from timers, flags, ad-hoc state machines, event-order bugs, and one more special case buried in `update()`. PhaserForge pushes that glue into an **ACE** model: author **Actions**, gate them with **Conditions**, and trigger them from **Events**.
+
+The claim is narrow on purpose. This is not “a better everything-editor.” It is a proof-of-concept that if orchestration becomes declarative, inspectable, and live-tunable, then a real kind of **10x game development** becomes possible for gameplay-heavy teams.
 
 <img src="res/images/mainwindow.png?raw=true" style="width: 800px"/>
 
-## What’s In The Editor Today
+## Why It’s Different
 
-This editor is opinionated about speed: one primary workflow, near-cursor selection actions, and a runtime preview that runs the same compiled scene spec you ship.
+| ACE authoring | Live tuning | Declarative reuse |
+|---|---|---|
+| Build behavior as **events + actions + conditions**, not glue code. | Change values while the game is running and feel the result immediately. | Keep gameplay logic in YAML so it can be inspected, versioned, duplicated, and remixed. |
 
-- **You stop paying the orchestration tax**: behavior lives as attachments/event blocks, not scattered `update()` glue.
-- **Iteration becomes tuning**: change parameters and immediately feel the result in Play mode (no rebuild-and-hope loop).
-- **Reuse becomes reliable**: duplicate and reapply behavior intentionally, with YAML as the durable representation.
+## Highlights
 
-- **Multi-scene projects** with per-scene world size (fast scene switching, consistent runtime semantics).
-- **Base scene + waves**:
-  - Mark a scene as the **Base** (★) in the Scenes list (`project.baseSceneId`) to build “persistent stage + swappable encounters”.
-  - **Edit mode**: base scene renders as a **non-interactive ghost** behind the active scene for alignment.
-  - **Play mode**: runtime composes **persistent base + active wave**; waves swap via `scene.gotoWave(sceneId)` without resetting the base.
-- **Sidebar scope tabs**:
-  - **Scene**: everything you need to iterate a scene (tree + assets dock always visible).
-  - **Project**: project-level systems (input maps).
-- **Docked Assets panel (Scene tab)**:
-  - Import **Images**, **Spritesheets**, **Audio**, and **Fonts** as embedded files or “asset path” references.
-  - Assets have **immutable IDs** (stable references) and an **editable display name** (friendly labels).
-  - Drag **image/spritesheet assets → canvas** to create sprite entities at the drop point.
-  - Drag **image/spritesheet assets → existing sprite on canvas** to **replace its asset**.
-  - Drag **image assets → background layers** to add/assign backgrounds.
-  - Drag **audio assets → scene music** to assign music.
-  - Asset row menu: **Rename…**, **Relink…** (Embedded ↔ Path), **Delete…**.
-  - **Advanced…** import modal for sprites (multi-frame selection + optional auto-hitbox).
-  - Asset deletion is **blocked when referenced**, preventing broken scenes at runtime.
-- **Canvas editing**: drag sprites/formations, marquee multi-select, group/dissolve, grid snap, undo/redo, pan/zoom, fit/reset view.
-- **Align / Distribute / Spacing**: selection-bar `…` menu for quick layout operations on multi-selection (complements Snap-to-Grid).
-- **Formations (groups)**: declarative arrange layouts (grid, line, circle, arc, etc.) driven by `public/editor-registry.yaml`—repeatable patterns without hand-placing every entity.
-- **Text entities**: create in-scene labels (`+ Add → Text (new)`), edit content/font/color/alignment in Inspector, and optionally **Rasterize to Sprite…** (creates an embedded image asset).
-- **Input maps (semantic controls) (Project tab)**: author action bindings (keyboard/mouse/gamepad), choose active/fallback maps per scene, preview runtime action states in Play mode.
-- **Play mode mouse controls**: optional hide OS cursor, and mouse-driven entity motion with independent X/Y axis locks.
-- **Collisions + trigger zones**:
-  - Per-entity collision metadata (body + collision layer), per-scene collision rules (`block`/`overlap`), rectangular trigger zones.
-  - Collision rules can run scripts on overlap/block **enter** via `collisionRules[].onEnter` (single call or list of calls) for “gameplay glue” authored in YAML.
-  - Play mode exposes trigger + collision enter/stay/exit/click events in the runtime test snapshot.
-- **Attached actions (current presets)**: `MoveUntil`, `Wait`, `Call`, `InputDrive` (input → velocity), `InputFire` (spawn projectiles), plus `Repeat` as a wrapper.
-- **Loop templates**: Add Step drawer includes a **Loops** category that expands common loop scaffolds (intro-then-repeat, repeat N, repeat until condition, repeat with cooldown) into existing actions.
-- **Duplicate… options**: entity context menu offers **Duplicate…** with toggles to include behaviors (attachments), include handlers (event blocks), and optionally keep the copy in the same formation.
-- **`Call` actions require a registered handler**. The runtime includes built-in handlers like `scene.goto`, `scene.gotoWave`, `entity.destroy`, and `audio.play_sfx` (plus sample/demo ops like `drop`). Unknown `callId` values will fail during preview compile/run.
-- **Inline conditions (current)**: `BoundsHit` and `ElapsedTime` (used by `MoveUntil`).
-- **Bounds Helper**: Inspector subpanel for BoundsHit that can auto-pull sprite size from the current selection and apply computed bounds.
-- **Play mode** compiles the active scene (and base layer when configured) and runs actions; **Edit mode** stays focused on authoring and iteration speed.
+| Design | Orchestrate | Ship |
+|---|---|---|
+| Multi-scene projects, base-scene-plus-waves, formations, text entities, scene graph editing, layout tools, and drag/drop asset workflows. | Event blocks, loops, patterns, parallel actions, counters, collections, collisions, triggers, semantic input maps, and live preview. | YAML round-trip, project library, online/offline workspace flows, cloud account support, GitHub connect, and GitHub Pages publishing. |
 
-## YAML Round-Trip
+**Less glue. More game.**
 
-- YAML lives in the **Scene YAML** pane (right sidebar).
-- **Open…** reads YAML from disk into the YAML textarea.
-- **Load** parses + validates the YAML textarea and applies it into the editor (including migrations from legacy `behaviors/actions/conditions` → `attachments`).
-- **Save / Save As…** write the YAML textarea contents back to disk (Save reuses the last file handle when available).
-- Startup mode **Reload Last YAML** is configured in the YAML pane and loads the last YAML stored in `localStorage`.
+## Start Here
 
-## Controls & Shortcuts
-
-- **Select**: click a sprite / formation. Shift+click adds to multi-select. Drag on empty space to marquee-select (Shift adds).
-- **Move**: drag selection; Arrow keys nudge (Shift+Arrow = 10px).
-- **Pan / zoom**: mouse wheel zoom; middle-mouse drag or hold Space + drag to pan; use Fit/Reset buttons in the view bar.
-- **Selection actions**: use the on-canvas **selection bar** `…` menu (grouping, align/distribute/spacing, etc.; no right-click menu).
-- **Shortcuts** (Ctrl on Windows/Linux, Cmd on macOS):
-  - Undo / redo: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y)
-  - Toggle Edit/Preview: Tab
-  - Toggle grid snap: Ctrl/Cmd+G
-  - Group selection: Ctrl/Cmd+Shift+G (creates a formation with an auto name)
-  - Dissolve selected formation: Ctrl/Cmd+Shift+U
+- [DeepWiki](https://deepwiki.com/bcorfman/phaserforge) for architecture and feature details
+- [Getting Started](./docs/getting-started/index.md) for the guided path
+- [Workflow Reference](./docs/reference/editor-workflows.md) for exact controls and editor flows
 
 ## Requirements
 
@@ -90,44 +47,9 @@ This editor is opinionated about speed: one primary workflow, near-cursor select
 | `npm test` | Run unit tests (Vitest) |
 | `npm run test:e2e` | Run Playwright end-to-end tests |
 | `npm run test:all` | Run unit + e2e tests |
-| `npm run dev-nolog` | Dev server without anonymous logging (see below) |
-| `npm run build-nolog` | Build without anonymous logging (see below) |
+| `npm run docs:dev` | Start the docs site locally |
 
-> Note: For Playwright tests, you may need to run `npx playwright install` once to install browser binaries.
-
-## E2E Test Tags
-
-Playwright E2E specs are tagged in the test title:
-
-- `@smoke`: app loads, project opens, canvas renders, save/load works
-- `@critical`: core editor workflows
-- `@browser`: browser-sensitive rendering/input/drag/drop/transparency tests
-- `@regression`: bug-specific tests
-- `@slow`: big scenario tests
-
-Suggested commands:
-
-- Local GUI-change smoke (what `npm dev test:e2e` means in this repo): `npm run test:e2e -- --project=chromium --grep @smoke`
-- Local fast loop: `npx playwright test --project=chromium --grep @smoke`
-- PR default: `npx playwright test --project=chromium --grep "@smoke|@critical"`
-- PR cross-browser risk set: `npx playwright test --project=firefox --project=webkit --project=msedge --grep "@smoke|@browser"`
-- Nightly/release: `npx playwright test`
-
-### Testing cloud login locally
-Run `npm run dev:cloud`, then open `http://localhost:8080/`. The studio calls `/api/*` on the same origin; Vite proxies those requests to the local API (default `http://localhost:8787`). Set `API_PORT` if you change the API port.
-
-## Config Files
-
-- `public/editor-config.yaml` controls editor startup (e.g. `startupMode`).
-- `public/editor-registry.yaml` defines which arrange layouts, action presets, and conditions the editor exposes (and which are marked `implemented: true`).
-
-## Repository Layout (High Level)
-
-- `src/editor/`: React UI + editor store/reducer.
-- `src/phaser/`: Phaser host + `EditorScene` integration (canvas interactions, selection, history, view).
-- `src/model/`: YAML types, validation, and scene migration.
-- `src/compiler/`: Compiles scene specs into runtime scripts.
-- `src/runtime/`: Action/condition runtime used in Preview mode.
+> For deeper setup, workflows, testing conventions, and cloud publishing details, use the docs and DeepWiki instead of treating this README as the full manual.
 
 ## About `log.js`
 
