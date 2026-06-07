@@ -1,6 +1,6 @@
 # Publish to GitHub Pages
 
-This walkthrough takes a finished PhaserForge project and publishes it to GitHub Pages from the Cloud pane. It assumes you already completed [Cloud Account Setup](./cloud-account-setup) and already have a saved project, such as the one from [Pattern Demo](./pattern-demo).
+This walkthrough takes a finished PhaserForge project and publishes it to GitHub Pages from the Cloud pane. It assumes you already completed [Cloud Account Setup](./cloud-account-setup) and already finished [Pattern Demo](./pattern-demo).
 
 ## What Publishing Requires
 
@@ -8,13 +8,15 @@ Before you start, make sure:
 
 - you are already signed in to PhaserForge Cloud
 - the GitHub account you intend to use is already connected or ready to connect
-- your project already has a title and working content
+- your project already has working content
 
 The exact workflow family behind this guide is `W16` in the [Editor Workflow Reference](../reference/editor-workflows).
 
-## 1. Confirm Sign-In and GitHub Connection
+## 1. Open the Cloud Pane for This Project
 
-Open the right-side Cloud pane and confirm you are still signed in. If GitHub is not linked yet, connect it now before continuing.
+Open the right-side Cloud pane for the project you just built. Figure 10 shows the publish section you should be working from. If you discover here that you are signed out or GitHub is disconnected, stop and fix that first with [Cloud Account Setup](./cloud-account-setup).
+
+Figure 10. Cloud publish section with title and repository fields.
 
 ![Cloud publish section](../assets/screenshots/playwright/cloud-publish-ready.png)
 
@@ -43,7 +45,7 @@ Success check:
 
 ## 3. Run the Precheck and Start Publish
 
-Use the publish action in the Cloud pane. PhaserForge runs a precheck so you can see whether the target repository already exists and whether Pages is already configured.
+Use the publish action in the Cloud pane. PhaserForge runs a precheck so you can see whether the target repository already exists and whether Pages is already configured. Keep Figure 10 in view while you work through this step.
 
 If the tool reports that it will create a repository, that is expected for a first publish. If it reports that it will update an existing repository, read the prompt carefully and confirm only if that repository is the one you intend to reuse.
 
@@ -54,8 +56,6 @@ Success check:
 ## 4. Confirm the Publish Result
 
 After a successful first publish, the Cloud pane should report that GitHub Pages accepted the deployment and show the resulting target URL.
-
-![Cloud publish section](../assets/screenshots/playwright/cloud-publish-ready.png)
 
 Success check:
 - The Cloud pane reports a successful deployment handoff.

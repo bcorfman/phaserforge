@@ -27,7 +27,8 @@ export type PlaywrightScreenshotManifestEntry = ScreenshotManifestEntryBase & {
     | 'cloud-publish'
     | 'cloud-login'
     | 'cloud-signup'
-    | 'cloud-account-linked';
+    | 'cloud-account-linked'
+    | 'actions-events';
 };
 
 export type ScreenshotManifestEntry =

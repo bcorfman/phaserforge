@@ -1,6 +1,6 @@
 # Pattern Demo
 
-This walkthrough recreates the `pattern_demo` scene in PhaserForge, then saves the result as YAML. It is the recommended first exercise because it touches the main editor loop without requiring custom code.
+This walkthrough recreates the `pattern_demo` scene in PhaserForge. It is the recommended first exercise because it touches the main editor loop without requiring custom code.
 
 It is based on the current version of `.plans/pattern_demo_workflow.md`, which has been updated to match the current editor workflow inventory.
 
@@ -9,7 +9,9 @@ It is based on the current version of `.plans/pattern_demo_workflow.md`, which h
 - seven ship sprites arranged in two rows
 - a text label above each ship
 - one movement pattern attached to each ship
-- a saved YAML project you can publish in the next guide
+- a project that is ready for the GitHub Pages publish workflow in the next guide
+
+Figure 4. Assets Dock and scene graph in the main app shell.
 
 ![Assets dock close-up](../assets/screenshots/playwright/entity-list-scene-scope.png)
 
@@ -17,6 +19,7 @@ It is based on the current version of `.plans/pattern_demo_workflow.md`, which h
 
 - Start PhaserForge locally.
 - Reset to a new empty scene from `Project -> Startup & Reset` if you are continuing from old work. This matches **A59 — Configure Startup / Reset** in the workflow inventory.
+- Stay on the normal signed-in cloud-first path you completed in the previous guide. Do not treat local YAML export as your main persistence workflow here.
 - Keep the [Editor Workflow Reference](../reference/editor-workflows) nearby if you want the exact names for controls like `Layout…`, `Save YAML As…`, or `Toggle Edit / Play`.
 
 Success check:
@@ -26,7 +29,7 @@ Success check:
 
 Use the Assets Dock on the left side to bring in one ship image, then drag it to the canvas to create the first sprite. In workflow terms, this is **A36 — Import Assets** followed by **A37 — Drag Asset to a Target**. If you are following the original demo closely, `res/images/ship_sidesA.png` is the asset the workflow plan references.
 
-After the first sprite exists, duplicate it until you have seven ships total. The fastest path is **A14 — Duplicate by Alt-drag**. If you prefer a menu path, use **A15 — Duplicate via Scene Graph Dialog**.
+After the first sprite exists, duplicate it until you have seven ships total. The fastest path is **A14 — Duplicate by Alt-drag**. If you prefer a menu path, use **A15 — Duplicate via Scene Graph Dialog**. Figure 4 is the reference image for where the asset import and entity list workflow lives in the shell.
 
 Name the seven ships:
 
@@ -57,9 +60,13 @@ For the top row, select the three ships and use `Layout…` to:
 - set `Y = 200`
 - center the row on the world center
 
-For the bottom row, set the whole row to `Y = 450`, then fine-tune the X positions manually to match the original demo.
+For the bottom row, set the whole row to `Y = 450`, then fine-tune the X positions manually to match the original demo. Use Figure 5 to orient yourself to the on-canvas selection bar, then Figure 6 for the layout popover itself.
+
+Figure 5. On-canvas selection bar for multi-selection actions.
 
 ![Selection bar close-up](../assets/screenshots/playwright/canvas-selection-bar.png)
+
+Figure 6. Layout popover for spacing and set-position operations.
 
 ![Layout popover close-up](../assets/screenshots/playwright/layout-popover.png)
 
@@ -112,6 +119,12 @@ The pattern demo uses scene-start handlers and these mappings:
 
 This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once. For the exact parameter values, use `.plans/pattern_demo_workflow.md` as the canonical recipe for the current editor.
 
+Figure 7 shows the `Actions/Events` panel state you should be working in while building each ship’s handler.
+
+Figure 7. Actions/Events panel for authoring scene-start handlers and action steps.
+
+![Actions and events panel](../assets/screenshots/playwright/actions-events-panel.png)
+
 Practical order:
 
 1. Finish `Wave`, `Figure-8`, and `Spiral` first because they are the most direct.
@@ -124,7 +137,9 @@ Success check:
 
 ## 5. Run the Demo in Play Mode
 
-Toggle into Play mode with `Tab` or the toolbar button using **A7 — Toggle Edit / Play**, and let the scene run long enough to verify all seven motions.
+Toggle into Play mode with `Tab` or the toolbar button using **A7 — Toggle Edit / Play**, and let the scene run long enough to verify all seven motions. Figure 8 shows the relevant toolbar area.
+
+Figure 8. Toolbar region with Play/Edit toggle and status controls.
 
 ![Toolbar close-up](../assets/screenshots/playwright/toolbar-theme-and-scale.png)
 
@@ -140,15 +155,17 @@ If a ship is motionless, go back to its handler and confirm the action flow exis
 Success check:
 - The scene behaves like a motion sampler rather than a static layout.
 
-## 6. Save the YAML
+## 6. Optional Backup: Save YAML
 
-Use **A60 — Open / Save YAML from the Viewbar** to save the project once the demo behaves correctly. `Save YAML As…` is the safest first save because it gives you an explicit file on disk.
+Use **A60 — Open / Save YAML from the Viewbar** if you want an explicit YAML backup or export of the project. This is useful for portability and inspection, but it is not the main milestone for the cloud-first user path. Figure 9 shows the relevant controls.
+
+Figure 9. Viewbar YAML controls for optional export/backup.
 
 ![YAML controls close-up](../assets/screenshots/playwright/yaml-controls-save.png)
 
 Success check:
-- You have a saved `.yaml` file for the project.
-- Reopening it restores the same pattern demo scene.
+- If you chose to export YAML, you have a saved `.yaml` file for the project.
+- Whether or not you exported YAML, the project is ready to continue to publish.
 
 ## What to Do Next
 
