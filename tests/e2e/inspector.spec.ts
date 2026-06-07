@@ -432,31 +432,31 @@ test('preview uses edited move velocity and bounce behavior @critical', async ({
     .poll(async () => (await page.evaluate(() => window.__PHASER_FORGE_TEST__?.getSceneSnapshot?.() as any))?.sceneKey, { timeout: 5000 })
     .toBe('GameScene');
 
-  let maxX = before;
-  let minAfterMax = before;
-  let sawIncrease = false;
-  let sawDecreaseAfterIncrease = false;
+  const movement = await page.evaluate(async ({ startX }) => {
+    const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    let maxX = startX;
+    let sawIncrease = false;
+    let sawDecreaseAfterIncrease = false;
 
-  await expect
-    .poll(
-      async () => {
-        const x = await page.evaluate(() => window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e1')?.centerX ?? null);
-        if (typeof x !== 'number') return { sawIncrease, sawDecreaseAfterIncrease };
-        if (x > maxX + 2) {
-          maxX = x;
-          sawIncrease = true;
-          minAfterMax = x;
-        } else if (sawIncrease) {
-          minAfterMax = Math.min(minAfterMax, x);
-          if (maxX - minAfterMax > 2) {
-            sawDecreaseAfterIncrease = true;
-          }
-        }
-        return { sawIncrease, sawDecreaseAfterIncrease };
-      },
-      { timeout: 5000 }
-    )
-    .toEqual({ sawIncrease: true, sawDecreaseAfterIncrease: true });
+    for (let i = 0; i < 240; i += 1) {
+      await nextFrame();
+      const x = window.__PHASER_FORGE_TEST__?.getEntityWorldRect('e1')?.centerX ?? null;
+      if (typeof x !== 'number') continue;
+      if (x > maxX + 2) {
+        maxX = x;
+        sawIncrease = true;
+        continue;
+      }
+      if (sawIncrease && maxX - x > 2) {
+        sawDecreaseAfterIncrease = true;
+        break;
+      }
+    }
+
+    return { sawIncrease, sawDecreaseAfterIncrease };
+  }, { startX: before });
+
+  expect(movement).toEqual({ sawIncrease: true, sawDecreaseAfterIncrease: true });
 });
 
 test('preview bounce reaches configured bounds edge before reversing @critical', async ({ page }) => {
