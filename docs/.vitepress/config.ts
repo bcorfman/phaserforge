@@ -7,7 +7,7 @@ export default defineConfig({
   cleanUrls: true,
   themeConfig: {
     nav: [
-      { text: 'Getting Started', link: '/getting-started/' },
+      { text: 'Getting Started', link: '/getting-started/cloud-account-setup' },
       { text: 'Reference', link: '/reference/editor-workflows' },
       { text: 'Troubleshooting', link: '/troubleshooting/github-pages-publish' },
     ],
@@ -15,7 +15,6 @@ export default defineConfig({
       {
         text: 'Getting Started',
         items: [
-          { text: 'Overview', link: '/getting-started/' },
           { text: 'Cloud Account Setup', link: '/getting-started/cloud-account-setup' },
           { text: 'Pattern Demo', link: '/getting-started/pattern-demo' },
           { text: 'Publish to GitHub Pages', link: '/getting-started/publish-to-github-pages' },
