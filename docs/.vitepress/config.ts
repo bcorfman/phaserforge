@@ -16,6 +16,7 @@ export default defineConfig({
         text: 'Getting Started',
         items: [
           { text: 'Overview', link: '/getting-started/' },
+          { text: 'Cloud Account Setup', link: '/getting-started/cloud-account-setup' },
           { text: 'Pattern Demo', link: '/getting-started/pattern-demo' },
           { text: 'Publish to GitHub Pages', link: '/getting-started/publish-to-github-pages' },
         ],

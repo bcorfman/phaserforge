@@ -2,30 +2,32 @@
 
 ## 1. Start a new project/scene
 
-- Set Startup to New Empty Scene (or otherwise reset to an empty scene).
-- Use **A22 — Set Scene World Size**: set world `W=800`, `H=600`.
+- Use **A59 — Configure Startup / Reset** to start from a new empty scene, or otherwise reset the current project to an empty scene.
+- Use **A61 — Set Scene World Size** to set world `W=800`, `H=600`.
 
 ## 2. Import the ship sprite once, then duplicate it
 
-- Use **A20 — Import Asset into Project** to import a ship image (or use any existing sprite asset you already have).
+- Use **A36 — Import Assets** to import a ship image (or use any existing sprite asset you already have).
   NOTE: In the res/images directory, there is a ship_sidesA.png that I use.
-- Use **A21 — Drag Asset to Target**: drag it onto the canvas to create your first ship entity.
+- Use **A37 — Drag Asset to a Target** to drag it onto the canvas and create your first ship entity.
   NOTE: You may want to use the Scale X and Scale Y feature in the Inspector to reduce the sprite size to 0.5 if it's too large.
 - Duplicate the sprite until you have 7 separate sprite entities:
-  - Fast path: **Alt+Drag** to duplicate and place.
-  - Alternative: Entity List `⋯` → **Duplicate** (or **Duplicate…** if you need to change options).
-- Name the 7 ships (via **A4 — Rename Item (inline)** in Entity List):
+  - Fast path: **A14 — Duplicate by Alt-drag**.
+  - Alternative: **A15 — Duplicate via Scene Graph Dialog**.
+- Name the 7 ships with **A4 — Rename Item Inline** in the scene graph:
   - `Wave`, `Zigzag`, `Figure-8`, `Orbit`, `Spiral`, `Bounce`, `Patrol`
 
 ## 3. Place the ships (with Snap + Layout helpers)
 
-- Turn on Snap if desired (**A10 — Toggle Grid Snap**).
+- Turn on Snap if desired with **A11 — Toggle Grid Snap**.
 - Place the ships approximately, then:
-  - Select the 4 bottom-row ships → on-canvas selection bar → **Layout…** (**A59 — Layout Selection**) →
+  - Select the 4 bottom-row ships → on-canvas selection bar → **Layout…** (**A18 — Open Layout Popover**) →
     - **Position selection → Set Y = 450 → Set Y** (snaps the whole row to the correct Y without collapsing spacing)
+    - Use **A19 — Apply Layout Operations** for the Set Y action
     - Nudge/drag X to the exact centers (these four X positions are not evenly spaced in the Arcade demo).
-  - Select the 3 top-row ships → selection bar → **Layout…** (**A59 — Layout Selection**) →
+  - Select the 3 top-row ships → selection bar → **Layout…** (**A18 — Open Layout Popover**) →
     - **Arrange items → Spacing X = 200px → Apply Spacing X** (or equivalent grid cells)
+    - Use **A19 — Apply Layout Operations** for Spacing X and Center X
     - **Position selection → Set Y = 200 → Set Y**
     - **Align selection → Center X** (centers the row on world center)
 - Exact centers to match the Arcade demo:
@@ -36,7 +38,7 @@
 
 For each ship, add a text label entity above it (Arcade demo places labels above the sprites).
 
-- Create a Text entity (Scene → Sprites `+ Add` → **Text**).
+- Create a Text entity with **A33 — Create Text Entity**.
 - Set:
   - Content: `Wave` / `Zigzag` / …
   - Anchor: `center`
@@ -50,7 +52,12 @@ Tip: Create one label, then **Alt+Drag** duplicates it (including its text setti
 
 ## 5. Attach the 7 movement patterns (run on scene start)
 
-For each ship: select it (**A1 — Select Single**) and use **A35 — Attach / Edit Action Flow** in Events → Handlers. These are “On scene start” handlers (no special trigger needed).
+For each ship:
+
+- select it with **A1 — Select Single**
+- use **A42 — Create / Edit Event Blocks** to create or open the scene-start handler
+- use **A43 — Create / Edit Action Steps** to add the pattern actions
+- use **A45 — Create / Apply Patterns and Loop Templates** when the workflow below calls for a loop template
 
 ### Wave
 
@@ -132,4 +139,4 @@ Several patterns below say “Add **Repeat** with X children”. Use the Loop Te
 
 ## 7. Save YAML
 
-- Use **A25 — Save YAML As…** and save your project YAML wherever you want.
+- Use **A60 — Open / Save YAML from the Viewbar** and choose **Save YAML As…**.

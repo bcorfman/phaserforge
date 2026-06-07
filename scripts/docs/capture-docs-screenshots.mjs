@@ -87,6 +87,26 @@ async function prepareSampleScene(page, capture) {
     await page.getByTestId('inspector-pane-tab-cloud').click();
     await page.waitForSelector('[data-testid="cloud-publish-pages-button"]', { state: 'visible', timeout: 10000 });
   }
+
+  if (capture === 'cloud-login') {
+    await page.getByTestId('inspector-pane-tab-cloud').click();
+    await page.waitForSelector('[data-testid="cloud-account-submit"]', { state: 'visible', timeout: 10000 });
+  }
+
+  if (capture === 'cloud-signup') {
+    await page.getByTestId('inspector-pane-tab-cloud').click();
+    await page.getByRole('tab', { name: 'Create account' }).click();
+    await page.waitForSelector('[aria-label="Invite code"]', { state: 'visible', timeout: 10000 });
+  }
+
+  if (capture === 'cloud-account-linked') {
+    await page.context().unroute('**/api/**');
+    await installCloudReadyApiStubs(page.context());
+    await gotoStudio(page, { forceNavigate: true });
+    await dismissViewHint(page);
+    await page.getByTestId('inspector-pane-tab-cloud').click();
+    await page.waitForSelector('[data-testid="cloud-github-connection"]', { state: 'visible', timeout: 10000 });
+  }
 }
 
 async function installCloudReadyApiStubs(context) {
@@ -137,13 +157,13 @@ async function captureDocsScreenshots() {
     try {
       for (const entry of manifest) {
         console.log(`[docs:screenshots:app] capturing ${entry.id}`);
-        const baseURL = entry.capture === 'cloud-publish' ? APP_CLOUD_URL : APP_LOCAL_URL;
+        const baseURL = entry.capture?.startsWith('cloud-') ? APP_CLOUD_URL : APP_LOCAL_URL;
         const context = await browser.newContext({
           baseURL,
           viewport: entry.viewport ?? { width: 1280, height: 900 },
           deviceScaleFactor: 2,
         });
-        if (entry.capture === 'cloud-publish') {
+        if (entry.capture === 'cloud-publish' || entry.capture === 'cloud-account-linked') {
           await installCloudReadyApiStubs(context);
         }
         const page = await context.newPage();
