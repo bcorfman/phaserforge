@@ -29,7 +29,7 @@ The claim is narrow on purpose. This is not “a better everything-editor.” It
 ## Start Here
 
 - [DeepWiki](https://deepwiki.com/bcorfman/phaserforge) for architecture and feature details
-- [Getting Started](https://bcorfman.github.io/phaserforge/docs/getting-started/index.md) for the guided path
+- [Getting Started](https://bcorfman.github.io/phaserforge/docs) for the guided path
 - [Workflow Reference](https://bcorfman.github.io/phaserforge/docs/reference/editor-workflows.md) for exact controls and editor flows
 
 ## Requirements
