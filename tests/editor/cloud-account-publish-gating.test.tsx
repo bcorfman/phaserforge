@@ -59,9 +59,41 @@ async function flushEffects() {
   });
 }
 
+function createStorageMock(): Storage {
+  let store = new Map<string, string>();
+  return {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store = new Map<string, string>();
+    },
+    getItem(key: string) {
+      return store.has(key) ? store.get(key)! : null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      store.set(key, String(value));
+    },
+  };
+}
+
 describe('CloudAccountPanel publish gating', () => {
   beforeAll(() => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    Object.defineProperty(window, 'localStorage', {
+      value: createStorageMock(),
+      configurable: true,
+    });
+    Object.defineProperty(window, 'sessionStorage', {
+      value: createStorageMock(),
+      configurable: true,
+    });
   });
   afterAll(() => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = undefined;
@@ -69,6 +101,7 @@ describe('CloudAccountPanel publish gating', () => {
 
   afterEach(() => {
     __resetCloudAccountPanelAuthCacheForTests();
+    window.localStorage.clear();
     vi.clearAllMocks();
   });
 
@@ -123,7 +156,7 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
-  it('defaults to the Log in tab and keeps invite-only signup fields out of the primary path', async () => {
+  it('defaults to the Create tab for first-time users and shows invite-code signup fields', async () => {
     api.me.mockImplementationOnce(async () => {
       throw new Error('not_signed_in');
     });
@@ -165,17 +198,52 @@ describe('CloudAccountPanel publish gating', () => {
     try {
       await flushEffects();
       expect(document.querySelector('[role="tablist"][aria-label="Cloud account mode"]')).toBeTruthy();
-      expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Log in');
-      expect(document.querySelector('[aria-label="Invite code"]')).toBeFalsy();
-      expect(document.body.textContent).toContain('Log in to access your cloud projects and publishing tools.');
-      expect(document.querySelector('[data-testid="cloud-account-submit"]')?.textContent).toContain('Log in');
-      expect(document.body.textContent).toContain('Create account');
+      expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Create');
+      expect(document.querySelector('[aria-label="Invite code"]')).toBeTruthy();
+      expect(document.body.textContent).toContain('Create your account with your invite code.');
+      expect(document.querySelector('[data-testid="cloud-account-submit"]')?.textContent).toContain('Create account');
+      expect(document.body.textContent).toContain('Already have an account?');
     } finally {
       view.cleanup();
     }
   });
 
-  it('switches to the Create account tab to show invite-code signup fields and copy', async () => {
+  it('defaults to the Log in tab for returning users who already created an account', async () => {
+    api.me.mockImplementationOnce(async () => {
+      throw new Error('not_signed_in');
+    });
+    window.localStorage.setItem('phaserforge.cloud.account_created_v1', '1');
+
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{
+          project: {
+            id: 'p1',
+            title: 'Pattern demo',
+            publishGithubPagesRepo: 'zoof',
+            assets: { images: {}, spriteSheets: {}, fonts: {} },
+            audio: { sounds: {} },
+          },
+        }}
+        dispatch={() => {}}
+        onLoadYaml={() => {}}
+        onStatus={() => {}}
+        onError={() => {}}
+      />,
+    );
+    try {
+      await flushEffects();
+      expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Log in');
+      expect(document.querySelector('[aria-label="Invite code"]')).toBeFalsy();
+      expect(document.body.textContent).toContain('Log in to access your cloud projects and publishing tools.');
+      expect(document.querySelector('[data-testid="cloud-account-submit"]')?.textContent).toContain('Log in');
+      expect(document.body.textContent).toContain('Create');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('switches to the Create tab to show invite-code signup fields and copy', async () => {
     api.me.mockImplementationOnce(async () => {
       throw new Error('not_signed_in');
     });
@@ -200,11 +268,11 @@ describe('CloudAccountPanel publish gating', () => {
     try {
       await flushEffects();
       await act(async () => {
-        (document.querySelector('[role="tab"][aria-label="Create account"]') as HTMLButtonElement).click();
+        (document.querySelector('[role="tab"][aria-label="Create"]') as HTMLButtonElement).click();
         await Promise.resolve();
       });
 
-      expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Create account');
+      expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Create');
       expect(document.querySelector('[aria-label="Invite code"]')).toBeTruthy();
       expect(document.body.textContent).toContain('Create your account with your invite code.');
       expect(document.querySelector('[data-testid="cloud-account-submit"]')?.textContent).toContain('Create account');
