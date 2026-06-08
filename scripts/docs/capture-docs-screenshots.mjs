@@ -5,8 +5,10 @@ import { spawn } from 'node:child_process';
 
 import { chromium } from '@playwright/test';
 
+import { createEmptyProject } from '../../src/model/emptyProject.ts';
+import { sampleProject } from '../../src/model/sampleProject.ts';
 import { getScreenshotsBySource, parseScreenshotManifest } from '../../src/docs/screenshotManifest.ts';
-import { clearSelectionByClickingEmptyCanvas, dispatchAction, dismissViewHint, getEntityWorldRect, gotoStudio, seedSampleScene, tapWorld } from '../../tests/e2e/helpers.ts';
+import { clearSelectionByClickingEmptyCanvas, dispatchAction, dismissViewHint, getEntityWorldRect, gotoStudio, openSceneScope, seedProject, seedSampleScene, selectGroupInSceneGraph, tapWorld } from '../../tests/e2e/helpers.ts';
 import { getDefaultApiStubResponse } from '../../tests/support/apiMocks.ts';
 
 const APP_PORT = 4173;
@@ -14,6 +16,7 @@ const APP_HOST = '127-0-0-1.nip.io';
 const APP_LOCAL_URL = `http://127.0.0.1:${APP_PORT}`;
 const APP_CLOUD_URL = `http://${APP_HOST}:${APP_PORT}`;
 const APP_HEALTHCHECK_URL = `http://127.0.0.1:${APP_PORT}`;
+const DOCS_UI_SCALE = '0.75';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..', '..');
@@ -44,6 +47,147 @@ async function loadManifest() {
 
 async function prepareSampleScene(page, capture) {
   console.log(`[docs:screenshots:app] preparing sample scene for ${capture}`);
+
+  if (capture === 'wave-pattern-panel') {
+    const project = structuredClone(sampleProject);
+    const sceneId = project.initialSceneId;
+    const scene = project.scenes[sceneId];
+    scene.attachments = {
+      ...(scene.attachments ?? {}),
+      'att-wave-progress': {
+        id: 'att-wave-progress',
+        name: 'Intro step',
+        order: 99,
+        target: { type: 'group', groupId: 'g-enemies' },
+        applyTo: 'group',
+        enabled: true,
+        presetId: 'WavePattern',
+        params: { amplitude: 30, length: 80, velocity: 80, startProgress: 0.75, endProgress: 1 },
+      },
+    };
+    await seedProject(page, project);
+    await dismissViewHint(page);
+    await selectGroupInSceneGraph(page, 'g-enemies');
+    await page.getByTestId('attachment-open-att-wave-progress').click();
+    await page.waitForSelector('[data-testid="attachment-inspector"]', { state: 'visible', timeout: 10000 });
+    return;
+  }
+
+  if (capture === 'bounce-bounds-panel') {
+    const project = createEmptyProject();
+    const scene = project.scenes[project.initialSceneId];
+    scene.world = { width: 800, height: 600 };
+    scene.entities = {
+      e1: {
+        id: 'e1',
+        x: 400,
+        y: 450,
+        width: 32,
+        height: 32,
+        scaleX: 1,
+        scaleY: 1,
+        originX: 0.5,
+        originY: 0.5,
+        alpha: 1,
+        visible: true,
+        depth: 0,
+        flipX: false,
+        flipY: false,
+        rotationDeg: 0,
+      },
+    };
+    scene.attachments = {
+      'att-bounce': {
+        id: 'att-bounce',
+        name: 'Bounce',
+        order: 0,
+        target: { type: 'entity', entityId: 'e1' },
+        enabled: true,
+        presetId: 'BouncePattern',
+        params: { axis: 'both', velocityX: 100, velocityY: 60 },
+        condition: {
+          type: 'BoundsHit',
+          bounds: { minX: 334, minY: 374, maxX: 466, maxY: 526 },
+          mode: 'any',
+          scope: 'member-any',
+          behavior: 'bounce',
+        },
+      },
+    };
+    await seedProject(page, project);
+    await dismissViewHint(page);
+    await openSceneScope(page);
+    await page.getByTestId('ungrouped-entity-e1').click();
+    await page.getByTestId('attachment-open-att-bounce').click();
+    await page.getByRole('button', { name: 'Center/Span' }).click();
+    await page.getByTestId('bounce-bounds-helper-xspan').fill('50');
+    await page.getByTestId('bounce-bounds-helper-xspan').blur();
+    await page.getByTestId('bounce-bounds-helper-yspan').fill('60');
+    await page.getByTestId('bounce-bounds-helper-yspan').blur();
+    await page.waitForSelector('[data-testid="attachment-inspector"]', { state: 'visible', timeout: 10000 });
+    return;
+  }
+
+  if (capture === 'patrol-bounds-panel') {
+    const project = createEmptyProject();
+    const scene = project.scenes[project.initialSceneId];
+    scene.world = { width: 800, height: 600 };
+    scene.entities = {
+      e1: {
+        id: 'e1',
+        x: 600,
+        y: 200,
+        width: 32,
+        height: 32,
+        scaleX: 1,
+        scaleY: 1,
+        originX: 0.5,
+        originY: 0.5,
+        alpha: 1,
+        visible: true,
+        depth: 0,
+        flipX: false,
+        flipY: false,
+        rotationDeg: 0,
+      },
+    };
+    scene.attachments = {
+      'att-patrol': {
+        id: 'att-patrol',
+        name: 'Patrol',
+        order: 0,
+        target: { type: 'entity', entityId: 'e1' },
+        enabled: true,
+        presetId: 'PatrolPattern',
+        params: { axis: 'x', velocityX: 80 },
+        condition: {
+          type: 'BoundsHit',
+          bounds: { minX: 544, minY: 400, maxX: 656, maxY: 500 },
+          mode: 'any',
+          scope: 'member-any',
+          behavior: 'bounce',
+        },
+      },
+    };
+    await seedProject(page, project);
+    await dismissViewHint(page);
+    await openSceneScope(page);
+    await page.getByTestId('ungrouped-entity-e1').click();
+    await page.getByTestId('attachment-open-att-patrol').click();
+    await page.getByRole('button', { name: 'Center/Span' }).click();
+    await page.getByTestId('bounce-bounds-helper-xspan').fill('40');
+    await page.getByTestId('bounce-bounds-helper-xspan').blur();
+    await page.getByTestId('bounce-bounds-helper-yspan').fill('0');
+    await page.getByTestId('bounce-bounds-helper-yspan').blur();
+    await page.getByRole('button', { name: 'Min/Max' }).click();
+    await page.getByLabel('Bounds Min Y').fill('400');
+    await page.getByLabel('Bounds Min Y').blur();
+    await page.getByLabel('Bounds Max Y').fill('500');
+    await page.getByLabel('Bounds Max Y').blur();
+    await page.waitForSelector('[data-testid="attachment-inspector"]', { state: 'visible', timeout: 10000 });
+    return;
+  }
+
   await seedSampleScene(page);
   await gotoStudio(page);
   await dismissViewHint(page);
@@ -169,6 +313,13 @@ async function captureDocsScreenshots() {
           viewport: entry.viewport ?? { width: 1280, height: 900 },
           deviceScaleFactor: 2,
         });
+        await context.addInitScript((uiScale) => {
+          try {
+            window.localStorage.setItem('phaserforge.uiScale.v1', uiScale);
+          } catch {
+            // Ignore transient documents without localStorage.
+          }
+        }, DOCS_UI_SCALE);
         if (entry.capture === 'cloud-publish' || entry.capture === 'cloud-account-linked') {
           await installCloudReadyApiStubs(context);
         }
