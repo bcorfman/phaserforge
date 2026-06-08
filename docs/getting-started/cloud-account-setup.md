@@ -57,6 +57,12 @@ Success check:
 
 After you are signed in, connect the GitHub account you want PhaserForge to use for publishing.
 
+If you do not already have a GitHub personal account:
+
+1. open GitHub's official account-creation guide: [Creating an account on GitHub](https://docs.github.com/en/get-started/start-your-journey/creating-an-account-on-github)
+2. complete the GitHub signup flow and verify your email address
+3. return to PhaserForge and continue with the connection steps below
+
 Use the Cloud pane action for:
 
 - `Connect GitHub` if no GitHub account is linked yet
