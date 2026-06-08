@@ -72,6 +72,33 @@
     "output": "docs/assets/screenshots/playwright/actions-events-panel.png"
   },
   {
+    "id": "wave-pattern-panel",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "wave-pattern-panel",
+    "selector": "[data-testid=\"attachment-inspector\"]",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/wave-pattern-panel.png"
+  },
+  {
+    "id": "bounce-bounds-panel",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "bounce-bounds-panel",
+    "selector": "[data-testid=\"attachment-inspector\"]",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/bounce-bounds-panel.png"
+  },
+  {
+    "id": "patrol-bounds-panel",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "patrol-bounds-panel",
+    "selector": "[data-testid=\"attachment-inspector\"]",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/patrol-bounds-panel.png"
+  },
+  {
     "id": "layout-popover",
     "source": "playwright",
     "scene": "sample",
