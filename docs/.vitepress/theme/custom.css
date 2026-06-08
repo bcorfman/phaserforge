@@ -1,0 +1,38 @@
+.vp-doc ol,
+.vp-doc ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.vp-doc ol {
+  counter-reset: phaserforge-doc-item;
+}
+
+.vp-doc ol > li,
+.vp-doc ul > li {
+  position: relative;
+}
+
+.vp-doc ol > li {
+  counter-increment: phaserforge-doc-item;
+  padding-left: 2rem;
+}
+
+.vp-doc ol > li::before {
+  content: counter(phaserforge-doc-item) ".";
+  position: absolute;
+  left: 0;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.vp-doc ul > li {
+  padding-left: 1.25rem;
+}
+
+.vp-doc ul > li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: inherit;
+}
