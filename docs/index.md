@@ -16,13 +16,3 @@ This guide is the in-repo user guide for PhaserForge. It turns the current workf
 ## Troubleshooting
 
 - [GitHub Pages Publish Troubleshooting](./troubleshooting/github-pages-publish)
-
-## Scope
-
-The current guide focuses on:
-
-- a cloud-first onboarding workflow
-- a guided `pattern_demo` walkthrough
-- a guided GitHub Pages publish walkthrough
-- a reference section tied to the editor workflow inventory
-- focused screenshots of the exact panes and controls used in those workflows
