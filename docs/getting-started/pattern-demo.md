@@ -2,8 +2,6 @@
 
 This walkthrough recreates the `pattern_demo` scene in PhaserForge. It is the recommended first exercise because it touches the main editor loop without requiring custom code.
 
-It is based on the current version of `.plans/pattern_demo_workflow.md`, which has been updated to match the current editor workflow inventory.
-
 ## What You Will Build
 
 - seven ship sprites arranged in two rows
@@ -11,9 +9,9 @@ It is based on the current version of `.plans/pattern_demo_workflow.md`, which h
 - one movement pattern attached to each ship
 - a project that is ready for the GitHub Pages publish workflow in the next guide
 
-Figure 4. Assets Dock and scene graph in the main app shell.
-
 ![Assets dock close-up](../assets/screenshots/playwright/entity-list-scene-scope.png)
+
+<p align="center"><em>Figure 4. Assets Dock and scene graph in the main app shell.</em></p>
 
 ## Before You Start
 
@@ -62,13 +60,13 @@ For the top row, select the three ships and use `Layout…` to:
 
 For the bottom row, set the whole row to `Y = 450`, then fine-tune the X positions manually to match the original demo. Use Figure 5 to orient yourself to the on-canvas selection bar, then Figure 6 for the layout popover itself.
 
-Figure 5. On-canvas selection bar for multi-selection actions.
-
 ![Selection bar close-up](../assets/screenshots/playwright/canvas-selection-bar.png)
 
-Figure 6. Layout popover for spacing and set-position operations.
+<p align="center"><em>Figure 5. On-canvas selection bar for multi-selection actions.</em></p>
 
 ![Layout popover close-up](../assets/screenshots/playwright/layout-popover.png)
+
+<p align="center"><em>Figure 6. Layout popover for spacing and set-position operations.</em></p>
 
 Exact sprite centers from the original workflow:
 
@@ -121,9 +119,9 @@ This is the slowest step of the tutorial. Work ship by ship rather than trying t
 
 Figure 7 shows the `Actions/Events` panel state you should be working in while building each ship’s handler.
 
-Figure 7. Actions/Events panel for authoring scene-start handlers and action steps.
-
 ![Actions and events panel](../assets/screenshots/playwright/actions-events-panel.png)
+
+<p align="center"><em>Figure 7. Actions/Events panel for authoring scene-start handlers and action steps.</em></p>
 
 Practical order:
 
@@ -139,9 +137,9 @@ Success check:
 
 Toggle into Play mode with `Tab` or the toolbar button using **A7 — Toggle Edit / Play**, and let the scene run long enough to verify all seven motions. Figure 8 shows the relevant toolbar area.
 
-Figure 8. Toolbar region with Play/Edit toggle and status controls.
-
 ![Toolbar close-up](../assets/screenshots/playwright/toolbar-theme-and-scale.png)
+
+<p align="center"><em>Figure 8. Toolbar region with Play/Edit toggle and status controls.</em></p>
 
 Look for these outcomes:
 
@@ -159,9 +157,9 @@ Success check:
 
 Use **A60 — Open / Save YAML from the Viewbar** if you want an explicit YAML backup or export of the project. This is useful for portability and inspection, but it is not the main milestone for the cloud-first user path. Figure 9 shows the relevant controls.
 
-Figure 9. Viewbar YAML controls for optional export/backup.
-
 ![YAML controls close-up](../assets/screenshots/playwright/yaml-controls-save.png)
+
+<p align="center"><em>Figure 9. Viewbar YAML controls for optional export/backup.</em></p>
 
 Success check:
 - If you chose to export YAML, you have a saved `.yaml` file for the project.
