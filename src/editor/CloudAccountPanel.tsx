@@ -9,6 +9,7 @@ type CloudAccountUser = { id: string; email: string } | null;
 type CloudPublishInfo = { ok: true; login: string; pagesBaseUrl: string } | { ok: false; error: string };
 type CloudAuthMode = 'login' | 'signup';
 export const CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY = 'phaserforge.cloud.return_to_cloud_after_auth';
+const CLOUD_ACCOUNT_CREATED_STORAGE_KEY = 'phaserforge.cloud.account_created_v1';
 const GITHUB_AUTHORIZED_APPS_SETTINGS_URL = 'https://github.com/settings/connections/applications';
 
 let cachedCloudAccountUser: CloudAccountUser | undefined;
@@ -42,6 +43,26 @@ export function __resetCloudAccountPanelAuthCacheForTests() {
   cachedCloudAccountUser = undefined;
   cachedCloudAccountUserPromise = null;
   cachedPublishInfoByUserId.clear();
+}
+
+function hasCreatedCloudAccount(): boolean {
+  try {
+    return window.localStorage.getItem(CLOUD_ACCOUNT_CREATED_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function getDefaultAuthMode(): CloudAuthMode {
+  return hasCreatedCloudAccount() ? 'login' : 'signup';
+}
+
+function markCloudAccountCreated() {
+  try {
+    window.localStorage.setItem(CLOUD_ACCOUNT_CREATED_STORAGE_KEY, '1');
+  } catch {
+    // Ignore storage failures and fall back to first-time defaults next load.
+  }
 }
 
 export function buildGithubStartHref(params: {
@@ -145,7 +166,7 @@ export function CloudAccountPanel({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [inviteToken, setInviteToken] = useState('');
-  const [authMode, setAuthMode] = useState<CloudAuthMode>('login');
+  const [authMode, setAuthMode] = useState<CloudAuthMode>(() => getDefaultAuthMode());
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [publishInfo, setPublishInfo] = useState<CloudPublishInfo | null>(
@@ -430,6 +451,7 @@ export function CloudAccountPanel({
     setBusy(true);
     try {
       const res = await runWithCsrfRetry((csrf) => signup(email, password, csrf, inviteToken.trim() || undefined));
+      markCloudAccountCreated();
       setCachedCloudAccountUser(res.user);
       setUser(res.user);
       setAuthResolved(true);
@@ -473,6 +495,7 @@ export function CloudAccountPanel({
       setShowGithubConfirm(null);
       setWorkspaceConflict(null);
       setCloudGameId(null);
+      setAuthMode(getDefaultAuthMode());
       hasCheckedConflictRef.current = false;
       onStatus('Signed out');
     } catch (err) {
@@ -731,10 +754,10 @@ export function CloudAccountPanel({
                   type="button"
                   role="tab"
                   aria-selected={authMode === 'signup'}
-                  aria-label="Create account"
+                  aria-label="Create"
                   onClick={() => setAuthMode('signup')}
                 >
-                  Create account
+                  Create
                 </button>
               </div>
               <div className="cloud-help">
