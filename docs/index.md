@@ -7,8 +7,14 @@ This guide is the in-repo user guide for PhaserForge. It turns the current workf
 - [Set Up Your Cloud Account](./getting-started/cloud-account-setup)
 - [Build the Pattern Demo](./getting-started/pattern-demo)
 - [Publish to GitHub Pages](./getting-started/publish-to-github-pages)
+
+## Reference
+
 - [Editor Workflow Reference](./reference/editor-workflows)
 - [Workflow Glossary](./reference/workflow-glossary)
+
+## Troubleshooting
+
 - [GitHub Pages Publish Troubleshooting](./troubleshooting/github-pages-publish)
 
 ## Scope
