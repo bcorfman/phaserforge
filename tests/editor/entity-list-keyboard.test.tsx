@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { EntityListView } from '../../src/editor/EntityList';
 import { sampleProject } from '../../src/model/sampleProject';
+import { EventBus } from '../../src/phaser/EventBus';
 
 function renderEntityList(props: Partial<React.ComponentProps<typeof EntityListView>> = {}) {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -205,5 +206,44 @@ describe('EntityList keyboard shortcuts', () => {
     const input = container.querySelector('[data-testid="rename-trigger-input-t1"]') as HTMLInputElement | null;
     expect(input).not.toBeNull();
     expect(input?.value).toBe('Zone 1');
+  });
+
+  it('focuses the selected text entity row when requested externally', async () => {
+    const project = {
+      ...sampleProject,
+      scenes: {
+        ...sampleProject.scenes,
+        [sampleProject.initialSceneId]: {
+          ...(sampleProject.scenes[sampleProject.initialSceneId] as any),
+          entities: {
+            ...(sampleProject.scenes[sampleProject.initialSceneId] as any).entities,
+            t1: {
+              id: 't1',
+              x: 10,
+              y: 10,
+              width: 80,
+              height: 20,
+              text: { value: 'Hello', fontSize: 18, color: '#fff', align: 'left' },
+            },
+          },
+        },
+      },
+    };
+
+    const { container, root, props } = renderEntityList({
+      project: project as any,
+      scene: project.scenes[sampleProject.initialSceneId] as any,
+      selection: { kind: 'entity', id: 't1' } as any,
+    });
+
+    await React.act(async () => {
+      root.render(<EntityListView {...props} />);
+    });
+
+    await React.act(async () => {
+      EventBus.emit('focus-selected-scene-graph-row');
+    });
+
+    expect(document.activeElement).toBe(container.querySelector('[data-testid="text-entity-t1"]'));
   });
 });
