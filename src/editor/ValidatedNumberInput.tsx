@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 
 function coerceFiniteNumber(raw: string): number | null {
   const trimmed = raw.trim();
@@ -10,6 +10,11 @@ function coerceFiniteNumber(raw: string): number | null {
 type BaseProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
   'type' | 'value' | 'defaultValue' | 'onChange' | 'onBlur'
+>;
+
+type BaseTextareaProps = Omit<
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+  'value' | 'defaultValue' | 'onChange' | 'onBlur'
 >;
 
 export function ValidatedNumberInput({
@@ -184,3 +189,74 @@ export function ValidatedNumberTextInput({
     />
   );
 }
+
+export const ValidatedTextareaInput = forwardRef<HTMLTextAreaElement, BaseTextareaProps & {
+  value: string;
+  onCommit: (next: string) => void;
+  onLiveChange?: (next: string) => void;
+}>(function ValidatedTextareaInput({
+  value,
+  onCommit,
+  onLiveChange,
+  ...props
+}, ref) {
+  const [draft, setDraft] = useState<string>(value);
+  const [editing, setEditing] = useState(false);
+  const baselineRef = useRef(value);
+  const blurModeRef = useRef<'commit' | 'revert' | null>(null);
+
+  useEffect(() => {
+    if (!editing) {
+      setDraft(value);
+      baselineRef.current = value;
+    }
+  }, [editing, value]);
+
+  const commit = (next: string, force = false) => {
+    setEditing(false);
+    if (force || next !== value) onCommit(next);
+    setDraft(next);
+    baselineRef.current = next;
+  };
+
+  return (
+    <textarea
+      {...props}
+      ref={ref}
+      value={draft}
+      onChange={(e) => {
+        const next = e.target.value;
+        if (!editing) baselineRef.current = value;
+        setEditing(true);
+        setDraft(next);
+        onLiveChange?.(next);
+      }}
+      onBlur={(e) => {
+        const blurMode = blurModeRef.current;
+        blurModeRef.current = null;
+        if (blurMode === 'revert') {
+          const baseline = baselineRef.current;
+          commit(baseline, true);
+        } else {
+          commit(draft);
+        }
+        props.onBlur?.(e);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !(e.shiftKey || e.altKey || e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          blurModeRef.current = 'commit';
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          const baseline = baselineRef.current;
+          setDraft(baseline);
+          onLiveChange?.(baseline);
+          blurModeRef.current = 'revert';
+          e.currentTarget.blur();
+        }
+        props.onKeyDown?.(e);
+      }}
+    />
+  );
+});
