@@ -2,7 +2,7 @@
 
 This is the first workflow a new PhaserForge user should complete.
 
-1. create your PhaserForge account with an email invite code, or log in if you already have one
+1. create your PhaserForge account with an email invite code, or log in if you already have an account
 2. confirm you are signed in
 3. connect the GitHub account you want PhaserForge to publish through
 
@@ -20,19 +20,12 @@ This is the first workflow a new PhaserForge user should complete.
 
 ## 1. Open the Cloud Pane
 
-Open the `Cloud` tab in the right-side pane. If PhaserForge has not signed you in yet, `Cloud` is the visible default tab when the editor opens.
+Open the `Cloud` tab in the right-side pane. 
 
 When the account section appears:
 
 - first-time users should expect the `Create` tab to be selected by default
 - returning users who already created a PhaserForge account should expect the `Log in` tab to be selected by default
-
-![Cloud pane signed-out state](../assets/screenshots/playwright/cloud-account-login.png)
-
-<p align="center"><em>Figure 1. Cloud pane before sign-in.</em></p>
-
-Success check:
-- You can see the account section and the publish section.
 
 ## 2a. Create Your Account with the Invite Code
 
@@ -44,9 +37,9 @@ If you do not already have a PhaserForge account:
 4. enter the invite code
 5. submit the form
 
-![Cloud account create form](../assets/screenshots/playwright/cloud-account-signup.png)
+![Cloud account create-account form](../assets/screenshots/playwright/cloud-account-signup.png)
 
-<p align="center"><em>Figure 2. Cloud account create form.</em></p>
+<p align="center"><em>Figure 1. Cloud account create form.</em></p>
 
 Success check:
 - The account flow accepts your signup and you land in a signed-in state.
@@ -59,6 +52,10 @@ If you already have a PhaserForge account, use the `Log in` tab:
 2. enter your email
 3. enter your password
 4. submit the form
+
+![Cloud account log in form](../assets/screenshots/playwright/cloud-account-login.png)
+
+<p align="center"><em>Figure 2. Cloud account log in form.</em></p>
 
 Success check:
 - The Cloud pane shows you as signed in.

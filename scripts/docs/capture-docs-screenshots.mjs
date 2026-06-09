@@ -17,6 +17,7 @@ const APP_LOCAL_URL = `http://127.0.0.1:${APP_PORT}`;
 const APP_CLOUD_URL = `http://${APP_HOST}:${APP_PORT}`;
 const APP_HEALTHCHECK_URL = `http://127.0.0.1:${APP_PORT}`;
 const DOCS_UI_SCALE = '0.75';
+const CLOUD_ACCOUNT_CREATED_STORAGE_KEY = 'phaserforge.cloud.account_created_v1';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..', '..');
@@ -319,6 +320,15 @@ async function captureDocsScreenshots() {
             // Ignore transient documents without localStorage.
           }
         }, DOCS_UI_SCALE);
+        if (entry.capture === 'cloud-login') {
+          await context.addInitScript((storageKey) => {
+            try {
+              window.localStorage.setItem(storageKey, '1');
+            } catch {
+              // Ignore transient documents without localStorage.
+            }
+          }, CLOUD_ACCOUNT_CREATED_STORAGE_KEY);
+        }
         if (entry.capture === 'cloud-publish' || entry.capture === 'cloud-account-linked') {
           await installCloudReadyApiStubs(context);
         }
