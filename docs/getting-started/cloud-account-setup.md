@@ -46,16 +46,16 @@ Success check:
 
 ## 2b. Log In
 
-If you already have a PhaserForge account, use the `Log in` tab:
-
-1. confirm `Log in` is already selected, or switch to `Log in` if needed
-2. enter your email
-3. enter your password
-4. submit the form
-
 ![Cloud account log in form](../assets/screenshots/playwright/cloud-account-login.png)
 
 <p align="center"><em>Figure 2. Cloud account log in form.</em></p>
+
+If you already have a PhaserForge account:
+
+1. confirm the `Log in` tab is already selected, or switch to it if needed
+2. enter your email
+3. enter your password
+4. submit the form
 
 Success check:
 - The Cloud pane shows you as signed in.
