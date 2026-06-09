@@ -24,14 +24,14 @@ Success check:
 
 Use the Assets Dock on the left side. Click "+ Add" at the top right of the Dock, then select "From demo pack".
 
-<img src="../assets/screenshots/playwright/assets-dock-demo-pack-menu.png" alt="Assets dock add menu with the demo pack import option" width="440" />
+<img src="../assets/screenshots/playwright/assets-dock-demo-pack-menu.png" alt="Assets dock add menu with the demo pack import option" style="display: block; margin: 0 auto; width: 220px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 4. Assets Dock add menu showing the Demo Pack import option.</em></p>
 
 Success check:
 - You can see a list of sprites with thumbnails show in the Assets Dock. 
 
-<img src="../assets/screenshots/playwright/assets-dock-demo-pack-loaded.png" alt="Assets dock with the demo pack image list loaded" width="660" />
+<img src="../assets/screenshots/playwright/assets-dock-demo-pack-loaded.png" alt="Assets dock with the demo pack image list loaded" style="display: block; margin: 0 auto; width: 330px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 5. Assets Dock after importing the Demo Pack assets.</em></p>
 
@@ -65,7 +65,7 @@ Move to the next sprite name in the list (`entity2`) by hitting the `Down Arrow`
 
 Continue until you have renamed all seven sprites to the names above, so the later pattern steps are easier to follow.
 
-<img src="../assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png" alt="Scene graph Sprites list with the seven renamed ships" style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png" alt="Scene graph Sprites list with the seven renamed ships" style="display: block; margin: 0 auto; width: 288px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 6. Scene graph Sprites list after renaming all seven ships.</em></p>
 
@@ -80,11 +80,11 @@ Rough-place the ships first, then use `Layout…` to clean up spacing. The patte
 - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
 - bottom row: `Spiral`, `Bounce`, `Patrol`
 
-<img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up"  style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up"  style="display: block; margin: 0 auto; width: 383px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 7. On-canvas selection bar for multi-selection actions.</em></p>
 
-<img src="../assets/screenshots/playwright/layout-popover.png" alt="Layout popover close-up"  style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/layout-popover.png" alt="Layout popover close-up"  style="display: block; margin: 0 auto; width: 265px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 8. Layout popover for spacing and set-position operations.</em></p>
 
@@ -96,7 +96,7 @@ For the top row, drag-select (or SHIFT-click to select) the four ships and use `
 
 For the bottom row, drag-select (or SHIFT-click to select) all three ships and use `Layout …` again. Set `Spacing X` to `180`, **`Y` to `420`**, then center the ships with `Center X` as above.
 
-<img src="../assets/screenshots/playwright/ships-lined-up.png" alt="Ships lined up"  style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/ships-lined-up.png" alt="Ships lined up"  style="display: block; margin: 0 auto; width: 818px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 9. Ships lined up - success check.</em></p>
 
@@ -126,7 +126,7 @@ Now drag-select (or SHIFT-click to select) the bottom-row labels, and in the pop
 Under Arrange Items, click "Distribute X", and under Position Selection, type `340` under `Y`, then click `Set Y`. Finally, under Align Selection, click "Center X".
 Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
-<img src="../assets/screenshots/playwright/ships-and-titles.png" alt="Ships and titles lined up"  style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/ships-and-titles.png" alt="Ships and titles lined up"  style="display: block; margin: 0 auto; width: 700px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 10. Ships and titles lined up - success check.</em></p>
 
@@ -140,7 +140,7 @@ Select each ship, open `Actions/Events`, and attach the movement pattern that ma
 
 This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once.
 
-<img src="../assets/screenshots/playwright/actions-events-panel.png" alt="Actions and events panel"  style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/actions-events-panel.png" alt="Actions and events panel"  style="display: block; margin: 0 auto; width: 314px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 11. Actions/Events panel for authoring scene-start handlers and action steps.</em></p>
 
@@ -196,7 +196,7 @@ Set the repeating `Wave` step to:
 
 Figure 12 shows the `Wave` pattern inspector with the progress fields that are easiest to misread when entering the intro step values.
 
-<img src="../assets/screenshots/playwright/wave-pattern-panel.png" alt="Wave pattern inspector"  style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/wave-pattern-panel.png" alt="Wave pattern inspector"  style="display: block; margin: 0 auto; width: 354px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 12. Wave pattern inspector with intro-step progress parameters.</em></p>
 
@@ -304,7 +304,7 @@ Then open the separate `Bounds` panel for the same ship and configure it:
 
 Figure 13 shows the `Bounce` pattern and its sibling `Bounds` panel in `Center/Span` mode.
 
-<img src="../assets/screenshots/playwright/bounce-bounds-panel.png" alt="Bounce bounds panel" style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/bounce-bounds-panel.png" alt="Bounce bounds panel" style="display: block; margin: 0 auto; width: 354px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 13. Bounce pattern with the bounds helper in Center/Span mode.</em></p>
 
@@ -328,7 +328,7 @@ Then open the separate `Bounds` panel for the same ship and configure it:
 
 Figure 14 shows the `Patrol` pattern after switching back to `Min/Max` so you can enter the final Y bounds.
 
-<img src="../assets/screenshots/playwright/patrol-bounds-panel.png" alt="Patrol bounds panel" style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/patrol-bounds-panel.png" alt="Patrol bounds panel" style="display: block; margin: 0 auto; width: 354px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 14. Patrol pattern with the final bounds values visible in Min/Max mode.</em></p>
 
@@ -346,7 +346,7 @@ Success check:
 
 Toggle into Play mode with `Tab` or the toolbar button, and let the scene run long enough to verify all seven motions. Figure 15 shows the relevant toolbar area.
 
-<img src="../assets/screenshots/playwright/toolbar-theme-and-scale.png" alt="Toolbar close-up" style="display: block; margin: 0 auto;" />
+<img src="../assets/screenshots/playwright/toolbar-theme-and-scale.png" alt="Toolbar close-up" style="display: block; margin: 0 auto; width: 1256px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 15. Toolbar region with Play/Edit toggle and status controls.</em></p>
 
