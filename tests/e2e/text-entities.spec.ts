@@ -92,4 +92,8 @@ test('F3 focuses text content and supports live preview with Enter commit / Esca
 
   await expect.poll(async () => (await getState<any>(page)).scene?.entities?.[entityId]?.text?.value).toBe('Committed');
   await expect.poll(async () => page.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? null)).not.toBe('entity-text-content');
+  await expect.poll(async () => page.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? null)).toBe(`text-entity-${entityId}`);
+
+  await page.keyboard.press('F2');
+  await expect(page.getByTestId(`rename-entity-input-${entityId}`)).toBeVisible();
 });

@@ -11,6 +11,7 @@ import { buildProjectPickerModel, type ProjectPickerFilter } from './projectLibr
 import { exportYamlToDisk } from './yamlFileExport';
 import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
 import { serializeProjectToYaml } from '../model/serialization';
+import { EventBus } from '../phaser/EventBus';
 
 const ENTITY_DRAG_MIME = 'application/x-phaserforge-entity-ids';
 const ASSETS_DOCK_HEIGHT_STORAGE_KEY = 'phaserforge.assetsDockHeight.v1';
@@ -53,6 +54,33 @@ function countTriggerHooks(zone: TriggerZoneSpec): { enter: boolean; exit: boole
     exit: Boolean(zone.onExit?.callId),
     click: Boolean(zone.onClick?.callId),
   };
+}
+
+function focusSceneGraphRow(root: HTMLElement | null, currentSceneId: string, selection: Selection): boolean {
+  if (!root) return false;
+
+  const focusSelector = (selector: string) => {
+    const row = root.querySelector(selector) as HTMLElement | null;
+    if (!row) return false;
+    row.focus();
+    return true;
+  };
+
+  if (selection.kind === 'entity') {
+    if (focusSelector(`[data-testid="ungrouped-entity-${selection.id}"]`)) return true;
+    if (focusSelector(`[data-testid="text-entity-${selection.id}"]`)) return true;
+    const groupMemberRow = root.querySelector(`[data-member-id="${selection.id}"] .list-item`) as HTMLElement | null;
+    if (groupMemberRow) {
+      groupMemberRow.focus();
+      return true;
+    }
+    return false;
+  }
+
+  if (selection.kind === 'group') return focusSelector(`[data-testid="group-item-${selection.id}"]`);
+  if (selection.kind === 'trigger') return focusSelector(`[data-testid="trigger-zone-${selection.id}"]`);
+  if (selection.kind === 'none') return focusSelector(`[data-testid="scene-item-${currentSceneId}"]`);
+  return false;
 }
 
 export function EntityList() {
@@ -467,6 +495,17 @@ export function EntityListView({
     window.addEventListener('keydown', handleWindowKeyDown, true);
     return () => window.removeEventListener('keydown', handleWindowKeyDown, true);
   }, [sidebarScope, mode, editingKind, menuOpen, spritesAddMenu, duplicateDialog, project, currentSceneId, selection, dispatch]);
+
+  useEffect(() => {
+    const handleFocusSelectedSceneGraphRow = () => {
+      focusSceneGraphRow(rootRef.current, currentSceneId, selection);
+    };
+
+    EventBus.on('focus-selected-scene-graph-row', handleFocusSelectedSceneGraphRow);
+    return () => {
+      EventBus.off('focus-selected-scene-graph-row', handleFocusSelectedSceneGraphRow);
+    };
+  }, [currentSceneId, selection]);
 
   const handleEntityClick = (id: string, event: React.MouseEvent) => {
     const isMulti = event.shiftKey || event.metaKey || event.ctrlKey;
