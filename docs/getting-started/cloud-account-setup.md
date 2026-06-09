@@ -1,6 +1,6 @@
 # Cloud Account Setup
 
-This is the first workflow a new PhaserForge user should complete. The normal path is cloud-first:
+This is the first workflow a new PhaserForge user should complete.
 
 1. create your PhaserForge account with an email invite code, or log in if you already have one
 2. confirm you are signed in
@@ -13,9 +13,19 @@ This is the first workflow a new PhaserForge user should complete. The normal pa
 - an invite code if you are creating your account for the first time
 - the GitHub account you intend to use for publishing
 
+**NOTE:** If you do not already have a GitHub personal account:
+1. open GitHub's official account-creation guide: [Creating an account on GitHub](https://docs.github.com/en/get-started/start-your-journey/creating-an-account-on-github)
+2. complete the GitHub signup flow and verify your email address
+3. return to PhaserForge and continue with the connection steps below
+
 ## 1. Open the Cloud Pane
 
-Open the `Cloud` tab in the right-side pane. If PhaserForge has not signed you in yet, `Cloud` may already be the visible default tab when the editor opens.
+Open the `Cloud` tab in the right-side pane. If PhaserForge has not signed you in yet, `Cloud` is the visible default tab when the editor opens.
+
+When the account section appears:
+
+- first-time users should expect the `Create` tab to be selected by default
+- returning users who already created a PhaserForge account should expect the `Log in` tab to be selected by default
 
 ![Cloud pane signed-out state](../assets/screenshots/playwright/cloud-account-login.png)
 
@@ -28,7 +38,7 @@ Success check:
 
 If you do not already have a PhaserForge account:
 
-1. choose `Create account`
+1. stay on the default `Create` tab
 2. enter your email
 3. enter your password
 4. enter the invite code
@@ -36,16 +46,16 @@ If you do not already have a PhaserForge account:
 
 ![Cloud account create-account form](../assets/screenshots/playwright/cloud-account-signup.png)
 
-<p align="center"><em>Figure 2. Cloud account create-account form.</em></p>
+<p align="center"><em>Figure 2. Cloud account create form.</em></p>
 
 Success check:
 - The account flow accepts your signup and you land in a signed-in state.
 
 ## 2b. Log In
 
-If you already have a PhaserForge account, use the default `Log in` tab instead:
+If you already have a PhaserForge account, use the `Log in` tab:
 
-1. choose `Log in`
+1. confirm `Log in` is already selected, or switch to `Log in` if needed
 2. enter your email
 3. enter your password
 4. submit the form
@@ -56,12 +66,6 @@ Success check:
 ## 3. Connect GitHub
 
 After you are signed in, connect the GitHub account you want PhaserForge to use for publishing.
-
-If you do not already have a GitHub personal account:
-
-1. open GitHub's official account-creation guide: [Creating an account on GitHub](https://docs.github.com/en/get-started/start-your-journey/creating-an-account-on-github)
-2. complete the GitHub signup flow and verify your email address
-3. return to PhaserForge and continue with the connection steps below
 
 Use the Cloud pane action for:
 

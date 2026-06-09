@@ -55,9 +55,10 @@ export const EmailLogin: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByLabelText('Email')).toBeTruthy());
+    await userEvent.click(canvas.getByRole('tab', { name: 'Log in' }));
     await userEvent.type(canvas.getByLabelText('Email'), 'a@b.c');
     await userEvent.type(canvas.getByLabelText('Password'), 'pw');
-    await userEvent.click(canvas.getByRole('button', { name: 'Log in' }));
+    await userEvent.click(canvas.getByTestId('cloud-account-submit'));
     await waitFor(() => expect(canvas.getByTestId('cloud-account-section').textContent).toContain('Signed in'));
     expect(canvas.getByRole('button', { name: 'Connect GitHub' })).toBeTruthy();
   },
