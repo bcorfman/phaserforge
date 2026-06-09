@@ -24,14 +24,14 @@ Success check:
 
 Use the Assets Dock on the left side. Click "+ Add" at the top right of the Dock, then select "From demo pack".
 
-![Assets dock add menu with the demo pack import option](../assets/screenshots/playwright/assets-dock-demo-pack-menu.png)
+<img src="../assets/screenshots/playwright/assets-dock-demo-pack-menu.png" alt="Assets dock add menu with the demo pack import option" width="440" />
 
 <p align="center"><em>Figure 4. Assets Dock add menu showing the Demo Pack import option.</em></p>
 
 Success check:
 - You can see a list of sprites with thumbnails show in the Assets Dock. 
 
-![Assets dock with the demo pack image list loaded](../assets/screenshots/playwright/assets-dock-demo-pack-loaded.png)
+<img src="../assets/screenshots/playwright/assets-dock-demo-pack-loaded.png" alt="Assets dock with the demo pack image list loaded" width="660" />
 
 <p align="center"><em>Figure 5. Assets Dock after importing the Demo Pack assets.</em></p>
 
@@ -61,11 +61,11 @@ Name the seven ships you duplicated:
 
 Do this by clicking the first ship name (titled 'entity') in the Sprites list in the left sidebar to highlight it. Now hit the `F2` key (Rename), delete the old `entity` title, type `Wave`, and hit the `ENTER` key.
 
-Move to the next sprite name in the list by hitting the `Down Arrow` on your keyboard to move to the next sprite name (titled `entity2`), then follow the same procedure above to rename it.
+Move to the next sprite name in the list (`entity2`) by hitting the `Down Arrow` on your keyboard, then follow the same procedure above to rename it.
 
 Continue until you have renamed all seven sprites to the names above, so the later pattern steps are easier to follow.
 
-![Scene graph Sprites list with the seven renamed ships](../assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png)
+<img src="../assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png" alt="Scene graph Sprites list with the seven renamed ships" width="576" />
 
 <p align="center"><em>Figure 6. Scene graph Sprites list after renaming all seven ships.</em></p>
 
@@ -80,11 +80,11 @@ Rough-place the ships first, then use `Layout…` to clean up spacing. The patte
 - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
 - bottom row: `Spiral`, `Bounce`, `Patrol`
 
-![Selection bar close-up](../assets/screenshots/playwright/canvas-selection-bar.png)
+<img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up" width="765" />
 
 <p align="center"><em>Figure 7. On-canvas selection bar for multi-selection actions.</em></p>
 
-![Layout popover close-up](../assets/screenshots/playwright/layout-popover.png)
+<img src="../assets/screenshots/playwright/layout-popover.png" alt="Layout popover close-up" width="530" />
 
 <p align="center"><em>Figure 8. Layout popover for spacing and set-position operations.</em></p>
 
@@ -96,7 +96,7 @@ For the top row, drag-select (or SHIFT-click to select) the four ships and use `
 
 For the bottom row, drag-select (or SHIFT-click to select) all three ships and use `Layout …` again. Set `Spacing X` to `180`, **`Y` to `420`**, then center the ships with `Center X` as above.
 
-![Ships lined up](../assets/screenshots/playwright/ships-lined-up.png)
+<img src="../assets/screenshots/playwright/ships-lined-up.png" alt="Ships lined up" width="1635" />
 
 <p align="center"><em>Figure 9. Ships lined up - success check.</em></p>
 
@@ -126,7 +126,7 @@ Now drag-select (or SHIFT-click to select) the bottom-row labels, and in the pop
 Under Arrange Items, click "Distribute X", and under Position Selection, type `340` under `Y`, then click `Set Y`. Finally, under Align Selection, click "Center X".
 Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
-![Ships and titles lined up](../assets/screenshots/playwright/ships-and-titles.png)
+<img src="../assets/screenshots/playwright/ships-and-titles.png" alt="Ships and titles lined up" width="1400" />
 
 <p align="center"><em>Figure 10. Ships and titles lined up - success check.</em></p>
 
@@ -140,7 +140,7 @@ Select each ship, open `Actions/Events`, and attach the movement pattern that ma
 
 This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once.
 
-![Actions and events panel](../assets/screenshots/playwright/actions-events-panel.png)
+<img src="../assets/screenshots/playwright/actions-events-panel.png" alt="Actions and events panel" width="628" />
 
 <p align="center"><em>Figure 11. Actions/Events panel for authoring scene-start handlers and action steps.</em></p>
 
@@ -196,7 +196,7 @@ Set the repeating `Wave` step to:
 
 Figure 12 shows the `Wave` pattern inspector with the progress fields that are easiest to misread when entering the intro step values.
 
-![Wave pattern inspector](../assets/screenshots/playwright/wave-pattern-panel.png)
+<img src="../assets/screenshots/playwright/wave-pattern-panel.png" alt="Wave pattern inspector" width="708" />
 
 <p align="center"><em>Figure 12. Wave pattern inspector with intro-step progress parameters.</em></p>
 
@@ -304,7 +304,7 @@ Then open the separate `Bounds` panel for the same ship and configure it:
 
 Figure 13 shows the `Bounce` pattern and its sibling `Bounds` panel in `Center/Span` mode.
 
-![Bounce bounds panel](../assets/screenshots/playwright/bounce-bounds-panel.png)
+<img src="../assets/screenshots/playwright/bounce-bounds-panel.png" alt="Bounce bounds panel" width="708" />
 
 <p align="center"><em>Figure 13. Bounce pattern with the bounds helper in Center/Span mode.</em></p>
 
@@ -328,7 +328,7 @@ Then open the separate `Bounds` panel for the same ship and configure it:
 
 Figure 14 shows the `Patrol` pattern after switching back to `Min/Max` so you can enter the final Y bounds.
 
-![Patrol bounds panel](../assets/screenshots/playwright/patrol-bounds-panel.png)
+<img src="../assets/screenshots/playwright/patrol-bounds-panel.png" alt="Patrol bounds panel" width="708" />
 
 <p align="center"><em>Figure 14. Patrol pattern with the final bounds values visible in Min/Max mode.</em></p>
 
@@ -346,7 +346,7 @@ Success check:
 
 Toggle into Play mode with `Tab` or the toolbar button, and let the scene run long enough to verify all seven motions. Figure 15 shows the relevant toolbar area.
 
-![Toolbar close-up](../assets/screenshots/playwright/toolbar-theme-and-scale.png)
+<img src="../assets/screenshots/playwright/toolbar-theme-and-scale.png" alt="Toolbar close-up" width="2512" />
 
 <p align="center"><em>Figure 15. Toolbar region with Play/Edit toggle and status controls.</em></p>
 
