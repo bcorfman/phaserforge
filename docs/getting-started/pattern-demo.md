@@ -22,11 +22,11 @@ Success check:
 
 ## 1. Import the Demo Pack Assets 
 
+Use the Assets Dock on the left side. Click "+ Add" at the top right of the Dock, then select "From demo pack".
+
 ![Assets dock add menu with the demo pack import option](../assets/screenshots/playwright/assets-dock-demo-pack-menu.png)
 
 <p align="center"><em>Figure 4. Assets Dock add menu showing the Demo Pack import option.</em></p>
-
-Use the Assets Dock on the left side. Click "+ Add" at the top right of the Dock, then select "From demo pack".
 
 Success check:
 - You can see a list of sprites with thumbnails show in the Assets Dock. 
@@ -39,11 +39,13 @@ Success check:
 
 In the Assets Dock under Images, scroll down to find the image labeled "ship_sidesA". 
 
-Drag the ship_sidesA image from the Dock onto the center canvas to create a spaceship object (or "sprite") there. 
-**NOTE:** If everything goes correctly, you will see the ship (titled "entity") also show up in the Sprites list in the left sidebar.
+Drag the ship_sidesA image from the Dock onto the center canvas to create a spaceship object (or "sprite") there.
+
+- **NOTE:** If everything goes correctly, you will see the ship (titled "entity") also show up in the Sprites list in the left sidebar.
 
 The imported ship will look a bit too large on the canvas; click on the ship to select it, then reduce its `Scale X (%)` to `50` in the Inspector (in the right sidebar) 
-**NOTE:** changing `Scale X (%)` to `50` will automatically change `Scale Y (%)` to `50` as well; the aspect ratio is locked together with the highlighted link button.
+
+- **NOTE:** changing `Scale X (%)` to `50` will automatically change `Scale Y (%)` to `50` as well; the aspect ratio is locked together with the highlighted link button.
 
 After you've reduced the ship size, hold down the Alt key and drag the ship sprite to a new location to duplicate it until you have seven ships total. 
 
@@ -58,7 +60,9 @@ Name the seven ships you duplicated:
 7. `Patrol`
 
 Do this by clicking the first ship name (titled 'entity') in the Sprites list in the left sidebar to highlight it. Now hit the `F2` key (Rename), delete the old `entity` title, type `Wave`, and hit the `ENTER` key.
+
 Move to the next sprite name in the list by hitting the `Down Arrow` on your keyboard to move to the next sprite name (titled `entity2`), then follow the same procedure above to rename it.
+
 Continue until you have renamed all seven sprites to the names above, so the later pattern steps are easier to follow.
 
 ![Scene graph Sprites list with the seven renamed ships](../assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png)
