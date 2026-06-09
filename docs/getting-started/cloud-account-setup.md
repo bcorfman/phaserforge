@@ -44,7 +44,7 @@ If you do not already have a PhaserForge account:
 4. enter the invite code
 5. submit the form
 
-![Cloud account create-account form](../assets/screenshots/playwright/cloud-account-signup.png)
+![Cloud account create form](../assets/screenshots/playwright/cloud-account-signup.png)
 
 <p align="center"><em>Figure 2. Cloud account create form.</em></p>
 
