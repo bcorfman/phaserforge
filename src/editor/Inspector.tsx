@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { formatActionDisplayName } from './actionFormatting';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
@@ -11,11 +11,12 @@ import { resolveTextEntityDefaults } from './textEntity';
 import { boundsToCenterSpan, computeEdgeSafeBounds, computeTargetAabb } from './boundsHelper';
 import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
-import { ValidatedNumberInput, ValidatedNumberTextInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
+import { ValidatedNumberInput, ValidatedNumberTextInput, ValidatedOptionalNumberInput, ValidatedTextareaInput } from './ValidatedNumberInput';
 import { parseCallArgsJson } from './callArgsJson';
 import { TriggerZoneInspector } from './TriggerZoneInspector';
 import { SceneInspectorPanel } from './SceneInspectorPanel';
 import { MultiEntityInspector } from './MultiEntityInspector';
+import { EventBus } from '../phaser/EventBus';
 import {
   displayPixelsFromBaseAndScale,
   maintainAspectDisplayHeight,
@@ -393,9 +394,30 @@ function EntityInspector({
   const project = actionProps?.project;
   const isTextEntity = Boolean((entity as any).text);
   const resolvedText = isTextEntity ? resolveTextEntityDefaults((entity as any).text) : null;
+  const textContentRef = useRef<HTMLTextAreaElement | null>(null);
   const [spriteSizeTab, setSpriteSizeTab] = useState<'percent' | 'pixels'>('percent');
   const [lockPercent, setLockPercent] = useState(true);
   const [lockPixels, setLockPixels] = useState(true);
+
+  useEffect(() => {
+    if (!isTextEntity) return;
+
+    const handleFocusTextContent = (targetEntityId?: string) => {
+      if (targetEntityId !== entity.id) return;
+      foldouts.setOpen('entity.text', true);
+      window.setTimeout(() => {
+        const field = textContentRef.current;
+        if (!field) return;
+        field.focus();
+        field.select();
+      }, 0);
+    };
+
+    EventBus.on('focus-text-entity-content', handleFocusTextContent);
+    return () => {
+      EventBus.off('focus-text-entity-content', handleFocusTextContent);
+    };
+  }, [entity.id, foldouts, isTextEntity]);
 
   const keyForAsset = (asset: SpriteAssetSpec): string => {
     const base = asset.source.kind === 'asset'
@@ -745,12 +767,15 @@ function EntityInspector({
         >
           <label className="field">
             <span>Content</span>
-            <textarea
+            <ValidatedTextareaInput
+              ref={textContentRef}
               className="text-input"
               rows={3}
+              aria-label="Text Content"
               data-testid="entity-text-content"
               value={resolvedText.value}
-              onChange={(e) => update({ text: { ...(entity as any).text, value: e.target.value } as any })}
+              onLiveChange={(next) => update({ text: { ...(entity as any).text, value: next } as any })}
+              onCommit={(next) => update({ text: { ...(entity as any).text, value: next } as any })}
             />
           </label>
 

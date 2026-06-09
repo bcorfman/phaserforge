@@ -180,6 +180,32 @@ function AppShell() {
   }, [dispatch, state.mode]);
 
   useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (state.mode !== 'edit') return;
+      if (event.target instanceof HTMLElement) {
+        const tag = event.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || event.target.isContentEditable) {
+          return;
+        }
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key !== 'F3') return;
+      if (state.selection.kind !== 'entity') return;
+
+      const entity = state.project.scenes[state.currentSceneId]?.entities?.[state.selection.id];
+      if (!(entity as any)?.text) return;
+
+      event.preventDefault();
+      EventBus.emit('focus-text-entity-content', entity.id);
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [state.currentSceneId, state.mode, state.project.scenes, state.selection]);
+
+  useEffect(() => {
     const handleReady = () => {
       readyRef.current = true;
       setSceneReady(true);

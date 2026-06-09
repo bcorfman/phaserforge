@@ -18,6 +18,7 @@ describe('parseScreenshotManifest', () => {
       {
         id: 'layout-popover',
         source: 'playwright',
+        capture: 'assets-dock-demo-pack-menu',
         output: 'docs/assets/screenshots/playwright/layout-popover.png',
       },
     ]);
@@ -25,6 +26,29 @@ describe('parseScreenshotManifest', () => {
     expect(manifest).toHaveLength(2);
     expect(manifest[0]?.source).toBe('storybook');
     expect(manifest[1]?.source).toBe('playwright');
+    expect(manifest[1]).toMatchObject({ capture: 'assets-dock-demo-pack-menu' });
+  });
+
+  it('preserves custom playwright capture ids used by docs screenshots', () => {
+    const manifest = parseScreenshotManifest([
+      {
+        id: 'assets-dock-demo-pack-loaded',
+        source: 'playwright',
+        capture: 'assets-dock-demo-pack-loaded',
+        output: 'docs/assets/screenshots/playwright/assets-dock-demo-pack-loaded.png',
+      },
+      {
+        id: 'scene-graph-pattern-demo-sprites',
+        source: 'playwright',
+        capture: 'scene-graph-pattern-demo-sprites',
+        output: 'docs/assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png',
+      },
+    ]);
+
+    expect(manifest).toMatchObject([
+      { capture: 'assets-dock-demo-pack-loaded' },
+      { capture: 'scene-graph-pattern-demo-sprites' },
+    ]);
   });
 
   it('requires storybook entries to include a story id', () => {

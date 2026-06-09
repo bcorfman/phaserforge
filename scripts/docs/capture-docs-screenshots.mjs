@@ -21,6 +21,7 @@ const CLOUD_ACCOUNT_CREATED_STORAGE_KEY = 'phaserforge.cloud.account_created_v1'
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..', '..');
+const ONE_PIXEL_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+nX1cAAAAASUVORK5CYII=';
 
 async function waitForHttp(url, timeoutMs = 120000) {
   const started = Date.now();
@@ -40,6 +41,38 @@ async function ensureParentDir(outputPath) {
   await mkdir(path.dirname(outputPath), { recursive: true });
 }
 
+async function screenshotVisibleLocatorRegion(page, selector, outputPath) {
+  const locator = page.locator(selector);
+  await locator.scrollIntoViewIfNeeded();
+  const box = await locator.boundingBox();
+  if (!box) throw new Error(`Could not determine visible bounds for selector: ${selector}`);
+  await page.screenshot({
+    path: outputPath,
+    clip: {
+      x: Math.max(0, Math.floor(box.x)),
+      y: Math.max(0, Math.floor(box.y)),
+      width: Math.max(1, Math.ceil(box.width)),
+      height: Math.max(1, Math.ceil(box.height)),
+    },
+  });
+}
+
+async function screenshotAssetsDockLoaded(page, outputPath) {
+  const list = page.locator('[data-testid="assets-dock"] .assets-dock-list');
+  const listBox = await list.boundingBox();
+  const viewport = page.viewportSize();
+  if (!listBox || !viewport) {
+    throw new Error('Could not determine bounds for assets dock loaded screenshot');
+  }
+  const clip = {
+    x: Math.max(0, Math.floor(listBox.x)),
+    y: Math.max(0, viewport.height - 320),
+    width: Math.max(1, Math.ceil(listBox.width)),
+    height: 300,
+  };
+  await page.screenshot({ path: outputPath, clip });
+}
+
 async function loadManifest() {
   const manifestPath = path.join(repoRoot, 'scripts', 'docs', 'screenshot-manifest.json');
   const raw = await readFile(manifestPath, 'utf8');
@@ -48,6 +81,62 @@ async function loadManifest() {
 
 async function prepareSampleScene(page, capture) {
   console.log(`[docs:screenshots:app] preparing sample scene for ${capture}`);
+
+  if (capture === 'scene-graph-pattern-demo-sprites') {
+    const project = createEmptyProject();
+    const scene = project.scenes[project.initialSceneId];
+    scene.world = { width: 800, height: 600 };
+    project.assets.images = {
+      'ship-sidesa': {
+        id: 'ship-sidesa',
+        name: 'ship_sidesA',
+        width: 32,
+        height: 32,
+        source: {
+          kind: 'embedded',
+          dataUrl: ONE_PIXEL_PNG,
+          originalName: 'ship_sidesA.png',
+          mimeType: 'image/png',
+        },
+      },
+    };
+    const shipNames = ['Wave', 'Zigzag', 'Figure-8', 'Orbit', 'Spiral', 'Bounce', 'Patrol'];
+    const entityIds = shipNames.map((name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+    scene.spriteOrder = entityIds;
+    scene.entities = Object.fromEntries(
+      shipNames.map((name, index) => {
+        const id = entityIds[index];
+        return [id, {
+          id,
+          name,
+          x: 120 + ((index % 4) * 140),
+          y: index < 4 ? 420 : 200,
+          width: 32,
+          height: 32,
+          scaleX: 0.5,
+          scaleY: 0.5,
+          originX: 0.5,
+          originY: 0.5,
+          alpha: 1,
+          visible: true,
+          depth: 0,
+          flipX: false,
+          flipY: false,
+          rotationDeg: 0,
+          asset: {
+            source: { kind: 'asset', assetId: 'ship-sidesa' },
+            frame: { kind: 'single' },
+          },
+        }];
+      }),
+    );
+    await seedProject(page, project);
+    await dismissViewHint(page);
+    await openSceneScope(page);
+    await page.waitForSelector('[data-testid="entity-list"]', { state: 'visible', timeout: 10000 });
+    await page.getByTestId('ungrouped-entity-patrol').scrollIntoViewIfNeeded();
+    return;
+  }
 
   if (capture === 'wave-pattern-panel') {
     const project = structuredClone(sampleProject);
@@ -211,6 +300,23 @@ async function prepareSampleScene(page, capture) {
     await page.waitForSelector('[data-testid="assets-dock"]', { state: 'visible', timeout: 10000 });
   }
 
+  if (capture === 'assets-dock-demo-pack-menu') {
+    await page.waitForSelector('[data-testid="assets-dock"]', { state: 'visible', timeout: 10000 });
+    await page.getByTestId('assets-dock-add-button').click();
+    await page.waitForSelector('[data-testid="assets-dock-add-menu"]', { state: 'visible', timeout: 10000 });
+  }
+
+  if (capture === 'assets-dock-demo-pack-loaded') {
+    const project = createEmptyProject();
+    await seedProject(page, project);
+    await dismissViewHint(page);
+    await page.waitForSelector('[data-testid="assets-dock"]', { state: 'visible', timeout: 10000 });
+    await page.getByTestId('assets-dock-add-button').click();
+    await page.getByTestId('assets-dock-add-menu-from-demo-pack').click();
+    await page.waitForSelector('[data-testid="assets-dock-item-image-ship-sidesa"]', { state: 'visible', timeout: 10000 });
+    await page.getByTestId('assets-dock-item-image-ship-sidesa').scrollIntoViewIfNeeded();
+  }
+
   if (capture === 'toolbar') {
     await page.waitForSelector('[data-testid="toolbar"]', { state: 'visible', timeout: 10000 });
   }
@@ -341,11 +447,15 @@ async function captureDocsScreenshots() {
           await page.goto(baseURL, { waitUntil: 'domcontentloaded', timeout: 120000 });
         }
 
-        const target = page.locator(entry.selector ?? 'body');
-        await target.scrollIntoViewIfNeeded();
         const outputPath = path.join(repoRoot, entry.output);
         await ensureParentDir(outputPath);
-        await target.screenshot({ path: outputPath });
+        if (entry.capture === 'assets-dock-demo-pack-loaded') {
+          await screenshotAssetsDockLoaded(page, outputPath);
+        } else {
+          const target = page.locator(entry.selector ?? 'body');
+          await target.scrollIntoViewIfNeeded();
+          await target.screenshot({ path: outputPath });
+        }
         console.log(`[docs:screenshots:app] wrote ${entry.output}`);
         await page.close();
         await context.close();
