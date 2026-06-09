@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { renderAttachmentInspector } from '../../src/editor/Inspector';
@@ -55,4 +56,3 @@ describe('Attachment inspector Until → Bounds Hit', () => {
     expect(markup).toContain('Bounds Max Y');
   });
 });
-
