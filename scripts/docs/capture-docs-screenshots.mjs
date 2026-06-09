@@ -245,7 +245,6 @@ async function prepareSampleScene(page, capture) {
 
   if (capture === 'cloud-signup') {
     await page.getByTestId('inspector-pane-tab-cloud').click();
-    await page.getByRole('tab', { name: 'Create account' }).click();
     await page.waitForSelector('[aria-label="Invite code"]', { state: 'visible', timeout: 10000 });
   }
 
