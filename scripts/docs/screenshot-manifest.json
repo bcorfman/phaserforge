@@ -9,6 +9,33 @@
     "output": "docs/assets/screenshots/playwright/entity-list-scene-scope.png"
   },
   {
+    "id": "assets-dock-demo-pack-menu",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "assets-dock-demo-pack-menu",
+    "selector": "[data-testid=\"assets-dock-add-menu\"]",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/assets-dock-demo-pack-menu.png"
+  },
+  {
+    "id": "assets-dock-demo-pack-loaded",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "assets-dock-demo-pack-loaded",
+    "selector": "[data-testid=\"assets-dock\"] .assets-dock-list",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/assets-dock-demo-pack-loaded.png"
+  },
+  {
+    "id": "scene-graph-pattern-demo-sprites",
+    "source": "playwright",
+    "scene": "sample",
+    "capture": "scene-graph-pattern-demo-sprites",
+    "selector": "[data-testid=\"entity-list\"]",
+    "viewport": { "width": 1440, "height": 960 },
+    "output": "docs/assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png"
+  },
+  {
     "id": "toolbar-theme-and-scale",
     "source": "playwright",
     "scene": "sample",
