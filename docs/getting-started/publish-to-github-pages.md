@@ -10,13 +10,11 @@ Before you start, make sure:
 - the GitHub account you intend to use is already connected or ready to connect
 - your project already has working content
 
-The exact workflow family behind this guide is `W16` in the [Editor Workflow Reference](../reference/editor-workflows).
-
 ## 1. Open the Cloud Pane for This Project
 
 Open the right-side Cloud pane for the project you just built. Figure 10 shows the publish section you should be working from. If you discover here that you are signed out or GitHub is disconnected, stop and fix that first with [Cloud Account Setup](./cloud-account-setup).
 
-<img src="../assets/screenshots/playwright/cloud-publish-ready.png" alt="Cloud publish section" width="708" />
+<img src="../assets/screenshots/playwright/cloud-publish-ready.png" alt="Cloud publish section" style="display: block; margin: 0 auto;" />
 
 <p align="center"><em>Figure 10. Cloud publish section with title and repository fields.</em></p>
 
