@@ -776,6 +776,11 @@ function EntityInspector({
               value={resolvedText.value}
               onLiveChange={(next) => update({ text: { ...(entity as any).text, value: next } as any })}
               onCommit={(next) => update({ text: { ...(entity as any).text, value: next } as any })}
+              onFinalize={(reason) => {
+                if (reason === 'enter' || reason === 'escape') {
+                  EventBus.emit('focus-selected-scene-graph-row');
+                }
+              }}
             />
           </label>
 

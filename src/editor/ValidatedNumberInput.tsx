@@ -194,10 +194,12 @@ export const ValidatedTextareaInput = forwardRef<HTMLTextAreaElement, BaseTextar
   value: string;
   onCommit: (next: string) => void;
   onLiveChange?: (next: string) => void;
+  onFinalize?: (reason: 'enter' | 'escape' | 'blur') => void;
 }>(function ValidatedTextareaInput({
   value,
   onCommit,
   onLiveChange,
+  onFinalize,
   ...props
 }, ref) {
   const [draft, setDraft] = useState<string>(value);
@@ -237,8 +239,10 @@ export const ValidatedTextareaInput = forwardRef<HTMLTextAreaElement, BaseTextar
         if (blurMode === 'revert') {
           const baseline = baselineRef.current;
           commit(baseline, true);
+          onFinalize?.('escape');
         } else {
           commit(draft);
+          onFinalize?.(blurMode === 'commit' ? 'enter' : 'blur');
         }
         props.onBlur?.(e);
       }}
