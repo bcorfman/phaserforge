@@ -16,7 +16,7 @@ The exact workflow family behind this guide is `W16` in the [Editor Workflow Ref
 
 Open the right-side Cloud pane for the project you just built. Figure 10 shows the publish section you should be working from. If you discover here that you are signed out or GitHub is disconnected, stop and fix that first with [Cloud Account Setup](./cloud-account-setup).
 
-![Cloud publish section](../assets/screenshots/playwright/cloud-publish-ready.png)
+<img src="../assets/screenshots/playwright/cloud-publish-ready.png" alt="Cloud publish section" width="708" />
 
 <p align="center"><em>Figure 10. Cloud publish section with title and repository fields.</em></p>
 

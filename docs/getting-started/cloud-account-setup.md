@@ -37,7 +37,7 @@ If you do not already have a PhaserForge account:
 4. enter the invite code
 5. submit the form
 
-![Cloud account create-account form](../assets/screenshots/playwright/cloud-account-signup.png)
+<img src="../assets/screenshots/playwright/cloud-account-signup.png" alt="Cloud account create-account form" width="708" />
 
 <p align="center"><em>Figure 1. Cloud account create form.</em></p>
 
@@ -46,7 +46,7 @@ Success check:
 
 ## 2b. Log In
 
-![Cloud account log in form](../assets/screenshots/playwright/cloud-account-login.png)
+<img src="../assets/screenshots/playwright/cloud-account-login.png" alt="Cloud account log in form" width="708" />
 
 <p align="center"><em>Figure 2. Cloud account log in form.</em></p>
 
@@ -71,7 +71,7 @@ Use the Cloud pane action for:
 
 Continue through the GitHub authorization flow in the browser. Figure 3 shows the signed-in, GitHub-linked state you want before moving on to project work.
 
-![Cloud account signed-in and GitHub-linked state](../assets/screenshots/playwright/cloud-account-linked.png)
+<img src="../assets/screenshots/playwright/cloud-account-linked.png" alt="Cloud account signed-in and GitHub-linked state" width="708" />
 
 <p align="center"><em>Figure 3. Cloud account signed-in and GitHub-linked state.</em></p>
 
