@@ -84,37 +84,51 @@ Rough-place the ships first, then use `Layout…` to clean up spacing. The patte
 
 <p align="center"><em>Figure 8. Layout popover for spacing and set-position operations.</em></p>
 
-For the top row, select the three ships and use `Layout…` to:
+For the top row, drag-select (or SHIFT-click to select) the four ships and use `Layout…` to:
 
 - Under Spacing, type `180` in the `Spacing X` box, then hit `Apply Spacing X`.
 - Under Position Selection, type `200` in the `Y` box, then hit `Set Y`.
 - Finally, under Align Selection, hit `Center X`.
 
-For the bottom row, select all three ships and use `Layout …` again. Set `Spacing X` to `180`, **`Y` to `450`**, then center the ships with `Center X` as above.
+For the bottom row, drag-select (or SHIFT-click to select) all three ships and use `Layout …` again. Set `Spacing X` to `180`, **`Y` to `420`**, then center the ships with `Center X` as above.
 
-![Layout popover close-up](../assets/screenshots/playwright/ships-lined-up.png)
+![Ships lined up](../assets/screenshots/playwright/ships-lined-up.png)
 
 <p align="center"><em>Figure 9. Ships lined up - success check.</em></p>
 
 Success check:
-- The four top-row ships are equally spaced and centered, and sit on same `Y = 450` baseline.
-- The three bottom-row ships are equally spaced and centered, and sit on same `Y = 450` baseline.
+- The four top-row ships are equally spaced and centered, and sit on same `Y = 200` baseline.
+- The three bottom-row ships are equally spaced and centered, and sit on same `Y = 420` baseline.
 
 ## 4. Add the Text Labels
 
-Create one text entity, then edit its content and styling in the Inspector. After the first label looks right, duplicate it and move each copy above the correct ship.
+In the left sidebar, under Scene Graph, click the "+ Add" button beside Text. 
+**NOTE:** This will create one text entity called 't'. 
 
-Recommended baseline settings:
+Hit the F2 key and rename the text entity to "Wave", then rough-place it (i.e., drag it) over top of the Wave sprite (the leftmost of the top row of sprites).
+Next, hit the F3 key and type in "Wave" as the text property of the highlighted entity. 
+**NOTE:** you should see the text change for the entity in the Canvas.
 
-- content: [ship name], where 'ship name' are the names we used earlier, e.g., Wave, Zigzag, Figure-8, etc.
-- anchor: `center`
-- color: `#FFFFFF`
-- font: choose a font asset if you imported one, or set a font-family override
-- position: `x = ship.x`, `y = ship.y - 80`
+Repeat these steps for each of the sprites in the top and bottom rows until you have named labels over each of the ship sprites.
+
+**NOTE:** You may be tempted to use Alt-Drag to duplicate the text entities as you did earlier with the ship sprites, but duplicating the text entities also copies their name and text as well, so this can quickly get confusing. Using "+ Add" is the better approach in this scenario.
+
+Lastly, drag-select (or SHIFT-click to select) the top-row labels, and in the popup Selection Bar, use `Layout …`. 
+Under Arrange Items, click "Distribute X", and under Position Selection, type `120` under `Y`, then click `Set Y`. Finally, under Align Selection, click "Center X".
+Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
+
+Next, click a blank space somewhere in the canvas to deselect the top-row sprites.
+Now drag-select (or SHIFT-click to select) the bottom-row labels, and in the popup Selection Bar, use `Layout …`. 
+Under Arrange Items, click "Distribute X", and under Position Selection, type `340` under `Y`, then click `Set Y`. Finally, under Align Selection, click "Center X".
+Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
+
+![Ships and titles lined up](../assets/screenshots/playwright/ships-and-titles.png)
+
+<p align="center"><em>Figure 10. Ships and titles lined up - success check.</em></p>
 
 Success check:
 - Each ship has one readable label above it.
-- Labels stay visually aligned with the ships in Edit mode.
+- Labels are visually aligned with the ships.
 
 ## 5. Attach the Movement Patterns
 
@@ -122,11 +136,9 @@ Select each ship, open `Actions/Events`, and attach the movement pattern that ma
 
 This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once.
 
-Figure 9 shows the `Actions/Events` panel state you should be working in while building each ship’s handler.
-
 ![Actions and events panel](../assets/screenshots/playwright/actions-events-panel.png)
 
-<p align="center"><em>Figure 10. Actions/Events panel for authoring scene-start handlers and action steps.</em></p>
+<p align="center"><em>Figure 11. Actions/Events panel for authoring scene-start handlers and action steps.</em></p>
 
 ### 5a. Common Setup for Every Ship
 
@@ -178,11 +190,11 @@ Set the repeating `Wave` step to:
 - `startProgress = 0`
 - `endProgress = 1`
 
-Figure 11 shows the `Wave` pattern inspector with the progress fields that are easiest to misread when entering the intro step values.
+Figure 12 shows the `Wave` pattern inspector with the progress fields that are easiest to misread when entering the intro step values.
 
 ![Wave pattern inspector](../assets/screenshots/playwright/wave-pattern-panel.png)
 
-<p align="center"><em>Figure 11. Wave pattern inspector with intro-step progress parameters.</em></p>
+<p align="center"><em>Figure 12. Wave pattern inspector with intro-step progress parameters.</em></p>
 
 ### 5d. Zigzag
 
@@ -286,11 +298,11 @@ Then open the separate `Bounds` panel for the same ship and configure it:
 4. set `± X Span = 50`
 5. set `± Y Span = 60`
 
-Figure 12 shows the `Bounce` pattern and its sibling `Bounds` panel in `Center/Span` mode.
+Figure 13 shows the `Bounce` pattern and its sibling `Bounds` panel in `Center/Span` mode.
 
 ![Bounce bounds panel](../assets/screenshots/playwright/bounce-bounds-panel.png)
 
-<p align="center"><em>Figure 12. Bounce pattern with the bounds helper in Center/Span mode.</em></p>
+<p align="center"><em>Figure 13. Bounce pattern with the bounds helper in Center/Span mode.</em></p>
 
 ### 5i. Patrol
 
@@ -310,11 +322,11 @@ Then open the separate `Bounds` panel for the same ship and configure it:
 8. set `minY = 400`
 9. set `maxY = 500`
 
-Figure 13 shows the `Patrol` pattern after switching back to `Min/Max` so you can enter the final Y bounds.
+Figure 14 shows the `Patrol` pattern after switching back to `Min/Max` so you can enter the final Y bounds.
 
 ![Patrol bounds panel](../assets/screenshots/playwright/patrol-bounds-panel.png)
 
-<p align="center"><em>Figure 13. Patrol pattern with the final bounds values visible in Min/Max mode.</em></p>
+<p align="center"><em>Figure 14. Patrol pattern with the final bounds values visible in Min/Max mode.</em></p>
 
 Practical order if you want the shortest learning path:
 
@@ -328,11 +340,11 @@ Success check:
 
 ## 6. Run the Demo in Play Mode
 
-Toggle into Play mode with `Tab` or the toolbar button, and let the scene run long enough to verify all seven motions. Figure 14 shows the relevant toolbar area.
+Toggle into Play mode with `Tab` or the toolbar button, and let the scene run long enough to verify all seven motions. Figure 15 shows the relevant toolbar area.
 
 ![Toolbar close-up](../assets/screenshots/playwright/toolbar-theme-and-scale.png)
 
-<p align="center"><em>Figure 14. Toolbar region with Play/Edit toggle and status controls.</em></p>
+<p align="center"><em>Figure 15. Toolbar region with Play/Edit toggle and status controls.</em></p>
 
 Look for these outcomes:
 
