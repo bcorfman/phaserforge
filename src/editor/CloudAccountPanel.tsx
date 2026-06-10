@@ -740,7 +740,7 @@ export function CloudAccountPanel({
             <div className="cloud-auth">
               <div className="cloud-auth-tabs" role="tablist" aria-label="Cloud account mode">
                 <button
-                  className="button"
+                  className={`button ${authMode === 'login' ? 'active' : ''}`}
                   type="button"
                   role="tab"
                   aria-selected={authMode === 'login'}
@@ -750,7 +750,7 @@ export function CloudAccountPanel({
                   Log in
                 </button>
                 <button
-                  className="button"
+                  className={`button ${authMode === 'signup' ? 'active' : ''}`}
                   type="button"
                   role="tab"
                   aria-selected={authMode === 'signup'}
