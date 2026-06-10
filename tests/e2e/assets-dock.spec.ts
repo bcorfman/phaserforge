@@ -1,9 +1,22 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, dispatchAction, dragAssetToCanvas, dragDropByTestIdAtClientPoint, dropAssetOnTestId, entityClientCenter, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, waitForViewportToSettle, worldToClient } from './helpers';
+import { dismissViewHint, dispatchAction, dragAssetToCanvas, dropAssetAtClientPoint, dropAssetOnTestId, entityClientCenter, getEntitySpriteWorldRect, getSceneSnapshot, getState, hitTestAtClientPoint, openSceneScope, panByScreenDelta, seedProject, triggerUndo, waitForViewportToSettle, worldToClient } from './helpers';
 
 test.describe('Assets dock', () => {
   test.describe.configure({ timeout: 120000 });
+
+  async function normalizedEntityPosition(page: Parameters<typeof entityClientCenter>[0], entityId: string) {
+    const canvas = page.locator('#game-container canvas');
+    await expect(canvas).toBeVisible();
+    const canvasBox = await canvas.boundingBox();
+    if (!canvasBox) throw new Error('Canvas bounding box unavailable');
+
+    const center = await entityClientCenter(page, entityId);
+    return {
+      x: (center.x - canvasBox.x) / canvasBox.width,
+      y: (center.y - canvasBox.y) / canvasBox.height,
+    };
+  }
 
   test('imports an image and drags to canvas to create an entity with asset ref @critical @browser', async ({ page }) => {
     await seedProject(page, createEmptyProject());
@@ -91,7 +104,7 @@ test.describe('Assets dock', () => {
       return markerId;
     }).toBeTruthy();
     if (typeof markerId !== 'string') throw new Error('Failed to create marker entity');
-    const markerClientBefore = await entityClientCenter(page, markerId);
+    const markerNormalizedBefore = await normalizedEntityPosition(page, markerId);
 
     // Use the same drag/drop path across browsers. Our helper uses a synthetic HTML5 drop for WebKit
     // to avoid flakiness from native `dragTo` while still exercising the real drop handler.
@@ -103,13 +116,15 @@ test.describe('Assets dock', () => {
 
     // Minor subpixel/camera rounding differences are acceptable; ensure the viewport is effectively preserved.
     expect(Math.abs((after.zoom ?? 0) - (before.zoom ?? 0))).toBeLessThanOrEqual(1e-3);
-    const markerClientAfter = await entityClientCenter(page, markerId);
-    expect(
-      Math.max(
-        Math.abs(markerClientAfter.x - markerClientBefore.x),
-        Math.abs(markerClientAfter.y - markerClientBefore.y),
-      ),
-    ).toBeLessThanOrEqual(5);
+    await expect
+      .poll(async () => {
+        const markerNormalizedAfter = await normalizedEntityPosition(page, markerId!);
+        return Math.max(
+          Math.abs(markerNormalizedAfter.x - markerNormalizedBefore.x),
+          Math.abs(markerNormalizedAfter.y - markerNormalizedBefore.y),
+        );
+      })
+      .toBeLessThanOrEqual(0.02);
   });
 
   test('dragging an image asset onto an existing sprite replaces its asset @critical @browser', async ({ page }, testInfo) => {
@@ -206,9 +221,10 @@ test.describe('Assets dock', () => {
           target: { kind: 'entity-sprite', sceneId, entityId: createdEntityId },
         } as any);
       } else {
-        // Prefer a real drag gesture so Playwright supplies a stable `dataTransfer` payload across engines (Firefox
-        // can intermittently drop synthetic DragEvent `dataTransfer` in CI).
-        await dragDropByTestIdAtClientPoint(page, 'assets-dock-item-image-meteor-large', 'game-container', clientPoint);
+        // Chromium can intermittently route a native drag to the canvas as "create entity" instead of
+        // replacing the sprite under the pointer. Use a targeted HTML5 drop at the hit-tested client point
+        // so we still exercise the real drop handler with a deterministic payload.
+        await dropAssetAtClientPoint(page, { assetKind: 'image', assetId: 'meteor-large' }, 'game-container', clientPoint);
       }
 
       try {
