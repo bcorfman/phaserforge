@@ -17,6 +17,8 @@ test('Layout popover applies fixed spacing by centers @critical', async ({ page 
   const layoutButton = page.getByTestId('canvas-layout-button');
   await layoutButton.focus();
   await layoutButton.press('Enter');
+  await expect(page.getByTestId('layout-distribute-x')).toHaveClass(/button/);
+  await expect(page.getByTestId('layout-apply-spacing-x')).toHaveClass(/button/);
   await page.getByTestId('layout-units-pixels').click();
   await page.getByTestId('layout-spacing-x').fill('64');
   await page.getByTestId('layout-apply-spacing-x').click();
