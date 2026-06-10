@@ -40,7 +40,23 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const SignedOut: Story = {};
+export const SignedOut: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByLabelText('Email')).toBeTruthy());
+
+    const loginTab = canvas.getByRole('tab', { name: 'Log in' });
+    const createTab = canvas.getByRole('tab', { name: 'Create' });
+
+    expect(createTab.className).toContain('active');
+    expect(loginTab.className).not.toContain('active');
+
+    await userEvent.click(loginTab);
+
+    expect(loginTab.className).toContain('active');
+    expect(createTab.className).not.toContain('active');
+  },
+};
 
 export const EmailLogin: Story = {
   parameters: {
