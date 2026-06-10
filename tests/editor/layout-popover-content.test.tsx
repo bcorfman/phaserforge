@@ -63,5 +63,45 @@ describe('LayoutPopoverContent', () => {
     expect(markup).toContain('data-testid="layout-match-top-edges"');
     expect(markup).toContain('data-testid="layout-close"');
   });
-});
 
+  it('renders layout actions with button styling instead of label-like menu styling', () => {
+    const markup = renderToStaticMarkup(
+      <LayoutPopoverContent
+        layoutUnits="pixels"
+        setLayoutUnits={() => {}}
+        layoutSpacingX="64"
+        setLayoutSpacingX={() => {}}
+        layoutSpacingY="32"
+        setLayoutSpacingY={() => {}}
+        layoutSetX="0"
+        setLayoutSetX={() => {}}
+        layoutSetY="0"
+        setLayoutSetY={() => {}}
+        onDistributeX={() => {}}
+        onDistributeY={() => {}}
+        onApplySpacingX={() => {}}
+        onApplySpacingY={() => {}}
+        onApplySetX={() => {}}
+        onApplySetY={() => {}}
+        onApplySetXY={() => {}}
+        onAlignLeft={() => {}}
+        onAlignCenterX={() => {}}
+        onAlignRight={() => {}}
+        onAlignTop={() => {}}
+        onAlignCenterY={() => {}}
+        onAlignBottom={() => {}}
+        onStackCenterX={() => {}}
+        onStackCenterY={() => {}}
+        onMatchLeftEdges={() => {}}
+        onMatchTopEdges={() => {}}
+        onClose={() => {}}
+      />
+    );
+
+    expect(markup).toContain('class="button button-compact" data-testid="layout-distribute-x"');
+    expect(markup).toContain('class="button button-compact" data-testid="layout-apply-spacing-x"');
+    expect(markup).toContain('class="button button-compact" data-testid="layout-apply-set-xy"');
+    expect(markup).toContain('class="button button-compact" data-testid="layout-align-center-x"');
+    expect(markup).toContain('class="button button-compact" data-testid="layout-match-top-edges"');
+  });
+});
