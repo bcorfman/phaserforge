@@ -71,6 +71,7 @@ export function LayoutPopoverContent(props: LayoutPopoverContentProps) {
     onMatchTopEdges,
     onClose,
   } = props;
+  const actionButtonClassName = 'button button-compact';
 
   return (
     <div className="canvas-layout-popover-content">
@@ -89,10 +90,10 @@ export function LayoutPopoverContent(props: LayoutPopoverContentProps) {
             </div>
 
             <div className="canvas-layout-grid-2">
-              <button className="canvas-selection-menu-item" data-testid="layout-distribute-x" type="button" onClick={onDistributeX}>
+              <button className={actionButtonClassName} data-testid="layout-distribute-x" type="button" onClick={onDistributeX}>
                 Distribute X
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-distribute-y" type="button" onClick={onDistributeY}>
+              <button className={actionButtonClassName} data-testid="layout-distribute-y" type="button" onClick={onDistributeY}>
                 Distribute Y
               </button>
             </div>
@@ -130,10 +131,10 @@ export function LayoutPopoverContent(props: LayoutPopoverContentProps) {
             </div>
 
             <div className="canvas-layout-grid-2">
-              <button className="canvas-selection-menu-item" data-testid="layout-apply-spacing-x" type="button" onClick={onApplySpacingX}>
+              <button className={actionButtonClassName} data-testid="layout-apply-spacing-x" type="button" onClick={onApplySpacingX}>
                 Apply X
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-apply-spacing-y" type="button" onClick={onApplySpacingY}>
+              <button className={actionButtonClassName} data-testid="layout-apply-spacing-y" type="button" onClick={onApplySpacingY}>
                 Apply Y
               </button>
             </div>
@@ -156,13 +157,13 @@ export function LayoutPopoverContent(props: LayoutPopoverContentProps) {
             </div>
 
             <div className="canvas-layout-grid-3">
-              <button className="canvas-selection-menu-item" data-testid="layout-apply-set-x" type="button" onClick={onApplySetX}>
+              <button className={actionButtonClassName} data-testid="layout-apply-set-x" type="button" onClick={onApplySetX}>
                 Set X
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-apply-set-y" type="button" onClick={onApplySetY}>
+              <button className={actionButtonClassName} data-testid="layout-apply-set-y" type="button" onClick={onApplySetY}>
                 Set Y
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-apply-set-xy" type="button" onClick={onApplySetXY}>
+              <button className={actionButtonClassName} data-testid="layout-apply-set-xy" type="button" onClick={onApplySetXY}>
                 Set X+Y
               </button>
             </div>
@@ -176,22 +177,22 @@ export function LayoutPopoverContent(props: LayoutPopoverContentProps) {
             </div>
 
             <div className="canvas-layout-grid-3">
-              <button className="canvas-selection-menu-item" data-testid="layout-align-left" type="button" onClick={onAlignLeft}>
+              <button className={actionButtonClassName} data-testid="layout-align-left" type="button" onClick={onAlignLeft}>
                 Left
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-center-x" type="button" onClick={onAlignCenterX}>
+              <button className={actionButtonClassName} data-testid="layout-align-center-x" type="button" onClick={onAlignCenterX}>
                 Center X
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-right" type="button" onClick={onAlignRight}>
+              <button className={actionButtonClassName} data-testid="layout-align-right" type="button" onClick={onAlignRight}>
                 Right
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-top" type="button" onClick={onAlignTop}>
+              <button className={actionButtonClassName} data-testid="layout-align-top" type="button" onClick={onAlignTop}>
                 Top
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-center-y" type="button" onClick={onAlignCenterY}>
+              <button className={actionButtonClassName} data-testid="layout-align-center-y" type="button" onClick={onAlignCenterY}>
                 Center Y
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-align-bottom" type="button" onClick={onAlignBottom}>
+              <button className={actionButtonClassName} data-testid="layout-align-bottom" type="button" onClick={onAlignBottom}>
                 Bottom
               </button>
             </div>
@@ -205,16 +206,16 @@ export function LayoutPopoverContent(props: LayoutPopoverContentProps) {
             </div>
 
             <div className="canvas-layout-grid-2">
-              <button className="canvas-selection-menu-item" data-testid="layout-stack-center-x" type="button" onClick={onStackCenterX}>
+              <button className={actionButtonClassName} data-testid="layout-stack-center-x" type="button" onClick={onStackCenterX}>
                 Stack X centers
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-stack-center-y" type="button" onClick={onStackCenterY}>
+              <button className={actionButtonClassName} data-testid="layout-stack-center-y" type="button" onClick={onStackCenterY}>
                 Stack Y centers
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-match-left-edges" type="button" onClick={onMatchLeftEdges}>
+              <button className={actionButtonClassName} data-testid="layout-match-left-edges" type="button" onClick={onMatchLeftEdges}>
                 Match left edges
               </button>
-              <button className="canvas-selection-menu-item" data-testid="layout-match-top-edges" type="button" onClick={onMatchTopEdges}>
+              <button className={actionButtonClassName} data-testid="layout-match-top-edges" type="button" onClick={onMatchTopEdges}>
                 Match top edges
               </button>
             </div>
@@ -228,4 +229,3 @@ export function LayoutPopoverContent(props: LayoutPopoverContentProps) {
     </div>
   );
 }
-
