@@ -14,7 +14,7 @@ Before you start, make sure:
 
 Open the right-side Cloud pane for the project you just built. Figure 10 shows the publish section you should be working from. If you discover here that you are signed out or GitHub is disconnected, stop and fix that first with [Cloud Account Setup](./cloud-account-setup).
 
-<img src="../assets/screenshots/playwright/cloud-publish-ready.png" alt="Cloud publish section" style="display: block; margin: 0 auto; width: 354px; max-width: 100%; height: auto;" />
+<img src="../assets/screenshots/playwright/cloud-publish-ready.png" alt="Cloud publish section" style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 10. Cloud publish section with title and repository fields.</em></p>
 
