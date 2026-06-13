@@ -20,34 +20,45 @@ This walkthrough recreates the `Pattern Demo` scene in PhaserForge. It assumes y
 Success check:
 - The canvas is empty and the scene graph does not show leftover sprites or formations.
 
-## 1. Import the Demo Pack Assets 
+## Import the Demo Pack Assets 
 
-Use the Assets Dock on the left side. Click "+ Add" at the top right of the Dock, then select "From demo pack".
+1. Using the Assets Dock at the bottom of the left sidebar, click "+ Add".
+
+- **NOTE:** A popup menu will appear.
 
 <img src="../assets/screenshots/playwright/assets-dock-demo-pack-menu.png" alt="Assets dock add menu with the demo pack import option" style="display: block; margin: 0 auto; width: 286px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 4. Assets Dock add menu showing the Demo Pack import option.</em></p>
 
-Success check:
-- You can see a list of sprites with thumbnails show in the Assets Dock. 
+2. In the popup menu, select "From demo pack".
+
+- **NOTE:** A list of sprites with thumbnails will appear in the Assets Dock. 
 
 <img src="../assets/screenshots/playwright/assets-dock-demo-pack-loaded.png" alt="Assets dock with the demo pack image list loaded" style="display: block; margin: 0 auto; width: 429px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 5. Assets Dock after importing the Demo Pack assets.</em></p>
 
-## 2. Create the Sprites
+## Create the Sprites
 
-In the Assets Dock under Images, scroll down to find the image labeled "ship_sidesA". 
+1. In the Assets Dock under Images, scroll down to find the image labeled "ship_sidesA". 
 
-Drag the ship_sidesA image from the Dock onto the center canvas to create a spaceship object (or "sprite") there.
+2. Drag the ship_sidesA image from the Dock onto the center canvas to create a spaceship object (or "sprite") there.
 
-- **NOTE:** If everything goes correctly, you will see the ship (titled "entity") also show up in the Sprites list in the left sidebar.
+- **NOTE:** If everything goes correctly, you will see the ship (titled "entity") also show up in the Sprites list in the left sidebar. The imported ship will look a bit too large on the canvas; this is normal.
 
-The imported ship will look a bit too large on the canvas; click on the ship to select it, then reduce its `Scale X (%)` to `50` in the Inspector (in the right sidebar) 
+3. Click on the ship to select it, then reduce its `Scale X (%)` to `50` in the Inspector (in the right sidebar). 
 
-- **NOTE:** changing `Scale X (%)` to `50` will automatically change `Scale Y (%)` to `50` as well; the aspect ratio is locked together with the highlighted link button.
+- **NOTE:** Changing `Scale X (%)` to `50` will automatically change `Scale Y (%)` to `50` as well; the aspect ratio is locked together with the highlighted link button.
 
-After you've reduced the ship size, hold down the Alt key and drag the ship sprite to a new location to duplicate it until you have seven ships total. 
+4. Hold down the Alt key and drag a copy of the spaceship sprite to a new location until you have seven ships total. 
+
+5. Rename each of the seven ships you duplicated, starting with the ship titled `entity` in the Sprites list (in the left sidebar).
+   a. Click the ship name to highlight it
+   b. Hit the `F2` key (Rename)
+   c. Delete the old entity title
+   d. Type `Wave` followed by the `ENTER` key
+   e. Move to the next sprite name in the list by hitting the `Down Arrow` on your keyboard
+   f. then follow the same procedure above to rename it.
 
 Name the seven ships you duplicated:
 
@@ -58,8 +69,6 @@ Name the seven ships you duplicated:
 5. `Spiral`
 6. `Bounce`
 7. `Patrol`
-
-Do this by clicking the first ship name (titled 'entity') in the Sprites list in the left sidebar to highlight it. Now hit the `F2` key (Rename), delete the old `entity` title, type `Wave`, and hit the `ENTER` key.
 
 Move to the next sprite name in the list (`entity2`) by hitting the `Down Arrow` on your keyboard, then follow the same procedure above to rename it.
 
@@ -73,7 +82,7 @@ Success check:
 - You can see seven separate sprite entities in the scene graph.
 - Their names match the list above.
 
-## 3. Position the Ships with Selection Tools and Layout
+## Position the Ships with Selection Tools and Layout
 
 Rough-place the ships first, then use `Layout…` to clean up spacing. The pattern demo uses two rows:
 
@@ -104,13 +113,15 @@ Success check:
 - The four top-row ships are equally spaced and centered, and sit on same `Y = 200` baseline.
 - The three bottom-row ships are equally spaced and centered, and sit on same `Y = 420` baseline.
 
-## 4. Add the Text Labels
+## Add the Text Labels
 
 In the left sidebar, under Scene Graph, click the "+ Add" button beside Text. 
+
 **NOTE:** This will create one text entity called 't'. 
 
 Hit the F2 key and rename the text entity to "Wave", then rough-place it (i.e., drag it) over top of the Wave sprite (the leftmost of the top row of sprites).
 Next, hit the F3 key and type in "Wave" as the text property of the highlighted entity. 
+
 **NOTE:** you should see the text change for the entity in the Canvas.
 
 Repeat these steps for each of the sprites in the top and bottom rows until you have named labels over each of the ship sprites.
@@ -118,12 +129,17 @@ Repeat these steps for each of the sprites in the top and bottom rows until you 
 **NOTE:** You may be tempted to use Alt-Drag to duplicate the text entities as you did earlier with the ship sprites, but duplicating the text entities also copies their name and text as well, so this can quickly get confusing. Using "+ Add" is the better approach in this scenario.
 
 Lastly, drag-select (or SHIFT-click to select) the top-row labels, and in the popup Selection Bar, use `Layout …`. 
+
 Under Arrange Items, click "Distribute X", and under Position Selection, type `120` under `Y`, then click `Set Y`. Finally, under Align Selection, click "Center X".
+
 Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 Next, click a blank space somewhere in the canvas to deselect the top-row sprites.
+
 Now drag-select (or SHIFT-click to select) the bottom-row labels, and in the popup Selection Bar, use `Layout …`. 
+
 Under Arrange Items, click "Distribute X", and under Position Selection, type `340` under `Y`, then click `Set Y`. Finally, under Align Selection, click "Center X".
+
 Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 <img src="../assets/screenshots/playwright/ships-and-titles.png" alt="Ships and titles lined up"  style="display: block; margin: 0 auto; width: 910px; max-width: 100%; height: auto;" />
@@ -134,7 +150,7 @@ Success check:
 - Each ship has one readable label above it.
 - Labels are visually aligned with the ships.
 
-## 5. Attach the Movement Patterns
+## Attach the Movement Patterns
 
 Select each ship, open `Actions/Events`, and attach the movement pattern that matches its name. Build the patterns one ship at a time in the same scene-start event flow.
 
@@ -144,7 +160,7 @@ This is the slowest step of the tutorial. Work ship by ship rather than trying t
 
 <p align="center"><em>Figure 11. Actions/Events panel for authoring scene-start handlers and action steps.</em></p>
 
-### 5a. Common Setup for Every Ship
+### Common Setup for Every Ship
 
 For each ship:
 
@@ -153,7 +169,7 @@ For each ship:
 3. create or open that ship's `Scene Start` handler
 4. add the action steps described in the matching subsection below
 
-### 5b. Loop Templates You Will Reuse
+### Loop Templates You Will Reuse
 
 You will use two loop templates repeatedly in this section:
 
@@ -168,7 +184,7 @@ When you use `Repeat with Children…`:
 2. choose the child type
 3. leave `Count` blank if you want the pattern to repeat forever
 
-### 5c. Wave
+### Wave action
 
 Use the loop templates so you do not have to hand-build the nesting:
 
@@ -200,7 +216,7 @@ Figure 12 shows the `Wave` pattern inspector with the progress fields that are e
 
 <p align="center"><em>Figure 12. Wave pattern inspector with intro-step progress parameters.</em></p>
 
-### 5d. Zigzag
+### Zigzag action
 
 1. click `+ Add…`
 2. choose `Loops`
@@ -229,7 +245,7 @@ Set the second `Zigzag Pattern` child to:
 - `velocity = 100`
 - `segments = 5`
 
-### 5e. Figure-8
+### Figure-8 action
 
 1. add `Repeat with Children…`
 2. set `Children = 1`
@@ -242,7 +258,7 @@ Set the `Figure-8 Pattern` child to:
 - `height = 60`
 - `velocity = 100`
 
-### 5f. Orbit
+### Orbit action
 
 Add a `Move To` step before the repeat so the ship starts on the orbit path.
 
@@ -265,7 +281,7 @@ Set the `Orbit Pattern` child to:
 - `clockwise = true`
 - `centerMode = home`
 
-### 5g. Spiral
+### Spiral action
 
 1. add `Repeat with Children…`
 2. set `Children = 2`
@@ -286,7 +302,7 @@ Set the second `Spiral Pattern` child to:
 - `velocity = 80`
 - `direction = inward`
 
-### 5h. Bounce
+### Bounce action
 
 Add a `Bounce Pattern` step and set:
 
@@ -308,7 +324,7 @@ Figure 13 shows the `Bounce` pattern and its sibling `Bounds` panel in `Center/S
 
 <p align="center"><em>Figure 13. Bounce pattern with the bounds helper in Center/Span mode.</em></p>
 
-### 5i. Patrol
+### Patrol action
 
 Add a `Patrol Pattern` step and set:
 
@@ -342,7 +358,7 @@ Success check:
 - Every ship shows a handler/action flow in the editor.
 - `Bounce` and `Patrol` have their bounds configured, not just the pattern action itself.
 
-## 6. Run the Demo in Play Mode
+## Run the Demo in Play Mode
 
 Toggle into Play mode with `Tab` or the toolbar button, and let the scene run long enough to verify all seven motions. Figure 15 shows the relevant toolbar area.
 
