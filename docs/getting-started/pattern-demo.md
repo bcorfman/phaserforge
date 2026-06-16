@@ -24,7 +24,7 @@ Success check:
 
 1. Using the Assets Dock at the bottom of the left sidebar, click "+ Add".
 
-- **NOTE:** A popup menu will appear.
+   - **NOTE:** A popup menu will appear.
 
 <img src="../assets/screenshots/playwright/assets-dock-demo-pack-menu.png" alt="Assets dock add menu with the demo pack import option" style="display: block; margin: 0 auto; width: 286px; max-width: 100%; height: auto;" />
 
@@ -32,7 +32,7 @@ Success check:
 
 2. In the popup menu, select "From demo pack".
 
-- **NOTE:** A list of sprites with thumbnails will appear in the Assets Dock. 
+   - **NOTE:** A list of sprites with thumbnails will appear in the Assets Dock. 
 
 <img src="../assets/screenshots/playwright/assets-dock-demo-pack-loaded.png" alt="Assets dock with the demo pack image list loaded" style="display: block; margin: 0 auto; width: 429px; max-width: 100%; height: auto;" />
 
@@ -44,35 +44,30 @@ Success check:
 
 2. Drag the ship_sidesA image from the Dock onto the center canvas to create a spaceship object (or "sprite") there.
 
-- **NOTE:** If everything goes correctly, you will see the ship (titled "entity") also show up in the Sprites list in the left sidebar. The imported ship will look a bit too large on the canvas; this is normal.
+   - **NOTE:** If everything goes correctly, you will see the ship (titled "entity") also show up in the Sprites list in the left sidebar. The imported ship will look a bit too large on the canvas; this is normal.
 
 3. Click on the ship to select it, then reduce its `Scale X (%)` to `50` in the Inspector (in the right sidebar). 
 
-- **NOTE:** Changing `Scale X (%)` to `50` will automatically change `Scale Y (%)` to `50` as well; the aspect ratio is locked together with the highlighted link button.
+   - **NOTE:** Changing `Scale X (%)` to `50` will automatically change `Scale Y (%)` to `50` as well; the aspect ratio is locked together with the highlighted link button.
 
 4. Hold down the Alt key and drag a copy of the spaceship sprite to a new location until you have seven ships total. 
 
 5. Rename each of the seven ships you duplicated, starting with the ship titled `entity` in the Sprites list (in the left sidebar).
+   
    a. Click the ship name to highlight it
+   
    b. Hit the `F2` key (Rename)
+   
    c. Delete the old entity title
+
    d. Type `Wave` followed by the `ENTER` key
-   e. Move to the next sprite name in the list by hitting the `Down Arrow` on your keyboard
-   f. then follow the same procedure above to rename it.
 
-Name the seven ships you duplicated:
+6. Move to the next sprite name in the list (`entity2`) by hitting the `Down Arrow` on your keyboard, then follow the same procedure above to rename it.
 
-1. `Wave`
-2. `Zigzag`
-3. `Figure-8`
-4. `Orbit`
-5. `Spiral`
-6. `Bounce`
-7. `Patrol`
+   - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
+   - bottom row: `Spiral`, `Bounce`, `Patrol`
 
-Move to the next sprite name in the list (`entity2`) by hitting the `Down Arrow` on your keyboard, then follow the same procedure above to rename it.
-
-Continue until you have renamed all seven sprites to the names above, so the later pattern steps are easier to follow.
+7. Continue until you have renamed all seven sprites to the names above, so the later pattern steps are easier to follow.
 
 <img src="../assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png" alt="Scene graph Sprites list with the seven renamed ships" style="display: block; margin: 0 auto; width: 374px; max-width: 100%; height: auto;" />
 
@@ -84,10 +79,10 @@ Success check:
 
 ## Position the Ships with Selection Tools and Layout
 
-Rough-place the ships first, then use `Layout…` to clean up spacing. The pattern demo uses two rows:
+1. Rough-place the ships first, then use `Layout…` to clean up spacing. The pattern demo uses two rows:
 
-- top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
-- bottom row: `Spiral`, `Bounce`, `Patrol`
+   - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
+   - bottom row: `Spiral`, `Bounce`, `Patrol`
 
 <img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up"  style="display: block; margin: 0 auto; width: 498px; max-width: 100%; height: auto;" />
 
@@ -97,13 +92,13 @@ Rough-place the ships first, then use `Layout…` to clean up spacing. The patte
 
 <p align="center"><em>Figure 8. Layout popover for spacing and set-position operations.</em></p>
 
-For the top row, drag-select (or SHIFT-click to select) the four ships and use `Layout…` to:
+2. For the top row, drag-select (or SHIFT-click to select) the four ships and use `Layout…` to:
 
-- Under Spacing, type `180` in the `Spacing X` box, then hit `Apply Spacing X`.
-- Under Position Selection, type `200` in the `Y` box, then hit `Set Y`.
-- Finally, under Align Selection, hit `Center X`.
+   - Under Spacing, type `180` in the `Spacing X` box, then hit `Apply Spacing X`.
+   - Under Position Selection, type `200` in the `Y` box, then hit `Set Y`.
+   - Finally, under Align Selection, hit `Center X`.
 
-For the bottom row, drag-select (or SHIFT-click to select) all three ships and use `Layout …` again. Set `Spacing X` to `180`, **`Y` to `420`**, then center the ships with `Center X` as above.
+3. For the bottom row, drag-select (or SHIFT-click to select) all three ships and use `Layout …` again. Set `Spacing X` to `180`, **`Y` to `420`**, then center the ships with `Center X` as above.
 
 <img src="../assets/screenshots/playwright/ships-lined-up.png" alt="Ships lined up"  style="display: block; margin: 0 auto; width: 1063px; max-width: 100%; height: auto;" />
 
@@ -117,16 +112,16 @@ Success check:
 
 In the left sidebar, under Scene Graph, click the "+ Add" button beside Text. 
 
-**NOTE:** This will create one text entity called 't'. 
+   - **NOTE:** This will create one text entity called 't'. 
 
 Hit the F2 key and rename the text entity to "Wave", then rough-place it (i.e., drag it) over top of the Wave sprite (the leftmost of the top row of sprites).
 Next, hit the F3 key and type in "Wave" as the text property of the highlighted entity. 
 
-**NOTE:** you should see the text change for the entity in the Canvas.
+   - **NOTE:** you should see the text change for the entity in the Canvas.
 
 Repeat these steps for each of the sprites in the top and bottom rows until you have named labels over each of the ship sprites.
 
-**NOTE:** You may be tempted to use Alt-Drag to duplicate the text entities as you did earlier with the ship sprites, but duplicating the text entities also copies their name and text as well, so this can quickly get confusing. Using "+ Add" is the better approach in this scenario.
+   - **NOTE:** You may be tempted to use Alt-Drag to duplicate the text entities as you did earlier with the ship sprites, but duplicating the text entities also copies their name and text as well, so this can quickly get confusing. Using "+ Add" is the better approach in this scenario.
 
 Lastly, drag-select (or SHIFT-click to select) the top-row labels, and in the popup Selection Bar, use `Layout …`. 
 
