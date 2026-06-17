@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('../../src/editor/imageMetadata', () => ({
   loadImageMetadataFromFile: vi.fn(async (_file: File, dataUrl: string) => ({
     src: dataUrl,
-    name: 'demo.png',
+    name: 'demo',
     mimeType: 'image/png',
     width: 16,
     height: 16,
@@ -46,12 +46,30 @@ describe('AssetsDock demo pack import', () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = undefined;
   });
 
-  it('imports demo pack images without a missing helper error', async () => {
+  it('imports supported demo pack images and audio without a missing helper error', async () => {
     const dispatch = vi.fn();
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      blob: async () => new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' }),
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      const blob = url.endsWith('.mp3')
+        ? new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/mpeg' })
+        : url.endsWith('.ogg')
+          ? new Blob([new Uint8Array([4, 5, 6])], { type: 'audio/ogg' })
+          : url.endsWith('.wav')
+            ? new Blob([new Uint8Array([7, 8, 9])], { type: 'audio/wav' })
+            : url.endsWith('.woff2')
+              ? new Blob([new Uint8Array([10, 11, 12])], { type: 'font/woff2' })
+              : url.endsWith('.woff')
+                ? new Blob([new Uint8Array([13, 14, 15])], { type: 'font/woff' })
+                : url.endsWith('.ttf')
+                  ? new Blob([new Uint8Array([16, 17, 18])], { type: 'font/ttf' })
+                  : url.endsWith('.otf')
+                    ? new Blob([new Uint8Array([19, 20, 21])], { type: 'font/otf' })
+                    : new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' });
+      return {
+        ok: true,
+        blob: async () => blob,
+      } as Response;
+    });
 
     const view = renderIntoDom(
       <AssetsDock
@@ -86,6 +104,14 @@ describe('AssetsDock demo pack import', () => {
             mimeType: 'image/png',
             width: 16,
             height: 16,
+          }),
+        }),
+      );
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'ensure-audio-asset-from-file',
+          file: expect.objectContaining({
+            dataUrl: expect.stringMatching(/^data:audio\/(mpeg|ogg|wav);base64,/),
           }),
         }),
       );

@@ -267,6 +267,7 @@ export type EditorAction =
   | { type: 'ensure-image-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string; width?: number; height?: number } }
   | { type: 'add-spritesheet-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
   | { type: 'add-font-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
+  | { type: 'ensure-font-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string } }
   | { type: 'set-asset-display-name'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id; name?: string }
   | { type: 'remove-asset'; assetKind: 'image' | 'spritesheet' | 'audio' | 'font'; assetId: Id }
   | { type: 'create-entity-from-asset'; assetKind: 'image' | 'spritesheet'; assetId: Id; at?: { x: number; y: number } }
@@ -281,6 +282,7 @@ export type EditorAction =
         | { kind: 'entity-sprite'; sceneId: Id; entityId: Id };
     }
   | { type: 'add-audio-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
+  | { type: 'ensure-audio-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string } }
   | { type: 'remove-audio-asset'; assetId: Id }
   | { type: 'set-scene-music'; music: GameSceneSpec['music'] | undefined }
   | { type: 'set-scene-ambience'; ambience: NonNullable<GameSceneSpec['ambience']> }
@@ -738,11 +740,13 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'add-image-asset-from-file':
     case 'add-spritesheet-asset-from-file':
     case 'add-font-asset-from-file':
+    case 'ensure-font-asset-from-file':
     case 'set-asset-display-name':
     case 'remove-asset':
     case 'create-entity-from-asset':
     case 'assign-asset-to-target':
     case 'add-audio-asset-from-file':
+    case 'ensure-audio-asset-from-file':
     case 'remove-audio-asset':
     case 'set-scene-music':
     case 'set-scene-ambience':
@@ -779,9 +783,11 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'add-image-asset-from-file':
     case 'add-spritesheet-asset-from-file':
     case 'add-font-asset-from-file':
+    case 'ensure-font-asset-from-file':
     case 'set-asset-display-name':
     case 'remove-asset':
     case 'add-audio-asset-from-file':
+    case 'ensure-audio-asset-from-file':
     case 'remove-audio-asset':
     case 'create-input-map':
     case 'duplicate-input-map':
@@ -1413,6 +1419,36 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         error: undefined,
       };
     }
+    case 'ensure-audio-asset-from-file': {
+      const assetId = (action.assetId ?? '').trim();
+      if (!assetId) return state;
+      const sounds = state.project.audio?.sounds ?? {};
+      if (sounds[assetId]) return state;
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        audio: {
+          ...state.project.audio,
+          sounds: {
+            ...sounds,
+            [assetId]: {
+              id: assetId,
+              source: {
+                kind: 'embedded',
+                dataUrl: action.file.dataUrl,
+                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+              },
+            },
+          },
+        },
+      };
+      return {
+        ...state,
+        project: nextProject,
+        dirty: true,
+        error: undefined,
+      };
+    }
     case 'remove-audio-asset': {
       const sounds = state.project.audio?.sounds ?? {};
       if (!sounds[action.assetId]) return state;
@@ -1757,6 +1793,33 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const base = assetIdBaseFromOriginalName(action.file.originalName, 'font');
       const assetId = allocUniqueId(fonts, base);
       const rawName = (action.file.originalName ?? '').replace(/\.[a-z0-9]+$/i, '').trim();
+      const nextProject: ProjectSpec = {
+        ...state.project,
+        assets: {
+          ...state.project.assets,
+          fonts: {
+            ...fonts,
+            [assetId]: {
+              id: assetId,
+              ...(rawName ? { name: rawName } : {}),
+              source: {
+                kind: 'embedded',
+                dataUrl: action.file.dataUrl,
+                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+              },
+            },
+          },
+        },
+      };
+      return { ...state, project: nextProject, dirty: true, error: undefined };
+    }
+    case 'ensure-font-asset-from-file': {
+      const assetId = (action.assetId ?? '').trim();
+      if (!assetId) return state;
+      const fonts = state.project.assets.fonts ?? {};
+      if (fonts[assetId]) return state;
+      const rawName = (action.file.originalName ?? assetId).replace(/\.[a-z0-9]+$/i, '').trim();
       const nextProject: ProjectSpec = {
         ...state.project,
         assets: {
