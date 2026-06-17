@@ -105,6 +105,60 @@ describe('EditorStore assets actions', () => {
     });
   });
 
+  it('does not overwrite an existing audio asset during ensure-audio-asset-from-file', () => {
+    const state = initState();
+    const withExisting = reducer(state, {
+      type: 'add-audio-asset-from-file',
+      file: {
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any);
+
+    const ensured = reducer(withExisting, {
+      type: 'ensure-audio-asset-from-file',
+      assetId: 'theme',
+      file: {
+        dataUrl: 'data:audio/mp3;base64,BBBB',
+        originalName: 'theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any);
+
+    expect(ensured).toBe(withExisting);
+    expect(ensured.project.audio.sounds.theme.source).toMatchObject({
+      dataUrl: 'data:audio/mp3;base64,AAAA',
+    });
+  });
+
+  it('does not overwrite an existing font asset during ensure-font-asset-from-file', () => {
+    const state = initState();
+    const withExisting = reducer(state, {
+      type: 'add-font-asset-from-file',
+      file: {
+        dataUrl: 'data:font/woff2;base64,AAAA',
+        originalName: 'Arcade.woff2',
+        mimeType: 'font/woff2',
+      },
+    } as any);
+
+    const ensured = reducer(withExisting, {
+      type: 'ensure-font-asset-from-file',
+      assetId: 'arcade',
+      file: {
+        dataUrl: 'data:font/woff2;base64,BBBB',
+        originalName: 'Arcade.woff2',
+        mimeType: 'font/woff2',
+      },
+    } as any);
+
+    expect(ensured).toBe(withExisting);
+    expect(ensured.project.assets.fonts.arcade.source).toMatchObject({
+      dataUrl: 'data:font/woff2;base64,AAAA',
+    });
+  });
+
   it('reassigns an entity sprite asset without creating a new entity', () => {
     const state = initState();
     const withPlayer = reducer(state, {
