@@ -17,8 +17,13 @@ This walkthrough recreates the `Pattern Demo` scene in PhaserForge. It assumes y
 - Stay in the same signed-in project flow you established during cloud account setup.
 - Set the scene world size to `800 x 600` before you begin placing ships.
 
+<img src="../assets/screenshots/playwright/world-size.png" alt="Assets dock add menu with the demo pack import option" style="display: block; margin: 0 auto; width: 500px; max-width: 100%; height: auto;" />
+
+<p align="center"><em>Figure 1. World Size dimensions (in pixels).</em></p>
+
 Success check:
 - The canvas is empty and the scene graph does not show leftover sprites or formations.
+- The World Size is `800 x 600`, as shown in the Viewport panel (Figure 1).
 
 ## Import the Demo Pack Assets 
 
@@ -28,7 +33,7 @@ Success check:
 
 <img src="../assets/screenshots/playwright/assets-dock-demo-pack-menu.png" alt="Assets dock add menu with the demo pack import option" style="display: block; margin: 0 auto; width: 286px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 4. Assets Dock add menu showing the Demo Pack import option.</em></p>
+<p align="center"><em>Figure 2. Assets Dock add menu showing the Demo Pack import option.</em></p>
 
 2. In the popup menu, select "From demo pack".
 
@@ -36,7 +41,7 @@ Success check:
 
 <img src="../assets/screenshots/playwright/assets-dock-demo-pack-loaded.png" alt="Assets dock with the demo pack image list loaded" style="display: block; margin: 0 auto; width: 429px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 5. Assets Dock after importing the Demo Pack assets.</em></p>
+<p align="center"><em>Figure 3. Assets Dock after importing the Demo Pack assets.</em></p>
 
 ## Create the Sprites
 
@@ -71,7 +76,7 @@ Success check:
 
 <img src="../assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png" alt="Scene graph Sprites list with the seven renamed ships" style="display: block; margin: 0 auto; width: 374px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 6. Scene graph Sprites list after renaming all seven ships.</em></p>
+<p align="center"><em>Figure 4. Scene graph Sprites list after renaming all seven ships.</em></p>
 
 Success check:
 - You can see seven separate sprite entities in the scene graph.
@@ -86,11 +91,11 @@ Success check:
 
 <img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up"  style="display: block; margin: 0 auto; width: 498px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 7. On-canvas selection bar for multi-selection actions.</em></p>
+<p align="center"><em>Figure 5. On-canvas selection bar for multi-selection actions.</em></p>
 
 <img src="../assets/screenshots/playwright/layout-popover.png" alt="Layout popover close-up"  style="display: block; margin: 0 auto; width: 345px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 8. Layout popover for spacing and set-position operations.</em></p>
+<p align="center"><em>Figure 6. Layout popover for spacing and set-position operations.</em></p>
 
 2. For the top row, drag-select (or SHIFT-click to select) the four ships and use `Layout…` to:
 
@@ -102,7 +107,7 @@ Success check:
 
 <img src="../assets/screenshots/playwright/ships-lined-up.png" alt="Ships lined up"  style="display: block; margin: 0 auto; width: 1063px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 9. Ships lined up - success check.</em></p>
+<p align="center"><em>Figure 7. Ships lined up - success check.</em></p>
 
 Success check:
 - The four top-row ships are equally spaced and centered, and sit on same `Y = 200` baseline.
@@ -110,36 +115,43 @@ Success check:
 
 ## Add the Text Labels
 
-In the left sidebar, under Scene Graph, click the "+ Add" button beside Text. 
+1. In the left sidebar, under Scene Graph, click the "+ Add" button beside Text. 
 
    - **NOTE:** This will create one text entity called 't'. 
 
-Hit the F2 key and rename the text entity to "Wave", then rough-place it (i.e., drag it) over top of the Wave sprite (the leftmost of the top row of sprites).
-Next, hit the F3 key and type in "Wave" as the text property of the highlighted entity. 
+2. Hit the F2 key and rename the text entity to "Wave"
+
+3. Rough-place the text entity (i.e., drag it) over top of the Wave sprite (the leftmost of the top row of sprites).
+
+4. Hit the F3 key and type in "Wave" as the text property of the highlighted entity. 
 
    - **NOTE:** you should see the text change for the entity in the Canvas.
 
-Repeat these steps for each of the sprites in the top and bottom rows until you have named labels over each of the ship sprites.
+5. Repeat these steps for each of the sprites in the top and bottom rows until you have named labels over each of the ship sprites.
 
+   - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
+   - bottom row: `Spiral`, `Bounce`, `Patrol`
    - **NOTE:** You may be tempted to use Alt-Drag to duplicate the text entities as you did earlier with the ship sprites, but duplicating the text entities also copies their name and text as well, so this can quickly get confusing. Using "+ Add" is the better approach in this scenario.
 
-Lastly, drag-select (or SHIFT-click to select) the top-row labels, and in the popup Selection Bar, use `Layout …`. 
+6. Drag-to-select (or SHIFT-click to select each of) the top-row labels, and in the popup Selection Bar, use `Layout …`:
 
-Under Arrange Items, click "Distribute X", and under Position Selection, type `120` under `Y`, then click `Set Y`. Finally, under Align Selection, click "Center X".
+   - Under Arrange Items, click `Distribute X`.
+   - Under Position Selection, type `120` under `Y`, then click `Set Y`. 
+   - Under Align Selection, click `Center X`.
+   - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
-Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
+7. Click a blank space somewhere in the canvas to deselect the top-row sprites.
 
-Next, click a blank space somewhere in the canvas to deselect the top-row sprites.
+8. Drag-to-select (or SHIFT-click to select each of) the bottom-row labels, and in the popup Selection Bar, use `Layout …`. 
 
-Now drag-select (or SHIFT-click to select) the bottom-row labels, and in the popup Selection Bar, use `Layout …`. 
-
-Under Arrange Items, click "Distribute X", and under Position Selection, type `340` under `Y`, then click `Set Y`. Finally, under Align Selection, click "Center X".
-
-Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
+   - Under Arrange Items, click `Distribute X`.
+   - Under Position Selection, type `340` under `Y`, then click `Set Y`. 
+   - Under Align Selection, click `Center X`.
+   - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 <img src="../assets/screenshots/playwright/ships-and-titles.png" alt="Ships and titles lined up"  style="display: block; margin: 0 auto; width: 910px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 10. Ships and titles lined up - success check.</em></p>
+<p align="center"><em>Figure 8. Ships and titles lined up - success check.</em></p>
 
 Success check:
 - Each ship has one readable label above it.
@@ -147,22 +159,22 @@ Success check:
 
 ## Attach the Movement Patterns
 
-Select each ship, open `Actions/Events`, and attach the movement pattern that matches its name. Build the patterns one ship at a time in the same scene-start event flow.
+**OVERVIEW:** Select each ship, open `Actions/Events`, and attach the movement pattern that matches its name. 
 
-This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once.
+   - **NOTE:** The goal is to build the patterns one ship at a time in the same scene-start event flow. This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once.
 
 <img src="../assets/screenshots/playwright/actions-events-panel.png" alt="Actions and events panel"  style="display: block; margin: 0 auto; width: 408px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 11. Actions/Events panel for authoring scene-start handlers and action steps.</em></p>
+<p align="center"><em>Figure 9. Actions/Events panel for authoring scene-start handlers and action steps.</em></p>
 
 ### Common Setup for Every Ship
 
-For each ship:
+1. For each ship:
 
-1. select the ship on the canvas or in the scene graph
-2. open `Actions/Events`
-3. create or open that ship's `Scene Start` handler
-4. add the action steps described in the matching subsection below
+   - Select the ship on the canvas or in the scene graph.
+   - Open `Actions/Events`.
+   - Create or open that ship's `Scene Start` handler.
+   - Add the action steps described in the matching subsection below.
 
 ### Loop Templates You Will Reuse
 
@@ -175,9 +187,9 @@ You will use two loop templates repeatedly in this section:
 
 When you use `Repeat with Children…`:
 
-1. choose the number of children
-2. choose the child type
-3. leave `Count` blank if you want the pattern to repeat forever
+1. Choose the number of children
+2. Choose the child type
+3. Leave `Count` blank if you want the pattern to repeat forever
 
 ### Wave action
 
@@ -205,11 +217,9 @@ Set the repeating `Wave` step to:
 - `startProgress = 0`
 - `endProgress = 1`
 
-Figure 12 shows the `Wave` pattern inspector with the progress fields that are easiest to misread when entering the intro step values.
-
 <img src="../assets/screenshots/playwright/wave-pattern-panel.png" alt="Wave pattern inspector"  style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 12. Wave pattern inspector with intro-step progress parameters.</em></p>
+<p align="center"><em>Figure 10. Wave pattern inspector with intro-step progress parameters.</em></p>
 
 ### Zigzag action
 
@@ -313,11 +323,9 @@ Then open the separate `Bounds` panel for the same ship and configure it:
 4. set `± X Span = 50`
 5. set `± Y Span = 60`
 
-Figure 13 shows the `Bounce` pattern and its sibling `Bounds` panel in `Center/Span` mode.
-
 <img src="../assets/screenshots/playwright/bounce-bounds-panel.png" alt="Bounce bounds panel" style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 13. Bounce pattern with the bounds helper in Center/Span mode.</em></p>
+<p align="center"><em>Figure 11. Bounce pattern with the bounds helper in Center/Span mode.</em></p>
 
 ### Patrol action
 
@@ -328,26 +336,17 @@ Add a `Patrol Pattern` step and set:
 
 Then open the separate `Bounds` panel for the same ship and configure it:
 
-1. confirm `BoundsHit` is enabled
-2. switch `Bounds` edit mode to `Center/Span`
-3. use the prefilled center values for the selected ship
-4. set `± X Span = 40`
-5. set `± Y Span = 0`
-7. switch back to `Min/Max`
-8. set `minY = 400`
-9. set `maxY = 500`
-
-Figure 14 shows the `Patrol` pattern after switching back to `Min/Max` so you can enter the final Y bounds.
+1. Confirm `BoundsHit` is enabled
+2. Switch `Bounds` edit mode to `Center/Span`
+3. Set `± X Span = 40`
+4. Set `± Y Span = 0`
+5. Switch back to `Min/Max`
+6. Set `minY = 400`
+7. Set `maxY = 500`
 
 <img src="../assets/screenshots/playwright/patrol-bounds-panel.png" alt="Patrol bounds panel" style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 14. Patrol pattern with the final bounds values visible in Min/Max mode.</em></p>
-
-Practical order if you want the shortest learning path:
-
-1. Finish `Wave`, `Figure-8`, and `Spiral` first because they are the most direct.
-2. Add `Zigzag` and `Orbit` next because they need setup steps before the repeating motion.
-3. Finish with `Bounce` and `Patrol` because they also need bounds configuration.
+<p align="center"><em>Figure 12. Patrol pattern with the final bounds values visible in Min/Max mode.</em></p>
 
 Success check:
 - Every ship shows a handler/action flow in the editor.
@@ -355,11 +354,11 @@ Success check:
 
 ## Run the Demo in Play Mode
 
-Toggle into Play mode with `Tab` or the toolbar button, and let the scene run long enough to verify all seven motions. Figure 15 shows the relevant toolbar area.
+Toggle into Play mode with `Tab` or the toolbar button, and let the scene run long enough to verify all seven motions.
 
 <img src="../assets/screenshots/playwright/toolbar-theme-and-scale.png" alt="Toolbar close-up" style="display: block; margin: 0 auto; width: 1633px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 15. Toolbar region with Play/Edit toggle and status controls.</em></p>
+<p align="center"><em>Figure 13. Toolbar region with Play/Edit toggle and status controls.</em></p>
 
 Look for these outcomes:
 
