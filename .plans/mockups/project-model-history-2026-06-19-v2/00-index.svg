@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="920" viewBox="0 0 1500 920">
+  <defs>
+    <style>
+      .bg { fill: #f5efe5; }
+      .card { fill: #fbf8f2; stroke: #d8c7ae; stroke-width: 2; }
+      .title { font: 800 34px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #26313f; }
+      .sub { font: 550 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #627283; }
+      .label { font: 760 22px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2f3a48; }
+      .body { font: 560 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #516173; }
+      .pill { fill: #d8eef0; stroke: #7db0b6; stroke-width: 2; }
+      .pill2 { fill: #f8e5b8; stroke: #b88e2c; stroke-width: 2; }
+      .pillText { font: 760 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #24404c; }
+      .mono { font: 640 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #2d3745; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1500" height="920" />
+  <text class="title" x="54" y="74">Revised Mockups: Editor-First, Callouts Second</text>
+  <text class="sub" x="54" y="108">These files are drawn as PhaserForge editor views first. Notes are moved into external callout overlays so the UI remains readable.</text>
+
+  <rect class="card" x="54" y="150" width="430" height="620" rx="26" />
+  <text class="label" x="82" y="194">Option A</text>
+  <text class="body" x="82" y="230">Project home in the existing sidebar, with release naming separated in Cloud.</text>
+  <rect class="pill" x="82" y="262" width="128" height="34" rx="17" />
+  <text class="pillText" x="146" y="284" text-anchor="middle">Lowest disruption</text>
+  <text class="mono" x="82" y="332">project-model-history-2026-06-19-v2/option-a-editor-project-home.svg</text>
+
+  <rect class="card" x="534" y="150" width="430" height="620" rx="26" />
+  <text class="label" x="562" y="194">Option B</text>
+  <text class="body" x="562" y="230">Project root added above scenes, with visible revision restore beside the tree.</text>
+  <rect class="pill" x="562" y="262" width="134" height="34" rx="17" />
+  <text class="pillText" x="629" y="284" text-anchor="middle">Recommended</text>
+  <text class="mono" x="562" y="332">project-model-history-2026-06-19-v2/option-b-editor-project-root.svg</text>
+
+  <rect class="card" x="1014" y="150" width="430" height="620" rx="26" />
+  <text class="label" x="1042" y="194">Option C</text>
+  <text class="body" x="1042" y="230">Persistent version center in the shell header for maximum autosave confidence.</text>
+  <rect class="pill2" x="1042" y="262" width="158" height="34" rx="17" />
+  <text class="pillText" x="1121" y="284" text-anchor="middle">Biggest workflow shift</text>
+  <text class="mono" x="1042" y="332">project-model-history-2026-06-19-v2/option-c-editor-version-center.svg</text>
+
+  <rect class="card" x="54" y="800" width="1390" height="76" rx="22" />
+  <text class="body" x="84" y="846">Shared across all options: `Project Name` is the working title, `Release URL / Slug` is only asked for in publish flow, and recovery is exposed as named checkpoints + autosave restore rather than hidden YAML-only escape hatches.</text>
+</svg>
