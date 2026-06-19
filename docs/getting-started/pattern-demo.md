@@ -159,63 +159,36 @@ Success check:
 
 ## Attach the Movement Patterns
 
-**OVERVIEW:** Select each ship, open `Actions/Events`, and attach the movement pattern that matches its name. 
-
-   - **NOTE:** The goal is to build the patterns one ship at a time in the same scene-start event flow. This is the slowest step of the tutorial. Work ship by ship rather than trying to author all seven flows at once.
+**NOTE:** The goal is to build the patterns one ship at a time in the same scene-start event flow. Take your time, and work ship-by-ship. Your progress is saved automatically, so you can return to the process later.
+**NOTE:** Hit `Play Mode` in the upper-right of the canvas to check each ship's actions as you build them. After you've viewed the action steps, click the same button again to return to `Edit Mode`.
 
 <img src="../assets/screenshots/playwright/actions-events-panel.png" alt="Actions and events panel"  style="display: block; margin: 0 auto; width: 408px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 9. Actions/Events panel for authoring scene-start handlers and action steps.</em></p>
 
-### Common Setup for Every Ship
-
-1. For each ship:
-
-   - Select the ship on the canvas or in the scene graph.
-   - Open `Actions/Events`.
-   - Create or open that ship's `Scene Start` handler.
-   - Add the action steps described in the matching subsection below.
-
-### Loop Templates You Will Reuse
-
-You will use two loop templates repeatedly in this section:
-
-1. `Intro then Repeat…`
-   Use this when the first motion pass needs different values from the repeating loop.
-2. `Repeat with Children…`
-   Use this when a loop should contain one or more child pattern steps.
-
-When you use `Repeat with Children…`:
-
-1. Choose the number of children
-2. Choose the child type
-3. Leave `Count` blank if you want the pattern to repeat forever
-
 ### Wave action
 
-Use the loop templates so you do not have to hand-build the nesting:
-
-1. click `+ Add…`
-2. choose `Loops`
-3. choose `Intro then Repeat…`
-4. set the intro step to `Wave`
-5. set the repeat step to `Wave`
-
-Set the intro `Wave` step to:
-
-- `amplitude = 30`
-- `length = 80`
-- `velocity = 80`
-- `startProgress = 0.75`
-- `endProgress = 1`
-
-Set the repeating `Wave` step to:
-
-- `amplitude = 30`
-- `length = 80`
-- `velocity = 80`
-- `startProgress = 0`
-- `endProgress = 1`
+1. Select the ship titled `Wave` on the canvas or in the scene graph.
+2. On the Inspector tab in the right sidebar, open the `Actions/Events` panel.
+   **NOTE:** If other open panels are cluttering the Inspector, you can close them with the chevron next to each panel name.
+3. Click `+ Add Action` in the panel's `OnSceneStart` handler.
+   **NOTE:** The Action Library popup will appear.
+4. In the Action Library categories, click the `Loops` tab.
+5. Under Actions, choose `Intro then Repeat…`
+   **NOTE:** The Action Library popup will close, and OnSceneStart will contain three actions: Intro, Repeat, and a nested Loop body.
+6. Click on the Intro action name in the Steps list. 
+   **NOTE:** The Inspector will switch to show `Intro` step properties.
+7. Set the Intro step properties to the following:
+   - `Type = Wave`
+   - `startProgress = 0.75`
+   - The other defaults are fine.
+8. Click the Back arrow in the properties panel to return to the Actions list.
+9. Click on the `Loop Body` name in the Steps list.
+   **NOTE:** The Inspector will switch to show `Loop Body` step properties.
+10. Set the `Loop Body` step properties to the following:
+   - `Type = Wave`
+   - The other defaults are fine.
+11. Click the Back arrow in the properties panel to return to the Actions list.
 
 <img src="../assets/screenshots/playwright/wave-pattern-panel.png" alt="Wave pattern inspector"  style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
@@ -223,105 +196,98 @@ Set the repeating `Wave` step to:
 
 ### Zigzag action
 
-1. click `+ Add…`
-2. choose `Loops`
-3. choose `Repeat with Children…`
-4. set `Children = 2`
-5. set `Child Type = Zigzag Pattern`
-6. leave the repeat `Count` blank so it repeats forever
-7. add a `Move By` step before the repeat container
+1. Select the ship titled `Zigzag` on the canvas or in the scene graph.
+   **NOTE:** Remember to collapse other panels besides `Actions/Events` in the Inspector if it is too cluttered.
+2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+   **NOTE:** The Action Library popup will appear.
+3. In the Action Library categories, click the `Loops` tab.
+4. Under Actions, choose `Repeat With Children…`
+5. Leave `Children = 2`, set `Child Type = Zigzag Pattern` and click the `Create` button.
+   **NOTE:** The Inspector will switch to show the `Repeat` action properties.
+6. Set the Loop properties to the following:
+   - `Name = Loop`
+   - Make sure the `Count` property stays empty, so it repeats forever.
+   - The other defaults are fine.
+   - Click the Back arrow in the properties panel to return to the Actions list.
+7. Click on the second `Zigzag Pattern` in the Steps list.
+   **NOTE:** The Inspector will switch to show `Zigzag` step properties.
+8. Set the second `Zigzag` step properties to the following:
+   - `Width = -30`
+   - `Height = -15`
+   - The other defaults are fine.
+   - Click the Back arrow in the properties panel to return to the Actions list.
+9. Click the `...` next to the Loop in the Actions list. 
+    **NOTE:** A popup menu will appear below. 
+10. Click `+ Add Action Above` in the popup menu.
+    **NOTE:** The Action Library will popup above the Loop action.
+11. Click `Move By` in the Action library to add it to the Actions list. 
+12. Click the `Move By` action in the Actions list to set its properties: 
+    - `Name = Offset`
+    - `Δx = -15`
+    - `Δy = -30`
 
-Set `Move By` to:
-
-- `dx = -15`
-- `dy = -30`
-
-Set the first `Zigzag Pattern` child to:
-
-- `width = 30`
-- `height = -15`
-- `velocity = 100`
-- `segments = 5`
-
-Set the second `Zigzag Pattern` child to:
-
-- `width = -30`
-- `height = 15`
-- `velocity = 100`
-- `segments = 5`
 
 ### Figure-8 action
 
-1. add `Repeat with Children…`
-2. set `Children = 1`
-3. choose `Figure-8 Pattern`
-4. leave the repeat `Count` blank
-
-Set the `Figure-8 Pattern` child to:
-
-- `width = 80`
-- `height = 60`
-- `velocity = 100`
+1. Select the ship titled `Figure-8` on the canvas.
+2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+   **NOTE:** The Action Library popup will appear.
+3. In the Action Library categories, click the `Loops` tab.
+4. In the Actions list, click `Repeat with Children…`
+   **NOTE:** The Actions Library will close, and a popup menu in the `OnSceneStart` menu will appear.
+5. Set `Children = 1` and `Child Type = Figure-8 Pattern` in the popup menu, then click the `Create` button.
+6. Set the `Repeat` step properties in the Inspector to the following:
+   - `Name = Loop`
+   - The other defaults are fine.
+   - Click the Back arrow in the properties panel to return to the Actions list.
 
 ### Orbit action
 
-Add a `Move To` step before the repeat so the ship starts on the orbit path.
-
-Set `Move To` to:
-
-- `x = 700`
-- `y = 450`
-
-Then:
-
-1. add `Repeat with Children…`
-2. set `Children = 1`
-3. choose `Orbit Pattern`
-4. leave the repeat `Count` blank
-
-Set the `Orbit Pattern` child to:
-
-- `radius = 50`
-- `velocity = 100`
-- `clockwise = true`
-- `centerMode = home`
+1. Select the ship titled `Orbit` on the canvas.
+2. In the Inspector, expand the Transform panel (if it's not already visible) by clicking the chevron next to its name.
+3. Check the box labeled `Flip Y`.
+4. Click the Transform panel chevron again to close it.
+5. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+   **NOTE:** The Action Library popup will appear.
+6. In the Action Library categories, click the `Loops` tab.
+7. In the Actions list, click `Repeat with Children…`
+   **NOTE:** The Actions Library will close, and a popup menu in the `OnSceneStart` menu will appear.
+8. Set `Children = 1` and `Child Type = Orbit Pattern` in the popup menu, then click the `Create` button.
+9. Click the Back arrow in the properties panel to return to the Actions list.
+10. Click on the `Child` (Orbit Pattern) in the Actions list.
+11. Set the `Child` properties in the Inspector to:
+    - `Center = Home`
+    - The other defaults are fine.
+    - Click the Back arrow in the properties panel to return to the Actions list.
 
 ### Spiral action
 
-1. add `Repeat with Children…`
-2. set `Children = 2`
-3. choose `Spiral Pattern`
-4. leave the repeat `Count` blank
-
-Set the first `Spiral Pattern` child to:
-
-- `maxRadius = 60`
-- `revolutions = 2`
-- `velocity = 80`
-- `direction = outward`
-
-Set the second `Spiral Pattern` child to:
-
-- `maxRadius = 60`
-- `revolutions = 2`
-- `velocity = 80`
-- `direction = inward`
+1. Select the ship titled `Spiral` on the canvas.
+2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+   **NOTE:** The Action Library popup will appear.
+3. In the Action Library categories, click the `Loops` tab.
+4. In the Actions list, click `Repeat with Children…`
+   **NOTE:** The Actions Library will close, and a popup menu in the `OnSceneStart` menu will appear.
+5. Set `Child Type = Spiral Pattern` in the popup menu, then click the `Create` button.
+6. Click the Back arrow in the properties panel to return to the Actions list.
+7. Click on `Child 2` in the Actions list.
+8. Set the `Child 2` properties to:
+    - `direction = inward`
+    - The other defaults are fine.
+    - Click the Back arrow in the properties panel to return to the Actions list.
 
 ### Bounce action
 
-Add a `Bounce Pattern` step and set:
-
-- `axis = both`
-- `velocityX = 100`
-- `velocityY = 60`
-
-Then open the separate `Bounds` panel for the same ship and configure it:
-
-1. confirm `BoundsHit` is enabled
-2. switch `Bounds` edit mode to `Center/Span`
-3. use the prefilled center values for the selected ship
-4. set `± X Span = 50`
-5. set `± Y Span = 60`
+1. Select the ship titled `Bounce` on the canvas.
+2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+   **NOTE:** The Action Library popup will appear.
+3. Add a `Bounce Pattern` step and set:
+   - `velocityX = 100`
+   - In the `Bounds` panel for the same ship:
+      - Switch `Bounds` edit mode to `Center/Span`
+      - Set `± X Span = 50`
+      - Set `± Y Span = 60`
+      - Click the Back arrow in the properties panel to return to the Actions list.
 
 <img src="../assets/screenshots/playwright/bounce-bounds-panel.png" alt="Bounce bounds panel" style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
@@ -329,20 +295,17 @@ Then open the separate `Bounds` panel for the same ship and configure it:
 
 ### Patrol action
 
-Add a `Patrol Pattern` step and set:
-
-- `axis = x`
-- `velocityX = 80`
-
-Then open the separate `Bounds` panel for the same ship and configure it:
-
-1. Confirm `BoundsHit` is enabled
-2. Switch `Bounds` edit mode to `Center/Span`
-3. Set `± X Span = 40`
-4. Set `± Y Span = 0`
-5. Switch back to `Min/Max`
-6. Set `minY = 400`
-7. Set `maxY = 500`
+1. Select the ship titled `Patrol` on the canvas.
+2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+   **NOTE:** The Action Library popup will appear.
+3. Add a `Patrol Pattern` step and set:
+   - `Velocity X = 80`
+   - In the `Bounds` panel for the same ship:
+      - Switch `Bounds` edit mode to `Center/Span`
+      - Set `± X Span = 40`
+      - Switch `Bounds` edit mode to `Min/Max`
+      - Set `Min Y = 400`
+      - Set `Max Y = 500`
 
 <img src="../assets/screenshots/playwright/patrol-bounds-panel.png" alt="Patrol bounds panel" style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
