@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="940" viewBox="0 0 1320 940">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .shell { fill: #111823; stroke: #253244; stroke-width: 1.5; }
+      .panel { fill: #16202c; stroke: #314156; stroke-width: 1.2; }
+      .panelAlt { fill: #101721; stroke: #2a394d; stroke-width: 1.2; }
+      .active { fill: #1d3c63; stroke: #4c83be; stroke-width: 1.2; }
+      .button { fill: #1a2532; stroke: #314156; stroke-width: 1; }
+      .primary { fill: #235fba; stroke: #5b93ea; stroke-width: 1; }
+      .good { fill: #153224; stroke: #2f7a53; stroke-width: 1; }
+      .warn { fill: #3b2a12; stroke: #8b6529; stroke-width: 1; }
+      .text { font: 700 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #edf4fb; }
+      .title { font: 800 24px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #f4f8fc; }
+      .label { font: 760 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #dae5f0; }
+      .body { font: 560 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #c2d0df; }
+      .small { font: 530 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #98acc3; }
+      .mono { font: 640 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #edf4fb; }
+      .line { stroke: #2a394d; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1320" height="940" />
+  <text class="title" x="44" y="56">Option A: Project Hub + Separate Release Settings</text>
+  <text class="body" x="44" y="84">Minimal-reshuffle version: keep Scene authoring mostly intact, but move naming/history into a stronger Project home and rename deployment fields.</text>
+
+  <rect class="shell" x="44" y="112" width="1230" height="782" rx="20" />
+
+  <rect class="panelAlt" x="64" y="138" width="86" height="728" rx="18" />
+  <rect class="active" x="76" y="170" width="62" height="94" rx="16" />
+  <text class="text" x="107" y="208" text-anchor="middle">Project</text>
+  <text class="small" x="107" y="228" text-anchor="middle">home</text>
+  <rect class="panel" x="76" y="282" width="62" height="94" rx="16" />
+  <text class="text" x="107" y="320" text-anchor="middle">Scene</text>
+  <rect class="panel" x="76" y="394" width="62" height="94" rx="16" />
+  <text class="text" x="107" y="432" text-anchor="middle">Assets</text>
+  <rect class="panel" x="76" y="506" width="62" height="94" rx="16" />
+  <text class="text" x="107" y="544" text-anchor="middle">Cloud</text>
+
+  <rect class="panel" x="176" y="138" width="686" height="728" rx="20" />
+  <text class="label" x="206" y="180">Project</text>
+
+  <rect class="panelAlt" x="206" y="208" width="626" height="118" rx="16" />
+  <text class="small" x="230" y="238">Project Name</text>
+  <rect class="panel" x="230" y="250" width="250" height="42" rx="10" />
+  <text class="mono" x="246" y="277">Pattern Demo Playground</text>
+  <rect class="good" x="498" y="250" width="120" height="28" rx="14" />
+  <text class="text" x="558" y="269" text-anchor="middle">Autosaved</text>
+  <text class="body" x="230" y="312">Human-facing working title. Used in project picker, scene header, and history list.</text>
+
+  <rect class="panelAlt" x="206" y="346" width="302" height="216" rx="16" />
+  <text class="label" x="230" y="378">Scenes</text>
+  <rect class="panel" x="230" y="398" width="254" height="42" rx="10" />
+  <text class="text" x="248" y="424">Main Menu</text>
+  <rect class="panel" x="230" y="450" width="254" height="42" rx="10" />
+  <text class="text" x="248" y="476">Level 01</text>
+  <rect class="panel" x="230" y="502" width="254" height="42" rx="10" />
+  <text class="text" x="248" y="528">Boss Arena</text>
+  <rect class="button" x="230" y="576" width="112" height="36" rx="10" />
+  <text class="text" x="286" y="599" text-anchor="middle">+ Add Scene</text>
+  <text class="small" x="230" y="636">Smallest workflow change: scenes remain a list,</text>
+  <text class="small" x="230" y="654">but the project clearly owns them.</text>
+
+  <rect class="panelAlt" x="530" y="346" width="302" height="216" rx="16" />
+  <text class="label" x="554" y="378">Recent Checkpoints</text>
+  <rect class="panel" x="554" y="398" width="254" height="42" rx="10" />
+  <text class="text" x="572" y="423">Autosave • 2 min ago</text>
+  <rect class="panel" x="554" y="450" width="254" height="42" rx="10" />
+  <text class="text" x="572" y="475">Before publish • yesterday</text>
+  <rect class="panel" x="554" y="502" width="254" height="42" rx="10" />
+  <text class="text" x="572" y="527">Named: “Good enemy pacing”</text>
+  <rect class="button" x="554" y="576" width="116" height="36" rx="10" />
+  <text class="text" x="612" y="599" text-anchor="middle">Open History</text>
+  <rect class="button" x="680" y="576" width="128" height="36" rx="10" />
+  <text class="text" x="744" y="599" text-anchor="middle">New Checkpoint</text>
+  <text class="small" x="554" y="636">Key trust signal: restore is visible before the</text>
+  <text class="small" x="554" y="654">user ever looks for YAML export.</text>
+
+  <rect class="panelAlt" x="206" y="590" width="626" height="242" rx="16" />
+  <text class="label" x="230" y="622">History Drawer</text>
+  <rect class="panel" x="230" y="646" width="578" height="52" rx="12" />
+  <text class="text" x="248" y="677">Autosave checkpoint • Today 10:42 AM • Scenes 3 • Entities 42</text>
+  <rect class="button" x="622" y="658" width="74" height="28" rx="8" />
+  <text class="text" x="659" y="677" text-anchor="middle">Preview</text>
+  <rect class="primary" x="706" y="658" width="84" height="28" rx="8" />
+  <text class="text" x="748" y="677" text-anchor="middle">Restore</text>
+  <rect class="panel" x="230" y="708" width="578" height="52" rx="12" />
+  <text class="text" x="248" y="739">Named version: “Before action rewrite” • Jun 17 • Scenes 3 • Entities 39</text>
+  <rect class="button" x="590" y="720" width="96" height="28" rx="8" />
+  <text class="text" x="638" y="739" text-anchor="middle">Restore Copy</text>
+  <rect class="button" x="696" y="720" width="94" height="28" rx="8" />
+  <text class="text" x="743" y="739" text-anchor="middle">Export YAML</text>
+  <text class="small" x="230" y="792">Restore is project-level, not hidden under cloud, and not dependent on manual YAML checkpointing.</text>
+
+  <rect class="panel" x="886" y="138" width="358" height="728" rx="20" />
+  <text class="label" x="916" y="180">Cloud / Publish</text>
+
+  <rect class="panelAlt" x="916" y="208" width="298" height="150" rx="16" />
+  <text class="small" x="938" y="238">Account</text>
+  <text class="body" x="938" y="268">Signed in as</text>
+  <text class="mono" x="938" y="292">bcorfman@example.com</text>
+  <text class="body" x="938" y="324">GitHub linked</text>
+  <text class="mono" x="938" y="348">github.com/bcorfman</text>
+
+  <rect class="panelAlt" x="916" y="382" width="298" height="258" rx="16" />
+  <text class="label" x="938" y="414">Release Settings</text>
+  <text class="small" x="938" y="446">Release URL / Deployment Slug</text>
+  <rect class="panel" x="938" y="458" width="252" height="42" rx="10" />
+  <text class="mono" x="954" y="485">pattern-demo</text>
+  <text class="body" x="938" y="526">This is asked only when publishing.</text>
+  <text class="body" x="938" y="550">It can differ from the project name.</text>
+  <text class="small" x="938" y="590">Last published</text>
+  <text class="body" x="938" y="614">Never</text>
+
+  <rect class="primary" x="938" y="658" width="252" height="40" rx="10" />
+  <text class="text" x="1064" y="684" text-anchor="middle">Publish</text>
+
+  <rect class="warn" x="916" y="726" width="298" height="106" rx="16" />
+  <text class="label" x="938" y="758">Why This Helps</text>
+  <text class="body" x="938" y="786">Project naming and deployment naming stop</text>
+  <text class="body" x="938" y="808">fighting each other, without reworking the whole editor.</text>
+</svg>
