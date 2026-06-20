@@ -31,6 +31,7 @@ export class GameScene extends Phaser.Scene {
   private project?: ProjectSpec;
   private pendingProject?: ProjectSpec;
   private pendingSceneSpec?: SceneSpec;
+  private queuedPendingViewState?: { zoom: number; scrollX: number; scrollY: number };
   private opRegistry: OpRegistry = new OpRegistry();
   private baseSprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>();
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>();
@@ -158,6 +159,9 @@ export class GameScene extends Phaser.Scene {
     this.collisionService = new BasicCollisionService();
     this.bindSceneListeners();
     if (this.pendingProject && this.pendingSceneSpec && !this.compiled) {
+      if (this.queuedPendingViewState && !this.pendingViewState) {
+        this.pendingViewState = { ...this.queuedPendingViewState };
+      }
       this.loadSceneSpec(this.pendingProject, this.pendingSceneSpec);
     }
     EventBus.emit('current-scene-ready', this);
@@ -172,9 +176,10 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  public queueLoad(project: ProjectSpec, sceneSpec: SceneSpec): void {
+  public queueLoad(project: ProjectSpec, sceneSpec: SceneSpec, viewState?: { zoom: number; scrollX: number; scrollY: number }): void {
     this.pendingProject = project;
     this.pendingSceneSpec = sceneSpec;
+    this.queuedPendingViewState = viewState ? { ...viewState } : undefined;
   }
 
   public loadSceneSpec(sceneSpec: SceneSpec): void;
