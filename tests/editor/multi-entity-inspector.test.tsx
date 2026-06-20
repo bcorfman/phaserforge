@@ -65,4 +65,66 @@ describe('MultiEntityInspector', () => {
     expect(visible).not.toBeNull();
     expect(visible!.indeterminate).toBe(true);
   });
+
+  it('commits the latest typed value when blur happens immediately after editing another field', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
+    const dispatch = vi.fn();
+    const scene: any = {
+      id: 'scene-1',
+      entities: {
+        a: { id: 'a', x: 10, y: 10, width: 10, height: 10, scaleX: 1, scaleY: 1, visible: true },
+        b: { id: 'b', x: 20, y: 20, width: 10, height: 10, scaleX: 1, scaleY: 1, visible: true },
+      },
+      groups: {},
+      attachments: {},
+      behaviors: {},
+      actions: {},
+      conditions: {},
+    };
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await React.act(async () => {
+      root.render(
+        <MultiEntityInspector
+          entityIds={['a', 'b']}
+          scene={scene}
+          dispatch={dispatch}
+          disabled={false}
+          assetOptions={[]}
+        />
+      );
+    });
+
+    const setInputValue = (input: HTMLInputElement, value: string) => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+      input.dispatchEvent(new window.Event('change', { bubbles: true }));
+    };
+
+    const scaleX = container.querySelector('[data-testid="entity-scale-x-input"]') as HTMLInputElement | null;
+    const scaleY = container.querySelector('[data-testid="entity-scale-y-input"]') as HTMLInputElement | null;
+    expect(scaleX).not.toBeNull();
+    expect(scaleY).not.toBeNull();
+
+    await React.act(async () => {
+      scaleX!.focus();
+      setInputValue(scaleX!, '1.25');
+      scaleX!.blur();
+
+      scaleY!.focus();
+      setInputValue(scaleY!, '0.75');
+      scaleY!.blur();
+    });
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'patch-entities',
+      entityIds: ['a', 'b'],
+      patch: { scaleY: 0.75 },
+    });
+  });
 });
