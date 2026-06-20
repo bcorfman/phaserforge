@@ -648,12 +648,13 @@ export function EntityListView({
                 className="button button-compact"
                 data-testid="project-revisions-back-button"
                 type="button"
+                aria-label="Back to Project Tree"
                 onClick={() => {
                   dispatch({ type: 'clear-revision-preview' });
                   dispatch({ type: 'set-sidebar-scope', scope: 'projectTree' });
                 }}
               >
-                ←
+                ← Back
               </button>
               <h3 className="panel-heading" id="project-revisions">PROJECT REVISIONS</h3>
             </div>
