@@ -14,7 +14,7 @@
     },
     "homepage": "https://github.com/phaserjs/template-react-ts#readme",
     "engines": {
-        "node": ">=20"
+        "node": "22.x"
     },
     "keywords": [
         "phaser",
