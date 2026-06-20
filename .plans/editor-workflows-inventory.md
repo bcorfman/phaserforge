@@ -274,11 +274,6 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Click the toolbar `Online / Offline` badge.
 - Or use Project Tree header → `Manage` → `Toggle Sync Mode`.
 
-#### A59 — Configure Startup / Reset
-- Project scope → `Startup & Reset`.
-- Choose startup mode.
-- Reset the project to a new empty scene.
-
 #### A60 — Open / Save YAML from the Viewbar
 - `Open YAML…`
 - `Save YAML`
@@ -365,7 +360,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - A2 multi-select sprites → A18/A19 normalize spacing or alignment → A40 bulk-edit shared visuals/transform values.
 
 ### W14 — Project Switching / Recovery
-- A57 open/create/duplicate/import/export a project → A58 choose Online vs Offline behavior → A59 adjust startup/reset defaults.
+- A57 open/create/duplicate/import/export a project → A58 choose Online vs Offline behavior → Manage `Clear Project ...` when you need a fresh empty scene.
 
 ### W15 — Local File Round-trip
 - A60 open YAML or project import → edit via W1-W13 → A60 save in place or save as.

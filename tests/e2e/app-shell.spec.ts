@@ -43,14 +43,15 @@ test('boots empty by default and loads scenes @smoke', async ({ page }) => {
   await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');
 });
 
-test('updates startup mode and persists the last YAML-backed scene across reloads @critical', async ({ page }) => {
+test('persists the last active project across reloads without a startup mode control @critical', async ({ page }) => {
   await seedSampleScene(page, { once: true });
   await gotoStudio(page);
   await waitForSampleScene(page);
   await dismissViewHint(page);
 
   await openProjectScope(page);
-  await page.getByTestId('project-startup-mode-select').selectOption('reload_last_yaml');
+  await expect(page.getByTestId('project-startup-panel')).toHaveCount(0);
+  await expect(page.getByTestId('project-startup-mode-select')).toHaveCount(0);
 
   await openSceneScope(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
@@ -64,7 +65,7 @@ test('updates startup mode and persists the last YAML-backed scene across reload
   await gotoStudio(page);
   await waitForSampleScene(page);
   await openProjectScope(page);
-  await expect(page.getByTestId('project-startup-mode-select')).toHaveValue('reload_last_yaml');
+  await expect(page.getByTestId('project-startup-mode-select')).toHaveCount(0);
   await openSceneScope(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Persisted Wing');

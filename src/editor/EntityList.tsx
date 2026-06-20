@@ -94,7 +94,7 @@ function focusSceneGraphRow(root: HTMLElement | null, currentSceneId: string, se
 
 export function EntityList() {
   const { state, dispatch, persistence } = useEditorStore();
-  const { project, currentSceneId, selection, sidebarScope, expandedGroups, mode, startupMode, projectRootEditing, revisionDialogs, revisionPreview } = state;
+  const { project, currentSceneId, selection, sidebarScope, expandedGroups, mode, projectRootEditing, revisionDialogs, revisionPreview } = state;
   const scene = project.scenes[currentSceneId];
   const [projectSearch, setProjectSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState<ProjectPickerFilter>('recent');
@@ -140,7 +140,6 @@ export function EntityList() {
       revisions={persistence.activeProjectRevisions}
       expandedGroups={expandedGroups}
       mode={mode}
-      startupMode={startupMode}
       dispatch={dispatch}
       projectPicker={{
         projects: projectModel.visibleProjects,
@@ -174,7 +173,6 @@ export function EntityListView({
   revisions = [],
   expandedGroups,
   mode,
-  startupMode,
   dispatch,
   projectPicker,
   onCreateProject = () => {},
@@ -195,7 +193,6 @@ export function EntityListView({
   revisions?: ProjectRevisionRecord[];
   expandedGroups: Record<string, boolean>;
   mode: 'edit' | 'play';
-  startupMode: 'reload_last_yaml' | 'new_empty_scene';
   dispatch: (action: any) => void;
   projectPicker?: ComponentProps<typeof ProjectPickerPanel>;
   onCreateProject?: () => void;
@@ -1335,41 +1332,6 @@ export function EntityListView({
                 </div>
                   );
                 })}
-              </div>
-            </section>
-            <section className="panel-section" aria-labelledby="project-startup" data-testid="project-startup-panel">
-              <div className="panel-heading-row">
-                <h3 className="panel-heading" id="project-startup">Startup &amp; Reset</h3>
-              </div>
-
-              <label className="field">
-                <span>Startup mode</span>
-                <select
-                  aria-label="Startup mode"
-                  data-testid="project-startup-mode-select"
-                  value={startupMode}
-                  disabled={mode !== 'edit'}
-                  onChange={(e) => dispatch({ type: 'set-startup-mode', startupMode: e.target.value as typeof startupMode })}
-                >
-                  <option value="reload_last_yaml">Reload Last YAML</option>
-                  <option value="new_empty_scene">New Empty Scene</option>
-                </select>
-              </label>
-
-              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                <button
-                  className="button button-danger"
-                  data-testid="project-reset-now-button"
-                  type="button"
-                  disabled={mode !== 'edit'}
-                  onClick={() => {
-                    const ok = window.confirm('Reset project to a new empty scene? This will discard the current project content.');
-                    if (!ok) return;
-                    dispatch({ type: 'reset-project' } as any);
-                  }}
-                >
-                  Reset Now → New Empty Scene
-                </button>
               </div>
             </section>
             <InputMapsPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />

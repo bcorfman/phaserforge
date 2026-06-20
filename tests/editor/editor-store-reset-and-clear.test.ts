@@ -40,7 +40,7 @@ describe('EditorStore reset + clear scene', () => {
   });
 
   it('resets the project to a new empty scene and clears history', () => {
-    const state0 = reducer(seededState(), { type: 'set-startup-mode', startupMode: 'new_empty_scene' } as any);
+    const state0 = seededState();
     expect(Object.keys(state0.project.scenes).length).toBeGreaterThan(0);
 
     const reset = reducer(state0, { type: 'reset-project' } as any);

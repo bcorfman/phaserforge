@@ -48,7 +48,6 @@ describe('EntityList multi-select entity overflow menu', () => {
           sidebarScope="scene"
           expandedGroups={{}}
           mode="edit"
-          startupMode="new_empty_scene"
           dispatch={dispatch}
         />
       );
@@ -98,4 +97,3 @@ describe('EntityList multi-select entity overflow menu', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'delete-selection' });
   });
 });
-

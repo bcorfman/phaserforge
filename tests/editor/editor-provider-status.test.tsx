@@ -7,7 +7,7 @@ vi.mock('../../src/model/editorConfig', async () => {
   const actual = await vi.importActual<typeof import('../../src/model/editorConfig')>('../../src/model/editorConfig');
   return {
     ...actual,
-    loadEditorConfig: vi.fn(async () => ({ startupMode: 'reload_last_yaml' as const })),
+    loadEditorConfig: vi.fn(async () => ({ startupMode: 'new_empty_scene' as const })),
     loadEditorRegistry: vi.fn(async () => actual.EMPTY_EDITOR_REGISTRY),
   };
 });
