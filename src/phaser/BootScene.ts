@@ -62,12 +62,11 @@ export class BootScene extends Phaser.Scene {
     registry.register('scene.gotoWave', (action) => {
       const project = this.project;
       if (!project) return;
-      // `scene.gotoWave` is meant for the runtime (GameScene) path. In CI / headless browsers,
-      // there's a small window where authored UI state has flipped to play mode but the BootScene
-      // hasn't processed the mode event yet. Gate on the GameScene actually running instead of the
-      // last-seen mode to avoid dropping legitimate wave switches.
+      // `scene.gotoWave` is meant for the runtime (GameScene) path. During scene recreate/startup,
+      // there is a brief window where BootScene is already in play mode but Phaser has not yet marked
+      // GameScene as active/sleeping again. Accept either signal so startup-time wave switches are not lost.
       const gameRunning = this.scene.isActive('GameScene') || this.scene.isSleeping('GameScene');
-      if (!gameRunning) return;
+      if (!gameRunning && this.mode !== 'play') return;
 
       const args = (action as any).args ?? {};
       const sceneId = typeof args.sceneId === 'string' ? args.sceneId : '';
