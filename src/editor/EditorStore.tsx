@@ -48,6 +48,13 @@ import { allocDuplicateName } from './duplicateNaming';
 import { type ProjectSyncMode, type StoredProjectRecord, buildStoredProjectRecord, projectPersistence } from './projectPersistence';
 import type { ProjectLibraryEntry } from './projectLibrary';
 import { getGame, listGames, me } from '../cloud/api';
+import {
+  appendProjectRevision,
+  buildRestoreRevisionStatus,
+  createProjectRevision,
+  type ProjectRevisionRecord,
+  type SidebarScope,
+} from './projectTreeHistory';
 
 export const PROJECT_STORAGE_KEY = 'phaserforge.projectYaml.v1';
 export const PROJECT_LAST_SAVED_AT_STORAGE_KEY = 'phaserforge.projectLastSavedAtMs.v1';
@@ -61,7 +68,6 @@ export const SHOW_HITBOX_OVERLAY_STORAGE_KEY = 'phaserforge.showHitboxOverlay.v1
 export const DEFAULT_UI_SCALE = 0.95;
 
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type SidebarScope = 'scene' | 'project';
 
 export function coerceThemeMode(raw: string | null | undefined): ThemeMode {
   return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system';
@@ -136,6 +142,9 @@ export interface EditorState {
   currentSceneId: Id;
   selection: Selection;
   sidebarScope: SidebarScope;
+  projectRootEditing: boolean;
+  revisionPreview?: { revisionId: string; project: ProjectSpec; currentSceneId: Id };
+  revisionDialogs: { copyRevisionId?: string; restoreRevisionId?: string };
   expandedGroups: Record<Id, boolean>;
   history: HistoryState;
   dirty: boolean;
@@ -172,6 +181,14 @@ export type EditorAction =
   | { type: 'set-ui-scale'; uiScale: number }
   | { type: 'set-show-hitbox-overlay'; value: boolean }
   | { type: 'set-sidebar-scope'; scope: SidebarScope }
+  | { type: 'open-project-root-rename' }
+  | { type: 'close-project-root-rename' }
+  | { type: 'set-revision-preview'; revisionId: string; project: ProjectSpec; currentSceneId: Id }
+  | { type: 'clear-revision-preview' }
+  | { type: 'open-copy-revision-dialog'; revisionId: string }
+  | { type: 'close-copy-revision-dialog' }
+  | { type: 'open-restore-revision-dialog'; revisionId: string }
+  | { type: 'close-restore-revision-dialog' }
   | { type: 'select'; selection: Selection }
   | { type: 'select-multiple'; entityIds: Id[]; additive: boolean }
   | { type: 'delete-selection' }
@@ -441,9 +458,12 @@ const EditorContext = createContext<{
     localProjects: ProjectLibraryEntry[];
     cloudProjects: ProjectLibraryEntry[];
     activeProjectId: string | null;
+    activeProjectRevisions: ProjectRevisionRecord[];
     createProject: () => Promise<void>;
     duplicateCurrentProject: () => Promise<void>;
+    copyRevisionToNewProject: (revisionId: string, name: string) => Promise<void>;
     openProject: (projectId: string) => Promise<void>;
+    restoreRevision: (revisionId: string) => Promise<void>;
     refreshCloudProjects: () => Promise<void>;
     toggleSyncMode: () => Promise<void>;
   };
@@ -457,7 +477,10 @@ function defaultState(): EditorState {
     project,
     currentSceneId,
     selection: { kind: 'none' },
-    sidebarScope: 'scene',
+    sidebarScope: 'projectTree',
+    projectRootEditing: false,
+    revisionPreview: undefined,
+    revisionDialogs: {},
     expandedGroups: defaultExpandedGroups(scene),
     history: { past: [], future: [], pending: undefined },
     dirty: false,
@@ -1050,7 +1073,10 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           project: action.project,
           currentSceneId,
           selection: { kind: 'none' },
-          sidebarScope: state.sidebarScope ?? 'scene',
+          sidebarScope: state.sidebarScope ?? 'projectTree',
+          projectRootEditing: false,
+          revisionPreview: undefined,
+          revisionDialogs: {},
           expandedGroups: defaultExpandedGroups(activeScene),
           history: { past: [], future: [], pending: undefined },
           dirty: false,
@@ -1085,6 +1111,10 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         project,
         currentSceneId,
         selection: { kind: 'none' },
+        sidebarScope: 'projectTree',
+        projectRootEditing: false,
+        revisionPreview: undefined,
+        revisionDialogs: {},
         expandedGroups: defaultExpandedGroups(scene),
         dirty: true,
         error: undefined,
@@ -1098,7 +1128,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         ...(typeof action.title === 'string' ? { title: action.title } : {}),
         ...(typeof action.publishGithubPagesRepo === 'string' ? { publishGithubPagesRepo: action.publishGithubPagesRepo } : {}),
       };
-      return { ...state, project: nextProject, dirty: true, error: undefined };
+      return { ...state, project: nextProject, dirty: true, error: undefined, projectRootEditing: false };
     }
     case 'set-theme-mode':
       return {
@@ -1115,10 +1145,77 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         ...state,
         showHitboxOverlay: Boolean(action.value),
       };
-    case 'set-sidebar-scope':
+    case 'set-sidebar-scope': {
+      const nextScope = normalizeSidebarScope(action.scope);
       return {
         ...state,
-        sidebarScope: action.scope,
+        sidebarScope: nextScope,
+        ...(nextScope === 'projectTree'
+          ? {
+            revisionPreview: undefined,
+            revisionDialogs: {},
+          }
+          : {}),
+      };
+    }
+    case 'open-project-root-rename':
+      return {
+        ...state,
+        projectRootEditing: true,
+        sidebarScope: 'projectTree',
+      };
+    case 'close-project-root-rename':
+      return {
+        ...state,
+        projectRootEditing: false,
+      };
+    case 'set-revision-preview':
+      return {
+        ...state,
+        sidebarScope: 'projectRevisions',
+        projectRootEditing: false,
+        revisionPreview: {
+          revisionId: action.revisionId,
+          project: action.project,
+          currentSceneId: action.currentSceneId,
+        },
+      };
+    case 'clear-revision-preview':
+      return {
+        ...state,
+        revisionPreview: undefined,
+      };
+    case 'open-copy-revision-dialog':
+      return {
+        ...state,
+        revisionDialogs: {
+          ...state.revisionDialogs,
+          copyRevisionId: action.revisionId,
+        },
+      };
+    case 'close-copy-revision-dialog':
+      return {
+        ...state,
+        revisionDialogs: {
+          ...state.revisionDialogs,
+          copyRevisionId: undefined,
+        },
+      };
+    case 'open-restore-revision-dialog':
+      return {
+        ...state,
+        revisionDialogs: {
+          ...state.revisionDialogs,
+          restoreRevisionId: action.revisionId,
+        },
+      };
+    case 'close-restore-revision-dialog':
+      return {
+        ...state,
+        revisionDialogs: {
+          ...state.revisionDialogs,
+          restoreRevisionId: undefined,
+        },
       };
     case 'select':
       return { ...state, selection: action.selection, error: undefined };
@@ -1141,6 +1238,10 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           ...state,
           project: parsed,
           currentSceneId,
+          sidebarScope: 'projectTree',
+          projectRootEditing: false,
+          revisionPreview: undefined,
+          revisionDialogs: {},
           expandedGroups: defaultExpandedGroups(parsed.scenes[currentSceneId]),
           dirty: false,
           error: undefined,
@@ -1165,6 +1266,10 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           ...state,
           project: parsed,
           currentSceneId,
+          sidebarScope: 'projectTree',
+          projectRootEditing: false,
+          revisionPreview: undefined,
+          revisionDialogs: {},
           expandedGroups: defaultExpandedGroups(parsed.scenes[currentSceneId]),
           dirty: false,
           error: undefined,
@@ -3325,6 +3430,11 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
   return recordHistoryForAction(stateBefore, stateAfter, action);
 }
 
+function normalizeSidebarScope(scope: SidebarScope): 'projectTree' | 'projectRevisions' {
+  if (scope === 'projectRevisions') return 'projectRevisions';
+  return 'projectTree';
+}
+
 function loadStoredProjectYaml(): ProjectSpec | null {
   if (typeof window === 'undefined') return null;
   const raw = window.localStorage.getItem(PROJECT_STORAGE_KEY);
@@ -3344,6 +3454,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [localProjects, setLocalProjects] = useState<ProjectLibraryEntry[]>([]);
   const [cloudProjects, setCloudProjects] = useState<ProjectLibraryEntry[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeProjectRevisions, setActiveProjectRevisions] = useState<ProjectRevisionRecord[]>([]);
   const activeRecordRef = React.useRef<StoredProjectRecord | null>(null);
 
   const mapStoredProject = (record: StoredProjectRecord): ProjectLibraryEntry => ({
@@ -3404,6 +3515,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       }
       activeRecordRef.current = initialRecord;
       setActiveProjectId(initialRecord.id);
+      setActiveProjectRevisions(initialRecord.revisions ?? []);
       setLocalProjects((snapshot.localProjects.length > 0 ? snapshot.localProjects : [initialRecord]).map(mapStoredProject));
       const project = parseProjectYaml(initialRecord.yaml);
       const currentSceneId = project.initialSceneId;
@@ -3480,8 +3592,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         ? (previous?.cloudProjectId ? 'unsynced' : 'local')
         : (previous?.cloudProjectId ? 'cloud' : 'local'),
       cloudProjectId: previous?.cloudProjectId,
+      revisions: previous?.yaml && previous.yaml !== serializeProjectToYaml(state.project)
+        ? appendProjectRevision(previous.revisions, createProjectRevision(state.project, { reason: 'autosave' }))
+        : (previous?.revisions ?? []),
     });
     activeRecordRef.current = nextRecord;
+    setActiveProjectRevisions(nextRecord.revisions ?? []);
     void projectPersistence.saveProjectRecord(nextRecord).then((records) => {
       setLocalProjects(records.map(mapStoredProject));
       void projectPersistence.setActiveProject(currentRecordId, state.syncMode);
@@ -3527,6 +3643,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     if (local) {
       activeRecordRef.current = local;
       setActiveProjectId(local.id);
+      setActiveProjectRevisions(local.revisions ?? []);
       dispatch({ type: 'load-yaml-text', text: local.yaml, sourceLabel: local.title });
       const nextSyncMode: ProjectSyncMode = local.cloudProjectId ? 'online' : state.syncMode;
       dispatch({ type: 'set-sync-mode', syncMode: nextSyncMode });
@@ -3548,6 +3665,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     await projectPersistence.saveProjectRecord(cacheRecord);
     activeRecordRef.current = cacheRecord;
     setActiveProjectId(cacheRecord.id);
+    setActiveProjectRevisions(cacheRecord.revisions ?? []);
     dispatch({ type: 'load-yaml-text', text: cloud.game.yaml, sourceLabel: cloud.game.title });
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     await projectPersistence.setActiveProject(cacheRecord.id, 'online');
@@ -3558,6 +3676,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     const record = await projectPersistence.createLocalProject();
     activeRecordRef.current = record;
     setActiveProjectId(record.id);
+    setActiveProjectRevisions(record.revisions ?? []);
     dispatch({ type: 'load-yaml-text', text: record.yaml, sourceLabel: record.title });
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
@@ -3568,6 +3687,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     const duplicate = await projectPersistence.duplicateProject(current);
     activeRecordRef.current = duplicate;
     setActiveProjectId(duplicate.id);
+    setActiveProjectRevisions(duplicate.revisions ?? []);
     dispatch({ type: 'load-yaml-text', text: duplicate.yaml, sourceLabel: duplicate.title });
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
@@ -3583,7 +3703,36 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       syncStatus: next === 'offline' && activeRecordRef.current.cloudProjectId ? 'unsynced' : activeRecordRef.current.syncStatus,
     } satisfies StoredProjectRecord;
     activeRecordRef.current = nextRecord;
+    setActiveProjectRevisions(nextRecord.revisions ?? []);
     setLocalProjects((await projectPersistence.saveProjectRecord(nextRecord)).map(mapStoredProject));
+  };
+
+  const copyRevisionToNewProject = async (revisionId: string, name: string) => {
+    const revision = activeRecordRef.current?.revisions?.find((entry) => entry.id === revisionId);
+    if (!revision) return;
+    const project = parseProjectYaml(revision.yaml);
+    project.title = name.trim() || project.title;
+    const record = await projectPersistence.createLocalProject(project);
+    activeRecordRef.current = record;
+    setActiveProjectId(record.id);
+    setActiveProjectRevisions(record.revisions ?? []);
+    dispatch({ type: 'load-yaml-text', text: record.yaml, sourceLabel: record.title });
+    dispatch({ type: 'set-sync-mode', syncMode: 'online' });
+    setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
+  };
+
+  const restoreRevision = async (revisionId: string) => {
+    const currentRecord = activeRecordRef.current;
+    const revision = currentRecord?.revisions?.find((entry) => entry.id === revisionId);
+    if (!currentRecord || !revision) return;
+    const protectedRecord = await projectPersistence.saveProjectRevision(currentRecord.id, state.project, 'protective');
+    if (protectedRecord) {
+      activeRecordRef.current = protectedRecord;
+      setActiveProjectRevisions(protectedRecord.revisions ?? []);
+    }
+    dispatch({ type: 'load-yaml-text', text: revision.yaml, sourceLabel: revision.title });
+    const restoreStatus = buildRestoreRevisionStatus(revision);
+    dispatch({ type: 'set-status', message: restoreStatus.message, expiresAt: Date.now() + 4000 });
   };
 
   useEffect(() => {
@@ -3614,13 +3763,16 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       localProjects,
       cloudProjects,
       activeProjectId,
+      activeProjectRevisions,
       createProject,
       duplicateCurrentProject,
+      copyRevisionToNewProject,
       openProject,
+      restoreRevision,
       refreshCloudProjects,
       toggleSyncMode,
     },
-  }), [state, localProjects, cloudProjects, activeProjectId]);
+  }), [state, localProjects, cloudProjects, activeProjectId, activeProjectRevisions]);
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
 }

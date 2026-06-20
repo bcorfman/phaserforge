@@ -181,7 +181,7 @@ export function SceneInputBody({
           data-testid="edit-input-maps-button"
           disabled={disabled}
           onClick={() => {
-            dispatch({ type: 'set-sidebar-scope', scope: 'project' } as any);
+            dispatch({ type: 'set-sidebar-scope', scope: 'projectTree' } as any);
             window.setTimeout(() => {
               const target = document.querySelector('[data-testid=\"input-maps-panel\"]');
               (target as HTMLElement | null)?.scrollIntoView?.({ block: 'start' });

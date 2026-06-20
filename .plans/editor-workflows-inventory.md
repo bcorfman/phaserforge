@@ -127,13 +127,23 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Click the formation chevron in the scene graph.
 
 #### A29 — Create Scene
-- Scene graph → `Scenes` → `+ Add`.
+- Project Tree → `Scenes` → `+ Add`.
 
 #### A30 — Set Current Scene
 - Click a scene row.
 
 #### A31 — Manage Scene Metadata
 - Scene overflow `⋯` → `Rename…`, `⧉ Duplicate Scene`, `★ Set as Base / Clear Base`, `Clear Scene…`, or `Delete…`.
+
+#### A31a — Manage Project Root
+- Project Tree header → `Manage` → `Rename`, `History`, or `Clear Project ...`.
+- `Rename` opens inline rename on the project root row.
+- `History` swaps the left pane into `Project Revisions`.
+
+#### A31b — Browse Project Revisions
+- Project Tree header → `Manage` → `History`.
+- Select a revision row to preview it in the canvas.
+- Use `Restore...` or `Copy...`, or use the back arrow to return to Project Tree.
 
 #### A32 — Create Sprite from an Existing Asset
 - Drag an image/spritesheet asset onto the canvas.
@@ -220,7 +230,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 
 #### A50 — Configure Scene Input
 - Pick active and fallback maps.
-- Jump directly to Project-scope input maps with `Edit Input Maps…`.
+- Jump directly to the Project Tree input maps panel with `Edit Input Maps…`.
 - Configure mouse cursor hiding, drive entity, and axis locks.
 
 #### A51 — Manage Collision Rules
