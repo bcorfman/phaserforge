@@ -183,18 +183,14 @@ export class BootScene extends Phaser.Scene {
     const project = this.project;
     if (!project) return;
     game.setRuntimeOps(this.opRegistry);
+    game.queueLoad(project, scene, this.lastViewState);
     if (isRunning) {
       game.setPendingViewState(this.lastViewState);
       game.loadSceneSpec(project, scene);
       this.scene.wake('GameScene');
       return;
     }
-
-    game.events.once(Phaser.Scenes.Events.CREATE, () => {
-      game.setRuntimeOps(this.opRegistry);
-      game.setPendingViewState(this.lastViewState);
-      game.loadSceneSpec(project, scene);
-    });
+    game.setPendingViewState(this.lastViewState);
     this.scene.launch('GameScene');
   }
 

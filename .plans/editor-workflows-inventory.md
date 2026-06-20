@@ -127,13 +127,23 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Click the formation chevron in the scene graph.
 
 #### A29 — Create Scene
-- Scene graph → `Scenes` → `+ Add`.
+- Project Tree → `Scenes` → `+ Add`.
 
 #### A30 — Set Current Scene
 - Click a scene row.
 
 #### A31 — Manage Scene Metadata
 - Scene overflow `⋯` → `Rename…`, `⧉ Duplicate Scene`, `★ Set as Base / Clear Base`, `Clear Scene…`, or `Delete…`.
+
+#### A31a — Manage Project Root
+- Project Tree header → `Manage` → `Create New`, `Open...`, `Toggle Sync Mode`, `Import YAML`, `Export as YAML`, `Rename`, `History`, or `Clear Project ...`.
+- `Rename` opens inline rename on the project root row.
+- `History` swaps the left pane into `Project Revisions`.
+
+#### A31b — Browse Project Revisions
+- Project Tree header → `Manage` → `History`.
+- Select a revision row to preview it in the canvas.
+- Use `Restore...` or `Copy...`, or use the back arrow to return to Project Tree.
 
 #### A32 — Create Sprite from an Existing Asset
 - Drag an image/spritesheet asset onto the canvas.
@@ -216,11 +226,13 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Dragging an audio asset onto the Music field assigns music.
 
 #### A49 — Manage Input Maps (Project Scope)
-- Select a map, create a new map, duplicate a map, remove a map, set the project default map, create a new action by binding it, and capture keyboard/mouse/gamepad input for an action.
+- Project Tree → `Input Maps` → `+ Add`.
+- Select a map from the tree-style list, use the row `⋯` menu to duplicate/remove/set default, or use the details panel to clear/set the project default.
+- Create a new action by binding it, and capture keyboard/mouse/gamepad input for an action.
 
 #### A50 — Configure Scene Input
 - Pick active and fallback maps.
-- Jump directly to Project-scope input maps with `Edit Input Maps…`.
+- Jump directly to the Project Tree input maps panel with `Edit Input Maps…`.
 - Configure mouse cursor hiding, drive entity, and axis locks.
 
 #### A51 — Manage Collision Rules
@@ -252,16 +264,15 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Click `Scene` or `Project` in the left sidebar.
 
 #### A57 — Manage Project Library
-- In Project scope, filter/search/open recent projects.
-- Create a new project.
-- Import YAML into the current editor session.
-- Refresh cloud-backed projects.
-- Duplicate the active project.
-- Export YAML from the active project summary.
+- Project Tree header → `Manage` → `Open...`.
+- In the popup, filter/search/open recent projects and refresh cloud-backed projects.
+- Project Tree header → `Manage` → `Create New`.
+- Project Tree header → `Manage` → `Import YAML`.
+- Project Tree header → `Manage` → `Export as YAML`.
 
 #### A58 — Toggle Sync Mode
 - Click the toolbar `Online / Offline` badge.
-- Or click the same toggle in the Project picker.
+- Or use Project Tree header → `Manage` → `Toggle Sync Mode`.
 
 #### A59 — Configure Startup / Reset
 - Project scope → `Startup & Reset`.

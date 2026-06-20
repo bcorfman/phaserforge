@@ -29,6 +29,9 @@ export class GameScene extends Phaser.Scene {
   private baseCompiled?: CompiledScene;
   private compiled?: CompiledScene;
   private project?: ProjectSpec;
+  private pendingProject?: ProjectSpec;
+  private pendingSceneSpec?: SceneSpec;
+  private queuedPendingViewState?: { zoom: number; scrollX: number; scrollY: number };
   private opRegistry: OpRegistry = new OpRegistry();
   private baseSprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>();
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>();
@@ -155,6 +158,12 @@ export class GameScene extends Phaser.Scene {
     this.baseCollisionService = new BasicCollisionService();
     this.collisionService = new BasicCollisionService();
     this.bindSceneListeners();
+    if (this.pendingProject && this.pendingSceneSpec && !this.compiled) {
+      if (this.queuedPendingViewState && !this.pendingViewState) {
+        this.pendingViewState = { ...this.queuedPendingViewState };
+      }
+      this.loadSceneSpec(this.pendingProject, this.pendingSceneSpec);
+    }
     EventBus.emit('current-scene-ready', this);
     this.events.on(Phaser.Scenes.Events.SLEEP, this.unbindSceneListeners, this);
     this.events.on(Phaser.Scenes.Events.WAKE, this.bindSceneListeners, this);
@@ -167,6 +176,12 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  public queueLoad(project: ProjectSpec, sceneSpec: SceneSpec, viewState?: { zoom: number; scrollX: number; scrollY: number }): void {
+    this.pendingProject = project;
+    this.pendingSceneSpec = sceneSpec;
+    this.queuedPendingViewState = viewState ? { ...viewState } : undefined;
+  }
+
   public loadSceneSpec(sceneSpec: SceneSpec): void;
   public loadSceneSpec(project: ProjectSpec, sceneSpec: SceneSpec): void;
   public loadSceneSpec(projectOrScene: ProjectSpec | SceneSpec, maybeScene?: SceneSpec): void {
@@ -174,6 +189,10 @@ export class GameScene extends Phaser.Scene {
     this.project = project;
     this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
     const sceneSpec = (maybeScene ?? projectOrScene) as GameSceneSpec;
+    if (project) {
+      this.pendingProject = project;
+      this.pendingSceneSpec = sceneSpec;
+    }
     const currentLoadVersion = ++this.loadVersion;
     const baseId = project?.baseSceneId;
     const baseSceneSpec = project && baseId && project.scenes[baseId] ? (project.scenes[baseId] as GameSceneSpec) : undefined;
@@ -509,6 +528,14 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private syncCursorHiddenState(): void {
+    const desired = this.mouseOptions.hideOsCursorInPlay;
+    const canvas = this.game.canvas;
+    if (canvas?.style.cursor !== (desired ? 'none' : 'default')) {
+      this.applyCursorHidden(desired);
+    }
+  }
+
   public getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null {
     const group = this.formationPhysicsGroups.get(groupId) ?? this.baseFormationPhysicsGroups.get(groupId);
     if (!group) return null;
@@ -613,6 +640,14 @@ export class GameScene extends Phaser.Scene {
     if (!sprite) return;
     const pointer = this.input?.activePointer;
     if (!pointer) return;
+    this.lastEntityPointerDown = {
+      entityId,
+      button: pointer.button,
+      worldX: pointer.worldX,
+      worldY: pointer.worldY,
+      x: pointer.x,
+      y: pointer.y,
+    };
     // Emit directly on the sprite to avoid headless browser flakiness around DOM-delivered pointer events.
     (sprite as any).emit?.('pointerdown', pointer);
   }
@@ -634,6 +669,7 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (!this.compiled && !this.baseCompiled) return;
+    this.syncCursorHiddenState();
     this.inputService?.update();
     if (this.baseCompiled) this.baseCompiled.updateTriggers(delta);
     if (this.compiled) this.compiled.updateTriggers(delta);
@@ -1344,12 +1380,16 @@ export class GameScene extends Phaser.Scene {
     }
 
     await new Promise<void>((resolve) => {
-      const timeout = globalThis.setTimeout(() => resolve(), 2500);
-      this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-        globalThis.clearTimeout(timeout);
+      const finish = () => {
+        if (timeout != null) globalThis.clearTimeout(timeout);
         resolve();
-      });
-      // Some loaders don't surface global errors reliably (especially for audio); rely on timeout as fallback.
+      };
+      const timeout = pendingAudio.length > 0
+        ? globalThis.setTimeout(() => resolve(), 2500)
+        : null;
+      this.load.once(Phaser.Loader.Events.COMPLETE, finish);
+      this.load.once(Phaser.Loader.Events.LOAD_ERROR, finish);
+      // Audio loads can occasionally stall without surfacing a global error; keep the timeout fallback for those cases.
       this.load.start();
     });
   }

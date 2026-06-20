@@ -35,6 +35,11 @@ test('Play mode: mouse-driven entity motion respects axis locks @browser', async
   await dismissViewHint(page);
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
+  await expect.poll(async () => (await getSceneSnapshot<{ ready?: boolean }>(page))?.ready).toBe(true);
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{ activeEntityIds?: string[] }>(page);
+    return Array.isArray(snap?.activeEntityIds) ? snap.activeEntityIds.includes('e1') : false;
+  }).toBe(true);
 
   await expect.poll(async () => {
     const rect = await getEntityWorldRect(page, 'e1');

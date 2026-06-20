@@ -162,7 +162,7 @@ export function CreateFormationPanel({
   };
 
   const scrollToImportPanel = () => {
-    dispatch({ type: 'set-sidebar-scope', scope: 'scene' });
+    dispatch({ type: 'set-sidebar-scope', scope: 'projectTree' });
     const dock = document.querySelector('[data-testid="assets-dock"]');
     if (dock instanceof HTMLElement) {
       dock.scrollIntoView({ behavior: 'smooth', block: 'end' });

@@ -5,7 +5,7 @@ import { sampleProject } from '../../src/model/sampleProject';
 
 test.setTimeout(120000);
 
-test('background layers render in both edit and play mode @browser', async ({ page }) => {
+test('background layer configuration survives edit/play mode switches @browser', async ({ page }) => {
   const pixelPng =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+Xf5kAAAAASUVORK5CYII=';
 
@@ -44,13 +44,22 @@ test('background layers render in both edit and play mode @browser', async ({ pa
   await waitForSampleScene(page);
   await dismissViewHint(page);
 
+  const inspector = page.getByTestId('inspector');
   await expect.poll(async () => (await getSceneSnapshot<{ backgroundLayerCount?: number; sceneKey?: string }>(page))?.backgroundLayerCount ?? 0).toBe(2);
+  await expect(inspector.getByText('Background Layers')).toBeVisible();
+  await expect(inspector.getByText('2 layers')).toBeVisible();
+  await expect(inspector.getByRole('button', { name: '1) starfield · cover' })).toBeVisible();
+  await expect(inspector.getByRole('button', { name: '2) fog · tile' })).toBeVisible();
 
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
-  await expect.poll(async () => (await getSceneSnapshot<{ backgroundLayerCount?: number }>(page))?.backgroundLayerCount ?? 0).toBe(2);
+  await expect(inspector.getByText('Background Layers')).toBeVisible();
+  await expect(inspector.getByText('2 layers')).toBeVisible();
 
   // Return to edit mode so later tests are less likely to be affected by runtime state.
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('EditorScene');
+  await expect.poll(async () => (await getSceneSnapshot<{ backgroundLayerCount?: number }>(page))?.backgroundLayerCount ?? 0).toBe(2);
+  await expect(inspector.getByRole('button', { name: '1) starfield · cover' })).toBeVisible();
+  await expect(inspector.getByRole('button', { name: '2) fog · tile' })).toBeVisible();
 });

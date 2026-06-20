@@ -30,9 +30,10 @@ test.describe('Scene input maps', () => {
 
     // Defaults to (project default)
     await expect(activeSelect).toHaveValue('__project_default__');
+    const sceneInputPanel = page.getByTestId('scene-input-foldout');
     await expect(page.getByText('Actions in Active Map')).toBeVisible();
-    await expect(page.getByText('Jump')).toBeVisible();
-    await expect(page.getByText('Pause')).toBeVisible();
+    await expect(sceneInputPanel.getByText('Jump')).toBeVisible();
+    await expect(sceneInputPanel.getByText('Pause')).toBeVisible();
 
     // Selecting none disables fallback + clears action list.
     await activeSelect.selectOption('__none__');
@@ -42,7 +43,7 @@ test.describe('Scene input maps', () => {
 
     // Edit Input Maps jumps to Project tab and scrolls to Input Maps panel.
     await page.getByTestId('edit-input-maps-button').click();
-    await expect(page.getByTestId('sidebar-scope-tab-project')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('project-tree-root-button')).toBeVisible();
     await expect(page.getByTestId('input-maps-panel')).toBeVisible();
   });
 });

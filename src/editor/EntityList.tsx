@@ -10,8 +10,15 @@ import { ProjectPickerPanel } from './ProjectPickerPanel';
 import { buildProjectPickerModel, type ProjectPickerFilter } from './projectLibrary';
 import { exportYamlToDisk } from './yamlFileExport';
 import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
-import { serializeProjectToYaml } from '../model/serialization';
+import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { EventBus } from '../phaser/EventBus';
+import {
+  buildCopyRevisionDefaultName,
+  buildProjectTreeRows,
+  formatProjectRevisionSummary,
+  type ProjectRevisionRecord,
+  type SidebarScope,
+} from './projectTreeHistory';
 
 const ENTITY_DRAG_MIME = 'application/x-phaserforge-entity-ids';
 const ASSETS_DOCK_HEIGHT_STORAGE_KEY = 'phaserforge.assetsDockHeight.v1';
@@ -42,6 +49,8 @@ function readDragEntityIds(dataTransfer: DataTransfer | null): string[] | null {
 }
 
 type OverflowMenuState =
+  | { kind: 'project-root' }
+  | { kind: 'project-browser' }
   | { kind: 'scene'; sceneId: Id }
   | { kind: 'entity'; sceneId: Id; entityId: Id }
   | { kind: 'group'; sceneId: Id; groupId: Id }
@@ -85,7 +94,7 @@ function focusSceneGraphRow(root: HTMLElement | null, currentSceneId: string, se
 
 export function EntityList() {
   const { state, dispatch, persistence } = useEditorStore();
-  const { project, currentSceneId, selection, sidebarScope, expandedGroups, mode, startupMode } = state;
+  const { project, currentSceneId, selection, sidebarScope, expandedGroups, mode, startupMode, projectRootEditing, revisionDialogs, revisionPreview } = state;
   const scene = project.scenes[currentSceneId];
   const [projectSearch, setProjectSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState<ProjectPickerFilter>('recent');
@@ -96,7 +105,6 @@ export function EntityList() {
     search: projectSearch,
     filter: projectFilter,
   });
-  const activeProject = [...persistence.localProjects, ...persistence.cloudProjects].find((entry) => entry.id === persistence.activeProjectId) ?? null;
 
   const importYaml = async () => {
     const picker = getOpenFilePicker();
@@ -126,27 +134,30 @@ export function EntityList() {
       scene={scene}
       selection={selection}
       sidebarScope={sidebarScope}
+      projectRootEditing={projectRootEditing}
+      revisionDialogs={revisionDialogs}
+      previewRevisionId={revisionPreview?.revisionId}
+      revisions={persistence.activeProjectRevisions}
       expandedGroups={expandedGroups}
       mode={mode}
       startupMode={startupMode}
       dispatch={dispatch}
-      projectPicker={sidebarScope === 'project' ? {
+      projectPicker={{
         projects: projectModel.visibleProjects,
         counts: projectModel.counts,
-        activeProject,
         search: projectSearch,
         filter: projectFilter,
-        syncMode: state.syncMode,
         onSearchChange: setProjectSearch,
         onFilterChange: setProjectFilter,
         onOpenProject: (projectId: string) => void persistence.openProject(projectId),
-        onCreateProject: () => void persistence.createProject(),
-        onImportYaml: () => void importYaml(),
         onRefreshCloudProjects: () => void persistence.refreshCloudProjects(),
-        onDuplicateProject: () => void persistence.duplicateCurrentProject(),
-        onExportYaml: () => void exportYamlToDisk(serializeProjectToYaml(project), { suggestedName: `${project.title?.trim() || project.id}.yaml` }),
-        onToggleSyncMode: () => void persistence.toggleSyncMode(),
-      } : undefined}
+      }}
+      onCreateProject={() => void persistence.createProject()}
+      onImportYaml={() => void importYaml()}
+      onExportYaml={() => void exportYamlToDisk(serializeProjectToYaml(project), { suggestedName: `${project.title?.trim() || project.id}.yaml` })}
+      onToggleSyncMode={() => void persistence.toggleSyncMode()}
+      onCopyRevision={(revisionId, name) => void persistence.copyRevisionToNewProject(revisionId, name)}
+      onRestoreRevision={(revisionId) => void persistence.restoreRevision(revisionId)}
     />
   );
 }
@@ -157,22 +168,42 @@ export function EntityListView({
   scene,
   selection,
   sidebarScope,
+  projectRootEditing = false,
+  revisionDialogs = {},
+  previewRevisionId,
+  revisions = [],
   expandedGroups,
   mode,
   startupMode,
   dispatch,
   projectPicker,
+  onCreateProject = () => {},
+  onImportYaml = () => {},
+  onExportYaml = () => {},
+  onToggleSyncMode = () => {},
+  onCopyRevision = () => {},
+  onRestoreRevision = () => {},
 }: {
   project: ProjectSpec;
   currentSceneId: string;
   scene: GameSceneSpec;
   selection: Selection;
-  sidebarScope: 'scene' | 'project';
+  sidebarScope: SidebarScope;
+  projectRootEditing?: boolean;
+  revisionDialogs?: { copyRevisionId?: string; restoreRevisionId?: string };
+  previewRevisionId?: string;
+  revisions?: ProjectRevisionRecord[];
   expandedGroups: Record<string, boolean>;
   mode: 'edit' | 'play';
   startupMode: 'reload_last_yaml' | 'new_empty_scene';
   dispatch: (action: any) => void;
   projectPicker?: ComponentProps<typeof ProjectPickerPanel>;
+  onCreateProject?: () => void;
+  onImportYaml?: () => void;
+  onExportYaml?: () => void;
+  onToggleSyncMode?: () => void;
+  onCopyRevision?: (revisionId: string, name: string) => void;
+  onRestoreRevision?: (revisionId: string) => void;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [assetsDockHeight, setAssetsDockHeight] = useState(() => {
@@ -184,7 +215,7 @@ export function EntityListView({
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'scene' | 'trigger' | null>(null);
+  const [editingKind, setEditingKind] = useState<'entity' | 'group' | 'scene' | 'trigger' | 'project' | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
@@ -209,10 +240,23 @@ export function EntityListView({
     copyIntoSameGroup: boolean;
   } | null>(null);
   const duplicateDialogRootRef = useRef<HTMLDivElement | null>(null);
+  const [copyRevisionName, setCopyRevisionName] = useState('');
+  const normalizedSidebarScope = sidebarScope === 'projectRevisions' ? 'projectRevisions' : 'projectTree';
 
   useEffect(() => {
     setExpandedScenes((prev) => ({ ...prev, [currentSceneId]: true }));
   }, [currentSceneId]);
+
+  useEffect(() => {
+    if (!projectRootEditing) return;
+    startEditing('project', project.id, project.title?.trim() || 'Untitled Project');
+  }, [project.id, project.title, projectRootEditing]);
+
+  useEffect(() => {
+    const revision = revisions.find((entry) => entry.id === revisionDialogs.copyRevisionId);
+    if (!revision) return;
+    setCopyRevisionName(buildCopyRevisionDefaultName(project.title, revision));
+  }, [project.title, revisionDialogs.copyRevisionId, revisions]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -301,14 +345,14 @@ export function EntityListView({
     }
   }, [assetsDockHeight]);
 
-  const startEditing = (kind: 'entity' | 'group' | 'scene' | 'trigger', id: string, currentName: string) => {
+  const startEditing = (kind: 'entity' | 'group' | 'scene' | 'trigger' | 'project', id: string, currentName: string) => {
     setEditingKind(kind);
     setEditingId(id);
     setEditingName(currentName);
     setEditingSceneId(kind === 'scene' ? id : currentSceneId);
   };
 
-  const startEditingInScene = (sceneId: string, kind: 'entity' | 'group' | 'scene' | 'trigger', id: string, currentName: string) => {
+  const startEditingInScene = (sceneId: string, kind: 'entity' | 'group' | 'scene' | 'trigger' | 'project', id: string, currentName: string) => {
     setEditingKind(kind);
     setEditingId(id);
     setEditingName(currentName);
@@ -333,7 +377,10 @@ export function EntityListView({
       dispatch({ type: 'set-current-scene', sceneId: targetSceneId });
     }
 
-    if (editingKind === 'group') {
+    if (editingKind === 'project') {
+      dispatch({ type: 'set-project-metadata', title: editingName });
+      dispatch({ type: 'close-project-root-rename' });
+    } else if (editingKind === 'group') {
       const active = project.scenes[targetSceneId] as GameSceneSpec;
       const group = active.groups[editingId];
       if (group) {
@@ -384,6 +431,8 @@ export function EntityListView({
 	              ? [`trigger-zone-${id}`, `trigger-zone-${sceneId}-${id}`]
               : kind === 'scene'
                 ? [`scene-item-${id}`]
+                : kind === 'project'
+                  ? ['project-tree-root-button']
                 : [];
 
       for (const testId of testIds) {
@@ -398,7 +447,7 @@ export function EntityListView({
 
   useEffect(() => {
     const handleWindowKeyDown = (event: KeyboardEvent) => {
-      if (sidebarScope !== 'scene') return;
+      if (normalizedSidebarScope !== 'projectTree') return;
       if (mode !== 'edit') return;
       if (editingKind != null) return;
       if (menuOpen || spritesAddMenu || duplicateDialog) return;
@@ -494,7 +543,7 @@ export function EntityListView({
     // when the keyboard focus is inside the entity list.
     window.addEventListener('keydown', handleWindowKeyDown, true);
     return () => window.removeEventListener('keydown', handleWindowKeyDown, true);
-  }, [sidebarScope, mode, editingKind, menuOpen, spritesAddMenu, duplicateDialog, project, currentSceneId, selection, dispatch]);
+  }, [normalizedSidebarScope, mode, editingKind, menuOpen, spritesAddMenu, duplicateDialog, project, currentSceneId, selection, dispatch]);
 
   useEffect(() => {
     const handleFocusSelectedSceneGraphRow = () => {
@@ -566,6 +615,10 @@ export function EntityListView({
     setIsDragActive(false);
   };
 
+  const projectTreeRows = buildProjectTreeRows(project, currentSceneId);
+  const selectedCopyRevision = revisions.find((entry) => entry.id === revisionDialogs.copyRevisionId);
+  const selectedRestoreRevision = revisions.find((entry) => entry.id === revisionDialogs.restoreRevisionId);
+
   const handleDropOnGroup = (groupId: string, event: React.DragEvent, index?: number) => {
     event.preventDefault();
     const ids = readDragEntityIds(event.dataTransfer);
@@ -587,31 +640,112 @@ export function EntityListView({
       data-testid="entity-list"
       style={{ overflow: 'hidden', flex: 1, minHeight: 0 }}
     >
-      <div className="sidebar-scope-tabs" role="tablist" aria-label="Sidebar Scope">
-        <button
-          className={`button ${sidebarScope === 'scene' ? 'active' : ''}`}
-          data-testid="sidebar-scope-tab-scene"
-          type="button"
-          role="tab"
-          aria-selected={sidebarScope === 'scene'}
-          onClick={() => dispatch({ type: 'set-sidebar-scope', scope: 'scene' })}
-        >
-          Scene
-        </button>
-        <button
-          className={`button ${sidebarScope === 'project' ? 'active' : ''}`}
-          data-testid="sidebar-scope-tab-project"
-          type="button"
-          role="tab"
-          aria-selected={sidebarScope === 'project'}
-          onClick={() => dispatch({ type: 'set-sidebar-scope', scope: 'project' })}
-        >
-          Project
-        </button>
-      </div>
-      {sidebarScope === 'scene' ? (
+      {normalizedSidebarScope === 'projectRevisions' ? (
+        <div className="panel-scroll" style={{ overflow: 'auto', minHeight: 0, paddingRight: 2, flex: 1 }}>
+          <section className="panel-section" aria-labelledby="project-revisions">
+            <div className="panel-heading-row">
+              <button
+                className="button button-compact"
+                data-testid="project-revisions-back-button"
+                type="button"
+                onClick={() => {
+                  dispatch({ type: 'clear-revision-preview' });
+                  dispatch({ type: 'set-sidebar-scope', scope: 'projectTree' });
+                }}
+              >
+                ←
+              </button>
+              <h3 className="panel-heading" id="project-revisions">PROJECT REVISIONS</h3>
+            </div>
+            <div className="member-list" data-testid="project-revisions-pane">
+              {revisions.length === 0 ? (
+                <div className="muted">No saved revisions yet.</div>
+              ) : (
+                revisions.map((revision) => (
+                  <div key={revision.id} className="behavior-block" data-testid={`project-revision-${revision.id}`}>
+                    <button
+                      className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
+                      type="button"
+                      onClick={() => {
+                        const previewProject = parseProjectYaml(revision.yaml);
+                        dispatch({
+                          type: 'set-revision-preview',
+                          revisionId: revision.id,
+                          project: previewProject,
+                          currentSceneId: previewProject.initialSceneId,
+                        });
+                      }}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{revision.title}</span>
+                      <span className="list-item-meta">{formatProjectRevisionSummary(revision)}</span>
+                    </button>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button
+                        className="button button-danger"
+                        data-testid={`project-revision-restore-${revision.id}`}
+                        type="button"
+                        onClick={() => dispatch({ type: 'open-restore-revision-dialog', revisionId: revision.id })}
+                      >
+                        Restore...
+                      </button>
+                      <button
+                        className="button"
+                        data-testid={`project-revision-copy-${revision.id}`}
+                        type="button"
+                        onClick={() => dispatch({ type: 'open-copy-revision-dialog', revisionId: revision.id })}
+                      >
+                        Copy...
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+      ) : (
         <div className="sidebar-split" style={{ display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0, flex: 1 }}>
           <div className="panel-scroll" style={{ overflow: 'auto', minHeight: 0, paddingRight: 2, flex: 1 }}>
+            <section className="panel-section" aria-labelledby="project-tree">
+              <div className="panel-heading-row">
+                <h3 className="panel-heading" id="project-tree">Project Tree</h3>
+                <button
+                  className="button button-compact"
+                  data-testid="project-tree-manage-button"
+                  type="button"
+                  onClick={(event) => {
+                    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                    setMenuPosition({ x: Math.min(rect.left, window.innerWidth - 220), y: rect.bottom + 6 });
+                    setMenuOpen({ kind: 'project-root' });
+                  }}
+                >
+                  Manage
+                </button>
+              </div>
+              <div className="member-row">
+                {editingKind === 'project' ? (
+                  <input
+                    autoFocus
+                    className="scene-graph-rename-input"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onBlur={saveRename}
+                    onKeyDown={handleKeyDown}
+                    data-testid="rename-project-input"
+                  />
+                ) : (
+                  <button
+                    className="list-item active"
+                    data-testid="project-tree-root-button"
+                    type="button"
+                    onClick={() => dispatch({ type: 'open-project-root-rename' })}
+                  >
+                    <span>{projectTreeRows[0]?.label ?? 'Untitled Project'}</span>
+                    <span className="list-item-meta">{projectTreeRows[0]?.sceneCount ?? 0} scenes</span>
+                  </button>
+                )}
+              </div>
+            </section>
             <section className="panel-section" aria-labelledby="scene-list">
               <div className="panel-heading-row">
                 <h3 className="panel-heading" id="scene-list">Scenes</h3>
@@ -860,7 +994,7 @@ export function EntityListView({
 	                          disabled={mode !== 'edit'}
 	                          onClick={() => {
 	                            ensureCurrentScene(sceneId);
-	                            dispatch({ type: 'set-sidebar-scope', scope: 'scene' });
+	                            dispatch({ type: 'set-sidebar-scope', scope: 'projectTree' });
 	                            dispatch({ type: 'create-text-entity' } as any);
 	                          }}
 	                        >
@@ -1202,6 +1336,42 @@ export function EntityListView({
                 })}
               </div>
             </section>
+            <section className="panel-section" aria-labelledby="project-startup" data-testid="project-startup-panel">
+              <div className="panel-heading-row">
+                <h3 className="panel-heading" id="project-startup">Startup &amp; Reset</h3>
+              </div>
+
+              <label className="field">
+                <span>Startup mode</span>
+                <select
+                  aria-label="Startup mode"
+                  data-testid="project-startup-mode-select"
+                  value={startupMode}
+                  disabled={mode !== 'edit'}
+                  onChange={(e) => dispatch({ type: 'set-startup-mode', startupMode: e.target.value as typeof startupMode })}
+                >
+                  <option value="reload_last_yaml">Reload Last YAML</option>
+                  <option value="new_empty_scene">New Empty Scene</option>
+                </select>
+              </label>
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                <button
+                  className="button button-danger"
+                  data-testid="project-reset-now-button"
+                  type="button"
+                  disabled={mode !== 'edit'}
+                  onClick={() => {
+                    const ok = window.confirm('Reset project to a new empty scene? This will discard the current project content.');
+                    if (!ok) return;
+                    dispatch({ type: 'reset-project' } as any);
+                  }}
+                >
+                  Reset Now → New Empty Scene
+                </button>
+              </div>
+            </section>
+            <InputMapsPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
           </div>
 
           <div
@@ -1240,50 +1410,6 @@ export function EntityListView({
             <AssetsDock project={project} sceneId={currentSceneId} selection={selection} dispatch={dispatch} disabled={mode !== 'edit'} />
           </div>
         </div>
-      ) : null}
-
-      {sidebarScope === 'project' ? (
-        <>
-          {projectPicker ? <ProjectPickerPanel {...projectPicker} /> : null}
-          <section className="panel-section" aria-labelledby="project-startup" data-testid="project-startup-panel">
-            <div className="panel-heading-row">
-              <h3 className="panel-heading" id="project-startup">Startup &amp; Reset</h3>
-            </div>
-
-            <label className="field">
-              <span>Startup mode</span>
-              <select
-                aria-label="Startup mode"
-                data-testid="project-startup-mode-select"
-                value={startupMode}
-                disabled={mode !== 'edit'}
-                onChange={(e) => dispatch({ type: 'set-startup-mode', startupMode: e.target.value as typeof startupMode })}
-              >
-                <option value="reload_last_yaml">Reload Last YAML</option>
-                <option value="new_empty_scene">New Empty Scene</option>
-              </select>
-            </label>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-              <button
-                className="button button-danger"
-                data-testid="project-reset-now-button"
-                type="button"
-                disabled={mode !== 'edit'}
-                onClick={() => {
-                  const ok = window.confirm('Reset project to a new empty scene? This will discard the current project content.');
-                  if (!ok) return;
-                  dispatch({ type: 'reset-project' } as any);
-                }}
-              >
-                Reset Now → New Empty Scene
-              </button>
-            </div>
-          </section>
-          <InputMapsPanel project={project} dispatch={dispatch} disabled={mode !== 'edit'} />
-        </>
-      ) : (
-        null
       )}
 
       {spritesAddMenu ? (
@@ -1338,7 +1464,7 @@ export function EntityListView({
                     const targetSceneId = spriteFromAssetPicker.sceneId;
                     setSpriteFromAssetPicker(null);
                     ensureCurrentScene(targetSceneId);
-                    dispatch({ type: 'set-sidebar-scope', scope: 'scene' });
+                    dispatch({ type: 'set-sidebar-scope', scope: 'projectTree' });
                     dispatch({ type: 'create-entity-from-asset', assetKind: 'image', assetId } as any);
                   }}
                 >
@@ -1355,7 +1481,7 @@ export function EntityListView({
                     const targetSceneId = spriteFromAssetPicker.sceneId;
                     setSpriteFromAssetPicker(null);
                     ensureCurrentScene(targetSceneId);
-                    dispatch({ type: 'set-sidebar-scope', scope: 'scene' });
+                    dispatch({ type: 'set-sidebar-scope', scope: 'projectTree' });
                     dispatch({ type: 'create-entity-from-asset', assetKind: 'spritesheet', assetId } as any);
                   }}
                 >
@@ -1436,14 +1562,207 @@ export function EntityListView({
         </div>
       ) : null}
 
+      {selectedCopyRevision ? (
+        <div
+          className="scene-graph-menu"
+          style={{ position: 'fixed', left: '50%', top: '20%', transform: 'translateX(-50%)', zIndex: 60, minWidth: 420 }}
+          data-testid="copy-revision-dialog"
+          role="dialog"
+          aria-label="Copy revision dialog"
+        >
+          <div className="scene-graph-menu-hint">Copy this revision as a new project?</div>
+          <label className="field" style={{ padding: '0.75rem' }}>
+            <span>New Project Name</span>
+            <input
+              data-testid="copy-revision-name-input"
+              value={copyRevisionName}
+              onChange={(event) => setCopyRevisionName(event.target.value)}
+            />
+          </label>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '0.75rem' }}>
+            <button type="button" className="button" onClick={() => dispatch({ type: 'close-copy-revision-dialog' })}>Cancel</button>
+            <button
+              type="button"
+              className="button button-primary"
+              data-testid="copy-revision-confirm-button"
+              onClick={() => {
+                onCopyRevision(selectedCopyRevision.id, copyRevisionName);
+                dispatch({ type: 'close-copy-revision-dialog' });
+              }}
+            >
+              Create Copy
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {selectedRestoreRevision ? (
+        <div
+          className="scene-graph-menu"
+          style={{ position: 'fixed', left: '50%', top: '20%', transform: 'translateX(-50%)', zIndex: 60, minWidth: 460 }}
+          data-testid="restore-revision-dialog"
+          role="dialog"
+          aria-label="Restore revision dialog"
+        >
+          <div className="scene-graph-menu-hint">Restore this revision as the current project?</div>
+          <div style={{ padding: '0.75rem', display: 'grid', gap: 8 }}>
+            <div>The current project will be replaced by this revision as the new current state.</div>
+            <div>Your current state will be saved into history first.</div>
+            <div>This creates a new current head from the older revision instead of rewinding history.</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '0.75rem' }}>
+            <button type="button" className="button" onClick={() => dispatch({ type: 'close-restore-revision-dialog' })}>Cancel</button>
+            <button
+              type="button"
+              className="button button-danger"
+              data-testid="restore-revision-confirm-button"
+              onClick={() => {
+                onRestoreRevision(selectedRestoreRevision.id);
+                dispatch({ type: 'close-restore-revision-dialog' });
+                dispatch({ type: 'clear-revision-preview' });
+                dispatch({ type: 'set-sidebar-scope', scope: 'projectTree' });
+              }}
+            >
+              Restore Current Project
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {menuOpen && menuPosition ? (
         <div
           ref={menuRootRef}
           className="scene-graph-menu"
-          style={{ position: 'fixed', left: menuPosition.x, top: menuPosition.y, zIndex: 50, minWidth: 200 }}
+          style={{
+            position: 'fixed',
+            left: menuPosition.x,
+            top: menuPosition.y,
+            zIndex: 50,
+            minWidth: menuOpen.kind === 'project-browser' ? 420 : 200,
+            maxWidth: menuOpen.kind === 'project-browser' ? 520 : undefined,
+          }}
           data-testid="scene-graph-overflow-menu"
           role="menu"
         >
+          {menuOpen.kind === 'project-root' ? (
+            <>
+              <div className="scene-graph-menu-hint">{project.title?.trim() || 'Untitled Project'}</div>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-create"
+                onClick={() => {
+                  setMenuOpen(null);
+                  onCreateProject();
+                }}
+              >
+                Create New
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-open"
+                onClick={() => setMenuOpen({ kind: 'project-browser' })}
+              >
+                Open...
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-toggle-sync"
+                onClick={() => {
+                  setMenuOpen(null);
+                  onToggleSyncMode();
+                }}
+              >
+                Toggle Sync Mode
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-import-yaml"
+                onClick={() => {
+                  setMenuOpen(null);
+                  onImportYaml();
+                }}
+              >
+                Import YAML
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-export-yaml"
+                onClick={() => {
+                  setMenuOpen(null);
+                  onExportYaml();
+                }}
+              >
+                Export as YAML
+              </button>
+              <div className="scene-graph-menu-divider" />
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-rename"
+                onClick={() => {
+                  setMenuOpen(null);
+                  dispatch({ type: 'open-project-root-rename' });
+                }}
+              >
+                Rename
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-history"
+                onClick={() => {
+                  setMenuOpen(null);
+                  dispatch({ type: 'set-sidebar-scope', scope: 'projectRevisions' });
+                }}
+              >
+                History
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item scene-graph-menu-danger"
+                data-testid="project-manage-clear"
+                onClick={() => {
+                  setMenuOpen(null);
+                  const ok = window.confirm('Reset project to a new empty scene? This will discard the current project content.');
+                  if (!ok) return;
+                  dispatch({ type: 'reset-project' } as any);
+                }}
+              >
+                Clear Project ...
+              </button>
+            </>
+          ) : null}
+
+          {menuOpen.kind === 'project-browser' ? (
+            <div style={{ maxHeight: 'min(70vh, 720px)', overflow: 'auto' }}>
+              <div className="panel-heading-row" style={{ padding: '0.2rem 0.2rem 0 0.2rem' }}>
+                <div className="scene-graph-menu-hint" style={{ margin: 0 }}>Open Project</div>
+                <button
+                  type="button"
+                  className="button button-compact"
+                  data-testid="project-open-back"
+                  onClick={() => setMenuOpen({ kind: 'project-root' })}
+                >
+                  Back
+                </button>
+              </div>
+              {projectPicker ? (
+                <ProjectPickerPanel
+                  {...projectPicker}
+                  onOpenProject={(projectId) => {
+                    setMenuOpen(null);
+                    projectPicker.onOpenProject(projectId);
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
+
           {menuOpen.kind === 'scene' ? (() => {
             const isBase = project.baseSceneId === menuOpen.sceneId;
             const canDelete = Object.keys(project.scenes).length > 1;

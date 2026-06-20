@@ -104,7 +104,7 @@ describe('EntityList', () => {
     expect(markup).toContain('disabled');
   });
 
-  it('renders project-scoped panels when the project scope tab is active', () => {
+  it('renders the project tree and project panels in project tree mode', () => {
     const markup = renderToStaticMarkup(
       <EntityListView
         project={sampleProject}
@@ -119,11 +119,11 @@ describe('EntityList', () => {
     );
 
     expect(markup).toContain('Input Maps');
-    expect(markup).not.toContain('Asset importing now lives');
-    expect(markup).not.toContain('Scenes');
-    expect(markup).not.toContain('create-scene-button');
-    expect(markup).not.toContain('Formations');
-    expect(markup).not.toContain('Trigger Zones');
+    expect(markup).toContain('Project Tree');
+    expect(markup).toContain('Scenes');
+    expect(markup).toContain('create-scene-button');
+    expect(markup).not.toContain('Active Project Summary');
+    expect(markup).not.toContain('project-picker-panel');
   });
 
   it('flexes the scenes list so the assets dock can reach the bottom', () => {

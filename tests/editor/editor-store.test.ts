@@ -18,15 +18,48 @@ function sceneOf(state: any) {
 }
 
 describe('EditorStore reducer', () => {
-  it('defaults sidebar scope to scene and allows switching tabs', () => {
+  it('defaults to the project tree sidebar and normalizes legacy scope actions', () => {
     const state = seededState();
-    expect(state.sidebarScope).toBe('scene');
+    expect(state.sidebarScope).toBe('projectTree');
 
     const next = reducer(state, { type: 'set-sidebar-scope', scope: 'project' } as any);
-    expect(next.sidebarScope).toBe('project');
+    expect(next.sidebarScope).toBe('projectTree');
 
     const back = reducer(next, { type: 'set-sidebar-scope', scope: 'scene' } as any);
-    expect(back.sidebarScope).toBe('scene');
+    expect(back.sidebarScope).toBe('projectTree');
+  });
+
+  it('opens and closes project revisions while clearing preview state on return', () => {
+    const revisionProject = structuredClone(sampleProject);
+    const state = seededState();
+    const previewing = reducer(state, {
+      type: 'set-revision-preview',
+      revisionId: 'rev-1',
+      project: revisionProject,
+      currentSceneId: revisionProject.initialSceneId,
+    } as any);
+
+    expect(previewing.sidebarScope).toBe('projectRevisions');
+    expect(previewing.revisionPreview?.revisionId).toBe('rev-1');
+
+    const back = reducer(previewing, { type: 'set-sidebar-scope', scope: 'projectTree' } as any);
+    expect(back.sidebarScope).toBe('projectTree');
+    expect(back.revisionPreview).toBeUndefined();
+  });
+
+  it('tracks project root rename and revision dialog state', () => {
+    const state = seededState();
+    const renaming = reducer(state, { type: 'open-project-root-rename' } as any);
+    expect(renaming.projectRootEditing).toBe(true);
+
+    const copyDialog = reducer(renaming, { type: 'open-copy-revision-dialog', revisionId: 'rev-copy' } as any);
+    expect(copyDialog.revisionDialogs.copyRevisionId).toBe('rev-copy');
+
+    const restoreDialog = reducer(copyDialog, { type: 'open-restore-revision-dialog', revisionId: 'rev-restore' } as any);
+    expect(restoreDialog.revisionDialogs.restoreRevisionId).toBe('rev-restore');
+
+    const closed = reducer(restoreDialog, { type: 'close-project-root-rename' } as any);
+    expect(closed.projectRootEditing).toBe(false);
   });
 
   it('toggles hitbox overlay visibility flag', () => {

@@ -1,6 +1,7 @@
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { createEmptyProject } from '../model/emptyProject';
 import type { ProjectSpec, StartupMode } from '../model/types';
+import { appendProjectRevision, createProjectRevision, type ProjectRevisionRecord } from './projectTreeHistory';
 
 const DB_NAME = 'phaserforge.persistence.v1';
 const DB_VERSION = 1;
@@ -26,6 +27,7 @@ export type StoredProjectRecord = {
   origin: StoredProjectOrigin;
   syncStatus: StoredProjectSyncStatus;
   cloudProjectId?: string;
+  revisions?: ProjectRevisionRecord[];
 };
 
 export type WorkspaceStateRecord = {
@@ -121,6 +123,7 @@ export function buildStoredProjectRecord(
     origin?: StoredProjectOrigin;
     syncStatus?: StoredProjectSyncStatus;
     cloudProjectId?: string;
+    revisions?: ProjectRevisionRecord[];
   }
 ): StoredProjectRecord {
   return {
@@ -133,6 +136,7 @@ export function buildStoredProjectRecord(
     origin: options?.origin ?? 'local-only',
     syncStatus: options?.syncStatus ?? 'local',
     cloudProjectId: options?.cloudProjectId,
+    revisions: options?.revisions ?? [createProjectRevision(project)],
   };
 }
 
@@ -294,6 +298,18 @@ export const projectPersistence = {
     });
     await upsertProjectRecord(next);
     await writeWorkspace({ activeProjectId: next.id, syncMode: 'online' });
+    return next;
+  },
+
+  async saveProjectRevision(projectId: string, project: ProjectSpec, reason: ProjectRevisionRecord['reason'] = 'autosave'): Promise<StoredProjectRecord | null> {
+    const existing = await getProjectRecord(projectId);
+    if (!existing) return null;
+    const revision = createProjectRevision(project, { reason });
+    const next = {
+      ...existing,
+      revisions: appendProjectRevision(existing.revisions, revision),
+    } satisfies StoredProjectRecord;
+    await upsertProjectRecord(next);
     return next;
   },
 };
