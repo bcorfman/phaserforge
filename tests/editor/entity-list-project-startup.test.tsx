@@ -1,20 +1,18 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { EntityListView } from '../../src/editor/EntityList';
 import { sampleProject } from '../../src/model/sampleProject';
 
-describe('EntityList project startup controls', () => {
+describe('EntityList project scope', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it('dispatches startup mode changes from the project panel', () => {
-    const dispatch = vi.fn();
-
+  it('does not render the removed startup and reset panel', () => {
     render(
       <EntityListView
         project={sampleProject}
@@ -24,13 +22,12 @@ describe('EntityList project startup controls', () => {
         sidebarScope="project"
         expandedGroups={{ 'g-enemies': false }}
         mode="edit"
-        startupMode="reload_last_yaml"
-        dispatch={dispatch}
+        dispatch={() => {}}
       />
     );
 
-    fireEvent.change(screen.getByTestId('project-startup-mode-select'), { target: { value: 'new_empty_scene' } });
-
-    expect(dispatch).toHaveBeenCalledWith({ type: 'set-startup-mode', startupMode: 'new_empty_scene' });
+    expect(screen.queryByTestId('project-startup-panel')).toBeNull();
+    expect(screen.queryByTestId('project-startup-mode-select')).toBeNull();
+    expect(screen.queryByTestId('project-reset-now-button')).toBeNull();
   });
 });

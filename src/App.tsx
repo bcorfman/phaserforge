@@ -54,7 +54,6 @@ function AppShell() {
     yamlText: state.yamlText,
     error: state.error,
     hasSeenViewHint: state.hasSeenViewHint,
-    startupMode: state.startupMode,
     themeMode: state.themeMode,
     uiScale: state.uiScale,
     initialized: state.initialized,
@@ -81,7 +80,6 @@ function AppShell() {
       yamlText: state.yamlText,
       error: state.error,
       hasSeenViewHint: state.hasSeenViewHint,
-      startupMode: state.startupMode,
       themeMode: state.themeMode,
       uiScale: state.uiScale,
       initialized: state.initialized,
@@ -290,10 +288,6 @@ function AppShell() {
         dispatch({ type: 'dismiss-view-hint' });
       }
 
-      // Avoid overwriting a persisted view state before we get a chance to restore it on boot.
-      const startupMode = appStateRef.current.startupMode;
-      if (startupMode === 'reload_last_yaml' && !viewRestoreAttemptedRef.current) return;
-
       try {
         const scene = getActiveScene() as any;
         const view = scene && typeof scene.getViewState === 'function' ? (scene.getViewState() as { zoom: number; scrollX: number; scrollY: number }) : null;
@@ -315,10 +309,6 @@ function AppShell() {
     if (viewRestoreAttemptedRef.current) return;
     if (!sceneReady || !runtimeLoadedRef.current) return;
     if (!state.initialized) return;
-    if (state.startupMode !== 'reload_last_yaml') {
-      viewRestoreAttemptedRef.current = true;
-      return;
-    }
 
     try {
       const projectId = state.project.id;
@@ -330,7 +320,7 @@ function AppShell() {
     } finally {
       viewRestoreAttemptedRef.current = true;
     }
-  }, [sceneReady, state.initialized, state.startupMode]);
+  }, [sceneReady, state.initialized, state.project.id]);
 
   useEffect(() => {
     const currentProjectId = state.project.id;

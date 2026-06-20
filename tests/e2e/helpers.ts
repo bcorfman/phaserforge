@@ -24,7 +24,6 @@ const NAVIGATE_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 const SCENE_READY_TIMEOUT_MS = IS_CI ? 120000 : 60000;
 const SCENE_CONTENT_TIMEOUT_MS = IS_CI ? 30000 : 10000;
 
-const seededSampleContexts = new WeakSet<object>();
 const routedApiStubContexts = new WeakSet<object>();
 
 const BOOT_MUTEX_PATH = path.join(os.tmpdir(), 'phaserforge-e2e-boot.lock');
@@ -148,50 +147,45 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
 
 export async function seedSampleScene(page: Page, options: { once?: boolean } = {}): Promise<void> {
   const yaml = serializeProjectToYaml(sampleProject);
-  const contextKey = page.context() as unknown as object;
-  if (!seededSampleContexts.has(contextKey)) {
-    seededSampleContexts.add(contextKey);
-    await page.addInitScript(
-      ([sceneYaml, seedOnce]) => {
-        let storage: Storage;
-        try {
-          storage = window.localStorage;
-        } catch {
-          // Some transient documents (e.g. about:blank during recovery navigations) do not allow localStorage access.
-          return;
-        }
-        const sentinelKey = 'phaserforge.testSeeded.v1';
-        const uiResetKey = 'phaserforge.testUiReset.v1';
-        if (seedOnce && storage.getItem(sentinelKey)) return;
-        if (seedOnce) storage.setItem(sentinelKey, '1');
-
-        // Tests must be isolated by default: reset the persisted authored project before boot.
-        storage.removeItem('phaserforge.inspectorFoldouts.v1');
-        if (!storage.getItem(uiResetKey)) {
-          storage.setItem(uiResetKey, '1');
-          storage.removeItem('phaserforge.leftPaneWidth.v1');
-          storage.removeItem('phaserforge.assetsDockHeight.v1');
-          storage.removeItem('phaserforge.assetsDockShowThumbnails.v1');
-        }
-        storage.setItem('phaserforge.showHitboxOverlay.v1', '1');
-        storage.setItem('phaserforge.projectYaml.v1', sceneYaml);
-        storage.setItem('phaserforge.startupMode.v1', 'reload_last_yaml');
-      },
-      [yaml, Boolean(options.once)]
-    );
-  }
   await gotoStudio(page, { forceNavigate: true });
+  const shouldSeed = await page.evaluate((seedOnce) => {
+    let storage: Storage;
+    try {
+      storage = window.localStorage;
+    } catch {
+      return false;
+    }
+    const sentinelKey = 'phaserforge.testSeeded.v1';
+    const uiResetKey = 'phaserforge.testUiReset.v1';
+    if (seedOnce && storage.getItem(sentinelKey)) return false;
+    if (seedOnce) storage.setItem(sentinelKey, '1');
+
+    storage.removeItem('phaserforge.inspectorFoldouts.v1');
+    if (!storage.getItem(uiResetKey)) {
+      storage.setItem(uiResetKey, '1');
+      storage.removeItem('phaserforge.leftPaneWidth.v1');
+      storage.removeItem('phaserforge.assetsDockHeight.v1');
+      storage.removeItem('phaserforge.assetsDockShowThumbnails.v1');
+    }
+    storage.setItem('phaserforge.showHitboxOverlay.v1', '1');
+    return true;
+  }, Boolean(options.once));
+
+  if (shouldSeed) {
+    await dispatchAction(page, { type: 'load-yaml-text', text: yaml, sourceLabel: 'sample-project.yaml' });
+  }
   await waitForSampleScene(page);
 }
 
 export async function seedProject(page: Page, project: any): Promise<void> {
   const yaml = serializeProjectToYaml(project);
-  await page.addInitScript((sceneYaml) => {
+  await gotoStudio(page, { forceNavigate: true });
+  await page.evaluate(() => {
     let storage: Storage;
     try {
       storage = window.localStorage;
     } catch {
-      return;
+      return false;
     }
     const uiResetKey = 'phaserforge.testUiReset.v1';
     // Keep tests deterministic by clearing persisted UI state tied to previous runs.
@@ -203,10 +197,9 @@ export async function seedProject(page: Page, project: any): Promise<void> {
       storage.removeItem('phaserforge.assetsDockShowThumbnails.v1');
     }
     storage.setItem('phaserforge.showHitboxOverlay.v1', '1');
-    storage.setItem('phaserforge.projectYaml.v1', sceneYaml);
-    storage.setItem('phaserforge.startupMode.v1', 'reload_last_yaml');
-  }, yaml);
-  await gotoStudio(page, { forceNavigate: true });
+    return true;
+  });
+  await dispatchAction(page, { type: 'load-yaml-text', text: yaml, sourceLabel: 'seed-project.yaml' });
 }
 
 export async function waitForSceneReady(page: Page): Promise<void> {

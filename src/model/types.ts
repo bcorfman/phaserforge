@@ -1,6 +1,6 @@
 export type Id = string;
 
-export type StartupMode = 'reload_last_yaml' | 'new_empty_scene';
+export type StartupMode = 'new_empty_scene';
 
 export type TargetRef =
   | { type: 'entity'; entityId: Id }

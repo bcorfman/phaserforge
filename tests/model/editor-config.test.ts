@@ -6,9 +6,9 @@ import { coerceStartupMode, resolvePublicAssetPath } from '../../src/model/edito
 
 describe('editor config helpers', () => {
   it('coerces startup mode with fallback', () => {
-    expect(coerceStartupMode('reload_last_yaml', 'new_empty_scene')).toBe('reload_last_yaml');
-    expect(coerceStartupMode('new_empty_scene', 'reload_last_yaml')).toBe('new_empty_scene');
-    expect(coerceStartupMode('unknown', 'reload_last_yaml')).toBe('reload_last_yaml');
+    expect(coerceStartupMode('reload_last_yaml', 'new_empty_scene')).toBe('new_empty_scene');
+    expect(coerceStartupMode('new_empty_scene', 'new_empty_scene')).toBe('new_empty_scene');
+    expect(coerceStartupMode('unknown', 'new_empty_scene')).toBe('new_empty_scene');
   });
 
   it('resolves public asset paths relative to the app base path', () => {

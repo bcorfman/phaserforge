@@ -44,7 +44,7 @@ test('creates a text entity, edits it, and round-trips via YAML @critical', asyn
 
   await page.evaluate((yaml) => {
     window.localStorage.setItem('phaserforge.projectYaml.v1', String(yaml));
-    window.localStorage.setItem('phaserforge.startupMode.v1', 'reload_last_yaml');
+    window.localStorage.setItem('phaserforge.startupMode.v1', 'new_empty_scene');
   }, savedYaml);
 
   await gotoStudio(page, { forceNavigate: true });
