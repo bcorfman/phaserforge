@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="980" viewBox="0 0 1440 980">
+  <defs>
+    <style>
+      .bg { fill: #efe7db; }
+      .shell { fill: #faf7f1; stroke: #d2c1a9; stroke-width: 2; }
+      .dim { fill: rgba(80, 65, 40, 0.18); }
+      .dialog { fill: #fbf8f2; stroke: #d3c2aa; stroke-width: 2; }
+      .btn { fill: #fffdfa; stroke: #d3c2aa; stroke-width: 2; }
+      .btnBlue { fill: #3e6bbb; stroke: #6e94d4; stroke-width: 2; }
+      .brand { font: 800 34px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #24303d; }
+      .title { font: 800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #26313f; }
+      .h { font: 760 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; letter-spacing: .12em; fill: #607082; }
+      .strong { font: 760 22px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2a3442; }
+      .text { font: 620 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2e3947; }
+      .small { font: 550 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #728294; }
+    </style>
+  </defs>
+  <rect class="bg" width="1440" height="980" />
+  <rect class="shell" x="40" y="80" width="1360" height="860" rx="28" />
+  <text class="h" x="70" y="118">BROWSER EDITOR</text>
+  <text class="brand" x="70" y="158">PhaserForge</text>
+  <rect class="dim" x="40" y="80" width="1360" height="860" rx="28" />
+
+  <rect class="dialog" x="390" y="230" width="660" height="478" rx="26" />
+  <text class="strong" x="432" y="286">Restore this revision as the current project?</text>
+  <text class="text" x="432" y="344">Your current project will be replaced by the selected revision</text>
+  <text class="text" x="432" y="374">as the new current version.</text>
+
+  <text class="text" x="432" y="432">Before that happens, PhaserForge will save your current state</text>
+  <text class="text" x="432" y="462">into project history so you can return to it later.</text>
+
+  <text class="text" x="432" y="520">This does not rewind history.</text>
+  <text class="text" x="432" y="550">It creates a new current head based on an older revision.</text>
+
+  <text class="small" x="432" y="608">Selected revision: Yesterday 4:18 PM • Before publish</text>
+
+  <rect class="btn" x="432" y="628" width="128" height="52" rx="18" />
+  <text class="text" x="496" y="662" text-anchor="middle">Cancel</text>
+  <rect class="btnBlue" x="780" y="628" width="228" height="52" rx="18" />
+  <text class="text" x="894" y="662" text-anchor="middle" fill="#ffffff">Restore Current Project</text>
+
+  <text class="title" x="40" y="48">Restore Dialog</text>
+</svg>

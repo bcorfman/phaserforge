@@ -32,7 +32,9 @@ import './app/layout.css';
 
 function AppShell() {
   const { state, dispatch } = useEditorStore();
-  const activeScene = state.project.scenes[state.currentSceneId];
+  const displayProject = state.revisionPreview?.project ?? state.project;
+  const displaySceneId = state.revisionPreview?.currentSceneId ?? state.currentSceneId;
+  const activeScene = displayProject.scenes[displaySceneId];
   const [sceneReady, setSceneReady] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [gridSnapEnabled, setGridSnapEnabled] = useState(false);
@@ -44,7 +46,7 @@ function AppShell() {
   const lastViewProjectIdRef = useRef<string | null>(null);
   const appStateRef = useRef({
     project: state.project,
-    currentSceneId: state.currentSceneId,
+    currentSceneId: displaySceneId,
     scene: activeScene,
     selection: state.selection,
     mode: state.mode,
@@ -65,14 +67,14 @@ function AppShell() {
   }, [world.width, world.height]);
 
   useEffect(() => {
-    void loadProjectFonts(state.project.assets.fonts);
-  }, [state.project.assets.fonts]);
+    void loadProjectFonts(displayProject.assets.fonts);
+  }, [displayProject.assets.fonts]);
 
   useEffect(() => {
     appStateRef.current = {
       project: state.project,
-      currentSceneId: state.currentSceneId,
-      scene: state.project.scenes[state.currentSceneId],
+      currentSceneId: displaySceneId,
+      scene: displayProject.scenes[displaySceneId],
       selection: state.selection,
       mode: state.mode,
       dirty: state.dirty,
@@ -84,7 +86,7 @@ function AppShell() {
       uiScale: state.uiScale,
       initialized: state.initialized,
     };
-  }, [state]);
+  }, [displayProject, displaySceneId, state]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -192,7 +194,7 @@ function AppShell() {
       if (event.key !== 'F3') return;
       if (state.selection.kind !== 'entity') return;
 
-      const entity = state.project.scenes[state.currentSceneId]?.entities?.[state.selection.id];
+      const entity = displayProject.scenes[displaySceneId]?.entities?.[state.selection.id];
       if (!(entity as any)?.text) return;
 
       event.preventDefault();
@@ -203,7 +205,7 @@ function AppShell() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [state.currentSceneId, state.mode, state.project.scenes, state.selection]);
+  }, [displayProject.scenes, displaySceneId, state.mode, state.selection]);
 
   useEffect(() => {
     const handleReady = () => {
@@ -223,14 +225,14 @@ function AppShell() {
 
   useEffect(() => {
     if (!sceneReady) return;
-    EventBus.emit('runtime:load-project', state.project, state.currentSceneId, state.mode);
+    EventBus.emit('runtime:load-project', displayProject, displaySceneId, state.mode);
     runtimeLoadedRef.current = true;
-  }, [sceneReady, state.project]);
+  }, [displayProject, displaySceneId, sceneReady, state.mode]);
 
   useEffect(() => {
     if (!sceneReady || !runtimeLoadedRef.current) return;
-    EventBus.emit('runtime:set-active-scene', state.currentSceneId);
-  }, [sceneReady, state.currentSceneId]);
+    EventBus.emit('runtime:set-active-scene', displaySceneId);
+  }, [displaySceneId, sceneReady]);
 
   useEffect(() => {
     if (!sceneReady || !runtimeLoadedRef.current) return;
@@ -254,8 +256,8 @@ function AppShell() {
   }, [dispatch]);
 
   useEffect(() => {
-    EventBus.emit('selection-changed', state.selection);
-  }, [state.selection]);
+    EventBus.emit('selection-changed', state.revisionPreview ? { kind: 'none' } : state.selection);
+  }, [state.revisionPreview, state.selection]);
 
   useEffect(() => {
     EventBus.emit('hitbox-overlay-changed', state.showHitboxOverlay);
