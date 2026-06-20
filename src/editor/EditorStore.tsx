@@ -23,7 +23,7 @@ import { resolveEntityDefaults } from '../model/entityDefaults';
 import { applyGroupArrangeLayout, applyGroupGridLayout, applyGroupGridLayoutPreserveMembers, inferGroupGridLayout, type GroupGridLayout } from './formationLayout';
 import { addEntitiesToGroup, dissolveGroup, insertEntitiesIntoGroup, removeEntitiesFromGroups, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
 import { syncBoundsToWorldResize } from './worldBounds';
-import { loadEditorConfig, loadEditorRegistry, coerceStartupMode, EMPTY_EDITOR_REGISTRY } from '../model/editorConfig';
+import { loadEditorConfig, loadEditorRegistry, EMPTY_EDITOR_REGISTRY } from '../model/editorConfig';
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { createGroupIdFromName, createGroupSpec, getNextFormationName } from './behaviorCommands';
 import { removeSceneGraphItem } from './sceneGraphCommands';
@@ -173,7 +173,6 @@ export type ImportedEntityDraft = {
 
 export type EditorAction =
   | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; syncMode: ProjectSyncMode; registry: EditorRegistryConfig }
-  | { type: 'set-startup-mode'; startupMode: StartupMode }
   | { type: 'set-sync-mode'; syncMode: ProjectSyncMode }
   | { type: 'reset-project' }
   | { type: 'set-project-metadata'; title?: string; publishGithubPagesRepo?: string }
@@ -487,7 +486,7 @@ function defaultState(): EditorState {
     yamlText: '',
     mode: 'edit',
     hasSeenViewHint: false,
-    startupMode: 'reload_last_yaml',
+    startupMode: 'new_empty_scene',
     themeMode: 'system',
     uiScale: DEFAULT_UI_SCALE,
     showHitboxOverlay: true,
@@ -1092,11 +1091,6 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           initialized: true,
         };
       })();
-    case 'set-startup-mode':
-      return {
-        ...state,
-        startupMode: action.startupMode,
-      };
     case 'set-sync-mode':
       return {
         ...state,
@@ -3435,19 +3429,6 @@ function normalizeSidebarScope(scope: SidebarScope): 'projectTree' | 'projectRev
   return 'projectTree';
 }
 
-function loadStoredProjectYaml(): ProjectSpec | null {
-  if (typeof window === 'undefined') return null;
-  const raw = window.localStorage.getItem(PROJECT_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = parseProjectYaml(raw);
-    for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, initState);
   const statusTimeoutRef = React.useRef<number | null>(null);
@@ -3476,11 +3457,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       const [config, registry, snapshot] = await Promise.all([loadEditorConfig(), loadEditorRegistry(), projectPersistence.load()]);
       if (cancelled) return;
 
-      const storedMode = snapshot.preferences?.startupMode ?? (
-        typeof window !== 'undefined'
-          ? coerceStartupMode(window.localStorage.getItem(STARTUP_MODE_STORAGE_KEY), config.startupMode)
-          : config.startupMode
-      );
+      const storedMode = snapshot.preferences?.startupMode ?? config.startupMode;
       const storedThemeMode = snapshot.preferences?.themeMode ?? (
         typeof window !== 'undefined'
           ? coerceThemeMode(window.localStorage.getItem(THEME_MODE_STORAGE_KEY))
@@ -3496,23 +3473,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
           ? window.localStorage.getItem(SHOW_HITBOX_OVERLAY_STORAGE_KEY) !== '0'
           : true
       );
-      const legacyProject = storedMode === 'reload_last_yaml' ? loadStoredProjectYaml() : null;
-      const initialRecord = legacyProject
-        ? buildStoredProjectRecord(legacyProject, {
-          id: legacyProject.id,
-          origin: activeRecordRef.current?.origin ?? 'anonymous',
-          syncStatus: activeRecordRef.current?.syncStatus ?? 'local',
-          cloudProjectId: activeRecordRef.current?.cloudProjectId,
-        })
-        : (
-          snapshot.localProjects.find((record) => record.id === snapshot.workspace.activeProjectId)
-          ?? snapshot.localProjects[0]
-          ?? await projectPersistence.createLocalProject(createEmptyProject())
-        );
-      if (legacyProject) {
-        await projectPersistence.saveProjectRecord(initialRecord);
-        await projectPersistence.setActiveProject(initialRecord.id, snapshot.workspace.syncMode);
-      }
+      const initialRecord = snapshot.localProjects.find((record) => record.id === snapshot.workspace.activeProjectId)
+        ?? snapshot.localProjects[0]
+        ?? await projectPersistence.createLocalProject(createEmptyProject());
       activeRecordRef.current = initialRecord;
       setActiveProjectId(initialRecord.id);
       setActiveProjectRevisions(initialRecord.revisions ?? []);

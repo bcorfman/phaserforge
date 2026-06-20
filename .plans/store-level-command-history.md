@@ -31,7 +31,7 @@ Undoable = any reducer action that changes authored content:
 Not undoable (UI-only):
 - `select`, `select-multiple` (selection is recorded *as metadata* on content commands, but selection-only actions do not create history entries)
 - `toggle-group-expanded` (except when a group is created/deleted/undo restores it and we must restore expansion state)
-- `set-theme-mode`, `set-ui-scale`, `set-startup-mode`, `dismiss-view-hint`, `set-status`, `set-error`, `export-yaml`, etc.
+- `set-theme-mode`, `set-ui-scale`, `dismiss-view-hint`, `set-status`, `set-error`, `export-yaml`, etc.
 
 ### 3) Drag batching/coalescing (Phase 3 requirement)
 Use existing `begin-canvas-interaction` / `end-canvas-interaction` to create a **pending history entry**:

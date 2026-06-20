@@ -17,7 +17,7 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
     }
     storage.setItem('phaserforge.projectYaml.v1', yaml);
     storage.setItem('phaserforge.projectLastSavedAtMs.v1', String(Date.now() - 60_000));
-    storage.setItem('phaserforge.startupMode.v1', 'reload_last_yaml');
+    storage.setItem('phaserforge.startupMode.v1', 'new_empty_scene');
   }, deviceYaml);
 
   await page.route('**/api/v1/auth/csrf', async (route) => {

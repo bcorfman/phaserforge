@@ -108,7 +108,7 @@ function buildPreferencesFromLegacy(reader: LegacyStorageReader): PreferencesRec
   const showHitboxOverlay = reader.getItem('phaserforge.showHitboxOverlay.v1');
   if (!startupMode && !themeMode && !uiScale && !showHitboxOverlay) return null;
   return {
-    startupMode: startupMode === 'new_empty_scene' ? 'new_empty_scene' : 'reload_last_yaml',
+    startupMode: 'new_empty_scene',
     themeMode: themeMode === 'light' || themeMode === 'dark' || themeMode === 'system' ? themeMode : 'system',
     uiScale: Number.isFinite(Number(uiScale)) ? Number(uiScale) : 0.95,
     showHitboxOverlay: showHitboxOverlay !== '0',
