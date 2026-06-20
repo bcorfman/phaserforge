@@ -42,9 +42,9 @@ function CommonNumberInput({
     setDraft(valueState.kind === 'same' ? String(valueState.value) : '');
   }, [editing, valueState]);
 
-  const commit = () => {
+  const commit = (rawValue: string = draft) => {
     setEditing(false);
-    const parsed = coerceFiniteNumber(draft);
+    const parsed = coerceFiniteNumber(rawValue);
     if (parsed === null) {
       setDraft(valueState.kind === 'same' ? String(valueState.value) : '');
       return;
@@ -71,7 +71,7 @@ function CommonNumberInput({
         setEditing(true);
         setDraft(e.target.value);
       }}
-      onBlur={commit}
+      onBlur={(e) => commit(e.currentTarget.value)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           (e.currentTarget as HTMLInputElement).blur();
