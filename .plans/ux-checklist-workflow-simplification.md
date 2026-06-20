@@ -56,9 +56,9 @@ Source of truth for naming: `.plans/editor-workflows-inventory.md`.
 ## 3) YAML Round-trip (tight local loop)
 
 - [x] **Keep (primary, local files):** Viewbar YAML controls (**A23/A24/A25**).
+- [x] **Keep (project-scope parity):** Project Tree `Manage` provides `Import YAML` / `Export as YAML` for project-level file operations.
 - [x] **Keep (primary, cloud):** Cloud panel (**A52/A53**) for cloud load/save only.
 - [x] **Delete / merge:**
-  - [x] Do not add any additional local file “Open/Save” entrypoints elsewhere (YAML panel, Inspector, etc.); Viewbar stays the single local file door.
   - [x] Cloud panel must not add “Open local YAML” actions; cloud and local remain separated to avoid duplicate workflows.
 
 ## 4) Viewport Navigation Consistency

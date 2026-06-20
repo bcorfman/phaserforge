@@ -50,6 +50,7 @@ function readDragEntityIds(dataTransfer: DataTransfer | null): string[] | null {
 
 type OverflowMenuState =
   | { kind: 'project-root' }
+  | { kind: 'project-browser' }
   | { kind: 'scene'; sceneId: Id }
   | { kind: 'entity'; sceneId: Id; entityId: Id }
   | { kind: 'group'; sceneId: Id; groupId: Id }
@@ -104,7 +105,6 @@ export function EntityList() {
     search: projectSearch,
     filter: projectFilter,
   });
-  const activeProject = [...persistence.localProjects, ...persistence.cloudProjects].find((entry) => entry.id === persistence.activeProjectId) ?? null;
 
   const importYaml = async () => {
     const picker = getOpenFilePicker();
@@ -145,20 +145,17 @@ export function EntityList() {
       projectPicker={{
         projects: projectModel.visibleProjects,
         counts: projectModel.counts,
-        activeProject,
         search: projectSearch,
         filter: projectFilter,
-        syncMode: state.syncMode,
         onSearchChange: setProjectSearch,
         onFilterChange: setProjectFilter,
         onOpenProject: (projectId: string) => void persistence.openProject(projectId),
-        onCreateProject: () => void persistence.createProject(),
-        onImportYaml: () => void importYaml(),
         onRefreshCloudProjects: () => void persistence.refreshCloudProjects(),
-        onDuplicateProject: () => void persistence.duplicateCurrentProject(),
-        onExportYaml: () => void exportYamlToDisk(serializeProjectToYaml(project), { suggestedName: `${project.title?.trim() || project.id}.yaml` }),
-        onToggleSyncMode: () => void persistence.toggleSyncMode(),
       }}
+      onCreateProject={() => void persistence.createProject()}
+      onImportYaml={() => void importYaml()}
+      onExportYaml={() => void exportYamlToDisk(serializeProjectToYaml(project), { suggestedName: `${project.title?.trim() || project.id}.yaml` })}
+      onToggleSyncMode={() => void persistence.toggleSyncMode()}
       onCopyRevision={(revisionId, name) => void persistence.copyRevisionToNewProject(revisionId, name)}
       onRestoreRevision={(revisionId) => void persistence.restoreRevision(revisionId)}
     />
@@ -180,6 +177,10 @@ export function EntityListView({
   startupMode,
   dispatch,
   projectPicker,
+  onCreateProject = () => {},
+  onImportYaml = () => {},
+  onExportYaml = () => {},
+  onToggleSyncMode = () => {},
   onCopyRevision = () => {},
   onRestoreRevision = () => {},
 }: {
@@ -197,6 +198,10 @@ export function EntityListView({
   startupMode: 'reload_last_yaml' | 'new_empty_scene';
   dispatch: (action: any) => void;
   projectPicker?: ComponentProps<typeof ProjectPickerPanel>;
+  onCreateProject?: () => void;
+  onImportYaml?: () => void;
+  onExportYaml?: () => void;
+  onToggleSyncMode?: () => void;
   onCopyRevision?: (revisionId: string, name: string) => void;
   onRestoreRevision?: (revisionId: string) => void;
 }) {
@@ -1331,7 +1336,6 @@ export function EntityListView({
                 })}
               </div>
             </section>
-            {projectPicker ? <ProjectPickerPanel {...projectPicker} /> : null}
             <section className="panel-section" aria-labelledby="project-startup" data-testid="project-startup-panel">
               <div className="panel-heading-row">
                 <h3 className="panel-heading" id="project-startup">Startup &amp; Reset</h3>
@@ -1629,13 +1633,73 @@ export function EntityListView({
         <div
           ref={menuRootRef}
           className="scene-graph-menu"
-          style={{ position: 'fixed', left: menuPosition.x, top: menuPosition.y, zIndex: 50, minWidth: 200 }}
+          style={{
+            position: 'fixed',
+            left: menuPosition.x,
+            top: menuPosition.y,
+            zIndex: 50,
+            minWidth: menuOpen.kind === 'project-browser' ? 420 : 200,
+            maxWidth: menuOpen.kind === 'project-browser' ? 520 : undefined,
+          }}
           data-testid="scene-graph-overflow-menu"
           role="menu"
         >
           {menuOpen.kind === 'project-root' ? (
             <>
               <div className="scene-graph-menu-hint">{project.title?.trim() || 'Untitled Project'}</div>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-create"
+                onClick={() => {
+                  setMenuOpen(null);
+                  onCreateProject();
+                }}
+              >
+                Create New
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-open"
+                onClick={() => setMenuOpen({ kind: 'project-browser' })}
+              >
+                Open...
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-toggle-sync"
+                onClick={() => {
+                  setMenuOpen(null);
+                  onToggleSyncMode();
+                }}
+              >
+                Toggle Sync Mode
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-import-yaml"
+                onClick={() => {
+                  setMenuOpen(null);
+                  onImportYaml();
+                }}
+              >
+                Import YAML
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-export-yaml"
+                onClick={() => {
+                  setMenuOpen(null);
+                  onExportYaml();
+                }}
+              >
+                Export as YAML
+              </button>
+              <div className="scene-graph-menu-divider" />
               <button
                 type="button"
                 className="scene-graph-menu-item"
@@ -1672,6 +1736,31 @@ export function EntityListView({
                 Clear Project ...
               </button>
             </>
+          ) : null}
+
+          {menuOpen.kind === 'project-browser' ? (
+            <div style={{ maxHeight: 'min(70vh, 720px)', overflow: 'auto' }}>
+              <div className="panel-heading-row" style={{ padding: '0.2rem 0.2rem 0 0.2rem' }}>
+                <div className="scene-graph-menu-hint" style={{ margin: 0 }}>Open Project</div>
+                <button
+                  type="button"
+                  className="button button-compact"
+                  data-testid="project-open-back"
+                  onClick={() => setMenuOpen({ kind: 'project-root' })}
+                >
+                  Back
+                </button>
+              </div>
+              {projectPicker ? (
+                <ProjectPickerPanel
+                  {...projectPicker}
+                  onOpenProject={(projectId) => {
+                    setMenuOpen(null);
+                    projectPicker.onOpenProject(projectId);
+                  }}
+                />
+              ) : null}
+            </div>
           ) : null}
 
           {menuOpen.kind === 'scene' ? (() => {

@@ -122,6 +122,8 @@ describe('EntityList', () => {
     expect(markup).toContain('Project Tree');
     expect(markup).toContain('Scenes');
     expect(markup).toContain('create-scene-button');
+    expect(markup).not.toContain('Active Project Summary');
+    expect(markup).not.toContain('project-picker-panel');
   });
 
   it('flexes the scenes list so the assets dock can reach the bottom', () => {
