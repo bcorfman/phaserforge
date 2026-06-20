@@ -126,6 +126,25 @@ describe('EntityList', () => {
     expect(markup).not.toContain('project-picker-panel');
   });
 
+  it('renders the project revisions back button with the inspector back label', () => {
+    const markup = renderToStaticMarkup(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
+        selection={{ kind: 'none' }}
+        sidebarScope="projectRevisions"
+        expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
+        dispatch={() => {}}
+      />
+    );
+
+    expect(markup).toContain('data-testid=\"project-revisions-back-button\"');
+    expect(markup).toContain('aria-label=\"Back to Project Tree\"');
+    expect(markup).toContain('← Back');
+  });
+
   it('flexes the scenes list so the assets dock can reach the bottom', () => {
     const markup = renderToStaticMarkup(
       <EntityListView
