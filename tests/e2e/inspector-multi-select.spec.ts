@@ -44,9 +44,10 @@ test('multi-select inspector disables non-applicable fields and bulk-edits scale
   await expect(page.getByTestId('entity-x-input')).toBeDisabled();
 
   await page.getByTestId('entity-scale-x-input').fill('1.25');
-  await page.getByTestId('entity-scale-y-input').fill('0.75');
-  // Commit via blur.
-  await page.getByTestId('entity-rotation-input').click();
+  const scaleYInput = page.getByTestId('entity-scale-y-input');
+  await scaleYInput.fill('0.75');
+  // Blur the edited field directly so the commit signal does not depend on a follow-up click landing.
+  await scaleYInput.blur();
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { entities: Record<string, { scaleX?: number; scaleY?: number }> } }>(page);
