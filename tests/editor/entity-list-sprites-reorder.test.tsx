@@ -54,7 +54,6 @@ describe('EntityList sprites reorder', () => {
           sidebarScope="scene"
           expandedGroups={{}}
           mode="edit"
-          startupMode="new_empty_scene"
           dispatch={dispatch}
         />
       );

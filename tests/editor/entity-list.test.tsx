@@ -124,6 +124,8 @@ describe('EntityList', () => {
     expect(markup).toContain('create-scene-button');
     expect(markup).not.toContain('Active Project Summary');
     expect(markup).not.toContain('project-picker-panel');
+    expect(markup).not.toContain('project-startup-panel');
+    expect(markup).not.toContain('Startup &amp; Reset');
   });
 
   it('renders the project revisions back button with the inspector back label', () => {

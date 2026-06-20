@@ -37,7 +37,7 @@ test('background layer configuration survives edit/play mode switches @browser',
   await page.addInitScript(([projectYaml]) => {
     window.localStorage.removeItem('phaserforge.inspectorFoldouts.v1');
     window.localStorage.setItem('phaserforge.projectYaml.v1', projectYaml);
-    window.localStorage.setItem('phaserforge.startupMode.v1', 'reload_last_yaml');
+    window.localStorage.setItem('phaserforge.startupMode.v1', 'new_empty_scene');
   }, [yaml]);
 
   await gotoStudio(page);

@@ -92,9 +92,9 @@ describe('storybook interaction stories', () => {
     expect(true).toBe(true);
   });
 
-  it('runs the entity list scope and startup mode stories', async () => {
+  it('runs the entity list scope stories', async () => {
     await renderStoryAndPlay(composedEntityListStories.SceneScopeDefault as any);
-    await renderStoryAndPlay(composedEntityListStories.ProjectScopeStartupMode as any);
+    await renderStoryAndPlay(composedEntityListStories.ProjectScopeDefault as any);
     expect(true).toBe(true);
   });
 

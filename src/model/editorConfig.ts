@@ -2,7 +2,7 @@ import { parse } from 'yaml';
 import { EditorConfig, EditorRegistryConfig, StartupMode } from './types';
 
 export const DEFAULT_EDITOR_CONFIG: EditorConfig = {
-  startupMode: 'reload_last_yaml',
+  startupMode: 'new_empty_scene',
 };
 
 export const EMPTY_EDITOR_REGISTRY: EditorRegistryConfig = {
@@ -36,9 +36,7 @@ export async function loadEditorConfig(): Promise<EditorConfig> {
   const config = await fetchYaml<Partial<EditorConfig>>(resolvePublicAssetPath('/editor-config.yaml'), DEFAULT_EDITOR_CONFIG);
   const startupMode = config.startupMode;
   return {
-    startupMode: startupMode === 'new_empty_scene' || startupMode === 'reload_last_yaml'
-      ? startupMode
-      : DEFAULT_EDITOR_CONFIG.startupMode,
+    startupMode: startupMode === 'new_empty_scene' ? startupMode : DEFAULT_EDITOR_CONFIG.startupMode,
   };
 }
 
@@ -52,5 +50,5 @@ export async function loadEditorRegistry(): Promise<EditorRegistryConfig> {
 }
 
 export function coerceStartupMode(value: string | null | undefined, fallback: StartupMode): StartupMode {
-  return value === 'new_empty_scene' || value === 'reload_last_yaml' ? value : fallback;
+  return value === 'new_empty_scene' ? value : fallback;
 }
