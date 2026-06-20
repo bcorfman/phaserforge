@@ -83,6 +83,7 @@ function getSceneBridge(): SceneBridge | null {
 
   let firstNonNull: SceneBridge | null = null;
   let activeScene: SceneBridge | null = null;
+  let readyPreferredScene: SceneBridge | null = null;
   for (const getter of sceneGetters) {
     let scene: SceneBridge | null = null;
     try {
@@ -98,10 +99,13 @@ function getSceneBridge(): SceneBridge | null {
     } catch {
       testSnapshot = null;
     }
+    if (preferredKey && testSnapshot?.sceneKey === preferredKey && testSnapshot?.ready) {
+      readyPreferredScene = scene;
+    }
     if (testSnapshot?.isActive) {
       if (!activeScene) activeScene = scene;
       // If the active scene matches the preferred key, return immediately.
-      if (preferredKey && testSnapshot?.sceneKey === preferredKey) return scene;
+      if (preferredKey && testSnapshot?.sceneKey === preferredKey && testSnapshot?.ready) return scene;
     }
     if (preferredKey && testSnapshot?.sceneKey === preferredKey) {
       // Prefer the mapped scene if nothing is marked active (fallback).
@@ -109,6 +113,7 @@ function getSceneBridge(): SceneBridge | null {
     }
   }
 
+  if (readyPreferredScene) return readyPreferredScene;
   return activeScene ?? firstNonNull;
 }
 

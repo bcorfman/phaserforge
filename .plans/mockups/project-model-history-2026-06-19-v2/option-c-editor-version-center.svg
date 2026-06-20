@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1040" viewBox="0 0 1680 1040">
+  <defs>
+    <style>
+      .bg { fill: #efe7db; }
+      .shell { fill: #faf7f1; stroke: #d2c1a9; stroke-width: 2; }
+      .panel { fill: #fbf8f2; stroke: #d3c2aa; stroke-width: 2; }
+      .panelSoft { fill: #f3ece0; stroke: #d3c2aa; stroke-width: 2; }
+      .tabOn { fill: #d8eef0; stroke: #7db0b6; stroke-width: 2; }
+      .btn { fill: #fffdfa; stroke: #d3c2aa; stroke-width: 2; }
+      .btnBlue { fill: #3e6bbb; stroke: #6e94d4; stroke-width: 2; }
+      .btnGreen { fill: #d5efe0; stroke: #8abb9b; stroke-width: 2; }
+      .callout { fill: #fff2c7; stroke: #c89b2a; stroke-width: 2; }
+      .line { stroke: #c89b2a; stroke-width: 2.5; fill: none; }
+      .title { font: 800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #26313f; }
+      .brand { font: 800 34px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #24303d; }
+      .h { font: 760 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; letter-spacing: .12em; fill: #607082; }
+      .label { font: 650 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #667687; }
+      .text { font: 620 17px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2e3947; }
+      .strong { font: 760 20px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2a3442; }
+      .small { font: 550 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #728294; }
+      .mono { font: 620 16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #2d3845; }
+      .callText { font: 620 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+      .num { font: 800 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+    </style>
+  </defs>
+  <rect class="bg" width="1680" height="1040" />
+  <text class="title" x="48" y="56">Option C: Version Center In Header</text>
+
+  <rect class="shell" x="42" y="84" width="1310" height="900" rx="28" />
+  <text class="h" x="72" y="122">BROWSER EDITOR</text>
+  <text class="brand" x="72" y="162">PhaserForge</text>
+  <rect class="tabOn" x="320" y="132" width="108" height="34" rx="17" />
+  <text class="text" x="374" y="154" text-anchor="middle">Online</text>
+
+  <rect class="tabOn" x="72" y="222" width="1180" height="88" rx="22" />
+  <text class="strong" x="100" y="258">Pattern Demo Playground</text>
+  <rect class="btnGreen" x="470" y="236" width="128" height="34" rx="17" />
+  <text class="text" x="534" y="258" text-anchor="middle">Autosaved</text>
+  <rect class="btn" x="616" y="236" width="170" height="34" rx="17" />
+  <text class="text" x="701" y="258" text-anchor="middle">History: 18 versions</text>
+  <rect class="btn" x="804" y="236" width="170" height="34" rx="17" />
+  <text class="text" x="889" y="258" text-anchor="middle">New checkpoint</text>
+  <text class="small" x="100" y="286">Project recovery status is visible in the shell at all times.</text>
+
+  <rect class="panel" x="72" y="338" width="254" height="602" rx="24" />
+  <rect class="btn" x="96" y="370" width="206" height="50" rx="18" />
+  <text class="text" x="199" y="402" text-anchor="middle">Overview</text>
+  <rect class="tabOn" x="96" y="432" width="206" height="50" rx="18" />
+  <text class="text" x="199" y="464" text-anchor="middle">History</text>
+  <rect class="btn" x="96" y="494" width="206" height="50" rx="18" />
+  <text class="text" x="199" y="526" text-anchor="middle">Scenes</text>
+  <rect class="btn" x="96" y="556" width="206" height="50" rx="18" />
+  <text class="text" x="199" y="588" text-anchor="middle">Releases</text>
+
+  <rect class="panel" x="352" y="338" width="598" height="602" rx="24" />
+  <text class="h" x="378" y="378">RESTORE TIMELINE</text>
+  <rect class="panelSoft" x="378" y="404" width="546" height="106" rx="20" />
+  <text class="strong" x="404" y="442">Today 10:42 AM • Autosave checkpoint</text>
+  <text class="small" x="404" y="474">Idle burst save after 11 changes • Scenes 3 • Entities 42</text>
+  <rect class="btn" x="654" y="426" width="90" height="36" rx="16" />
+  <text class="text" x="699" y="450" text-anchor="middle">Preview</text>
+  <rect class="btnBlue" x="754" y="426" width="90" height="36" rx="16" />
+  <text class="text" x="799" y="450" text-anchor="middle" fill="#ffffff">Restore</text>
+  <rect class="btn" x="854" y="426" width="46" height="36" rx="16" />
+  <text class="text" x="877" y="450" text-anchor="middle">Copy</text>
+
+  <rect class="panelSoft" x="378" y="528" width="546" height="106" rx="20" />
+  <text class="strong" x="404" y="566">Yesterday 4:18 PM • Before publish</text>
+  <text class="small" x="404" y="598">Automatic protected checkpoint created before release</text>
+  <rect class="btn" x="654" y="550" width="90" height="36" rx="16" />
+  <text class="text" x="699" y="574" text-anchor="middle">Preview</text>
+  <rect class="btnBlue" x="754" y="550" width="90" height="36" rx="16" />
+  <text class="text" x="799" y="574" text-anchor="middle" fill="#ffffff">Restore</text>
+  <rect class="btn" x="854" y="550" width="46" height="36" rx="16" />
+  <text class="text" x="877" y="574" text-anchor="middle">Copy</text>
+
+  <rect class="panelSoft" x="378" y="652" width="546" height="106" rx="20" />
+  <text class="strong" x="404" y="690">Jun 17 • Named version: Good pacing</text>
+  <text class="small" x="404" y="722">Explicit milestone saved by user</text>
+  <rect class="btn" x="654" y="674" width="90" height="36" rx="16" />
+  <text class="text" x="699" y="698" text-anchor="middle">Preview</text>
+  <rect class="btnBlue" x="754" y="674" width="90" height="36" rx="16" />
+  <text class="text" x="799" y="698" text-anchor="middle" fill="#ffffff">Restore</text>
+  <rect class="btn" x="854" y="674" width="46" height="36" rx="16" />
+  <text class="text" x="877" y="698" text-anchor="middle">Copy</text>
+
+  <rect class="panel" x="976" y="338" width="342" height="602" rx="24" />
+  <text class="h" x="1002" y="378">RELEASES</text>
+  <text class="label" x="1002" y="424">Project Name</text>
+  <rect class="btn" x="1002" y="442" width="290" height="50" rx="18" />
+  <text class="mono" x="1024" y="474">Pattern Demo Playground</text>
+  <text class="label" x="1002" y="536">Release URL / Slug</text>
+  <rect class="btn" x="1002" y="554" width="290" height="50" rx="18" />
+  <text class="mono" x="1024" y="586">pattern-demo</text>
+  <rect class="btnBlue" x="1002" y="640" width="290" height="54" rx="18" />
+  <text class="text" x="1147" y="674" text-anchor="middle" fill="#ffffff">Publish Release</text>
+
+  <rect class="callout" x="1394" y="140" width="240" height="144" rx="18" />
+  <circle cx="1422" cy="168" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1422" y="174" text-anchor="middle">1</text>
+  <text class="callText" x="1450" y="170">History becomes a shell-</text>
+  <text class="callText" x="1450" y="192">level signal. New users do</text>
+  <text class="callText" x="1450" y="214">not need to guess whether</text>
+  <text class="callText" x="1450" y="236">autosave is reversible.</text>
+  <path class="line" d="M1394 234 C1330 234, 1260 250, 1250 252" />
+
+  <rect class="callout" x="1394" y="430" width="240" height="134" rx="18" />
+  <circle cx="1422" cy="458" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1422" y="464" text-anchor="middle">2</text>
+  <text class="callText" x="1450" y="460">This is the strongest</text>
+  <text class="callText" x="1450" y="482">recovery story, but it also</text>
+  <text class="callText" x="1450" y="504">changes the global shell</text>
+  <text class="callText" x="1450" y="526">more than A or B.</text>
+  <path class="line" d="M1394 510 C1320 510, 1180 592, 924 592" />
+
+  <rect class="callout" x="1394" y="700" width="240" height="140" rx="18" />
+  <circle cx="1422" cy="728" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1422" y="734" text-anchor="middle">3</text>
+  <text class="callText" x="1450" y="730">Release naming is still a</text>
+  <text class="callText" x="1450" y="752">separate field in the release</text>
+  <text class="callText" x="1450" y="774">surface, not part of project</text>
+  <text class="callText" x="1450" y="796">identity.</text>
+  <path class="line" d="M1394 780 C1326 780, 1298 570, 1290 580" />
+</svg>

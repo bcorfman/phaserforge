@@ -28,24 +28,18 @@ describe('ProjectPickerPanel', () => {
   it('renders sources, recent projects, and active summary actions', () => {
     render(
       <ProjectPickerPanel
-        activeProject={entry()}
         counts={{ cloud: 12, local: 3, unsynced: 2 }}
         filter="recent"
         onCreateProject={() => {}}
-        onDuplicateProject={() => {}}
-        onExportYaml={() => {}}
         onFilterChange={() => {}}
-        onImportYaml={() => {}}
         onOpenProject={() => {}}
         onRefreshCloudProjects={() => {}}
         onSearchChange={() => {}}
-        onToggleSyncMode={() => {}}
         projects={[
           entry(),
           entry({ id: 'local:2', projectId: 'project-2', title: 'Local Debug Copy', source: 'local', status: 'local', isCurrent: false, sceneCount: 1 }),
         ]}
         search=""
-        syncMode="online"
       />
     );
 
@@ -54,7 +48,7 @@ describe('ProjectPickerPanel', () => {
     expect(screen.getByText('12 available')).toBeTruthy();
     expect(screen.getByText('Local Debug Copy')).toBeTruthy();
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('project-sync-toggle').textContent).toContain('Online');
+    expect(screen.queryByText('Active Project Summary')).toBeNull();
   });
 
   it('routes user actions through callbacks', () => {
@@ -64,21 +58,15 @@ describe('ProjectPickerPanel', () => {
 
     render(
       <ProjectPickerPanel
-        activeProject={entry()}
         counts={{ cloud: 1, local: 0, unsynced: 0 }}
         filter="recent"
         onCreateProject={() => {}}
-        onDuplicateProject={() => {}}
-        onExportYaml={() => {}}
         onFilterChange={onFilterChange}
-        onImportYaml={() => {}}
         onOpenProject={onOpenProject}
         onRefreshCloudProjects={() => {}}
         onSearchChange={onSearchChange}
-        onToggleSyncMode={() => {}}
         projects={[entry()]}
         search=""
-        syncMode="offline"
       />
     );
 

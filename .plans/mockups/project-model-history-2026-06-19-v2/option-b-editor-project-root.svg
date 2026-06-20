@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1040" viewBox="0 0 1680 1040">
+  <defs>
+    <style>
+      .bg { fill: #efe7db; }
+      .shell { fill: #faf7f1; stroke: #d2c1a9; stroke-width: 2; }
+      .panel { fill: #fbf8f2; stroke: #d3c2aa; stroke-width: 2; }
+      .panelSoft { fill: #f3ece0; stroke: #d3c2aa; stroke-width: 2; }
+      .tabOn { fill: #d8eef0; stroke: #7db0b6; stroke-width: 2; }
+      .btn { fill: #fffdfa; stroke: #d3c2aa; stroke-width: 2; }
+      .btnBlue { fill: #3e6bbb; stroke: #6e94d4; stroke-width: 2; }
+      .btnGreen { fill: #d5efe0; stroke: #8abb9b; stroke-width: 2; }
+      .callout { fill: #fff2c7; stroke: #c89b2a; stroke-width: 2; }
+      .line { stroke: #c89b2a; stroke-width: 2.5; fill: none; }
+      .title { font: 800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #26313f; }
+      .brand { font: 800 34px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #24303d; }
+      .h { font: 760 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; letter-spacing: .12em; fill: #607082; }
+      .label { font: 650 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #667687; }
+      .text { font: 620 17px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2e3947; }
+      .strong { font: 760 20px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2a3442; }
+      .small { font: 550 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #728294; }
+      .mono { font: 620 16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #2d3845; }
+      .callText { font: 620 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+      .num { font: 800 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+    </style>
+  </defs>
+  <rect class="bg" width="1680" height="1040" />
+  <text class="title" x="48" y="56">Option B: Project Root Above Scenes</text>
+
+  <rect class="shell" x="42" y="84" width="1310" height="900" rx="28" />
+  <text class="h" x="72" y="122">BROWSER EDITOR</text>
+  <text class="brand" x="72" y="162">PhaserForge</text>
+  <rect class="tabOn" x="320" y="132" width="108" height="34" rx="17" />
+  <text class="text" x="374" y="154" text-anchor="middle">Online</text>
+  <text class="small" x="72" y="202">Move entities on the canvas, tune formations in the inspector, and round-trip YAML without leaving the editor.</text>
+
+  <rect class="panel" x="70" y="240" width="360" height="700" rx="24" />
+  <rect class="tabOn" x="92" y="272" width="108" height="46" rx="18" />
+  <text class="text" x="146" y="301" text-anchor="middle">Scene</text>
+  <rect class="btn" x="210" y="272" width="108" height="46" rx="18" />
+  <text class="text" x="264" y="301" text-anchor="middle">Project</text>
+
+  <text class="h" x="92" y="360">PROJECT TREE</text>
+  <rect class="panelSoft" x="92" y="386" width="316" height="92" rx="18" />
+  <text class="strong" x="116" y="424">▾ Pattern Demo Playground</text>
+  <text class="small" x="116" y="452">working title • autosaved • 3 scenes</text>
+
+  <text class="h" x="116" y="520">SCENES</text>
+  <rect class="tabOn" x="116" y="544" width="270" height="48" rx="18" />
+  <text class="text" x="142" y="575">Main Menu</text>
+  <rect class="btn" x="136" y="604" width="250" height="48" rx="18" />
+  <text class="text" x="162" y="635">Level 01</text>
+  <rect class="btn" x="136" y="664" width="250" height="48" rx="18" />
+  <text class="text" x="162" y="695">Boss Arena</text>
+  <rect class="btn" x="116" y="740" width="126" height="48" rx="18" />
+  <text class="text" x="179" y="771" text-anchor="middle">+ Add Scene</text>
+
+  <rect class="panel" x="452" y="240" width="484" height="700" rx="24" />
+  <rect class="panelSoft" x="478" y="266" width="432" height="416" rx="20" />
+  <text class="small" x="694" y="470" text-anchor="middle">Editor canvas</text>
+  <text class="small" x="694" y="496" text-anchor="middle">selected scene content</text>
+
+  <rect class="panelSoft" x="478" y="708" width="432" height="204" rx="20" />
+  <text class="h" x="502" y="742">PROJECT REVISIONS</text>
+  <rect class="btn" x="502" y="764" width="384" height="40" rx="16" />
+  <text class="text" x="522" y="790">Autosave • Today 10:42 AM</text>
+  <rect class="btn" x="502" y="816" width="384" height="40" rx="16" />
+  <text class="text" x="522" y="842">Named checkpoint • Good pacing</text>
+  <rect class="btnBlue" x="502" y="868" width="184" height="34" rx="16" />
+  <text class="text" x="594" y="891" text-anchor="middle" fill="#ffffff">Restore Selected</text>
+
+  <rect class="panel" x="958" y="240" width="360" height="700" rx="24" />
+  <rect class="btn" x="982" y="272" width="98" height="46" rx="18" />
+  <text class="text" x="1031" y="301" text-anchor="middle">Inspector</text>
+  <rect class="tabOn" x="1090" y="272" width="90" height="46" rx="18" />
+  <text class="text" x="1135" y="301" text-anchor="middle">Cloud</text>
+
+  <text class="h" x="982" y="360">PUBLISH (GITHUB PAGES)</text>
+  <text class="label" x="982" y="404">Project Name</text>
+  <rect class="btn" x="982" y="422" width="304" height="52" rx="18" />
+  <text class="mono" x="1004" y="456">Pattern Demo Playground</text>
+  <text class="label" x="982" y="506">Release URL / Slug</text>
+  <rect class="btn" x="982" y="524" width="304" height="52" rx="18" />
+  <text class="mono" x="1004" y="558">pattern-demo</text>
+  <rect class="btnBlue" x="982" y="612" width="304" height="54" rx="18" />
+  <text class="text" x="1134" y="646" text-anchor="middle" fill="#ffffff">Publish</text>
+
+  <rect class="callout" x="1394" y="150" width="240" height="132" rx="18" />
+  <circle cx="1422" cy="178" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1422" y="184" text-anchor="middle">1</text>
+  <text class="callText" x="1450" y="180">The tree now has a true</text>
+  <text class="callText" x="1450" y="202">project root above scenes.</text>
+  <text class="callText" x="1450" y="224">That makes the hierarchy</text>
+  <text class="callText" x="1450" y="246">explicit and familiar.</text>
+  <path class="line" d="M1394 234 C1330 234, 1260 310, 404 430" />
+
+  <rect class="callout" x="1394" y="420" width="240" height="142" rx="18" />
+  <circle cx="1422" cy="448" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1422" y="454" text-anchor="middle">2</text>
+  <text class="callText" x="1450" y="450">Restore is attached to the</text>
+  <text class="callText" x="1450" y="472">project root, not hidden</text>
+  <text class="callText" x="1450" y="494">behind manual YAML export.</text>
+  <text class="callText" x="1450" y="516">Autosave becomes safer.</text>
+  <path class="line" d="M1394 520 C1320 520, 1200 764, 886 786" />
+
+  <rect class="callout" x="1394" y="694" width="240" height="152" rx="18" />
+  <circle cx="1422" cy="722" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1422" y="728" text-anchor="middle">3</text>
+  <text class="callText" x="1450" y="724">Publishing still shows both</text>
+  <text class="callText" x="1450" y="746">fields, but they are clearly</text>
+  <text class="callText" x="1450" y="768">different concerns: working</text>
+  <text class="callText" x="1450" y="790">title vs release slug.</text>
+  <path class="line" d="M1394 790 C1328 790, 1298 558, 1288 552" />
+</svg>

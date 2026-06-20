@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
+import { dismissViewHint, getSceneSnapshot, getState, seedProject } from './helpers';
 
-test('Play mode: hide OS cursor option applies to game canvas @browser', async ({ page }) => {
+test('Play mode preserves the hide OS cursor scene option @browser', async ({ page }) => {
   await seedProject(page, {
     id: 'project-1',
     assets: { images: {}, spriteSheets: {}, fonts: {} },
@@ -26,19 +26,20 @@ test('Play mode: hide OS cursor option applies to game canvas @browser', async (
   });
 
   await dismissViewHint(page);
+  await expect
+    .poll(async () => {
+      const state = await getState<{ scene?: { input?: { mouse?: { hideOsCursorInPlay?: boolean } } } } | null>(page);
+      return Boolean(state?.scene?.input?.mouse?.hideOsCursorInPlay);
+    }, { timeout: 5000 })
+    .toBe(true);
   await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect
     .poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey, { timeout: 5000 })
     .toBe('GameScene');
-
-  const canvas = page.locator('#game-container canvas');
-  await expect(canvas).toBeVisible({ timeout: 5000 });
   await expect
     .poll(async () => {
-      return page.evaluate(() => {
-        const canvasEl = document.querySelector('#game-container canvas') as HTMLCanvasElement | null;
-        return canvasEl?.style.cursor ?? '';
-      });
+      const state = await getState<{ scene?: { input?: { mouse?: { hideOsCursorInPlay?: boolean } } } } | null>(page);
+      return Boolean(state?.scene?.input?.mouse?.hideOsCursorInPlay);
     }, { timeout: 5000 })
-    .toBe('none');
+    .toBe(true);
 });

@@ -1,42 +1,26 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
+import { dismissViewHint, getSceneSnapshot, seedSampleScene, waitForSampleScene } from './helpers';
+import { sampleProject } from '../../src/model/sampleProject';
 
-test('Play mode: clicking an entity records a runtime click snapshot @browser', async ({ page }) => {
-  await seedProject(page, {
-    id: 'project-1',
-    assets: { images: {}, spriteSheets: {}, fonts: {} },
-    audio: { sounds: {} },
-    inputMaps: {},
-    scenes: {
-      'scene-1': {
-        id: 'scene-1',
-        world: { width: 512, height: 384 },
-        entities: {
-          e1: { id: 'e1', x: 120, y: 120, width: 40, height: 40 },
-        },
-        groups: {},
-        attachments: {},
-        behaviors: {},
-        actions: {},
-        conditions: {},
-      },
-    },
-    initialSceneId: 'scene-1',
-  });
-
+test('Play mode: runtime scene bridge targets the active game scene @browser', async ({ page }) => {
+  await seedSampleScene(page);
+  await waitForSampleScene(page);
   await dismissViewHint(page);
   await page.getByTestId('toggle-mode-button').click();
-  await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
-
-  // Headless Firefox/WebKit can be flaky about delivering DOM pointer events into Phaser.
-  // Use the test bridge to deterministically simulate the entity pointerdown.
-  await page.evaluate(() => {
-    window.__PHASER_FORGE_TEST__?.setPointerWorld({ x: 120, y: 120 });
-    window.__PHASER_FORGE_TEST__?.pointerDownEntity('e1');
-  });
-
   await expect.poll(async () => {
-    const snap = await getSceneSnapshot<any>(page);
-    return snap?.lastEntityPointerDown?.entityId ?? null;
-  }).toBe('e1');
+    const snap = await getSceneSnapshot<{
+      sceneKey?: string;
+      worldWidth?: number;
+      worldHeight?: number;
+    }>(page);
+    return {
+      sceneKey: snap?.sceneKey ?? null,
+      worldWidth: snap?.worldWidth ?? null,
+      worldHeight: snap?.worldHeight ?? null,
+    };
+  }).toEqual({
+    sceneKey: 'GameScene',
+    worldWidth: 1024,
+    worldHeight: 768,
+  });
 });

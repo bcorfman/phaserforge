@@ -3,36 +3,22 @@ import { formatProjectTimestamp } from './projectLibrary';
 
 export function ProjectPickerPanel({
   projects,
-  activeProject,
   counts,
   search,
   filter,
-  syncMode,
   onSearchChange,
   onFilterChange,
   onOpenProject,
-  onCreateProject,
-  onImportYaml,
   onRefreshCloudProjects,
-  onDuplicateProject,
-  onExportYaml,
-  onToggleSyncMode,
 }: {
   projects: ProjectLibraryEntry[];
-  activeProject: ProjectLibraryEntry | null;
   counts: { cloud: number; local: number; unsynced: number };
   search: string;
   filter: ProjectPickerFilter;
-  syncMode: 'online' | 'offline';
   onSearchChange: (value: string) => void;
   onFilterChange: (value: ProjectPickerFilter) => void;
   onOpenProject: (projectId: string) => void;
-  onCreateProject: () => void;
-  onImportYaml: () => void;
   onRefreshCloudProjects: () => void;
-  onDuplicateProject: () => void;
-  onExportYaml: () => void;
-  onToggleSyncMode: () => void;
 }) {
   const filters: Array<{ value: ProjectPickerFilter; label: string }> = [
     { value: 'recent', label: 'Recent' },
@@ -45,15 +31,8 @@ export function ProjectPickerPanel({
     <div className="project-picker-panel" data-testid="project-picker-panel">
       <section className="panel-section" aria-labelledby="project-picker-projects">
         <div className="panel-heading-row">
-          <h3 className="panel-heading" id="project-picker-projects">Projects</h3>
-          <button
-            className={`button button-compact project-sync-toggle ${syncMode === 'offline' ? 'button-danger' : ''}`}
-            type="button"
-            data-testid="project-sync-toggle"
-            onClick={onToggleSyncMode}
-          >
-            {syncMode === 'offline' ? 'Offline' : 'Online'}
-          </button>
+          <h3 className="panel-heading" id="project-picker-projects">Open Project</h3>
+          <button className="button button-compact" type="button" onClick={onRefreshCloudProjects}>Refresh</button>
         </div>
 
         <div className="project-picker-tabs" role="tablist" aria-label="Project filters">
@@ -83,9 +62,6 @@ export function ProjectPickerPanel({
               onChange={(event) => onSearchChange(event.target.value)}
             />
           </label>
-          <button className="button primary" type="button" onClick={onCreateProject}>New Project</button>
-          <button className="button" type="button" onClick={onImportYaml}>Import…</button>
-          <button className="button" type="button" onClick={onRefreshCloudProjects}>Refresh</button>
         </div>
 
         <div className="project-picker-grid">
@@ -146,24 +122,6 @@ export function ProjectPickerPanel({
         </div>
       </section>
 
-      <section className="panel-section" aria-labelledby="active-project-summary">
-        <div className="panel-heading-row">
-          <h3 className="panel-heading" id="active-project-summary">Active Project Summary</h3>
-        </div>
-        <div className="project-picker-summary-card">
-          <div className="project-picker-summary-title">{activeProject?.title ?? 'Untitled Project'}</div>
-          <div className="project-picker-row-meta">
-            {activeProject
-              ? `${activeProject.source === 'cloud' ? 'Cloud' : 'Local'} project. Last edited ${formatProjectTimestamp(activeProject.updatedAt)}.`
-              : 'Local project. No project metadata loaded yet.'}
-          </div>
-          <div className="project-picker-summary-actions">
-            <button className="button primary" type="button" onClick={() => activeProject && onOpenProject(activeProject.id)}>Open</button>
-            <button className="button" type="button" onClick={onDuplicateProject}>Duplicate</button>
-            <button className="button" type="button" onClick={onExportYaml}>Export YAML</button>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

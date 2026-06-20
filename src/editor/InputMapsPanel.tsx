@@ -42,17 +42,39 @@ export function InputMapsPanel({
   const [selectedMapId, setSelectedMapId] = useState<string>(() => mapIds[0] ?? '');
   const [newActionName, setNewActionName] = useState('');
   const [capture, setCapture] = useState<{ mapId: string; actionId: string } | null>(null);
+  const [mapMenu, setMapMenu] = useState<{ mapId: string; x: number; y: number } | null>(null);
   const prevMapIds = useRef<string[]>(mapIds);
+  const mapMenuRootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const prev = prevMapIds.current;
     prevMapIds.current = mapIds;
     if (!selectedMapId && mapIds[0]) setSelectedMapId(mapIds[0]);
+    if (selectedMapId && !maps[selectedMapId]) setSelectedMapId(mapIds[0] ?? '');
     if (mapIds.length > prev.length) {
       const created = mapIds.find((id) => !prev.includes(id));
       if (created) setSelectedMapId(created);
     }
-  }, [mapIds, selectedMapId]);
+  }, [mapIds, maps, selectedMapId]);
+
+  useEffect(() => {
+    if (!mapMenu) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = mapMenuRootRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setMapMenu(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMapMenu(null);
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mapMenu]);
 
   useEffect(() => {
     if (!capture) return;
@@ -139,16 +161,21 @@ export function InputMapsPanel({
 
   const createMap = () => dispatch({ type: 'create-input-map' } as any);
 
-  const duplicateMap = () => {
-    if (!selectedMapId) return;
-    const nextId = allocUniqueId(maps, `${selectedMapId}_copy`);
-    dispatch({ type: 'duplicate-input-map', sourceMapId: selectedMapId, nextMapId: nextId } as any);
+  const removeSpecificMap = (mapId: string) => {
+    dispatch({ type: 'remove-input-map', mapId } as any);
+    if (selectedMapId === mapId) setSelectedMapId('');
+    setMapMenu(null);
   };
 
-  const removeMap = () => {
-    if (!selectedMapId) return;
-    dispatch({ type: 'remove-input-map', mapId: selectedMapId } as any);
-    setSelectedMapId('');
+  const duplicateSpecificMap = (mapId: string) => {
+    const nextId = allocUniqueId(maps, `${mapId}_copy`);
+    dispatch({ type: 'duplicate-input-map', sourceMapId: mapId, nextMapId: nextId } as any);
+    setMapMenu(null);
+  };
+
+  const setProjectDefaultMap = (mapId?: string) => {
+    dispatch({ type: 'set-project-default-input-map', mapId } as any);
+    setMapMenu(null);
   };
 
   const startCapture = (actionId: string) => {
@@ -161,23 +188,10 @@ export function InputMapsPanel({
     <section className="panel-section" aria-labelledby="input-maps" data-testid="input-maps-panel">
       <div className="panel-heading-row">
         <h3 className="panel-heading" id="input-maps">Input Maps</h3>
+        <button className="button button-compact" data-testid="create-input-map-button" type="button" disabled={disabled} onClick={createMap}>
+          + Add
+        </button>
       </div>
-
-      <label className="field">
-        <span>Project default</span>
-        <select
-          aria-label="Project default input map"
-          data-testid="project-default-input-map-select"
-          value={project.defaultInputMapId ?? ''}
-          disabled={disabled || mapIds.length === 0}
-          onChange={(e) => dispatch({ type: 'set-project-default-input-map', mapId: e.target.value || undefined } as any)}
-        >
-          <option value="">(none)</option>
-          {mapIds.map((id) => (
-            <option key={id} value={id}>{id}</option>
-          ))}
-        </select>
-      </label>
 
       {mapIds.length === 0 && (
         <div className="muted" style={{ padding: '6px 0' }}>
@@ -187,35 +201,67 @@ export function InputMapsPanel({
 
       <div className="member-list">
         {mapIds.map((id) => (
-          <button
-            key={id}
-            className={`list-item ${id === selectedMapId ? 'active' : ''}`}
-            data-testid={`input-map-${id}`}
-            type="button"
-            disabled={disabled}
-            onClick={() => setSelectedMapId(id)}
-          >
-            {id}
-          </button>
+          <div key={id} className="member-row">
+            <button
+              className={`list-item ${id === selectedMapId ? 'active' : ''}`}
+              data-testid={`input-map-${id}`}
+              type="button"
+              disabled={disabled}
+              onClick={() => setSelectedMapId(id)}
+            >
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{id}</span>
+              <span className="list-item-meta">
+                {project.defaultInputMapId === id ? 'Default' : `${Object.keys(maps[id]?.actions ?? {}).length} actions`}
+              </span>
+            </button>
+            <button
+              aria-label={`More options for input map ${id}`}
+              className="scene-graph-button"
+              data-testid={`input-map-menu-${id}`}
+              type="button"
+              disabled={disabled}
+              onClick={(event) => {
+                const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                setMapMenu({
+                  mapId: id,
+                  x: Math.min(rect.left, window.innerWidth - 220),
+                  y: rect.bottom + 6,
+                });
+              }}
+            >
+              ⋯
+            </button>
+          </div>
         ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-        <button className="button" data-testid="create-input-map-button" type="button" disabled={disabled} onClick={createMap}>
-          + New Map
-        </button>
-        <button className="button" data-testid="duplicate-input-map-button" type="button" disabled={disabled || !selectedMapId} onClick={duplicateMap}>
-          Duplicate
-        </button>
-        <button className="button button-danger" data-testid="remove-input-map-button" type="button" disabled={disabled || !selectedMapId} onClick={removeMap}>
-          Remove
-        </button>
       </div>
 
       {selectedMap && (
         <div style={{ marginTop: 10 }}>
-          <div className="muted" style={{ fontWeight: 700, marginBottom: 6 }}>
-            Editing: {selectedMapId}
+          <div className="panel-heading-row" style={{ marginBottom: 6 }}>
+            <div className="muted" style={{ fontWeight: 700 }}>
+              Editing: {selectedMapId}
+            </div>
+            {project.defaultInputMapId === selectedMapId ? (
+              <button
+                className="button button-compact"
+                data-testid="clear-project-default-input-map-button"
+                type="button"
+                disabled={disabled}
+                onClick={() => setProjectDefaultMap(undefined)}
+              >
+                Clear Default
+              </button>
+            ) : (
+              <button
+                className="button button-compact"
+                data-testid="set-project-default-input-map-button"
+                type="button"
+                disabled={disabled}
+                onClick={() => setProjectDefaultMap(selectedMapId)}
+              >
+                Set as Default
+              </button>
+            )}
           </div>
 
           {actionIds.length === 0 && (
@@ -279,6 +325,53 @@ export function InputMapsPanel({
           )}
         </div>
       )}
+
+      {mapMenu ? (
+        <div
+          ref={mapMenuRootRef}
+          className="scene-graph-menu"
+          style={{ position: 'fixed', left: mapMenu.x, top: mapMenu.y, zIndex: 50, minWidth: 200 }}
+          data-testid="input-map-overflow-menu"
+          role="menu"
+        >
+          <div className="scene-graph-menu-hint">{mapMenu.mapId}</div>
+          <button
+            type="button"
+            className="scene-graph-menu-item"
+            data-testid={`duplicate-input-map-button-${mapMenu.mapId}`}
+            onClick={() => duplicateSpecificMap(mapMenu.mapId)}
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
+            className="scene-graph-menu-item"
+            data-testid={`set-default-input-map-button-${mapMenu.mapId}`}
+            onClick={() => setProjectDefaultMap(mapMenu.mapId)}
+          >
+            Set as Project Default
+          </button>
+          {project.defaultInputMapId === mapMenu.mapId ? (
+            <button
+              type="button"
+              className="scene-graph-menu-item"
+              data-testid={`clear-default-input-map-button-${mapMenu.mapId}`}
+              onClick={() => setProjectDefaultMap(undefined)}
+            >
+              Clear Project Default
+            </button>
+          ) : null}
+          <div className="scene-graph-menu-divider" />
+          <button
+            type="button"
+            className="scene-graph-menu-item scene-graph-menu-danger"
+            data-testid={`remove-input-map-button-${mapMenu.mapId}`}
+            onClick={() => removeSpecificMap(mapMenu.mapId)}
+          >
+            Remove
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

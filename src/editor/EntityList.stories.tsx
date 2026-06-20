@@ -19,17 +19,17 @@ function makeProjectWithAsset() {
 }
 
 function EntityListStoryHarness({
-  initialSidebarScope = 'scene',
+  initialSidebarScope = 'projectTree',
   initialStartupMode = 'reload_last_yaml',
   project = makeProjectWithAsset(),
   dispatchSpy = fn(),
 }: {
-  initialSidebarScope?: 'scene' | 'project';
+  initialSidebarScope?: 'projectTree' | 'projectRevisions';
   initialStartupMode?: 'reload_last_yaml' | 'new_empty_scene';
   project?: any;
   dispatchSpy?: ReturnType<typeof fn>;
 }) {
-  const [sidebarScope, setSidebarScope] = useState<'scene' | 'project'>(initialSidebarScope);
+  const [sidebarScope, setSidebarScope] = useState<'projectTree' | 'projectRevisions'>(initialSidebarScope);
   const [startupMode, setStartupMode] = useState<'reload_last_yaml' | 'new_empty_scene'>(initialStartupMode);
   const currentSceneId = project.initialSceneId;
 
@@ -56,7 +56,7 @@ const meta = {
   title: 'Editor/EntityList',
   component: EntityListStoryHarness,
   args: {
-    initialSidebarScope: 'scene',
+    initialSidebarScope: 'projectTree',
     initialStartupMode: 'reload_last_yaml',
     project: makeProjectWithAsset(),
     dispatchSpy: fn(),
@@ -70,7 +70,7 @@ type Story = StoryObj<typeof meta>;
 export const SceneScopeDefault: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    expect(canvas.getByTestId('sidebar-scope-tab-scene').getAttribute('aria-selected')).toBe('true');
+    expect(canvas.getByTestId('project-tree-root-button')).toBeTruthy();
     expect(canvas.getByTestId('sprites-dropzone')).toBeTruthy();
     expect(canvas.getByTestId('assets-dock')).toBeTruthy();
   },
@@ -82,12 +82,10 @@ export const ProjectScopeStartupMode: Story = {
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByTestId('sidebar-scope-tab-project'));
-
-    expect(args.dispatchSpy).toHaveBeenCalledWith({ type: 'set-sidebar-scope', scope: 'project' });
+    expect(canvas.getByRole('heading', { name: 'Project Tree' })).toBeTruthy();
     expect(canvas.getByRole('heading', { name: 'Input Maps' })).toBeTruthy();
-    expect(canvas.queryByTestId('sprites-dropzone')).toBeNull();
-    expect(canvas.queryByTestId('assets-dock')).toBeNull();
+    expect(canvas.getByTestId('sprites-dropzone')).toBeTruthy();
+    expect(canvas.getByTestId('assets-dock')).toBeTruthy();
 
     await userEvent.selectOptions(canvas.getByTestId('project-startup-mode-select'), 'new_empty_scene');
     expect(args.dispatchSpy).toHaveBeenCalledWith({ type: 'set-startup-mode', startupMode: 'new_empty_scene' });

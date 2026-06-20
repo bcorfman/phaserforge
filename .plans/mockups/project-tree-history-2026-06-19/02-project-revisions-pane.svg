@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1040" viewBox="0 0 1680 1040">
+  <defs>
+    <style>
+      .bg { fill: #efe7db; }
+      .shell { fill: #faf7f1; stroke: #d2c1a9; stroke-width: 2; }
+      .panel { fill: #fbf8f2; stroke: #d3c2aa; stroke-width: 2; }
+      .panelSoft { fill: #f3ece0; stroke: #d3c2aa; stroke-width: 2; }
+      .tabOn { fill: #d8eef0; stroke: #7db0b6; stroke-width: 2; }
+      .btn { fill: #fffdfa; stroke: #d3c2aa; stroke-width: 2; }
+      .btnBlue { fill: #3e6bbb; stroke: #6e94d4; stroke-width: 2; }
+      .btnGreen { fill: #d5efe0; stroke: #8abb9b; stroke-width: 2; }
+      .callout { fill: #fff2c7; stroke: #c89b2a; stroke-width: 2; }
+      .line { stroke: #c89b2a; stroke-width: 2.5; fill: none; }
+      .brand { font: 800 34px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #24303d; }
+      .title { font: 800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #26313f; }
+      .h { font: 760 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; letter-spacing: .12em; fill: #607082; }
+      .label { font: 650 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #667687; }
+      .text { font: 620 17px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2e3947; }
+      .strong { font: 760 20px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2a3442; }
+      .small { font: 550 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #728294; }
+      .callText { font: 620 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+      .num { font: 800 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1680" height="1040" />
+  <text class="title" x="48" y="56">Project Revisions Pane With Live Canvas Preview</text>
+
+  <rect class="shell" x="42" y="84" width="1596" height="900" rx="28" />
+  <text class="h" x="72" y="122">BROWSER EDITOR</text>
+  <text class="brand" x="72" y="162">PhaserForge</text>
+  <rect class="tabOn" x="320" y="132" width="108" height="34" rx="17" />
+  <text class="text" x="374" y="154" text-anchor="middle">Online</text>
+  <text class="small" x="72" y="202">Selecting `History` from Project Tree Manage swaps the left pane into a revisions browser.</text>
+
+  <rect class="panel" x="70" y="240" width="540" height="700" rx="24" />
+  <text class="strong" x="98" y="290">←</text>
+  <text class="h" x="132" y="286">PROJECT REVISIONS</text>
+
+  <rect class="panelSoft" x="98" y="334" width="484" height="118" rx="20" />
+  <text class="strong" x="126" y="376">Today 10:42 AM • Autosave checkpoint</text>
+  <text class="small" x="126" y="406">Idle burst save after 11 changes • Scenes 3 • Entities 42</text>
+  <rect class="btnBlue" x="312" y="390" width="124" height="36" rx="16" />
+  <text class="text" x="374" y="414" text-anchor="middle" fill="#ffffff">Restore...</text>
+  <rect class="btn" x="448" y="390" width="94" height="36" rx="16" />
+  <text class="text" x="495" y="414" text-anchor="middle">Copy...</text>
+
+  <rect class="tabOn" x="98" y="472" width="484" height="118" rx="20" />
+  <text class="strong" x="126" y="514">Yesterday 4:18 PM • Before publish</text>
+  <text class="small" x="126" y="544">Highlighted revision is previewed immediately on the canvas</text>
+  <rect class="btnBlue" x="312" y="528" width="124" height="36" rx="16" />
+  <text class="text" x="374" y="552" text-anchor="middle" fill="#ffffff">Restore...</text>
+  <rect class="btn" x="448" y="528" width="94" height="36" rx="16" />
+  <text class="text" x="495" y="552" text-anchor="middle">Copy...</text>
+
+  <rect class="panelSoft" x="98" y="610" width="484" height="118" rx="20" />
+  <text class="strong" x="126" y="652">Jun 17 • Named version: Good pacing</text>
+  <text class="small" x="126" y="682">Explicit milestone saved by user</text>
+  <rect class="btnBlue" x="312" y="666" width="124" height="36" rx="16" />
+  <text class="text" x="374" y="690" text-anchor="middle" fill="#ffffff">Restore...</text>
+  <rect class="btn" x="448" y="666" width="94" height="36" rx="16" />
+  <text class="text" x="495" y="690" text-anchor="middle">Copy...</text>
+
+  <rect class="panelSoft" x="98" y="748" width="484" height="164" rx="20" />
+  <text class="label" x="126" y="786">Revision summary</text>
+  <text class="small" x="126" y="816">Project: Pattern Demo Playground</text>
+  <text class="small" x="126" y="842">Scenes: Main Menu, Level 01, Boss Arena</text>
+  <text class="small" x="126" y="868">Actions open confirm dialogs before anything changes.</text>
+
+  <rect class="panel" x="640" y="240" width="700" height="700" rx="24" />
+  <rect class="panelSoft" x="668" y="268" width="644" height="644" rx="20" />
+  <text class="strong" x="694" y="312">Canvas Preview: Yesterday 4:18 PM • Before publish</text>
+  <text class="small" x="694" y="338">hover or selection in the timeline updates this preview instantly</text>
+
+  <rect x="746" y="410" width="96" height="96" rx="18" fill="#9fd0dc" stroke="#7db0b6" stroke-width="2" />
+  <rect x="900" y="454" width="96" height="96" rx="18" fill="#9fd0dc" stroke="#7db0b6" stroke-width="2" />
+  <rect x="1054" y="410" width="96" height="96" rx="18" fill="#9fd0dc" stroke="#7db0b6" stroke-width="2" />
+  <rect x="900" y="594" width="96" height="96" rx="18" fill="#e5c78f" stroke="#c89b2a" stroke-width="3" />
+  <text class="small" x="990" y="760" text-anchor="middle">read-only preview of the highlighted revision</text>
+
+  <rect class="panel" x="1370" y="240" width="238" height="700" rx="24" />
+  <text class="h" x="1398" y="286">PUBLISH</text>
+  <rect class="panelSoft" x="1398" y="314" width="182" height="220" rx="20" />
+  <text class="label" x="1420" y="348">Project</text>
+  <text class="small" x="1420" y="372">Pattern Demo Playground</text>
+  <text class="label" x="1420" y="412">Publish</text>
+  <text class="small" x="1420" y="436">pattern-demo</text>
+  <text class="small" x="1420" y="476">These remain distinct even while browsing history.</text>
+
+  <rect class="panelSoft" x="1398" y="560" width="182" height="156" rx="20" />
+  <text class="label" x="1420" y="596">Preview Mode</text>
+  <text class="small" x="1420" y="622">Canvas is read-only while browsing revisions.</text>
+  <text class="small" x="1420" y="648">Restore or Back to Tree exits preview.</text>
+
+  <rect class="callout" x="1420" y="332" width="194" height="170" rx="18" />
+  <circle cx="1448" cy="360" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1448" y="366" text-anchor="middle">1</text>
+  <text class="callText" x="1476" y="362">The back arrow matches the</text>
+  <text class="callText" x="1476" y="384">Inspector's action-properties</text>
+  <text class="callText" x="1476" y="406">pattern and gives the old</text>
+  <text class="callText" x="1476" y="428">tab space back to content.</text>
+  <path class="line" d="M1420 430 C1360 430, 1282 290, 124 286" />
+
+  <rect class="callout" x="1420" y="540" width="194" height="170" rx="18" />
+  <circle cx="1448" cy="568" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1448" y="574" text-anchor="middle">2</text>
+  <text class="callText" x="1476" y="570">Project name and publish</text>
+  <text class="callText" x="1476" y="592">name remain distinct here</text>
+  <text class="callText" x="1476" y="614">too, so restoring history</text>
+  <text class="callText" x="1476" y="636">never blurs working title</text>
+  <text class="callText" x="1476" y="658">with release identity.</text>
+  <path class="line" d="M1420 650 C1364 650, 1320 442, 1582 430" />
+
+  <rect class="callout" x="1420" y="732" width="194" height="158" rx="18" />
+  <circle cx="1448" cy="760" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1448" y="766" text-anchor="middle">3</text>
+  <text class="callText" x="1476" y="762">Highlighting a revision is</text>
+  <text class="callText" x="1476" y="784">enough to preview it, since</text>
+  <text class="callText" x="1476" y="806">the canvas remains visible.</text>
+  <text class="callText" x="1476" y="828">That removes an extra step.</text>
+  <path class="line" d="M1420 824 C1360 824, 1282 498, 1314 338" />
+</svg>
