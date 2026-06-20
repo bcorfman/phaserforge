@@ -9,6 +9,11 @@ test.describe('Project tree + history', () => {
     await expect(page.getByTestId('project-tree-root-button')).toContainText('Untitled Project');
 
     await page.getByTestId('project-tree-manage-button').click();
+    await expect(page.getByTestId('project-manage-create')).toBeVisible();
+    await expect(page.getByTestId('project-manage-open')).toBeVisible();
+    await expect(page.getByTestId('project-manage-toggle-sync')).toBeVisible();
+    await expect(page.getByTestId('project-manage-import-yaml')).toBeVisible();
+    await expect(page.getByTestId('project-manage-export-yaml')).toBeVisible();
     await expect(page.getByTestId('project-manage-rename')).toBeVisible();
     await expect(page.getByTestId('project-manage-history')).toBeVisible();
     await expect(page.getByTestId('project-manage-clear')).toBeVisible();

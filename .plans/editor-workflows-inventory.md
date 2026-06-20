@@ -136,7 +136,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Scene overflow `⋯` → `Rename…`, `⧉ Duplicate Scene`, `★ Set as Base / Clear Base`, `Clear Scene…`, or `Delete…`.
 
 #### A31a — Manage Project Root
-- Project Tree header → `Manage` → `Rename`, `History`, or `Clear Project ...`.
+- Project Tree header → `Manage` → `Create New`, `Open...`, `Toggle Sync Mode`, `Import YAML`, `Export as YAML`, `Rename`, `History`, or `Clear Project ...`.
 - `Rename` opens inline rename on the project root row.
 - `History` swaps the left pane into `Project Revisions`.
 
@@ -226,7 +226,9 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Dragging an audio asset onto the Music field assigns music.
 
 #### A49 — Manage Input Maps (Project Scope)
-- Select a map, create a new map, duplicate a map, remove a map, set the project default map, create a new action by binding it, and capture keyboard/mouse/gamepad input for an action.
+- Project Tree → `Input Maps` → `+ Add`.
+- Select a map from the tree-style list, use the row `⋯` menu to duplicate/remove/set default, or use the details panel to clear/set the project default.
+- Create a new action by binding it, and capture keyboard/mouse/gamepad input for an action.
 
 #### A50 — Configure Scene Input
 - Pick active and fallback maps.
@@ -262,16 +264,15 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Click `Scene` or `Project` in the left sidebar.
 
 #### A57 — Manage Project Library
-- In Project scope, filter/search/open recent projects.
-- Create a new project.
-- Import YAML into the current editor session.
-- Refresh cloud-backed projects.
-- Duplicate the active project.
-- Export YAML from the active project summary.
+- Project Tree header → `Manage` → `Open...`.
+- In the popup, filter/search/open recent projects and refresh cloud-backed projects.
+- Project Tree header → `Manage` → `Create New`.
+- Project Tree header → `Manage` → `Import YAML`.
+- Project Tree header → `Manage` → `Export as YAML`.
 
 #### A58 — Toggle Sync Mode
 - Click the toolbar `Online / Offline` badge.
-- Or click the same toggle in the Project picker.
+- Or use Project Tree header → `Manage` → `Toggle Sync Mode`.
 
 #### A59 — Configure Startup / Reset
 - Project scope → `Startup & Reset`.
