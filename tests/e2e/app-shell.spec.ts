@@ -3,15 +3,12 @@ import { dismissViewHint, dispatchAction, dragAssetToCanvas, expectInputValue, g
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { createEmptyProject } from '../../src/model/emptyProject';
 
-const PROJECT_STORAGE_KEY = 'phaserforge.projectYaml.v1';
-
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const onceKey = 'phaserforge.testAppShellResetOnce.v1';
     if (window.sessionStorage.getItem(onceKey)) return;
     window.sessionStorage.setItem(onceKey, '1');
     window.localStorage.removeItem('phaserforge.testSeeded.v1');
-    window.localStorage.removeItem('phaserforge.projectYaml.v1');
     window.localStorage.removeItem('phaserforge.startupMode.v1');
     window.localStorage.removeItem('phaserforge.themeMode.v1');
     window.localStorage.removeItem('phaserforge.uiScale.v1');
@@ -59,8 +56,32 @@ test('persists the last active project across reloads without a startup mode con
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('formation-name-input').fill('Persisted Wing');
   await expect.poll(async () => {
-    return page.evaluate((storageKey) => window.localStorage.getItem(storageKey), PROJECT_STORAGE_KEY);
+    return page.evaluate(async () => {
+      const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+        const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+      });
+      const db = await openDb();
+      const workspace = await new Promise<any>((resolve, reject) => {
+        const tx = db.transaction('workspaceState', 'readonly');
+        const request = tx.objectStore('workspaceState').get('workspace');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      if (!workspace?.activeProjectId) return null;
+      const project = await new Promise<any>((resolve, reject) => {
+        const tx = db.transaction('projects', 'readonly');
+        const request = tx.objectStore('projects').get(workspace.activeProjectId);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      return project?.yaml ?? null;
+    });
   }).toContain('Persisted Wing');
+  await expect.poll(async () => {
+    return page.evaluate(() => window.localStorage.getItem('phaserforge.projectYaml.v1'));
+  }).toBeNull();
   await expect.poll(async () => {
     const state = await getState<{ scene: { groups: Record<string, { name?: string }> } }>(page);
     return state.scene.groups['g-enemies']?.name;

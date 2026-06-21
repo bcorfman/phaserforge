@@ -2,6 +2,7 @@ import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization
 import { createEmptyProject } from '../model/emptyProject';
 import type { ProjectSpec, StartupMode } from '../model/types';
 import { appendProjectRevision, createProjectRevision, type ProjectRevisionRecord } from './projectTreeHistory';
+import type { ViewState } from '../util/viewStateStorage';
 
 const DB_NAME = 'phaserforge.persistence.v1';
 const DB_VERSION = 1;
@@ -10,6 +11,7 @@ const WORKSPACE_STORE = 'workspaceState';
 const PREFERENCES_STORE = 'preferences';
 const LEGACY_MIGRATED_KEY = 'legacyMigrated';
 const WORKSPACE_KEY = 'workspace';
+const WORKSPACE_BACKUP_KEY = 'workspaceBackup';
 const PREFERENCES_KEY = 'preferences';
 
 export type ProjectSyncMode = 'online' | 'offline';
@@ -33,6 +35,16 @@ export type StoredProjectRecord = {
 export type WorkspaceStateRecord = {
   activeProjectId: string | null;
   syncMode: ProjectSyncMode;
+  leftPaneWidth?: number;
+  rightPaneWidth?: number;
+  assetsDockHeight?: number;
+  viewStateByProject?: Record<string, ViewState>;
+};
+
+export type WorkspaceBackupRecord = {
+  yaml: string;
+  source: 'cloud' | 'device';
+  savedAt: string;
 };
 
 export type PreferencesRecord = {
@@ -40,6 +52,11 @@ export type PreferencesRecord = {
   themeMode: StoredThemeMode;
   uiScale: number;
   showHitboxOverlay: boolean;
+  assetsDockShowThumbnails?: boolean;
+  inspectorFoldouts?: Record<string, boolean>;
+  pinnedActionTypes?: string[];
+  pinnedPatternIds?: string[];
+  lastPublishByUserId?: Record<string, { url: string; publishedAtMs: number }>;
 };
 
 type PersistenceSnapshot = {
@@ -49,13 +66,21 @@ type PersistenceSnapshot = {
 };
 
 type LegacyStorageReader = Pick<Storage, 'getItem'>;
-const LEGACY_PROJECT_STORAGE_KEY = 'phaserforge.projectYaml.v1';
-const LEGACY_PROJECT_LAST_SAVED_AT_KEY = 'phaserforge.projectLastSavedAtMs.v1';
+const EMPTY_LEGACY_STORAGE_READER: LegacyStorageReader = { getItem: () => null };
 
 const defaultWorkspace = (): WorkspaceStateRecord => ({
   activeProjectId: null,
   syncMode: 'online',
 });
+
+function getLegacyStorageReader(): LegacyStorageReader {
+  if (typeof window === 'undefined') return EMPTY_LEGACY_STORAGE_READER;
+  try {
+    return window.localStorage ?? EMPTY_LEGACY_STORAGE_READER;
+  } catch {
+    return EMPTY_LEGACY_STORAGE_READER;
+  }
+}
 
 function openDb(): Promise<IDBDatabase | null> {
   if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined') return Promise.resolve(null);
@@ -87,86 +112,6 @@ function requestValue<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-function fallbackProjectFromLegacyYaml(reader: LegacyStorageReader): StoredProjectRecord | null {
-  const yaml = reader.getItem(LEGACY_PROJECT_STORAGE_KEY);
-  if (!yaml) return null;
-  try {
-    const project = parseProjectYaml(yaml);
-    const savedAtRaw = reader.getItem(LEGACY_PROJECT_LAST_SAVED_AT_KEY);
-    const savedAtMs = savedAtRaw == null ? NaN : Number(savedAtRaw);
-    return buildStoredProjectRecord(project, {
-      id: project.id,
-      yaml,
-      origin: 'anonymous',
-      syncStatus: 'local',
-      updatedAt: Number.isFinite(savedAtMs) ? new Date(savedAtMs).toISOString() : undefined,
-    });
-  } catch {
-    return null;
-  }
-}
-
-export function mergeSnapshotWithLegacyActiveProject(
-  snapshot: PersistenceSnapshot,
-  legacyProject: StoredProjectRecord | null,
-): PersistenceSnapshot {
-  if (!legacyProject) return snapshot;
-  const activeProjectId = snapshot.workspace.activeProjectId;
-  const matchingActiveIndex = snapshot.localProjects.findIndex((record) => (
-    record.id === activeProjectId
-    || (record.id === activeProjectId && record.projectId === legacyProject.projectId)
-    || (record.id === activeProjectId && legacyProject.id === record.projectId)
-  ));
-  const existingIndex = matchingActiveIndex >= 0
-    ? matchingActiveIndex
-    : snapshot.localProjects.findIndex((record) => (
-      record.id === legacyProject.id
-      || (record.id === activeProjectId && record.projectId === legacyProject.projectId)
-    ));
-  if (existingIndex === -1 && activeProjectId !== legacyProject.id) return snapshot;
-
-  if (existingIndex === -1) {
-    return {
-      ...snapshot,
-      localProjects: [legacyProject, ...snapshot.localProjects],
-    };
-  }
-
-  const existing = snapshot.localProjects[existingIndex];
-  const existingUpdatedAt = Date.parse(existing.updatedAt);
-  const legacyUpdatedAt = Date.parse(legacyProject.updatedAt);
-  if (Number.isFinite(existingUpdatedAt) && Number.isFinite(legacyUpdatedAt) && existingUpdatedAt >= legacyUpdatedAt) {
-    return snapshot;
-  }
-
-  const localProjects = snapshot.localProjects.slice();
-  let nextRevisions = existing.revisions;
-  if (existing.yaml !== legacyProject.yaml) {
-    try {
-      nextRevisions = appendProjectRevision(
-        existing.revisions,
-        createProjectRevision(parseProjectYaml(legacyProject.yaml), {
-          updatedAt: legacyProject.updatedAt,
-          reason: 'autosave',
-        }),
-      );
-    } catch {
-      nextRevisions = existing.revisions;
-    }
-  }
-  localProjects[existingIndex] = {
-    ...existing,
-    ...legacyProject,
-    id: existing.id,
-    projectId: existing.projectId,
-    origin: existing.origin,
-    syncStatus: existing.syncStatus,
-    cloudProjectId: existing.cloudProjectId,
-    revisions: nextRevisions,
-  };
-  return { ...snapshot, localProjects };
-}
-
 function buildPreferencesFromLegacy(reader: LegacyStorageReader): PreferencesRecord | null {
   const startupMode = reader.getItem('phaserforge.startupMode.v1');
   const themeMode = reader.getItem('phaserforge.themeMode.v1');
@@ -178,6 +123,62 @@ function buildPreferencesFromLegacy(reader: LegacyStorageReader): PreferencesRec
     themeMode: themeMode === 'light' || themeMode === 'dark' || themeMode === 'system' ? themeMode : 'system',
     uiScale: Number.isFinite(Number(uiScale)) ? Number(uiScale) : 0.95,
     showHitboxOverlay: showHitboxOverlay !== '0',
+  };
+}
+
+function normalizeStringList(values: unknown): string[] | undefined {
+  if (!Array.isArray(values)) return undefined;
+  const unique = Array.from(new Set(values.filter((value): value is string => typeof value === 'string' && value.length > 0)));
+  unique.sort((a, b) => a.localeCompare(b));
+  return unique;
+}
+
+function normalizeBooleanMap(values: unknown): Record<string, boolean> | undefined {
+  if (!values || typeof values !== 'object') return undefined;
+  const normalized: Record<string, boolean> = {};
+  for (const [key, value] of Object.entries(values as Record<string, unknown>)) {
+    if (typeof value === 'boolean') normalized[key] = value;
+  }
+  return normalized;
+}
+
+function normalizeLastPublishMap(values: unknown): Record<string, { url: string; publishedAtMs: number }> | undefined {
+  if (!values || typeof values !== 'object') return undefined;
+  const normalized: Record<string, { url: string; publishedAtMs: number }> = {};
+  for (const [key, value] of Object.entries(values as Record<string, unknown>)) {
+    if (!value || typeof value !== 'object') continue;
+    const url = typeof (value as { url?: unknown }).url === 'string' ? (value as { url: string }).url : '';
+    const publishedAtMs = Number((value as { publishedAtMs?: unknown }).publishedAtMs);
+    if (!url || !Number.isFinite(publishedAtMs)) continue;
+    normalized[key] = { url, publishedAtMs };
+  }
+  return normalized;
+}
+
+function mergePreferences(
+  base: PreferencesRecord | null,
+  patch: Partial<PreferencesRecord>,
+): PreferencesRecord {
+  return {
+    startupMode: patch.startupMode ?? base?.startupMode ?? 'new_empty_scene',
+    themeMode: patch.themeMode ?? base?.themeMode ?? 'system',
+    uiScale: patch.uiScale ?? base?.uiScale ?? 0.95,
+    showHitboxOverlay: patch.showHitboxOverlay ?? base?.showHitboxOverlay ?? true,
+    ...(patch.assetsDockShowThumbnails ?? base?.assetsDockShowThumbnails) != null
+      ? { assetsDockShowThumbnails: patch.assetsDockShowThumbnails ?? base?.assetsDockShowThumbnails }
+      : {},
+    ...(patch.inspectorFoldouts ?? base?.inspectorFoldouts)
+      ? { inspectorFoldouts: normalizeBooleanMap(patch.inspectorFoldouts ?? base?.inspectorFoldouts) ?? {} }
+      : {},
+    ...(patch.pinnedActionTypes ?? base?.pinnedActionTypes)
+      ? { pinnedActionTypes: normalizeStringList(patch.pinnedActionTypes ?? base?.pinnedActionTypes) ?? [] }
+      : {},
+    ...(patch.pinnedPatternIds ?? base?.pinnedPatternIds)
+      ? { pinnedPatternIds: normalizeStringList(patch.pinnedPatternIds ?? base?.pinnedPatternIds) ?? [] }
+      : {},
+    ...(patch.lastPublishByUserId ?? base?.lastPublishByUserId)
+      ? { lastPublishByUserId: normalizeLastPublishMap(patch.lastPublishByUserId ?? base?.lastPublishByUserId) ?? {} }
+      : {},
   };
 }
 
@@ -221,6 +222,13 @@ async function readWorkspace(db: IDBDatabase): Promise<WorkspaceStateRecord> {
   return (workspace as WorkspaceStateRecord | undefined) ?? defaultWorkspace();
 }
 
+async function readWorkspaceBackup(db: IDBDatabase): Promise<WorkspaceBackupRecord | null> {
+  const tx = db.transaction(WORKSPACE_STORE, 'readonly');
+  const backup = await requestValue(tx.objectStore(WORKSPACE_STORE).get(WORKSPACE_BACKUP_KEY));
+  await txComplete(tx);
+  return (backup as WorkspaceBackupRecord | undefined) ?? null;
+}
+
 async function readPreferences(db: IDBDatabase): Promise<PreferencesRecord | null> {
   const tx = db.transaction(PREFERENCES_STORE, 'readonly');
   const preferences = await requestValue(tx.objectStore(PREFERENCES_STORE).get(PREFERENCES_KEY));
@@ -237,17 +245,13 @@ async function migrateLegacyStorage(db: IDBDatabase): Promise<void> {
     return;
   }
 
-  const legacyProject = fallbackProjectFromLegacyYaml(window.localStorage);
-  if (legacyProject) tx.objectStore(PROJECTS_STORE).put(legacyProject);
-  const preferences = buildPreferencesFromLegacy(window.localStorage);
+  const legacyStorage = getLegacyStorageReader();
+  const preferences = buildPreferencesFromLegacy(legacyStorage);
   if (preferences) tx.objectStore(PREFERENCES_STORE).put(preferences, PREFERENCES_KEY);
-  tx.objectStore(WORKSPACE_STORE).put(
-    {
-      activeProjectId: legacyProject?.id ?? null,
-      syncMode: 'online',
-    } satisfies WorkspaceStateRecord,
-    WORKSPACE_KEY,
-  );
+  const existingWorkspace = await requestValue(workspaceStore.get(WORKSPACE_KEY));
+  if (!existingWorkspace) {
+    tx.objectStore(WORKSPACE_STORE).put(defaultWorkspace(), WORKSPACE_KEY);
+  }
   workspaceStore.put('1', LEGACY_MIGRATED_KEY);
   await txComplete(tx);
 }
@@ -255,16 +259,15 @@ async function migrateLegacyStorage(db: IDBDatabase): Promise<void> {
 async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
   const db = await openDb();
   if (!db) {
-    const project = fallbackProjectFromLegacyYaml(window.localStorage);
     return {
-      localProjects: project ? [project] : [],
-      workspace: { activeProjectId: project?.id ?? null, syncMode: 'online' },
-      preferences: buildPreferencesFromLegacy(window.localStorage),
+      localProjects: [],
+      workspace: defaultWorkspace(),
+      preferences: buildPreferencesFromLegacy(getLegacyStorageReader()),
     };
   }
   await migrateLegacyStorage(db);
   const [localProjects, workspace, preferences] = await Promise.all([readAllProjects(db), readWorkspace(db), readPreferences(db)]);
-  return mergeSnapshotWithLegacyActiveProject({ localProjects, workspace, preferences }, fallbackProjectFromLegacyYaml(window.localStorage));
+  return { localProjects, workspace, preferences };
 }
 
 async function upsertProjectRecord(record: StoredProjectRecord): Promise<void> {
@@ -272,6 +275,15 @@ async function upsertProjectRecord(record: StoredProjectRecord): Promise<void> {
   if (!db) return;
   const tx = db.transaction(PROJECTS_STORE, 'readwrite');
   tx.objectStore(PROJECTS_STORE).put(record);
+  await txComplete(tx);
+}
+
+async function writeProjectRecordAndWorkspace(record: StoredProjectRecord, workspace: WorkspaceStateRecord): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  const tx = db.transaction([PROJECTS_STORE, WORKSPACE_STORE], 'readwrite');
+  tx.objectStore(PROJECTS_STORE).put(record);
+  tx.objectStore(WORKSPACE_STORE).put(workspace, WORKSPACE_KEY);
   await txComplete(tx);
 }
 
@@ -291,6 +303,23 @@ async function writePreferences(preferences: PreferencesRecord): Promise<void> {
   await txComplete(tx);
 }
 
+async function readPreferencesRecord(): Promise<PreferencesRecord | null> {
+  const db = await openDb();
+  if (!db) return buildPreferencesFromLegacy(getLegacyStorageReader());
+  return readPreferences(db);
+}
+
+async function updatePreferencesRecord(
+  patch: Partial<PreferencesRecord> | ((current: PreferencesRecord | null) => PreferencesRecord),
+): Promise<PreferencesRecord> {
+  const current = await readPreferencesRecord();
+  const next = typeof patch === 'function'
+    ? patch(current)
+    : mergePreferences(current, patch);
+  await writePreferences(next);
+  return next;
+}
+
 async function getProjectRecord(projectId: string): Promise<StoredProjectRecord | null> {
   const db = await openDb();
   if (!db) return null;
@@ -298,6 +327,21 @@ async function getProjectRecord(projectId: string): Promise<StoredProjectRecord 
   const record = await requestValue(tx.objectStore(PROJECTS_STORE).get(projectId));
   await txComplete(tx);
   return (record as StoredProjectRecord | undefined) ?? null;
+}
+
+async function getWorkspaceState(): Promise<WorkspaceStateRecord> {
+  const db = await openDb();
+  if (!db) return defaultWorkspace();
+  return readWorkspace(db);
+}
+
+async function updateWorkspaceState(
+  patch: Partial<WorkspaceStateRecord> | ((current: WorkspaceStateRecord) => WorkspaceStateRecord),
+): Promise<WorkspaceStateRecord> {
+  const current = await getWorkspaceState();
+  const next = typeof patch === 'function' ? patch(current) : { ...current, ...patch };
+  await writeWorkspace(next);
+  return next;
 }
 
 function cloneProject(project: ProjectSpec): ProjectSpec {
@@ -327,20 +371,115 @@ export const projectPersistence = {
     return snapshot.localProjects;
   },
 
+  async saveActiveProjectRecord(record: StoredProjectRecord, syncMode: ProjectSyncMode): Promise<StoredProjectRecord[]> {
+    const currentWorkspace = await getWorkspaceState();
+    await writeProjectRecordAndWorkspace(record, { ...currentWorkspace, activeProjectId: record.id, syncMode });
+    const snapshot = await this.load();
+    return snapshot.localProjects;
+  },
+
   async setActiveProject(projectId: string | null, syncMode: ProjectSyncMode): Promise<void> {
-    await writeWorkspace({ activeProjectId: projectId, syncMode });
+    await updateWorkspaceState({ activeProjectId: projectId, syncMode });
   },
 
   async setSyncMode(projectId: string | null, syncMode: ProjectSyncMode): Promise<void> {
-    await writeWorkspace({ activeProjectId: projectId, syncMode });
+    await updateWorkspaceState({ activeProjectId: projectId, syncMode });
   },
 
   async savePreferences(preferences: PreferencesRecord): Promise<void> {
     await writePreferences(preferences);
   },
 
+  async loadPreferencesRecord(): Promise<PreferencesRecord | null> {
+    return readPreferencesRecord();
+  },
+
+  async updatePreferencesRecord(patch: Partial<PreferencesRecord> | ((current: PreferencesRecord | null) => PreferencesRecord)): Promise<PreferencesRecord> {
+    return updatePreferencesRecord(patch);
+  },
+
+  async loadWorkspaceStateRecord(): Promise<WorkspaceStateRecord> {
+    return getWorkspaceState();
+  },
+
+  async updateWorkspaceStateRecord(
+    patch: Partial<WorkspaceStateRecord> | ((current: WorkspaceStateRecord) => WorkspaceStateRecord),
+  ): Promise<WorkspaceStateRecord> {
+    return updateWorkspaceState(patch);
+  },
+
   async loadProjectById(projectId: string): Promise<StoredProjectRecord | null> {
     return getProjectRecord(projectId);
+  },
+
+  async loadActiveProjectRecord(): Promise<StoredProjectRecord | null> {
+    const workspace = await getWorkspaceState();
+    if (!workspace.activeProjectId) return null;
+    return getProjectRecord(workspace.activeProjectId);
+  },
+
+  async saveWorkspaceBackup(yaml: string, source: WorkspaceBackupRecord['source']): Promise<void> {
+    const db = await openDb();
+    if (!db) return;
+    const tx = db.transaction(WORKSPACE_STORE, 'readwrite');
+    tx.objectStore(WORKSPACE_STORE).put({
+      yaml,
+      source,
+      savedAt: new Date().toISOString(),
+    } satisfies WorkspaceBackupRecord, WORKSPACE_BACKUP_KEY);
+    await txComplete(tx);
+  },
+
+  async loadWorkspaceBackup(): Promise<WorkspaceBackupRecord | null> {
+    const db = await openDb();
+    if (!db) return null;
+    return readWorkspaceBackup(db);
+  },
+
+  async loadViewState(projectId: string): Promise<ViewState | null> {
+    const workspace = await getWorkspaceState();
+    return workspace.viewStateByProject?.[projectId] ?? null;
+  },
+
+  async saveViewState(projectId: string, view: ViewState): Promise<void> {
+    await updateWorkspaceState((current) => ({
+      ...current,
+      viewStateByProject: {
+        ...(current.viewStateByProject ?? {}),
+        [projectId]: view,
+      },
+    }));
+  },
+
+  async clearViewState(projectId?: string): Promise<void> {
+    await updateWorkspaceState((current) => {
+      if (!projectId) {
+        return {
+          ...current,
+          viewStateByProject: undefined,
+        };
+      }
+      const nextViews = { ...(current.viewStateByProject ?? {}) };
+      delete nextViews[projectId];
+      return {
+        ...current,
+        viewStateByProject: Object.keys(nextViews).length > 0 ? nextViews : undefined,
+      };
+    });
+  },
+
+  async loadLastPublishInfo(userId: string): Promise<{ url: string; publishedAtMs: number } | null> {
+    const preferences = await readPreferencesRecord();
+    return preferences?.lastPublishByUserId?.[userId] ?? null;
+  },
+
+  async saveLastPublishInfo(userId: string, value: { url: string; publishedAtMs: number }): Promise<void> {
+    await updatePreferencesRecord((current) => mergePreferences(current, {
+      lastPublishByUserId: {
+        ...(current?.lastPublishByUserId ?? {}),
+        [userId]: value,
+      },
+    }));
   },
 
   async createLocalProject(project?: ProjectSpec): Promise<StoredProjectRecord> {
@@ -349,7 +488,7 @@ export const projectPersistence = {
     if (!nextProject.title) nextProject.title = 'Untitled Project';
     const record = buildStoredProjectRecord(nextProject, { id: nextProject.id, origin: 'local-only', syncStatus: 'local' });
     await upsertProjectRecord(record);
-    await writeWorkspace({ activeProjectId: record.id, syncMode: 'online' });
+    await updateWorkspaceState({ activeProjectId: record.id, syncMode: 'online' });
     return record;
   },
 
@@ -364,7 +503,7 @@ export const projectPersistence = {
       syncStatus: 'local',
     });
     await upsertProjectRecord(next);
-    await writeWorkspace({ activeProjectId: next.id, syncMode: 'online' });
+    await updateWorkspaceState({ activeProjectId: next.id, syncMode: 'online' });
     return next;
   },
 

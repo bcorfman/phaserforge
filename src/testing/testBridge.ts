@@ -1,6 +1,6 @@
 import type { Selection } from '../editor/EditorStore';
 import type { ProjectSpec, SceneSpec, StartupMode } from '../model/types';
-import { PROJECT_STORAGE_KEY, SCENE_STORAGE_KEY } from '../editor/EditorStore';
+import { SCENE_STORAGE_KEY } from '../editor/EditorStore';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number };
@@ -123,7 +123,6 @@ function ensureBridge(): void {
   window.__PHASER_FORGE_TEST__ = {
     isEnabled: true,
     clearStoredScene() {
-      window.localStorage.removeItem(PROJECT_STORAGE_KEY);
       window.localStorage.removeItem(SCENE_STORAGE_KEY);
     },
     getState() {

@@ -2,11 +2,10 @@ import { expect, test } from '@playwright/test';
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
-import { createProjectRevision } from '../../src/editor/projectTreeHistory';
-import { getState, gotoStudio, waitForSceneReady } from './helpers';
+import { appendProjectRevision, createProjectRevision } from '../../src/editor/projectTreeHistory';
+import { getState, gotoStudio } from './helpers';
 
-test('cloud-backed active project reload restores the latest persisted head and history @regression', async ({ page }) => {
-  const staleProject = structuredClone(sampleProject);
+test('cloud-backed active project reload restores the latest IndexedDB head and history without legacy localStorage project state @regression', async ({ page }) => {
   const latestProject = structuredClone(sampleProject);
   latestProject.title = 'Pattern Demo';
   latestProject.publishTitle = 'Pattern Demo';
@@ -26,27 +25,32 @@ test('cloud-backed active project reload restores the latest persisted head and 
     fadeMs: 250,
   };
 
-  const staleYaml = serializeProjectToYaml(staleProject);
   const latestYaml = serializeProjectToYaml(latestProject);
-  const staleRecord = {
-    ...buildStoredProjectRecord(staleProject, {
+  const staleRevision = createProjectRevision(sampleProject, {
+    id: 'rev-stale',
+    updatedAt: '2026-06-20T20:00:00.000Z',
+    reason: 'autosave',
+  });
+  const latestRevision = createProjectRevision(latestProject, {
+    id: 'rev-latest',
+    updatedAt: '2026-06-20T20:05:00.000Z',
+    reason: 'autosave',
+  });
+  const latestRecord = {
+    ...buildStoredProjectRecord(latestProject, {
       id: 'cloud:g1',
-      yaml: staleYaml,
-      updatedAt: '2026-06-20T20:00:00.000Z',
+      yaml: latestYaml,
+      updatedAt: '2026-06-20T20:05:00.000Z',
       origin: 'cloud-cache',
       syncStatus: 'cloud',
       cloudProjectId: 'g1',
-      revisions: [createProjectRevision(staleProject, {
-        id: 'rev-stale',
-        updatedAt: '2026-06-20T20:00:00.000Z',
-        reason: 'autosave',
-      })],
+      revisions: appendProjectRevision([staleRevision], latestRevision),
     }),
     id: 'cloud:g1',
-    projectId: staleProject.id,
+    projectId: latestProject.id,
   };
 
-  await page.addInitScript(async ({ record, latestProjectYaml }) => {
+  await page.addInitScript(async ({ record }) => {
     const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
       const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
       request.onerror = () => reject(request.error);
@@ -71,12 +75,8 @@ test('cloud-backed active project reload restores the latest persisted head and 
       }, 'workspace');
       tx.objectStore('workspaceState').put('1', 'legacyMigrated');
     });
-
-    window.localStorage.setItem('phaserforge.projectYaml.v1', latestProjectYaml);
-    window.localStorage.setItem('phaserforge.projectLastSavedAtMs.v1', String(Date.parse('2026-06-20T20:05:00.000Z')));
     window.localStorage.setItem('phaserforge.startupMode.v1', 'new_empty_scene');
-    window.localStorage.setItem('phaserforge.cloud.project_game_id_map_v1', JSON.stringify({ 'project-1': 'g1' }));
-  }, { record: staleRecord, latestProjectYaml: latestYaml });
+  }, { record: latestRecord });
 
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({
@@ -95,6 +95,9 @@ test('cloud-backed active project reload restores the latest persisted head and 
 
   const assertLatestHead = async () => {
     await expect(page.getByTestId('project-tree-root-button')).toContainText('Pattern Demo');
+    await expect.poll(async () => {
+      return page.evaluate(() => window.localStorage.getItem('phaserforge.projectYaml.v1'));
+    }).toBeNull();
     await expect.poll(async () => {
       const state = await getState<{
         project?: {
@@ -132,6 +135,6 @@ test('cloud-backed active project reload restores the latest persisted head and 
   await assertLatestHead();
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForSceneReady(page);
+  await gotoStudio(page);
   await assertLatestHead();
 });

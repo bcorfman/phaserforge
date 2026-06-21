@@ -1,48 +1,34 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import YAML from 'yaml';
-
-const INSPECTOR_FOLDOUTS_STORAGE_KEY = 'phaserforge.inspectorFoldouts.v1';
+import { projectPersistence } from './projectPersistence';
 
 type FoldoutMap = Record<string, boolean>;
 
-function loadFoldoutMap(): FoldoutMap {
-  if (typeof window === 'undefined') return {};
-  if (!('localStorage' in window) || !window.localStorage) return {};
-  const raw = window.localStorage.getItem(INSPECTOR_FOLDOUTS_STORAGE_KEY);
-  if (!raw) return {};
-  try {
-    const parsed = YAML.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== 'object') return {};
-    const map: FoldoutMap = {};
-    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof value === 'boolean') map[key] = value;
-    }
-    return map;
-  } catch {
-    return {};
-  }
-}
-
-function saveFoldoutMap(map: FoldoutMap) {
-  if (typeof window === 'undefined') return;
-  if (!('localStorage' in window) || !window.localStorage) return;
-  try {
-    window.localStorage.setItem(INSPECTOR_FOLDOUTS_STORAGE_KEY, YAML.stringify(map));
-  } catch {
-    // ignore
-  }
-}
-
 export function useInspectorFoldouts() {
-  const [map, setMap] = useState<FoldoutMap>(() => loadFoldoutMap());
+  const [map, setMap] = useState<FoldoutMap>({});
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    saveFoldoutMap(map);
-  }, [map]);
+    let cancelled = false;
+    void projectPersistence.loadPreferencesRecord().then((preferences) => {
+      if (cancelled) return;
+      setMap(preferences?.inspectorFoldouts ?? {});
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    void projectPersistence.updatePreferencesRecord({ inspectorFoldouts: map });
+  }, [hydrated, map]);
 
   useEffect(() => {
     const handler = () => {
-      setMap(loadFoldoutMap());
+      void projectPersistence.loadPreferencesRecord().then((preferences) => {
+        setMap(preferences?.inspectorFoldouts ?? {});
+      });
     };
     window.addEventListener('phaserforge:test-reset-ui', handler);
     return () => {

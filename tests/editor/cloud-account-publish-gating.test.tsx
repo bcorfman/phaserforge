@@ -30,7 +30,19 @@ const api = vi.hoisted(() => {
   };
 });
 
+const persistence = vi.hoisted(() => {
+  return {
+    loadActiveProjectRecord: vi.fn(async () => null),
+    saveWorkspaceBackup: vi.fn(async () => {}),
+    loadLastPublishInfo: vi.fn(async () => null),
+    saveLastPublishInfo: vi.fn(async () => {}),
+  };
+});
+
 vi.mock('../../src/cloud/api', () => api);
+vi.mock('../../src/editor/projectPersistence', () => ({
+  projectPersistence: persistence,
+}));
 
 import { CloudAccountPanel, __resetCloudAccountPanelAuthCacheForTests } from '../../src/editor/CloudAccountPanel';
 
@@ -129,7 +141,6 @@ describe('CloudAccountPanel publish gating', () => {
     const project = createEmptyProject();
     project.id = 'project-1';
     project.title = 'Pattern Demo';
-    window.localStorage.setItem('phaserforge.cloud.project_game_id_map_v1', JSON.stringify({ [project.id]: 'g-1' }));
 
     const dispatch = vi.fn();
     const onStatus = vi.fn();
@@ -137,6 +148,7 @@ describe('CloudAccountPanel publish gating', () => {
     const view = renderIntoDom(
       <CloudAccountPanel
         state={{ project }}
+        activeCloudGameId="g-1"
         dispatch={dispatch as any}
         onLoadYaml={() => {}}
         onStatus={onStatus}
@@ -159,6 +171,7 @@ describe('CloudAccountPanel publish gating', () => {
         view.root.render(
           <CloudAccountPanel
             state={{ project: edited }}
+            activeCloudGameId="g-1"
             dispatch={dispatch as any}
             onLoadYaml={() => {}}
             onStatus={onStatus}
@@ -219,9 +232,6 @@ describe('CloudAccountPanel publish gating', () => {
         expect.stringContaining('Cloud Save Demo'),
         'csrf',
       );
-      expect(JSON.parse(window.localStorage.getItem('phaserforge.cloud.project_game_id_map_v1') ?? '{}')).toEqual({
-        [project.id]: 'g1',
-      });
     } finally {
       view.cleanup();
     }
@@ -335,8 +345,17 @@ describe('CloudAccountPanel publish gating', () => {
     const currentCloudProject = structuredClone(deviceProject);
     currentCloudProject.title = 'Current Cloud Project';
 
-    window.localStorage.setItem('phaserforge.projectYaml.v1', serializeProjectToYaml(deviceProject));
-    window.localStorage.setItem('phaserforge.projectLastSavedAtMs.v1', String(Date.now()));
+    persistence.loadActiveProjectRecord.mockResolvedValueOnce({
+      id: 'project-1',
+      projectId: 'project-1',
+      title: 'Device Project',
+      yaml: serializeProjectToYaml(deviceProject),
+      updatedAt: '2026-06-21T11:16:00.000Z',
+      sceneCount: 1,
+      origin: 'local-only',
+      syncStatus: 'local',
+      revisions: [],
+    });
 
     api.getGame.mockImplementation(async (id: string) => {
       if (id === 'g1') {
@@ -368,13 +387,14 @@ describe('CloudAccountPanel publish gating', () => {
         { id: 'g2', title: 'Latest Unrelated Game', created_at: 'c', updated_at: '2026-06-21T13:00:00.000Z' },
       ],
     });
+    const onLoadYaml = vi.fn();
 
     const view = renderIntoDom(
       <CloudAccountPanel
         state={{ project: deviceProject }}
         activeCloudGameId="g1"
         dispatch={vi.fn() as any}
-        onLoadYaml={() => {}}
+        onLoadYaml={onLoadYaml}
         onStatus={vi.fn()}
         onError={vi.fn()}
       />
@@ -388,6 +408,9 @@ describe('CloudAccountPanel publish gating', () => {
       expect(api.getGame).not.toHaveBeenCalledWith('g2');
       expect(document.querySelector('[data-testid="workspace-conflict-modal"]')).toBeTruthy();
       expect(document.querySelector('[data-testid="workspace-conflict-cloud-card"]')?.textContent).toContain('Current Cloud Project');
+      (document.querySelector('[data-testid="workspace-conflict-use-cloud"]') as HTMLButtonElement | null)?.click();
+      expect(persistence.saveWorkspaceBackup).toHaveBeenCalledWith(serializeProjectToYaml(deviceProject), 'device');
+      expect(onLoadYaml).toHaveBeenCalledWith(serializeProjectToYaml(currentCloudProject), 'cloud:workspace');
     } finally {
       view.cleanup();
     }
