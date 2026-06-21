@@ -185,7 +185,7 @@ export function InputMapsPanel({
   };
 
   return (
-    <section className="panel-section" aria-labelledby="input-maps" data-testid="input-maps-panel">
+    <section className="panel-section input-maps-panel-section" aria-labelledby="input-maps" data-testid="input-maps-panel">
       <div className="panel-heading-row">
         <h3 className="panel-heading" id="input-maps">Input Maps</h3>
         <button className="button button-compact" data-testid="create-input-map-button" type="button" disabled={disabled} onClick={createMap}>
