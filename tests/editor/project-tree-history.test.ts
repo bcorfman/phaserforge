@@ -61,7 +61,7 @@ describe('project tree + history helpers', () => {
     expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Renamed to Pattern Demo · 1 entity added');
   });
 
-  it('collapses insignificant revisions into a minor edits label', () => {
+  it('surfaces concrete entity edits before falling back to a scene-level summary', () => {
     const olderProject = structuredClone(sampleProject);
     const newerProject = structuredClone(sampleProject);
     newerProject.scenes[newerProject.initialSceneId].entities.e2.name = 'Player Spawn';
@@ -75,7 +75,98 @@ describe('project tree + history helpers', () => {
       updatedAt: '2026-06-17T10:12:00.000Z',
     });
 
-    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Minor edits');
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Named entity Player Spawn');
+  });
+
+  it('surfaces audio library and music assignment changes in revision summaries', () => {
+    const olderProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.audio.sounds.theme = {
+      id: 'theme',
+      source: {
+        kind: 'embedded',
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'pattern-theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    };
+    newerProject.scenes[newerProject.initialSceneId].music = {
+      assetId: 'theme',
+      loop: true,
+      volume: 0.65,
+      fadeMs: 250,
+    };
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-17T10:11:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-17T10:12:00.000Z',
+    });
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Added audio pattern-theme.mp3 · Music -> pattern-theme.mp3');
+  });
+
+  it('surfaces named scene system changes like triggers before broad scene fallbacks', () => {
+    const olderProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.scenes[newerProject.initialSceneId].triggers = [{
+      id: 'trigger-1',
+      name: 'Exit Gate',
+      rect: { x: 10, y: 20, width: 30, height: 40 },
+      onEnter: { callId: 'scene.goto', args: { sceneId: 'next-scene' } },
+    }];
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-17T10:11:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-17T10:12:00.000Z',
+    });
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Added trigger Exit Gate');
+  });
+
+  it('surfaces named publish metadata changes before generic project fallbacks', () => {
+    const olderProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.publishTitle = 'Published Pattern Demo';
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-17T10:11:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-17T10:12:00.000Z',
+    });
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Set publish title to Published Pattern Demo');
+  });
+
+  it('surfaces named project-wide system changes like input maps before generic project settings', () => {
+    const olderProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.inputMaps.player = {
+      actions: {
+        jump: [{ device: 'keyboard', key: 'Space', event: 'down' }],
+      },
+    };
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-17T10:11:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-17T10:12:00.000Z',
+    });
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Added input map player');
   });
 
   it('builds a copy default name from the revision date', () => {
@@ -105,5 +196,73 @@ describe('project tree + history helpers', () => {
     const revisions = appendProjectRevision([older], newer, 1);
 
     expect(revisions).toEqual([newer]);
+  });
+
+  it('coalesces nearby autosaves when they continue the same entity editing burst', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.scenes[firstEdit.initialSceneId].entities.e2.name = 'Player Spawn';
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.scenes[secondEdit.initialSceneId].entities.e2.x += 24;
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-17T10:10:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
+  });
+
+  it('splits autosaves when the user switches to an unrelated editing domain', () => {
+    const baseProject = structuredClone(sampleProject);
+    const audioEdit = structuredClone(sampleProject);
+    audioEdit.audio.sounds.theme = {
+      id: 'theme',
+      source: {
+        kind: 'embedded',
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'pattern-theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    };
+    audioEdit.scenes[audioEdit.initialSceneId].music = {
+      assetId: 'theme',
+      loop: true,
+      volume: 0.65,
+      fadeMs: 250,
+    };
+    const publishEdit = structuredClone(audioEdit);
+    publishEdit.publishTitle = 'Pattern Demo';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const audioRevision = createProjectRevision(audioEdit, {
+      id: 'rev-audio',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+      reason: 'autosave',
+    });
+    const publishRevision = createProjectRevision(publishEdit, {
+      id: 'rev-publish',
+      updatedAt: '2026-06-17T10:10:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([audioRevision, baseRevision], publishRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-publish', 'rev-audio', 'rev-base']);
   });
 });
