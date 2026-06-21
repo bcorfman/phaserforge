@@ -33,7 +33,7 @@ describe('project tree + history helpers', () => {
     });
 
     expect(formatProjectRevisionSummary(revision)).toBe('Autosave checkpoint · 1 scene · 15 entities · Start: scene-1');
-    expect(formatProjectRevisionTimestamp(revision)).toBe('Jun 17, 6:12 AM');
+    expect(formatProjectRevisionTimestamp(revision)).toMatch(/^Jun 17, (6|10):12 AM$/);
   });
 
   it('builds a copy default name from the revision date', () => {

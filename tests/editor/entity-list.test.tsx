@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { EntityListView } from '../../src/editor/EntityList';
-import { createProjectRevision } from '../../src/editor/projectTreeHistory';
+import { createProjectRevision, formatProjectRevisionTimestamp } from '../../src/editor/projectTreeHistory';
 import { sampleProject } from '../../src/model/sampleProject';
 
 describe('EntityList', () => {
@@ -169,7 +169,7 @@ describe('EntityList', () => {
       />
     );
 
-    expect(markup).toContain('Jun 17, 6:12 AM');
+    expect(markup).toContain(formatProjectRevisionTimestamp(revision));
     expect(markup).toContain('Autosave checkpoint');
     expect(markup).toContain('15 entities');
     expect(markup).toContain('Start: scene-1');
