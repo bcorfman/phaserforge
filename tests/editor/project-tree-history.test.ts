@@ -6,6 +6,7 @@ import {
   buildProjectTreeRows,
   buildRestoreRevisionStatus,
   createProjectRevision,
+  formatProjectRevisionTimestamp,
   formatProjectRevisionSummary,
 } from '../../src/editor/projectTreeHistory';
 
@@ -22,13 +23,17 @@ describe('project tree + history helpers', () => {
     expect(rows[1]).toMatchObject({ kind: 'scene', isCurrent: true });
   });
 
-  it('formats revision summaries with date and scene count', () => {
-    const revision = createProjectRevision(sampleProject, {
+  it('formats revision summaries with reason, counts, and starting scene detail', () => {
+    const project = structuredClone(sampleProject);
+    project.scenes[project.initialSceneId].entities.e2.name = 'Player Spawn';
+    project.scenes[project.initialSceneId].entities.e3.name = 'Boss Gate';
+    const revision = createProjectRevision(project, {
       id: 'rev-1',
       updatedAt: '2026-06-17T10:12:00.000Z',
     });
 
-    expect(formatProjectRevisionSummary(revision)).toBe('Jun 17 · 1 scene');
+    expect(formatProjectRevisionSummary(revision)).toBe('Autosave checkpoint · 1 scene · 15 entities · Start: scene-1');
+    expect(formatProjectRevisionTimestamp(revision)).toBe('Jun 17, 6:12 AM');
   });
 
   it('builds a copy default name from the revision date', () => {
