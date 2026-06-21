@@ -188,12 +188,23 @@ export function CloudAccountPanel({
   const [publishDeploymentNote, setPublishDeploymentNote] = useState('');
   const [publishInlineError, setPublishInlineError] = useState('');
   const [cloudGameId, setCloudGameId] = useState<string | null>(null);
+  const [cloudGameLookupResolved, setCloudGameLookupResolved] = useState(false);
+  const [conflictCheckComplete, setConflictCheckComplete] = useState(false);
   const [workspaceConflict, setWorkspaceConflict] = useState<{
     cloud: { yaml: string; updatedAt: string; label: string };
     device: { yaml: string; savedAtMs: number | null; label: string };
   } | null>(null);
   const hasCheckedConflictRef = useRef(false);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
+  const cloudGameIdRef = useRef<string | null>(null);
+  const autosaveTimerRef = useRef<number | null>(null);
+  const autosaveInFlightRef = useRef(false);
+  const pendingAutosaveRef = useRef<null | { projectId: string; title: string; yaml: string; signature: string }>(null);
+  const lastAutosavedSignatureRef = useRef<string>('');
+  const autosaveRetryTimerRef = useRef<number | null>(null);
+
+  const CLOUD_AUTOSAVE_DEBOUNCE_MS = 1000;
+  const CLOUD_AUTOSAVE_RETRY_MS = 5000;
 
   const githubEnabled = useMemo(() => true, []);
   const githubStartHref = useMemo(() => {
@@ -283,21 +294,29 @@ export function CloudAccountPanel({
       const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
       if (!raw) {
         setCloudGameId(null);
+        setCloudGameLookupResolved(true);
         return;
       }
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       const mapped = parsed[state.project.id];
       setCloudGameId(typeof mapped === 'string' && mapped.length > 0 ? mapped : null);
+      setCloudGameLookupResolved(true);
     } catch {
       setCloudGameId(null);
+      setCloudGameLookupResolved(true);
     }
   }, [state.project.id]);
+
+  useEffect(() => {
+    cloudGameIdRef.current = cloudGameId;
+  }, [cloudGameId]);
 
   useEffect(() => {
     let cancelled = false;
     if (!user) return;
     if (hasCheckedConflictRef.current) return;
     hasCheckedConflictRef.current = true;
+    setConflictCheckComplete(false);
 
     const readDeviceSnapshot = (): { yaml: string | null; savedAtMs: number | null } => {
       if (typeof window === 'undefined') return { yaml: null, savedAtMs: null };
@@ -335,7 +354,10 @@ export function CloudAccountPanel({
 
     const detectConflict = async () => {
       const device = readDeviceSnapshot();
-      if (!device.yaml) return;
+      if (!device.yaml) {
+        if (!cancelled) setConflictCheckComplete(true);
+        return;
+      }
 
       try {
         const res = await listGames();
@@ -375,6 +397,8 @@ export function CloudAccountPanel({
         );
       } catch {
         // ignore: conflict UI is best-effort; users can still use manual load/save.
+      } finally {
+        if (!cancelled) setConflictCheckComplete(true);
       }
     };
 
@@ -571,6 +595,90 @@ export function CloudAccountPanel({
     persistCloudGameId(state.project.id, id);
     return id;
   };
+
+  const clearAutosaveTimer = () => {
+    if (autosaveTimerRef.current != null) {
+      window.clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+  };
+
+  const scheduleAutosaveRetry = () => {
+    if (autosaveRetryTimerRef.current != null) return;
+    autosaveRetryTimerRef.current = window.setTimeout(() => {
+      autosaveRetryTimerRef.current = null;
+      if (!autosaveInFlightRef.current && pendingAutosaveRef.current) {
+        void flushCloudAutosave();
+      }
+    }, CLOUD_AUTOSAVE_RETRY_MS);
+  };
+
+  const flushCloudAutosave = async (): Promise<void> => {
+    if (autosaveInFlightRef.current) return;
+    const pending = pendingAutosaveRef.current;
+    if (!pending || !user) return;
+    if (pending.signature === lastAutosavedSignatureRef.current) {
+      pendingAutosaveRef.current = null;
+      return;
+    }
+
+    autosaveInFlightRef.current = true;
+    pendingAutosaveRef.current = null;
+    try {
+      const existingCloudGameId = cloudGameIdRef.current;
+      if (existingCloudGameId) {
+        await runWithCsrfRetry((csrf) => updateGame(existingCloudGameId, { title: pending.title, yaml: pending.yaml }, csrf));
+      } else {
+        const created = await runWithCsrfRetry((csrf) => createGame(pending.title, pending.yaml, csrf));
+        const nextCloudGameId = created.game.id;
+        cloudGameIdRef.current = nextCloudGameId;
+        setCloudGameId(nextCloudGameId);
+        persistCloudGameId(pending.projectId, nextCloudGameId);
+      }
+      lastAutosavedSignatureRef.current = pending.signature;
+    } catch (err) {
+      pendingAutosaveRef.current = pending;
+      scheduleAutosaveRetry();
+      onError(err instanceof Error ? err.message : 'Cloud save failed');
+    } finally {
+      autosaveInFlightRef.current = false;
+      if (pendingAutosaveRef.current && pendingAutosaveRef.current.signature !== lastAutosavedSignatureRef.current) {
+        clearAutosaveTimer();
+        autosaveTimerRef.current = window.setTimeout(() => {
+          autosaveTimerRef.current = null;
+          void flushCloudAutosave();
+        }, CLOUD_AUTOSAVE_DEBOUNCE_MS);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!authResolved || !user || !cloudGameLookupResolved || !conflictCheckComplete || workspaceConflict) return;
+    const title = state.project.publishTitle?.trim() || state.project.title?.trim() || 'Untitled';
+    const yaml = serializeProjectToYaml(state.project);
+    const signature = `${state.project.id}\n${title}\n${yaml}`;
+    if (signature === lastAutosavedSignatureRef.current) return;
+    pendingAutosaveRef.current = { projectId: state.project.id, title, yaml, signature };
+    clearAutosaveTimer();
+    autosaveTimerRef.current = window.setTimeout(() => {
+      autosaveTimerRef.current = null;
+      void flushCloudAutosave();
+    }, CLOUD_AUTOSAVE_DEBOUNCE_MS);
+
+    return () => {
+      clearAutosaveTimer();
+    };
+  }, [authResolved, cloudGameLookupResolved, conflictCheckComplete, state.project, user, workspaceConflict]);
+
+  useEffect(() => {
+    return () => {
+      clearAutosaveTimer();
+      if (autosaveRetryTimerRef.current != null) {
+        window.clearTimeout(autosaveRetryTimerRef.current);
+        autosaveRetryTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handlePublishCheck = async () => {
     const repo = publishRepoDraft.trim();
