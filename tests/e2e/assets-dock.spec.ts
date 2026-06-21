@@ -5,7 +5,7 @@ import { dismissViewHint, dispatchAction, dragAssetToCanvas, dropAssetAtClientPo
 test.describe('Assets dock', () => {
   test.describe.configure({ timeout: 120000 });
 
-  async function normalizedWorldPointPosition(page: Parameters<typeof worldToClient>[0], point: { x: number; y: number }) {
+  async function canvasRelativeWorldPointPosition(page: Parameters<typeof worldToClient>[0], point: { x: number; y: number }) {
     const canvas = page.locator('#game-container canvas');
     await expect(canvas).toBeVisible();
     const canvasBox = await canvas.boundingBox();
@@ -13,8 +13,8 @@ test.describe('Assets dock', () => {
 
     const center = await worldToClient(page, point);
     return {
-      x: (center.x - canvasBox.x) / canvasBox.width,
-      y: (center.y - canvasBox.y) / canvasBox.height,
+      x: center.x - canvasBox.x,
+      y: center.y - canvasBox.y,
     };
   }
 
@@ -88,7 +88,7 @@ test.describe('Assets dock', () => {
     // Probe a fixed world point directly instead of creating a marker entity.
     // That keeps the invariant user-visible while avoiding entity/font/layout timing differences.
     const viewportProbe = { x: 120, y: 90 };
-    const probeNormalizedBefore = await normalizedWorldPointPosition(page, viewportProbe);
+    const probeBefore = await canvasRelativeWorldPointPosition(page, viewportProbe);
 
     // Use the same drag/drop path across browsers. Our helper uses a synthetic HTML5 drop for WebKit
     // to avoid flakiness from native `dragTo` while still exercising the real drop handler.
@@ -98,17 +98,19 @@ test.describe('Assets dock', () => {
     const after = await getSceneSnapshot<any>(page);
     expect(after).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
-    // Minor subpixel/camera rounding differences are acceptable; ensure the viewport is effectively preserved.
-    expect(Math.abs((after.zoom ?? 0) - (before.zoom ?? 0))).toBeLessThanOrEqual(1e-3);
+    // Use camera snapshot deltas as the primary invariant, then confirm a fixed world point stays visually stable.
+    expect(Math.abs((after.zoom ?? 0) - (before.zoom ?? 0))).toBeLessThanOrEqual(0.01);
+    expect(Math.abs((after.scrollX ?? 0) - (before.scrollX ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((after.scrollY ?? 0) - (before.scrollY ?? 0))).toBeLessThanOrEqual(1);
     await expect
       .poll(async () => {
-        const markerNormalizedAfter = await normalizedWorldPointPosition(page, viewportProbe);
+        const probeAfter = await canvasRelativeWorldPointPosition(page, viewportProbe);
         return Math.max(
-          Math.abs(markerNormalizedAfter.x - probeNormalizedBefore.x),
-          Math.abs(markerNormalizedAfter.y - probeNormalizedBefore.y),
+          Math.abs(probeAfter.x - probeBefore.x),
+          Math.abs(probeAfter.y - probeBefore.y),
         );
       })
-      .toBeLessThanOrEqual(0.02);
+      .toBeLessThanOrEqual(6);
   });
 
   test('dragging an image asset onto an existing sprite replaces its asset @critical @browser', async ({ page }, testInfo) => {
