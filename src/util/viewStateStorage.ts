@@ -51,6 +51,25 @@ export function canRestorePersistedView(options: {
     && options.activeSceneWorldHeight === options.currentWorldHeight;
 }
 
+export function isViewStateApproximatelyEqual(
+  actual: Partial<ViewState> | null | undefined,
+  expected: Partial<ViewState> | null | undefined,
+  options: {
+    zoomTolerance?: number;
+    scrollTolerance?: number;
+  } = {}
+): boolean {
+  if (!actual || !expected) return false;
+  const zoomTolerance = options.zoomTolerance ?? 0.01;
+  const scrollTolerance = options.scrollTolerance ?? 1;
+  if (!Number.isFinite(actual.zoom) || !Number.isFinite(expected.zoom)) return false;
+  if (!Number.isFinite(actual.scrollX) || !Number.isFinite(expected.scrollX)) return false;
+  if (!Number.isFinite(actual.scrollY) || !Number.isFinite(expected.scrollY)) return false;
+  return Math.abs(actual.zoom - expected.zoom) <= zoomTolerance
+    && Math.abs(actual.scrollX - expected.scrollX) <= scrollTolerance
+    && Math.abs(actual.scrollY - expected.scrollY) <= scrollTolerance;
+}
+
 export function parseStoredViewState(raw: string | null | undefined): StoredViewState | undefined {
   if (!raw) return undefined;
   try {

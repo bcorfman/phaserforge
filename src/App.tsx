@@ -16,6 +16,7 @@ import { computeFormationDraftPositions, getTemplateSize } from './editor/format
 import {
   canRestorePersistedView,
   doesReportedViewMatchCurrentScene,
+  isViewStateApproximatelyEqual,
   readStoredViewState,
   shouldPersistViewState,
   shouldResetViewStateForProjectChange,
@@ -409,6 +410,17 @@ function AppShell() {
           storedView: view,
         });
         if (view) {
+          const currentView = activeScene && typeof activeScene.getViewState === 'function'
+            ? (activeScene.getViewState() as { zoom: number; scrollX: number; scrollY: number; viewportWidth?: number; viewportHeight?: number })
+            : null;
+          if (isViewStateApproximatelyEqual(currentView, view)) {
+            logViewDebug('restore-skipped-already-applied', {
+              projectId,
+              currentView,
+              storedView: view,
+            });
+            return true;
+          }
           EventBus.emit('scene-restore-view-state', view);
           const restoredScene = getActiveScene() as any;
           const restoredView = restoredScene && typeof restoredScene.getViewState === 'function'
