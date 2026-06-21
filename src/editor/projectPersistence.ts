@@ -2,6 +2,7 @@ import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization
 import { createEmptyProject } from '../model/emptyProject';
 import type { ProjectSpec, StartupMode } from '../model/types';
 import { appendProjectRevision, createProjectRevision, type ProjectRevisionRecord } from './projectTreeHistory';
+import { createSerializedAsyncQueue } from './serializedAsyncQueue';
 import type { ViewState } from '../util/viewStateStorage';
 
 const DB_NAME = 'phaserforge.persistence.v1';
@@ -67,6 +68,7 @@ type PersistenceSnapshot = {
 
 type LegacyStorageReader = Pick<Storage, 'getItem'>;
 const EMPTY_LEGACY_STORAGE_READER: LegacyStorageReader = { getItem: () => null };
+const workspaceMutationQueue = createSerializedAsyncQueue();
 
 const defaultWorkspace = (): WorkspaceStateRecord => ({
   activeProjectId: null,
@@ -257,6 +259,7 @@ async function migrateLegacyStorage(db: IDBDatabase): Promise<void> {
 }
 
 async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
+  await workspaceMutationQueue.drain();
   const db = await openDb();
   if (!db) {
     return {
@@ -329,7 +332,8 @@ async function getProjectRecord(projectId: string): Promise<StoredProjectRecord 
   return (record as StoredProjectRecord | undefined) ?? null;
 }
 
-async function getWorkspaceState(): Promise<WorkspaceStateRecord> {
+async function getWorkspaceState(options?: { awaitPendingWrites?: boolean }): Promise<WorkspaceStateRecord> {
+  if (options?.awaitPendingWrites) await workspaceMutationQueue.drain();
   const db = await openDb();
   if (!db) return defaultWorkspace();
   return readWorkspace(db);
@@ -338,10 +342,12 @@ async function getWorkspaceState(): Promise<WorkspaceStateRecord> {
 async function updateWorkspaceState(
   patch: Partial<WorkspaceStateRecord> | ((current: WorkspaceStateRecord) => WorkspaceStateRecord),
 ): Promise<WorkspaceStateRecord> {
-  const current = await getWorkspaceState();
-  const next = typeof patch === 'function' ? patch(current) : { ...current, ...patch };
-  await writeWorkspace(next);
-  return next;
+  return workspaceMutationQueue.run(async () => {
+    const current = await getWorkspaceState();
+    const next = typeof patch === 'function' ? patch(current) : { ...current, ...patch };
+    await writeWorkspace(next);
+    return next;
+  });
 }
 
 function cloneProject(project: ProjectSpec): ProjectSpec {
@@ -372,8 +378,10 @@ export const projectPersistence = {
   },
 
   async saveActiveProjectRecord(record: StoredProjectRecord, syncMode: ProjectSyncMode): Promise<StoredProjectRecord[]> {
-    const currentWorkspace = await getWorkspaceState();
-    await writeProjectRecordAndWorkspace(record, { ...currentWorkspace, activeProjectId: record.id, syncMode });
+    await workspaceMutationQueue.run(async () => {
+      const currentWorkspace = await getWorkspaceState();
+      await writeProjectRecordAndWorkspace(record, { ...currentWorkspace, activeProjectId: record.id, syncMode });
+    });
     const snapshot = await this.load();
     return snapshot.localProjects;
   },
@@ -399,7 +407,7 @@ export const projectPersistence = {
   },
 
   async loadWorkspaceStateRecord(): Promise<WorkspaceStateRecord> {
-    return getWorkspaceState();
+    return getWorkspaceState({ awaitPendingWrites: true });
   },
 
   async updateWorkspaceStateRecord(
@@ -413,7 +421,7 @@ export const projectPersistence = {
   },
 
   async loadActiveProjectRecord(): Promise<StoredProjectRecord | null> {
-    const workspace = await getWorkspaceState();
+    const workspace = await getWorkspaceState({ awaitPendingWrites: true });
     if (!workspace.activeProjectId) return null;
     return getProjectRecord(workspace.activeProjectId);
   },
@@ -437,7 +445,7 @@ export const projectPersistence = {
   },
 
   async loadViewState(projectId: string): Promise<ViewState | null> {
-    const workspace = await getWorkspaceState();
+    const workspace = await getWorkspaceState({ awaitPendingWrites: true });
     return workspace.viewStateByProject?.[projectId] ?? null;
   },
 

@@ -62,7 +62,8 @@ export function InspectorPaneView({
 export function InspectorPane() {
   const { state, dispatch, persistence } = useEditorStore();
   const cloudEnabled = !isLocalHostname(globalThis.location?.hostname);
-  const activeCloudGameId = persistence?.localProjects?.find((entry) => entry.id === persistence.activeProjectId)?.cloudProjectId ?? null;
+  const activeProjectId = persistence?.activeProjectId ?? null;
+  const activeCloudGameId = persistence?.localProjects?.find((entry) => entry.id === activeProjectId)?.cloudProjectId ?? null;
   const [tab, setTab] = useState<'inspector' | 'cloud'>(() => {
     if (!cloudEnabled) return 'inspector';
     const cachedUser = getCachedCloudAccountUserSnapshot();
