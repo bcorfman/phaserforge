@@ -1,13 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { parseStoredViewState, VIEW_STATE_STORAGE_KEY, type ViewState, readStoredViewState, writeStoredViewState } from '../../src/util/viewStateStorage';
+import {
+  parseStoredViewState,
+  shouldPersistViewState,
+  VIEW_STATE_STORAGE_KEY,
+  type ViewState,
+  readStoredViewState,
+  writeStoredViewState,
+} from '../../src/util/viewStateStorage';
 
 describe('viewStateStorage', () => {
   it('parses a valid view state JSON', () => {
-    expect(parseStoredViewState(JSON.stringify({ projectId: 'p1', zoom: 1.25, scrollX: 10, scrollY: -5 }))).toEqual({
+    expect(parseStoredViewState(JSON.stringify({
       projectId: 'p1',
       zoom: 1.25,
       scrollX: 10,
       scrollY: -5,
+      viewportWidth: 900,
+      viewportHeight: 700,
+    }))).toEqual({
+      projectId: 'p1',
+      zoom: 1.25,
+      scrollX: 10,
+      scrollY: -5,
+      viewportWidth: 900,
+      viewportHeight: 700,
     });
   });
 
@@ -45,10 +61,17 @@ describe('viewStateStorage', () => {
       },
     };
 
-    const view: ViewState = { zoom: 2, scrollX: 3, scrollY: 4 };
+    const view: ViewState = { zoom: 2, scrollX: 3, scrollY: 4, viewportWidth: 900, viewportHeight: 700 };
     writeStoredViewState(fakeStorage, 'p1', view);
     expect(fakeStorage.getItem(VIEW_STATE_STORAGE_KEY)).toBe(JSON.stringify({ projectId: 'p1', ...view }));
     expect(readStoredViewState(fakeStorage, 'p1')).toEqual(view);
     expect(readStoredViewState(fakeStorage, 'p2')).toBeUndefined();
+  });
+
+  it('does not persist boot-time viewport state before restore has run', () => {
+    expect(shouldPersistViewState({ projectId: 'p1', initialized: false, restoreAttempted: false })).toBe(false);
+    expect(shouldPersistViewState({ projectId: 'p1', initialized: true, restoreAttempted: false })).toBe(false);
+    expect(shouldPersistViewState({ projectId: '', initialized: true, restoreAttempted: true })).toBe(false);
+    expect(shouldPersistViewState({ projectId: 'p1', initialized: true, restoreAttempted: true })).toBe(true);
   });
 });

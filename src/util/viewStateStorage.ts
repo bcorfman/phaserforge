@@ -1,7 +1,21 @@
 export const VIEW_STATE_STORAGE_KEY = 'phaserforge.viewState.v1';
 
-export type ViewState = { zoom: number; scrollX: number; scrollY: number };
+export type ViewState = {
+  zoom: number;
+  scrollX: number;
+  scrollY: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
+};
 export type StoredViewState = ViewState & { projectId: string };
+
+export function shouldPersistViewState(options: {
+  projectId: string | null | undefined;
+  initialized: boolean;
+  restoreAttempted: boolean;
+}): boolean {
+  return Boolean(options.projectId) && options.initialized && options.restoreAttempted;
+}
 
 export function parseStoredViewState(raw: string | null | undefined): StoredViewState | undefined {
   if (!raw) return undefined;
@@ -18,7 +32,17 @@ export function parseStoredViewState(raw: string | null | undefined): StoredView
     if (zoom <= 0) return undefined;
     if (!projectId) return undefined;
 
-    return { projectId, zoom, scrollX, scrollY };
+    const viewportWidth = Number((parsed as any).viewportWidth);
+    const viewportHeight = Number((parsed as any).viewportHeight);
+
+    return {
+      projectId,
+      zoom,
+      scrollX,
+      scrollY,
+      viewportWidth: Number.isFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : undefined,
+      viewportHeight: Number.isFinite(viewportHeight) && viewportHeight > 0 ? viewportHeight : undefined,
+    };
   } catch {
     return undefined;
   }
@@ -28,7 +52,13 @@ export function readStoredViewState(storage: Storage, projectId: string): ViewSt
   const parsed = parseStoredViewState(storage.getItem(VIEW_STATE_STORAGE_KEY));
   if (!parsed) return undefined;
   if (parsed.projectId !== projectId) return undefined;
-  return { zoom: parsed.zoom, scrollX: parsed.scrollX, scrollY: parsed.scrollY };
+  return {
+    zoom: parsed.zoom,
+    scrollX: parsed.scrollX,
+    scrollY: parsed.scrollY,
+    viewportWidth: parsed.viewportWidth,
+    viewportHeight: parsed.viewportHeight,
+  };
 }
 
 export function writeStoredViewState(storage: Storage, projectId: string, view: ViewState): void {
