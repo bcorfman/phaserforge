@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from 'vitest';
 import { buildStoredProjectRecord, mergeSnapshotWithLegacyActiveProject, type StoredProjectRecord } from '../../src/editor/projectPersistence';
 import { createEmptyProject } from '../../src/model/emptyProject';
 
@@ -12,7 +13,32 @@ function record(overrides: Partial<StoredProjectRecord> = {}): StoredProjectReco
   };
 }
 
+function installLocalStorageMock() {
+  const storage = new Map<string, string>();
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        storage.set(key, value);
+      },
+      removeItem: (key: string) => {
+        storage.delete(key);
+      },
+      clear: () => {
+        storage.clear();
+      },
+    },
+  });
+}
+
 describe('projectPersistence legacy merge', () => {
+  installLocalStorageMock();
+
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it('prefers newer legacy YAML for the active project during startup', () => {
     const snapshot = {
       localProjects: [

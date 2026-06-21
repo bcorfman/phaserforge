@@ -3,6 +3,7 @@ import React from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { createEmptyProject } from '../../src/model/emptyProject';
 
 const api = vi.hoisted(() => {
   return {
@@ -117,6 +118,112 @@ describe('CloudAccountPanel publish gating', () => {
     __resetCloudAccountPanelAuthCacheForTests();
     window.localStorage.clear();
     vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('autosaves edits to the mapped cloud game after a debounce', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+    window.localStorage.setItem('phaserforge.cloud.project_game_id_map_v1', JSON.stringify({ [project.id]: 'g-1' }));
+
+    const dispatch = vi.fn();
+    const onStatus = vi.fn();
+    const onError = vi.fn();
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project }}
+        dispatch={dispatch as any}
+        onLoadYaml={() => {}}
+        onStatus={onStatus}
+        onError={onError}
+      />
+    );
+
+    try {
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      expect(api.me).toHaveBeenCalled();
+      expect(document.querySelector('.cloud-signed-in')?.textContent).toContain('dev@example.com');
+      api.updateGame.mockClear();
+
+      const edited = structuredClone(project);
+      edited.title = 'Pattern Demo 2';
+
+      act(() => {
+        view.root.render(
+          <CloudAccountPanel
+            state={{ project: edited }}
+            dispatch={dispatch as any}
+            onLoadYaml={() => {}}
+            onStatus={onStatus}
+            onError={onError}
+          />
+        );
+      });
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(api.updateGame).toHaveBeenCalledWith(
+        'g-1',
+        expect.objectContaining({
+          title: 'Pattern Demo 2',
+          yaml: expect.stringContaining('Pattern Demo 2'),
+        }),
+        'csrf',
+      );
+      expect(onError).not.toHaveBeenCalled();
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('creates a cloud game for a signed-in project when no mapping exists yet', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const project = createEmptyProject();
+    project.id = 'project-create';
+    project.title = 'Cloud Save Demo';
+
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project }}
+        dispatch={vi.fn() as any}
+        onLoadYaml={() => {}}
+        onStatus={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+
+    try {
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      expect(api.me).toHaveBeenCalled();
+      expect(document.querySelector('.cloud-signed-in')?.textContent).toContain('dev@example.com');
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(api.createGame).toHaveBeenCalledWith(
+        'Cloud Save Demo',
+        expect.stringContaining('Cloud Save Demo'),
+        'csrf',
+      );
+      expect(JSON.parse(window.localStorage.getItem('phaserforge.cloud.project_game_id_map_v1') ?? '{}')).toEqual({
+        [project.id]: 'g1',
+      });
+    } finally {
+      view.cleanup();
+    }
   });
 
   it('shows a compact Publish section when not signed in', async () => {
