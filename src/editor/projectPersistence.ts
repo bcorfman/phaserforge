@@ -111,9 +111,20 @@ export function mergeSnapshotWithLegacyActiveProject(
   legacyProject: StoredProjectRecord | null,
 ): PersistenceSnapshot {
   if (!legacyProject) return snapshot;
-  if (snapshot.workspace.activeProjectId !== legacyProject.id) return snapshot;
+  const activeProjectId = snapshot.workspace.activeProjectId;
+  const matchingActiveIndex = snapshot.localProjects.findIndex((record) => (
+    record.id === activeProjectId
+    || (record.id === activeProjectId && record.projectId === legacyProject.projectId)
+    || (record.id === activeProjectId && legacyProject.id === record.projectId)
+  ));
+  const existingIndex = matchingActiveIndex >= 0
+    ? matchingActiveIndex
+    : snapshot.localProjects.findIndex((record) => (
+      record.id === legacyProject.id
+      || (record.id === activeProjectId && record.projectId === legacyProject.projectId)
+    ));
+  if (existingIndex === -1 && activeProjectId !== legacyProject.id) return snapshot;
 
-  const existingIndex = snapshot.localProjects.findIndex((record) => record.id === legacyProject.id);
   if (existingIndex === -1) {
     return {
       ...snapshot,
@@ -129,13 +140,29 @@ export function mergeSnapshotWithLegacyActiveProject(
   }
 
   const localProjects = snapshot.localProjects.slice();
+  let nextRevisions = existing.revisions;
+  if (existing.yaml !== legacyProject.yaml) {
+    try {
+      nextRevisions = appendProjectRevision(
+        existing.revisions,
+        createProjectRevision(parseProjectYaml(legacyProject.yaml), {
+          updatedAt: legacyProject.updatedAt,
+          reason: 'autosave',
+        }),
+      );
+    } catch {
+      nextRevisions = existing.revisions;
+    }
+  }
   localProjects[existingIndex] = {
     ...existing,
     ...legacyProject,
+    id: existing.id,
+    projectId: existing.projectId,
     origin: existing.origin,
     syncStatus: existing.syncStatus,
     cloudProjectId: existing.cloudProjectId,
-    revisions: existing.revisions,
+    revisions: nextRevisions,
   };
   return { ...snapshot, localProjects };
 }
