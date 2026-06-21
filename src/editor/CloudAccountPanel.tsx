@@ -147,14 +147,18 @@ function markReturnToCloudAfterAuth() {
 
 export function CloudAccountPanel({
   state,
+  activeCloudGameId,
   dispatch,
   onLoadYaml,
+  onCloudGameLinked,
   onStatus,
   onError,
 }: {
   state: Pick<EditorState, 'project'>;
+  activeCloudGameId?: string | null;
   dispatch: Dispatch<EditorAction>;
   onLoadYaml: (yaml: string, sourceLabel: string) => void;
+  onCloudGameLinked?: (gameId: string) => void | Promise<void>;
   onStatus: (message: string) => void;
   onError: (message: string) => void;
 }) {
@@ -255,12 +259,15 @@ export function CloudAccountPanel({
 
       try {
         const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
+        if (activeCloudGameId && !cancelled) {
+          setCloudGameId(activeCloudGameId);
+        }
         if (raw) {
           const parsed = JSON.parse(raw) as Record<string, unknown>;
           const id = state.project?.id;
           if (id) {
             const mapped = parsed[id];
-            if (typeof mapped === 'string' && mapped.length > 0 && !cancelled) setCloudGameId(mapped);
+            if (!activeCloudGameId && typeof mapped === 'string' && mapped.length > 0 && !cancelled) setCloudGameId(mapped);
           }
         }
       } catch {
@@ -291,6 +298,11 @@ export function CloudAccountPanel({
 
   useEffect(() => {
     try {
+      if (activeCloudGameId) {
+        setCloudGameId(activeCloudGameId);
+        setCloudGameLookupResolved(true);
+        return;
+      }
       const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
       if (!raw) {
         setCloudGameId(null);
@@ -305,7 +317,7 @@ export function CloudAccountPanel({
       setCloudGameId(null);
       setCloudGameLookupResolved(true);
     }
-  }, [state.project.id]);
+  }, [activeCloudGameId, state.project.id]);
 
   useEffect(() => {
     cloudGameIdRef.current = cloudGameId;
@@ -314,6 +326,7 @@ export function CloudAccountPanel({
   useEffect(() => {
     let cancelled = false;
     if (!user) return;
+    if (!cloudGameLookupResolved) return;
     if (hasCheckedConflictRef.current) return;
     hasCheckedConflictRef.current = true;
     setConflictCheckComplete(false);
@@ -360,21 +373,37 @@ export function CloudAccountPanel({
       }
 
       try {
-        const res = await listGames();
-        const candidates = res.games ?? [];
-        if (candidates.length === 0) return;
-        const latest = candidates.reduce((best, cur) => {
-          const bestMs = Date.parse(best.updated_at);
-          const curMs = Date.parse(cur.updated_at);
-          if (!Number.isFinite(bestMs)) return cur;
-          if (!Number.isFinite(curMs)) return best;
-          return curMs > bestMs ? cur : best;
-        });
-        const full = await getGame(latest.id);
-        if (!full?.game?.yaml) return;
+        const mappedCloudGameId = activeCloudGameId ?? cloudGameIdRef.current;
+        let cloudLabel = 'Cloud';
+        let cloudUpdatedAt = '';
+        let cloudYaml: string | null = null;
+
+        if (mappedCloudGameId) {
+          const full = await getGame(mappedCloudGameId);
+          if (!full?.game?.yaml) return;
+          cloudYaml = full.game.yaml;
+          cloudUpdatedAt = full.game.updated_at;
+          cloudLabel = `Cloud (current project: ${full.game.title})`;
+        } else {
+          const res = await listGames();
+          const candidates = res.games ?? [];
+          if (candidates.length === 0) return;
+          const latest = candidates.reduce((best, cur) => {
+            const bestMs = Date.parse(best.updated_at);
+            const curMs = Date.parse(cur.updated_at);
+            if (!Number.isFinite(bestMs)) return cur;
+            if (!Number.isFinite(curMs)) return best;
+            return curMs > bestMs ? cur : best;
+          });
+          const full = await getGame(latest.id);
+          if (!full?.game?.yaml) return;
+          cloudYaml = full.game.yaml;
+          cloudUpdatedAt = latest.updated_at;
+          cloudLabel = `Cloud (last game: ${latest.title})`;
+        }
 
         const deviceParsed = summarizeYamlWorkspace(device.yaml);
-        const cloudParsed = summarizeYamlWorkspace(full.game.yaml);
+        const cloudParsed = summarizeYamlWorkspace(cloudYaml);
         const isEquivalent =
           deviceParsed.ok && cloudParsed.ok ? deviceParsed.canonicalYaml === cloudParsed.canonicalYaml : false;
         if (isEquivalent) return;
@@ -382,9 +411,9 @@ export function CloudAccountPanel({
 
         setWorkspaceConflict({
           cloud: {
-            yaml: full.game.yaml,
-            updatedAt: latest.updated_at,
-            label: `Cloud (last game: ${latest.title})`,
+            yaml: cloudYaml,
+            updatedAt: cloudUpdatedAt,
+            label: cloudLabel,
           },
           device: {
             yaml: device.yaml,
@@ -393,7 +422,7 @@ export function CloudAccountPanel({
           },
         });
         onStatus(
-          `Workspace conflict detected (Cloud: ${formatCloudLastSaved(latest.updated_at)}; Device: ${formatDeviceLastSaved(device.savedAtMs)})`,
+          `Workspace conflict detected (Cloud: ${formatCloudLastSaved(cloudUpdatedAt)}; Device: ${formatDeviceLastSaved(device.savedAtMs)})`,
         );
       } catch {
         // ignore: conflict UI is best-effort; users can still use manual load/save.
@@ -406,7 +435,7 @@ export function CloudAccountPanel({
     return () => {
       cancelled = true;
     };
-  }, [user, onStatus]);
+  }, [user, onStatus, activeCloudGameId, cloudGameLookupResolved]);
 
   useEffect(() => {
     let cancelled = false;
@@ -593,6 +622,7 @@ export function CloudAccountPanel({
     const id = created.game.id;
     setCloudGameId(id);
     persistCloudGameId(state.project.id, id);
+    void onCloudGameLinked?.(id);
     return id;
   };
 
@@ -634,6 +664,7 @@ export function CloudAccountPanel({
         cloudGameIdRef.current = nextCloudGameId;
         setCloudGameId(nextCloudGameId);
         persistCloudGameId(pending.projectId, nextCloudGameId);
+        void onCloudGameLinked?.(nextCloudGameId);
       }
       lastAutosavedSignatureRef.current = pending.signature;
     } catch (err) {

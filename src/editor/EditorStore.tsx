@@ -453,16 +453,17 @@ function removeGroupKeepMembers(
 const EditorContext = createContext<{
   state: EditorState;
   dispatch: React.Dispatch<EditorAction>;
-  persistence: {
-    localProjects: ProjectLibraryEntry[];
-    cloudProjects: ProjectLibraryEntry[];
-    activeProjectId: string | null;
-    activeProjectRevisions: ProjectRevisionRecord[];
-    createProject: () => Promise<void>;
-    duplicateCurrentProject: () => Promise<void>;
-    copyRevisionToNewProject: (revisionId: string, name: string) => Promise<void>;
-    openProject: (projectId: string) => Promise<void>;
-    restoreRevision: (revisionId: string) => Promise<void>;
+    persistence: {
+      localProjects: ProjectLibraryEntry[];
+      cloudProjects: ProjectLibraryEntry[];
+      activeProjectId: string | null;
+      activeProjectRevisions: ProjectRevisionRecord[];
+      linkActiveProjectToCloudGame: (gameId: string) => Promise<void>;
+      createProject: () => Promise<void>;
+      duplicateCurrentProject: () => Promise<void>;
+      copyRevisionToNewProject: (revisionId: string, name: string) => Promise<void>;
+      openProject: (projectId: string) => Promise<void>;
+      restoreRevision: (revisionId: string) => Promise<void>;
     refreshCloudProjects: () => Promise<void>;
     toggleSyncMode: () => Promise<void>;
   };
@@ -3666,6 +3667,21 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
   };
 
+  const linkActiveProjectToCloudGame = async (gameId: string) => {
+    const current = activeRecordRef.current ?? buildStoredProjectRecord(state.project, {
+      id: activeProjectId ?? state.project.id,
+    });
+    if (current.cloudProjectId === gameId && current.syncStatus === 'cloud') return;
+    const nextRecord = {
+      ...current,
+      syncStatus: state.syncMode === 'offline' ? 'unsynced' : 'cloud',
+      cloudProjectId: gameId,
+    } satisfies StoredProjectRecord;
+    activeRecordRef.current = nextRecord;
+    setActiveProjectRevisions(nextRecord.revisions ?? []);
+    setLocalProjects((await projectPersistence.saveProjectRecord(nextRecord)).map(mapStoredProject));
+  };
+
   const toggleSyncMode = async () => {
     const next: ProjectSyncMode = state.syncMode === 'online' ? 'offline' : 'online';
     dispatch({ type: 'set-sync-mode', syncMode: next });
@@ -3737,6 +3753,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       cloudProjects,
       activeProjectId,
       activeProjectRevisions,
+      linkActiveProjectToCloudGame,
       createProject,
       duplicateCurrentProject,
       copyRevisionToNewProject,
