@@ -99,4 +99,57 @@ describe('projectPersistence legacy merge', () => {
     expect(merged.localProjects[0]?.title).toBe('Persisted Wing');
     expect(merged.localProjects[0]?.yaml).toBe('new');
   });
+
+  it('merges newer legacy YAML into the active cloud-cache project when ids differ but projectId matches', () => {
+    const snapshot = {
+      localProjects: [
+        record({
+          id: 'cloud:g1',
+          projectId: 'project-1',
+          title: 'Pattern Demo',
+          yaml: 'old-cloud-yaml',
+          updatedAt: '2026-06-20T20:00:00.000Z',
+          origin: 'cloud-cache' as const,
+          syncStatus: 'cloud' as const,
+          cloudProjectId: 'g1',
+          revisions: [record({
+            id: 'rev-like',
+            projectId: 'project-1',
+            yaml: 'old-cloud-yaml',
+            updatedAt: '2026-06-20T20:00:00.000Z',
+          }).revisions![0]],
+        }),
+      ],
+      workspace: { activeProjectId: 'cloud:g1', syncMode: 'online' as const },
+      preferences: null,
+    };
+
+    const latestProject = createEmptyProject();
+    latestProject.title = 'Pattern Demo';
+    latestProject.audio.sounds.theme = {
+      id: 'theme',
+      source: {
+        kind: 'embedded',
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'pattern-theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    };
+    latestProject.publishTitle = 'Pattern Demo';
+
+    const merged = mergeSnapshotWithLegacyActiveProject(snapshot, buildStoredProjectRecord(latestProject, {
+      id: latestProject.id,
+      projectId: latestProject.id,
+      updatedAt: '2026-06-20T20:05:00.000Z',
+      origin: 'anonymous',
+      syncStatus: 'local',
+    }));
+
+    expect(merged.localProjects[0]?.id).toBe('cloud:g1');
+    expect(merged.localProjects[0]?.projectId).toBe('project-1');
+    expect(merged.localProjects[0]?.title).toBe('Pattern Demo');
+    expect(merged.localProjects[0]?.yaml).not.toBe('old-cloud-yaml');
+    expect(merged.localProjects[0]?.cloudProjectId).toBe('g1');
+    expect(merged.localProjects[0]?.revisions?.[0]?.updatedAt).toBe('2026-06-20T20:05:00.000Z');
+  });
 });
