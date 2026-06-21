@@ -28,6 +28,8 @@ test.describe('Project tree + history', () => {
     await page.getByTestId('project-manage-history').click();
     await expect(page.getByTestId('project-revisions-pane')).toBeVisible();
     await expect(page.getByTestId(/project-revision-/).nth(1)).toBeVisible();
+    await expect(page.getByTestId(/project-revision-/).first()).toContainText('Autosave checkpoint');
+    await expect(page.getByTestId(/project-revision-/).first()).toContainText('Start:');
 
     await page.getByTestId(/project-revision-restore-/).nth(1).click();
     await expect(page.getByTestId('restore-revision-dialog')).toBeVisible();
