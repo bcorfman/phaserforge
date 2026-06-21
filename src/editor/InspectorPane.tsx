@@ -60,8 +60,9 @@ export function InspectorPaneView({
 }
 
 export function InspectorPane() {
-  const { state, dispatch } = useEditorStore();
+  const { state, dispatch, persistence } = useEditorStore();
   const cloudEnabled = !isLocalHostname(globalThis.location?.hostname);
+  const activeCloudGameId = persistence.localProjects.find((entry) => entry.id === persistence.activeProjectId)?.cloudProjectId ?? null;
   const [tab, setTab] = useState<'inspector' | 'cloud'>(() => {
     if (!cloudEnabled) return 'inspector';
     const cachedUser = getCachedCloudAccountUserSnapshot();
@@ -112,8 +113,10 @@ export function InspectorPane() {
       cloudContent={(
         <CloudAccountPanel
           state={state}
+          activeCloudGameId={activeCloudGameId}
           dispatch={dispatch}
           onLoadYaml={(yaml, sourceLabel) => dispatch({ type: 'load-yaml-text', text: yaml, sourceLabel })}
+          onCloudGameLinked={(gameId) => persistence.linkActiveProjectToCloudGame(gameId)}
           onStatus={(message) => dispatch({ type: 'set-status', message, expiresAt: Date.now() + 4000 })}
           onError={(message) => dispatch({ type: 'set-error', error: message })}
         />
