@@ -15,6 +15,7 @@ import { EventBus } from '../phaser/EventBus';
 import {
   buildCopyRevisionDefaultName,
   buildProjectTreeRows,
+  formatProjectRevisionTimestamp,
   formatProjectRevisionSummary,
   type ProjectRevisionRecord,
   type SidebarScope,
@@ -674,8 +675,18 @@ export function EntityListView({
                         });
                       }}
                     >
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{revision.title}</span>
-                      <span className="list-item-meta">{formatProjectRevisionSummary(revision)}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'flex-start', gap: 2 }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                          {revision.title}
+                        </span>
+                        <span
+                          className="list-item-meta"
+                          style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                        >
+                          {formatProjectRevisionSummary(revision)}
+                        </span>
+                      </div>
+                      <span className="list-item-meta">{formatProjectRevisionTimestamp(revision)}</span>
                     </button>
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                       <button
