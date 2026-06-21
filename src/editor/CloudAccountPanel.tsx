@@ -417,12 +417,35 @@ export function CloudAccountPanel({
     return info;
   };
 
-  const titleValue = state.project.title ?? '';
-  const repoValue = state.project.publishGithubPagesRepo ?? '';
+  const projectTitle = state.project.title ?? '';
+  const storedPublishTitle = typeof state.project.publishTitle === 'string' ? state.project.publishTitle : undefined;
+  const storedPublishRepo = state.project.publishGithubPagesRepo ?? '';
+  const [publishTitleDraft, setPublishTitleDraft] = useState(storedPublishTitle ?? projectTitle);
+  const [publishRepoDraft, setPublishRepoDraft] = useState(storedPublishRepo);
+  const titleValue = publishTitleDraft;
+  const repoValue = publishRepoDraft;
   const publishRoutePreview = publishInfo?.ok ? `${publishInfo.pagesBaseUrl}${repoValue.trim() || '<repo>'}/` : null;
   const publishHelpText = [publishDeploymentNote, publishInlineError]
     .filter(Boolean)
     .join(' ');
+
+  useEffect(() => {
+    setPublishTitleDraft(storedPublishTitle ?? projectTitle);
+  }, [projectTitle, storedPublishTitle, state.project.id]);
+
+  useEffect(() => {
+    setPublishRepoDraft(storedPublishRepo);
+  }, [storedPublishRepo, state.project.id]);
+
+  const persistPublishTitleDraft = () => {
+    if (publishTitleDraft === (storedPublishTitle ?? projectTitle)) return;
+    dispatch({ type: 'set-project-metadata', publishTitle: publishTitleDraft });
+  };
+
+  const persistPublishRepoDraft = () => {
+    if (publishRepoDraft === storedPublishRepo) return;
+    dispatch({ type: 'set-project-metadata', publishGithubPagesRepo: publishRepoDraft });
+  };
 
   const ensureCsrf = async (options?: { forceRefresh?: boolean }) => {
     if (!options?.forceRefresh && csrfToken) return csrfToken;
@@ -537,7 +560,7 @@ export function CloudAccountPanel({
   const ensureCloudGameSaved = async (): Promise<string | null> => {
     if (!user) return null;
     const yaml = serializeProjectToYaml(state.project);
-    const title = state.project.title?.trim() || 'Untitled';
+    const title = publishTitleDraft.trim() || state.project.title?.trim() || 'Untitled';
     if (cloudGameId) {
       await runWithCsrfRetry((csrf) => updateGame(cloudGameId, { title, yaml }, csrf));
       return cloudGameId;
@@ -550,7 +573,7 @@ export function CloudAccountPanel({
   };
 
   const handlePublishCheck = async () => {
-    const repo = state.project.publishGithubPagesRepo?.trim() ?? '';
+    const repo = publishRepoDraft.trim();
     if (!repo) {
       const message = 'Enter a repository name to publish (example: zoof)';
       setPublishInlineError(message);
@@ -594,7 +617,7 @@ export function CloudAccountPanel({
     try {
       const gameId = await ensureCloudGameSaved();
       if (!gameId) return;
-      const repo = state.project.publishGithubPagesRepo?.trim() ?? '';
+      const repo = publishRepoDraft.trim();
       if (!repo) {
         const message = 'Enter a repository name to publish (example: zoof)';
         setPublishInlineError(message);
@@ -861,7 +884,8 @@ export function CloudAccountPanel({
                 <input
                   value={titleValue}
                   placeholder="My Game"
-                  onChange={(e) => dispatch({ type: 'set-project-metadata', title: e.target.value })}
+                  onChange={(e) => setPublishTitleDraft(e.target.value)}
+                  onBlur={persistPublishTitleDraft}
                 />
               </label>
             </div>
@@ -972,7 +996,8 @@ export function CloudAccountPanel({
                 <input
                   value={titleValue}
                   placeholder="My Game"
-                  onChange={(e) => dispatch({ type: 'set-project-metadata', title: e.target.value })}
+                  onChange={(e) => setPublishTitleDraft(e.target.value)}
+                  onBlur={persistPublishTitleDraft}
                 />
               </label>
             </div>
@@ -1003,8 +1028,9 @@ export function CloudAccountPanel({
                       placeholder="zoof"
                       onChange={(e) => {
                         setPublishInlineError('');
-                        dispatch({ type: 'set-project-metadata', publishGithubPagesRepo: e.target.value });
+                        setPublishRepoDraft(e.target.value);
                       }}
+                      onBlur={persistPublishRepoDraft}
                       aria-label="Publish repository"
                     />
                   </label>

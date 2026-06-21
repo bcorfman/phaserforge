@@ -134,10 +134,10 @@ export function EventsPanel({
     return (
       <div data-testid="events-panel">
         <div className="sidebar-scope-tabs" role="tablist" aria-label="Actions/Events Scope">
-          <button className={`button ${tab === 'blocks' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'blocks'} onClick={() => setTab('blocks')}>
+          <button className="button" type="button" role="tab" aria-selected={false} onClick={() => setTab('blocks')}>
             Handlers
           </button>
-          <button className={`button ${tab === 'map' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'map'} onClick={() => setTab('map')}>
+          <button className="button active" type="button" role="tab" aria-selected={true} onClick={() => setTab('map')}>
             Wiring
           </button>
         </div>
@@ -158,10 +158,10 @@ export function EventsPanel({
   return (
     <div data-testid="events-panel">
       <div className="sidebar-scope-tabs" role="tablist" aria-label="Actions/Events Scope">
-        <button className={`button ${tab === 'blocks' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'blocks'} onClick={() => setTab('blocks')}>
+        <button className="button active" type="button" role="tab" aria-selected={true} onClick={() => setTab('blocks')}>
           Handlers
         </button>
-        <button className={`button ${tab === 'map' ? 'active' : ''}`} type="button" role="tab" aria-selected={tab === 'map'} onClick={() => setTab('map')}>
+        <button className="button" type="button" role="tab" aria-selected={false} onClick={() => setTab('map')}>
           Wiring
         </button>
       </div>
@@ -349,13 +349,13 @@ function EventBlockCard({
   onRemoveEventBlock,
   onAddAttachment,
   onSelectAttachment,
-  onMoveAttachment,
+  onMoveAttachment: _onMoveAttachment,
   onReorderAttachments,
   onNestAttachmentsUnderRepeat,
   onRemoveAttachment,
   onMakeParallel,
   onUngroupParallel,
-  onMoveParallelGroup,
+  onMoveParallelGroup: _onMoveParallelGroup,
   onCreatePatternFromAttachments,
   onApplyPattern,
   onApplyLoopTemplate,
@@ -560,22 +560,23 @@ function EventBlockCard({
         : (attachment.name ?? attachment.id);
 
     const subtitle = isPlaceholderCall ? 'Call (placeholder)' : String(attachment.presetId ?? '');
+    const repeat = opts.repeat;
 
     return (
     <div key={attachment.id} className="member-row">
-      {attachment.presetId === 'Repeat' && opts.repeat?.hasChildren ? (
+      {attachment.presetId === 'Repeat' && repeat?.hasChildren ? (
         <button
-          aria-label={opts.repeat.collapsed ? 'Expand loop' : 'Collapse loop'}
+          aria-label={repeat.collapsed ? 'Expand loop' : 'Collapse loop'}
           className="scene-graph-button scene-graph-chevron"
           data-testid={`attachment-repeat-toggle-${attachment.id}`}
           type="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            opts.repeat.onToggleCollapsed();
+            repeat.onToggleCollapsed();
           }}
         >
-          {opts.repeat.collapsed ? '▸' : '▾'}
+          {repeat.collapsed ? '▸' : '▾'}
         </button>
       ) : (
         <span
@@ -955,7 +956,7 @@ function EventBlockCard({
                       const bindings = applyPatternPrompt.bindings ?? {};
                       onApplyPattern(activePattern.id, eventIdForRows, bindings);
                       setApplyPatternPrompt(null);
-                      setAddMenuOpen(false);
+                      setDrawerOpen(false);
                     }}
                   >
                     Apply
@@ -1097,7 +1098,7 @@ function EventBlockCard({
 
       <div className="member-list">
         {(() => {
-          const renderRows = (parentAttachmentId: Id | undefined, depth: number): JSX.Element[] => {
+          const renderRows = (parentAttachmentId: Id | undefined, depth: number) => {
             const rows = buildAttachedActionRowsForTargetAndEvent(scene, target, eventIdForRows, parentAttachmentId);
             return rows.flatMap((row) => {
               if (row.kind === 'attachment') {

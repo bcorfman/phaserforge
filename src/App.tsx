@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PhaserGame } from './phaser/PhaserHost';
 import { EventBus, getActiveScene } from './phaser/EventBus';
 import { consumePendingRuntimeRequestedSceneId } from './phaser/pendingRuntimeRequest';
-import { EditorProvider, useEditorStore } from './editor/EditorStore';
+import { EditorProvider, useEditorStore, type EditorAction, type Selection } from './editor/EditorStore';
 import { EntityList } from './editor/EntityList';
 import { InspectorPane } from './editor/InspectorPane';
 import { Toolbar } from './editor/Toolbar';
@@ -36,6 +36,7 @@ import {
   unregisterResetSceneHandler,
   unregisterSelectionSetter,
   unregisterUndoRedoHandlers,
+  type AppStateSnapshot,
 } from './testing/testBridge';
 import './app/layout.css';
 
@@ -55,7 +56,7 @@ function AppShell() {
   const runtimeLoadedRef = useRef(false);
   const viewRestoreAttemptedRef = useRef(false);
   const lastViewProjectIdRef = useRef<string | null>(null);
-  const appStateRef = useRef({
+  const appStateRef = useRef<AppStateSnapshot>({
     project: state.project,
     currentSceneId: displaySceneId,
     scene: activeScene,
@@ -65,8 +66,7 @@ function AppShell() {
     yamlText: state.yamlText,
     error: state.error,
     hasSeenViewHint: state.hasSeenViewHint,
-    themeMode: state.themeMode,
-    uiScale: state.uiScale,
+    startupMode: state.startupMode,
     initialized: state.initialized,
   });
   const world = getSceneWorld(activeScene);
@@ -102,8 +102,7 @@ function AppShell() {
       yamlText: state.yamlText,
       error: state.error,
       hasSeenViewHint: state.hasSeenViewHint,
-      themeMode: state.themeMode,
-      uiScale: state.uiScale,
+      startupMode: state.startupMode,
       initialized: state.initialized,
     };
   }, [displayProject, displaySceneId, state]);
@@ -130,14 +129,15 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
-    registerActionDispatcher(dispatch);
+    const dispatchAction = (action: unknown) => dispatch(action as EditorAction);
+    registerActionDispatcher(dispatchAction);
     return () => {
-      unregisterActionDispatcher(dispatch);
+      unregisterActionDispatcher(dispatchAction);
     };
   }, [dispatch]);
 
   useEffect(() => {
-    const setSelection = (selection: Parameters<typeof dispatch>[0] extends { type: 'select'; selection: infer T } ? T : never) => {
+    const setSelection = (selection: Selection) => {
       dispatch({ type: 'select', selection });
     };
 
