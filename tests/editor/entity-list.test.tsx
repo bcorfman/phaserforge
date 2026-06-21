@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { EntityListView } from '../../src/editor/EntityList';
+import { createProjectRevision, formatProjectRevisionTimestamp } from '../../src/editor/projectTreeHistory';
 import { sampleProject } from '../../src/model/sampleProject';
 
 describe('EntityList', () => {
@@ -145,6 +146,33 @@ describe('EntityList', () => {
     expect(markup).toContain('data-testid=\"project-revisions-back-button\"');
     expect(markup).toContain('aria-label=\"Back to Project Tree\"');
     expect(markup).toContain('← Back');
+  });
+
+  it('renders richer revision metadata in project revisions mode', () => {
+    const revision = createProjectRevision(sampleProject, {
+      id: 'rev-1',
+      updatedAt: '2026-06-17T10:12:00.000Z',
+      reason: 'autosave',
+    });
+
+    const markup = renderToStaticMarkup(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
+        selection={{ kind: 'none' }}
+        sidebarScope="projectRevisions"
+        revisions={[revision]}
+        expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
+        dispatch={() => {}}
+      />
+    );
+
+    expect(markup).toContain(formatProjectRevisionTimestamp(revision));
+    expect(markup).toContain('Autosave checkpoint');
+    expect(markup).toContain('15 entities');
+    expect(markup).toContain('Start: scene-1');
   });
 
   it('flexes the scenes list so the assets dock can reach the bottom', () => {
