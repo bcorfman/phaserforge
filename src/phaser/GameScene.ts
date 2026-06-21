@@ -369,6 +369,11 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
+  public getSceneWorldSize(): { width: number; height: number } {
+    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    return { width: world.width, height: world.height };
+  }
+
   public setPendingViewState(view: ViewState | undefined): void {
     this.pendingViewState = view;
   }
