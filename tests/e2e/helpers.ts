@@ -200,6 +200,29 @@ export async function seedProject(page: Page, project: any): Promise<void> {
     return true;
   });
   await dispatchAction(page, { type: 'load-yaml-text', text: yaml, sourceLabel: 'seed-project.yaml' });
+  const expectedSceneId = project.initialSceneId;
+  const expectedScene = project.scenes?.[expectedSceneId];
+  await expect.poll(async () => {
+    const state = await getState<{
+      project?: { id?: string; scenes?: Record<string, { entities?: Record<string, unknown>; groups?: Record<string, unknown>; attachments?: Record<string, unknown> }> };
+      currentSceneId?: string;
+      scene?: { entities?: Record<string, unknown>; groups?: Record<string, unknown>; attachments?: Record<string, unknown> };
+    } | null>(page);
+    const stateScene = state?.scene;
+    return {
+      projectId: state?.project?.id ?? null,
+      currentSceneId: state?.currentSceneId ?? null,
+      entityCount: Object.keys(stateScene?.entities ?? {}).length,
+      groupCount: Object.keys(stateScene?.groups ?? {}).length,
+      attachmentCount: Object.keys(stateScene?.attachments ?? {}).length,
+    };
+  }, { timeout: SCENE_CONTENT_TIMEOUT_MS }).toEqual({
+    projectId: project.id,
+    currentSceneId: expectedSceneId,
+    entityCount: Object.keys(expectedScene?.entities ?? {}).length,
+    groupCount: Object.keys(expectedScene?.groups ?? {}).length,
+    attachmentCount: Object.keys(expectedScene?.attachments ?? {}).length,
+  });
 }
 
 export async function waitForSceneReady(page: Page): Promise<void> {
