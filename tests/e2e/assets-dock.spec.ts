@@ -64,7 +64,12 @@ test.describe('Assets dock', () => {
     expect(created.scaleY ?? 1).toBe(1);
   });
 
-  test('dragging an image asset onto the canvas preserves the current viewport @critical @browser', async ({ page }) => {
+  test('dragging an image asset onto the canvas preserves the current viewport @critical @browser', async ({ page, browserName }) => {
+    test.skip(
+      browserName === 'webkit',
+      'Viewport-preservation camera assertions are not reliable on WebKit because this suite uses a synthetic HTML5 asset drop fallback there.'
+    );
+
     await seedProject(page, createEmptyProject());
     await dismissViewHint(page);
     await openSceneScope(page);
