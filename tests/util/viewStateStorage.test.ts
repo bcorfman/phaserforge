@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canRestorePersistedView,
   doesReportedViewMatchCurrentScene,
   parseStoredViewState,
   shouldResetViewStateForProjectChange,
@@ -114,6 +115,41 @@ describe('viewStateStorage', () => {
       initialized: true,
       reportedWorldWidth: 800,
       reportedWorldHeight: 600,
+      currentWorldWidth: 800,
+      currentWorldHeight: 600,
+    })).toBe(true);
+  });
+
+  it('restores persisted view only after the active scene world matches the current app scene', () => {
+    expect(canRestorePersistedView({
+      initialized: false,
+      restoreAttempted: false,
+      activeSceneWorldWidth: 800,
+      activeSceneWorldHeight: 600,
+      currentWorldWidth: 800,
+      currentWorldHeight: 600,
+    })).toBe(false);
+    expect(canRestorePersistedView({
+      initialized: true,
+      restoreAttempted: true,
+      activeSceneWorldWidth: 800,
+      activeSceneWorldHeight: 600,
+      currentWorldWidth: 800,
+      currentWorldHeight: 600,
+    })).toBe(false);
+    expect(canRestorePersistedView({
+      initialized: true,
+      restoreAttempted: false,
+      activeSceneWorldWidth: 1024,
+      activeSceneWorldHeight: 768,
+      currentWorldWidth: 800,
+      currentWorldHeight: 600,
+    })).toBe(false);
+    expect(canRestorePersistedView({
+      initialized: true,
+      restoreAttempted: false,
+      activeSceneWorldWidth: 800,
+      activeSceneWorldHeight: 600,
       currentWorldWidth: 800,
       currentWorldHeight: 600,
     })).toBe(true);

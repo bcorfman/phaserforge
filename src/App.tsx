@@ -14,6 +14,7 @@ import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
 import {
+  canRestorePersistedView,
   doesReportedViewMatchCurrentScene,
   readStoredViewState,
   shouldPersistViewState,
@@ -36,6 +37,8 @@ import {
   unregisterUndoRedoHandlers,
 } from './testing/testBridge';
 import './app/layout.css';
+
+const VIEW_DEBUG_STORAGE_KEY = 'phaserforge.debugViewRestore.v1';
 
 function AppShell() {
   const { state, dispatch } = useEditorStore();
@@ -66,6 +69,17 @@ function AppShell() {
     initialized: state.initialized,
   });
   const world = getSceneWorld(activeScene);
+
+  const logViewDebug = (...args: unknown[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (window.localStorage.getItem(VIEW_DEBUG_STORAGE_KEY) !== '1') return;
+    } catch {
+      return;
+    }
+    const timestamp = new Date().toISOString();
+    console.info('[phaserforge:view-debug]', timestamp, ...args);
+  };
 
   useEffect(() => {
     setWorldWidthDraft(String(world.width));
@@ -290,42 +304,33 @@ function AppShell() {
 
   useEffect(() => {
     const handleViewState = (payload: { zoom: number; worldWidth?: number; worldHeight?: number }) => {
+      logViewDebug('scene-view-state', {
+        payload,
+        initialized: appStateRef.current.initialized,
+        restoreAttempted: viewRestoreAttemptedRef.current,
+        projectId: appStateRef.current.project.id,
+        currentSceneId: appStateRef.current.currentSceneId,
+      });
       setZoom(payload.zoom);
       if (!state.hasSeenViewHint) {
         dispatch({ type: 'dismiss-view-hint' });
       }
 
       const expectedWorld = getSceneWorld(appStateRef.current.scene);
-      if (!doesReportedViewMatchCurrentScene({
+      const viewMatchesCurrentScene = doesReportedViewMatchCurrentScene({
         initialized: appStateRef.current.initialized,
         reportedWorldWidth: payload.worldWidth,
         reportedWorldHeight: payload.worldHeight,
         currentWorldWidth: expectedWorld.width,
         currentWorldHeight: expectedWorld.height,
-      })) {
+      });
+      logViewDebug('scene-view-state match-check', {
+        payloadWorld: { width: payload.worldWidth, height: payload.worldHeight },
+        expectedWorld,
+        viewMatchesCurrentScene,
+      });
+      if (!viewMatchesCurrentScene) {
         return;
-      }
-
-      if (appStateRef.current.initialized && !viewRestoreAttemptedRef.current) {
-        try {
-          const projectId = appStateRef.current.project.id;
-          lastViewProjectIdRef.current = projectId;
-          const view = readStoredViewState(window.localStorage, projectId);
-          viewRestoreAttemptedRef.current = true;
-          if (view) {
-            EventBus.emit('scene-restore-view-state', view);
-            const scene = getActiveScene() as any;
-            const restoredView = scene && typeof scene.getViewState === 'function'
-              ? (scene.getViewState() as { zoom: number; scrollX: number; scrollY: number; viewportWidth?: number; viewportHeight?: number })
-              : null;
-            if (restoredView) {
-              writeStoredViewState(window.localStorage, projectId, restoredView);
-            }
-            return;
-          }
-        } catch {
-          viewRestoreAttemptedRef.current = true;
-        }
       }
 
       if (!shouldPersistViewState({
@@ -340,6 +345,10 @@ function AppShell() {
         const scene = getActiveScene() as any;
         const view = scene && typeof scene.getViewState === 'function' ? (scene.getViewState() as { zoom: number; scrollX: number; scrollY: number }) : null;
         if (!view) return;
+        logViewDebug('persist-view-state', {
+          projectId: appStateRef.current.project.id,
+          view,
+        });
         writeStoredViewState(window.localStorage, appStateRef.current.project.id, view);
         lastViewProjectIdRef.current = appStateRef.current.project.id;
       } catch {
@@ -354,6 +363,90 @@ function AppShell() {
   }, [dispatch, state.hasSeenViewHint]);
 
   useEffect(() => {
+    if (viewRestoreAttemptedRef.current) return;
+    if (!sceneReady || !runtimeLoadedRef.current || !state.initialized) return;
+
+    let cancelled = false;
+
+    const tryRestore = () => {
+      if (cancelled || viewRestoreAttemptedRef.current) return true;
+      const activeScene = getActiveScene() as any;
+      const expectedWorld = getSceneWorld(appStateRef.current.scene);
+      const activeSceneWorld = activeScene && typeof activeScene.getSceneWorldSize === 'function'
+        ? (activeScene.getSceneWorldSize() as { width?: number; height?: number })
+        : null;
+
+      const canRestoreNow = canRestorePersistedView({
+        initialized: appStateRef.current.initialized,
+        restoreAttempted: viewRestoreAttemptedRef.current,
+        activeSceneWorldWidth: activeSceneWorld?.width,
+        activeSceneWorldHeight: activeSceneWorld?.height,
+        currentWorldWidth: expectedWorld.width,
+        currentWorldHeight: expectedWorld.height,
+      });
+
+      logViewDebug('try-restore', {
+        initialized: appStateRef.current.initialized,
+        restoreAttempted: viewRestoreAttemptedRef.current,
+        projectId: appStateRef.current.project.id,
+        currentSceneId: appStateRef.current.currentSceneId,
+        expectedWorld,
+        activeSceneWorld,
+        canRestoreNow,
+      });
+
+      if (!canRestoreNow) {
+        return false;
+      }
+
+      try {
+        const projectId = appStateRef.current.project.id;
+        lastViewProjectIdRef.current = projectId;
+        const view = readStoredViewState(window.localStorage, projectId);
+        viewRestoreAttemptedRef.current = true;
+        logViewDebug('restore-read-storage', {
+          projectId,
+          storedView: view,
+        });
+        if (view) {
+          EventBus.emit('scene-restore-view-state', view);
+          const restoredScene = getActiveScene() as any;
+          const restoredView = restoredScene && typeof restoredScene.getViewState === 'function'
+            ? (restoredScene.getViewState() as { zoom: number; scrollX: number; scrollY: number; viewportWidth?: number; viewportHeight?: number })
+            : null;
+          logViewDebug('restore-emitted', {
+            projectId,
+            requestedView: view,
+            restoredView,
+          });
+          if (restoredView) {
+            writeStoredViewState(window.localStorage, projectId, restoredView);
+          }
+        }
+      } catch {
+        viewRestoreAttemptedRef.current = true;
+      }
+
+      return true;
+    };
+
+    if (tryRestore()) return () => {
+      cancelled = true;
+    };
+
+    const intervalId = window.setInterval(() => {
+      if (tryRestore()) {
+        window.clearInterval(intervalId);
+      }
+    }, 50);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [sceneReady, state.initialized, state.project.id]);
+
+  useEffect(() => {
     const currentProjectId = state.project.id;
     const lastProjectId = lastViewProjectIdRef.current;
     if (!state.initialized) return;
@@ -361,11 +454,18 @@ function AppShell() {
       lastViewProjectIdRef.current = currentProjectId;
       return;
     }
-    if (!shouldResetViewStateForProjectChange({
+    const shouldResetForProjectChange = shouldResetViewStateForProjectChange({
       initialized: state.initialized,
       currentProjectId,
       lastProjectId,
-    })) return;
+    });
+    logViewDebug('project-change-check', {
+      currentProjectId,
+      lastProjectId,
+      initialized: state.initialized,
+      shouldResetForProjectChange,
+    });
+    if (!shouldResetForProjectChange) return;
 
     // A different project was loaded; reset view to default and avoid leaking view state across projects.
     lastViewProjectIdRef.current = currentProjectId;
