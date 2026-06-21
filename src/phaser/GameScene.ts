@@ -7,7 +7,7 @@ import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { getSceneWorld } from '../editor/sceneWorld';
 import { resolveTextEntityDefaults, resolveTextFontFamily } from '../editor/textEntity';
-import { clampCameraScroll, clampZoom, getMaxZoom } from '../editor/viewport';
+import { clampCameraScroll, clampZoom, getMaxZoom, getResizedViewportScroll } from '../editor/viewport';
 import { getPreferredTextResolution } from './textResolution';
 import { OpRegistry } from '../compiler/opRegistry';
 import { BasicAudioService } from '../runtime/services/BasicAudioService';
@@ -18,6 +18,7 @@ import type { InputActionMapSpec } from '../model/types';
 import { createTriggerCompileContext, executeTriggerScripts } from '../runtime/triggers/triggerScripts';
 import { executeCollisionScripts } from '../runtime/collisions/collisionScripts';
 import type { TriggerZoneSpec } from '../model/types';
+import type { ViewState } from '../util/viewStateStorage';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
 
@@ -31,7 +32,7 @@ export class GameScene extends Phaser.Scene {
   private project?: ProjectSpec;
   private pendingProject?: ProjectSpec;
   private pendingSceneSpec?: SceneSpec;
-  private queuedPendingViewState?: { zoom: number; scrollX: number; scrollY: number };
+  private queuedPendingViewState?: ViewState;
   private opRegistry: OpRegistry = new OpRegistry();
   private baseSprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>();
   private sprites = new Map<string, Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Text>();
@@ -49,7 +50,7 @@ export class GameScene extends Phaser.Scene {
   private lastSpawnedEntityId?: string;
   private lastSpawnError?: string;
   private readonly sceneBridgeGetter = () => this;
-  private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
+  private pendingViewState?: ViewState;
   private baseBackgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private audioService?: BasicAudioService;
@@ -92,7 +93,7 @@ export class GameScene extends Phaser.Scene {
   };
   private listenersBound = false;
 
-  private restoreViewState(view: { zoom: number; scrollX: number; scrollY: number }): void {
+  private restoreViewState(view: ViewState): void {
     this.setPendingViewState(view);
     if (!this.compiled) return;
     // Apply immediately when possible so a restore can take effect without a full reload.
@@ -358,15 +359,17 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  public getViewState(): { zoom: number; scrollX: number; scrollY: number } {
+  public getViewState(): ViewState {
     return {
       zoom: this.cameras.main.zoom || 1,
       scrollX: this.cameras.main.scrollX,
       scrollY: this.cameras.main.scrollY,
+      viewportWidth: this.scale.width,
+      viewportHeight: this.scale.height,
     };
   }
 
-  public setPendingViewState(view: { zoom: number; scrollX: number; scrollY: number } | undefined): void {
+  public setPendingViewState(view: ViewState | undefined): void {
     this.pendingViewState = view;
   }
 
@@ -375,9 +378,21 @@ export class GameScene extends Phaser.Scene {
     const world = getSceneWorld(sceneSpec);
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const nextZoom = clampZoom(this.pendingViewState.zoom, maxZoom);
+    const restored = this.pendingViewState.viewportWidth && this.pendingViewState.viewportHeight
+      ? getResizedViewportScroll(
+        this.pendingViewState.scrollX,
+        this.pendingViewState.scrollY,
+        this.pendingViewState.viewportWidth,
+        this.pendingViewState.viewportHeight,
+        this.scale.width,
+        this.scale.height,
+        nextZoom,
+        this.cameras.main.originX,
+        this.cameras.main.originY
+      )
+      : { scrollX: this.pendingViewState.scrollX, scrollY: this.pendingViewState.scrollY };
     this.cameras.main.setZoom(nextZoom);
-    // Preserve captured view state exactly (it originated from a clamped editor view).
-    this.cameras.main.setScroll(this.pendingViewState.scrollX, this.pendingViewState.scrollY);
+    this.cameras.main.setScroll(restored.scrollX, restored.scrollY);
     this.pendingViewState = undefined;
   }
 
