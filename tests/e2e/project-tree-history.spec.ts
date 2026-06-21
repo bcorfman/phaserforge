@@ -26,10 +26,14 @@ test.describe('Project tree + history', () => {
 
     await page.getByTestId('project-tree-manage-button').click();
     await page.getByTestId('project-manage-history').click();
-    await expect(page.getByTestId('project-revisions-pane')).toBeVisible();
-    await expect(page.getByTestId(/project-revision-/).nth(1)).toBeVisible();
-    await expect(page.getByTestId(/project-revision-/).first()).toContainText('Autosave checkpoint');
-    await expect(page.getByTestId(/project-revision-/).first()).toContainText('Start:');
+    const revisionsPane = page.getByTestId('project-revisions-pane');
+    await expect(revisionsPane).toBeVisible();
+    const revisionCards = page.locator('.behavior-block[data-testid^="project-revision-"]');
+    await expect(revisionCards.nth(1)).toBeVisible();
+    await expect(revisionCards.first()).toContainText('Renamed to History Demo');
+    await expect(revisionsPane).toContainText(/(Initial snapshot|entity added|entities added|scene added|scenes added|Minor edits)/);
+    await expect(revisionsPane).not.toContainText('Autosave checkpoint');
+    await expect(revisionsPane).not.toContainText('Start:');
 
     await page.getByTestId(/project-revision-restore-/).nth(1).click();
     await expect(page.getByTestId('restore-revision-dialog')).toBeVisible();
