@@ -23,6 +23,13 @@ Important: GitHub Actions CI is configured to fail on flaky E2E tests. The bar f
 #### Local Repro Requirement (When Fixing a Specific Browser Failure)
 When addressing a reported E2E failure that is tied to a specific browser/project (e.g. `[edge]`, `[webkit]`, etc.), the agent MUST run that same Playwright project locally (at least the failing spec) as part of verification before declaring the fix complete, in addition to the baseline local E2E policy for the change (e.g. Chromium smoke for GUI changes).
 
+WebKit local note for this Ubuntu 26.04 setup only:
+- This is a machine-specific workaround for an Ubuntu 26.04 environment. Do **not** assume other developers or CI need it.
+- Prefer the normal Playwright project invocation first on other machines. Only use the fallback below if native local WebKit repro is blocked by Ubuntu 26 host/runtime mismatches.
+- `npm run test:e2e:webkit -- <spec>` uses the current repo's Ubuntu 26 native-workaround path.
+- `npm run test:e2e:webkit:docker -- <spec>` is the preferred fallback on this machine when Docker is available, because it avoids most of the Ubuntu 26 native WebKit dependency churn.
+- The repo-local `.playwright-lib-compat/` shim directory exists only to bridge Ubuntu 26 SONAME mismatches (`icu`, `xml2`, `jxl`) for this setup. Treat it as an environment workaround, not a cross-machine standard.
+
 Non-code-only changes (docs, plans, mockups, etc.) do not require an E2E run. If E2E cannot be run (environment/tooling constraints), explicitly say so and report results of the closest equivalent verification performed.
 
 #### Flake Policy (Fix vs Test Redesign)
