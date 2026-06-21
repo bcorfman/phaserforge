@@ -3,6 +3,8 @@ import { dismissViewHint, dispatchAction, dragAssetToCanvas, expectInputValue, g
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { createEmptyProject } from '../../src/model/emptyProject';
 
+const PROJECT_STORAGE_KEY = 'phaserforge.projectYaml.v1';
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const onceKey = 'phaserforge.testAppShellResetOnce.v1';
@@ -56,6 +58,9 @@ test('persists the last active project across reloads without a startup mode con
   await openSceneScope(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('formation-name-input').fill('Persisted Wing');
+  await expect.poll(async () => {
+    return page.evaluate((storageKey) => window.localStorage.getItem(storageKey), PROJECT_STORAGE_KEY);
+  }).toContain('Persisted Wing');
   await expect.poll(async () => {
     const state = await getState<{ scene: { groups: Record<string, { name?: string }> } }>(page);
     return state.scene.groups['g-enemies']?.name;
