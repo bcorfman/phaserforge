@@ -148,7 +148,7 @@ function coerceCollisionRules(value: unknown): CollisionRuleSpec[] | undefined {
       const coerceCalls = (value: unknown) => {
         if (!value) return undefined;
         if (Array.isArray(value)) {
-          const items = value.map(coerceCall).filter(Boolean);
+          const items = value.map(coerceCall).filter((item): item is NonNullable<ReturnType<typeof coerceCall>> => Boolean(item));
           return items.length > 0 ? items : undefined;
         }
         return coerceCall(value);
@@ -262,6 +262,7 @@ export function parseProjectYaml(text: string): ProjectSpec {
   return {
     id: typeof raw.id === 'string' ? raw.id : 'project-1',
     ...(typeof raw.title === 'string' ? { title: raw.title } : {}),
+    ...(typeof raw.publishTitle === 'string' ? { publishTitle: raw.publishTitle } : {}),
     ...(() => {
       if (typeof raw.publishGithubPagesRepo === 'string') return { publishGithubPagesRepo: raw.publishGithubPagesRepo };
       if (typeof raw.publishGithubPagesRoute === 'string') return { publishGithubPagesRepo: raw.publishGithubPagesRoute };

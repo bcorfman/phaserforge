@@ -65,9 +65,15 @@ export function isViewStateApproximatelyEqual(
   if (!Number.isFinite(actual.zoom) || !Number.isFinite(expected.zoom)) return false;
   if (!Number.isFinite(actual.scrollX) || !Number.isFinite(expected.scrollX)) return false;
   if (!Number.isFinite(actual.scrollY) || !Number.isFinite(expected.scrollY)) return false;
-  return Math.abs(actual.zoom - expected.zoom) <= zoomTolerance
-    && Math.abs(actual.scrollX - expected.scrollX) <= scrollTolerance
-    && Math.abs(actual.scrollY - expected.scrollY) <= scrollTolerance;
+  const actualZoom = actual.zoom as number;
+  const expectedZoom = expected.zoom as number;
+  const actualScrollX = actual.scrollX as number;
+  const expectedScrollX = expected.scrollX as number;
+  const actualScrollY = actual.scrollY as number;
+  const expectedScrollY = expected.scrollY as number;
+  return Math.abs(actualZoom - expectedZoom) <= zoomTolerance
+    && Math.abs(actualScrollX - expectedScrollX) <= scrollTolerance
+    && Math.abs(actualScrollY - expectedScrollY) <= scrollTolerance;
 }
 
 export function parseStoredViewState(raw: string | null | undefined): StoredViewState | undefined {

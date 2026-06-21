@@ -51,6 +51,7 @@ const REFERENCE_GHOST_ALPHA_MULTIPLIER = 0.35;
 const REFERENCE_GHOST_DEPTH_OFFSET = -10_000;
 const BOUNDS_OVERLAY_STROKE_COLOR = 0xf97316; // orange: distinct from world frame + selection frames
 const BOUNDS_OVERLAY_STROKE_ALPHA = 0.95;
+const EMPTY_SCENE_SPEC: SceneSpec = { id: '', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} };
 
 type PhysicsObject =
   | Phaser.Types.Physics.Arcade.ImageWithDynamicBody
@@ -84,6 +85,16 @@ export class EditorScene extends Phaser.Scene {
   private hitboxOverlayGraphics?: Phaser.GameObjects.Graphics;
   private hitboxOverlayLabel?: Phaser.GameObjects.Text;
   private showHitboxOverlay = true;
+
+  private getSceneSpec(): SceneSpec {
+    return this.compiled?.scene ?? EMPTY_SCENE_SPEC;
+  }
+
+  private getSelectedEntityIds(): string[] {
+    if (this.selection.kind === 'entities') return this.selection.ids;
+    if (this.selection.kind === 'entity') return [this.selection.id];
+    return [];
+  }
   private formationDraftGraphics?: Phaser.GameObjects.Graphics;
   private formationDraftHandle?: Phaser.GameObjects.Arc;
   private formationDraftActive = false;
@@ -216,7 +227,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   public getSceneWorldSize(): { width: number; height: number } {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     return { width: world.width, height: world.height };
   }
 
@@ -247,7 +258,7 @@ export class EditorScene extends Phaser.Scene {
       return;
     }
 
-    const world = getSceneWorld(this.compiled.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.compiled.scene ?? EMPTY_SCENE_SPEC);
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const nextZoom = clampZoom(view.zoom, maxZoom);
     const restored = this.getRestoredScroll(view, nextZoom);
@@ -412,7 +423,7 @@ export class EditorScene extends Phaser.Scene {
     worldHeight?: number;
     backgroundLayerCount: number;
   } {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     return {
       ready: Boolean(this.compiled),
@@ -658,7 +669,7 @@ export class EditorScene extends Phaser.Scene {
 
     const hitResult = hitTestCanvas(
       worldPoint,
-      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.getSceneSpec(),
       this.sprites,
       this.groupZones,
       this.boundsHandles
@@ -674,7 +685,7 @@ export class EditorScene extends Phaser.Scene {
   public testTapWorld(point: { x: number; y: number }, options: { additive?: boolean } = {}): void {
     const hitResult = hitTestCanvas(
       point,
-      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.getSceneSpec(),
       this.sprites,
       this.groupZones,
       this.boundsHandles
@@ -694,7 +705,7 @@ export class EditorScene extends Phaser.Scene {
   public testDragWorld(start: { x: number; y: number }, end: { x: number; y: number }): void {
     const hitResult = hitTestCanvas(
       start,
-      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.getSceneSpec(),
       this.sprites,
       this.groupZones,
       this.boundsHandles
@@ -1550,7 +1561,6 @@ export class EditorScene extends Phaser.Scene {
 
     await new Promise<void>((resolve) => {
       this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
-      this.load.once(Phaser.Loader.Events.LOAD_ERROR, () => resolve());
       this.load.start();
     });
   }
@@ -1576,7 +1586,7 @@ export class EditorScene extends Phaser.Scene {
     // Use new hit testing
     const hitResult = hitTestCanvas(
       worldPoint,
-      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.getSceneSpec(),
       this.sprites,
       this.groupZones,
       this.boundsHandles
@@ -1616,7 +1626,7 @@ export class EditorScene extends Phaser.Scene {
     // Update hover state and cursor
     const hitResult = hitTestCanvas(
       worldPoint,
-      this.compiled?.scene || { id: 'scene', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} },
+      this.getSceneSpec(),
       this.sprites,
       this.groupZones,
       this.boundsHandles
@@ -1659,8 +1669,11 @@ export class EditorScene extends Phaser.Scene {
           EventBus.emit('canvas-interaction-start', { kind: 'bounds-handle', id: attachment.id });
         } else {
           if (hitResult.kind === 'entity') {
-            const isMulti = this.selection.kind === 'entities' && this.selection.ids.includes(hitResult.id!);
-            const dragEntityIds = isMulti ? this.selection.ids : [hitResult.id!];
+            const hitEntityId = hitResult.id;
+            if (!hitEntityId) return;
+            const selectedEntityIds = this.getSelectedEntityIds();
+            const isMulti = this.selection.kind === 'entities' && selectedEntityIds.includes(hitEntityId);
+            const dragEntityIds = isMulti ? selectedEntityIds : [hitEntityId];
 
             this.dragState = {
               kind: 'entity',
@@ -1798,12 +1811,15 @@ export class EditorScene extends Phaser.Scene {
           const dy = Math.round(this.snapDeltaToGrid(rawDy));
 
           const altKey = resolvePointerModifier(pointer.event, 'altKey', this.isAltDown);
-          const isMulti = this.selection.kind === 'entities' && this.selection.ids.includes(hitResult.id);
-          const dragEntityIds = isMulti ? this.selection.ids : [hitResult.id];
+          const hitEntityId = hitResult.id;
+          if (!hitEntityId) return;
+          const selectedEntityIds = this.getSelectedEntityIds();
+          const isMulti = this.selection.kind === 'entities' && selectedEntityIds.includes(hitEntityId);
+          const dragEntityIds = isMulti ? selectedEntityIds : [hitEntityId];
 
           EventBus.emit(
             'canvas-interaction-start',
-            dragEntityIds.length > 1 ? { kind: 'entities', id: dragEntityIds.join(',') } : { kind: 'entity', id: hitResult.id }
+            dragEntityIds.length > 1 ? { kind: 'entities', id: dragEntityIds.join(',') } : { kind: 'entity', id: hitEntityId }
           );
 
           if (altKey) {
@@ -1899,7 +1915,7 @@ export class EditorScene extends Phaser.Scene {
       this.wheelZoomAnchor = { pointerX, pointerY, worldX: worldPoint.x, worldY: worldPoint.y };
     }
     const dominantDelta = Math.abs(deltaY) >= Math.abs(deltaX) ? deltaY : deltaX;
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const nextZoom = clampZoom(this.currentZoom + (dominantDelta < 0 ? 0.1 : -0.1), maxZoom);
     if (nextZoom === this.currentZoom) return;
@@ -1945,7 +1961,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private zoomIn(): void {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const next = getNextZoom(this.currentZoom, 'in', maxZoom);
     // Phaser internally clamps camera zoom in a few places. Keep our state in sync by treating the camera as source of truth.
@@ -1958,7 +1974,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private zoomOut(): void {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const next = getNextZoom(this.currentZoom, 'out', maxZoom);
     this.applyZoom(next);
@@ -1974,13 +1990,13 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private fitView(): void {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     const zoom = getFitZoom(this.scale.width, this.scale.height, world.width, world.height);
     this.applyZoom(zoom);
   }
 
   private applyZoom(zoom: number): void {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     this.currentZoom = clampZoom(zoom, maxZoom);
     this.cameras.main.setZoom(this.currentZoom);
@@ -2094,11 +2110,6 @@ export class EditorScene extends Phaser.Scene {
     if (!this.panState) this.input.setDefaultCursor('default');
   }
 
-  private snapToGrid(value: number): number {
-    if (!this.gridEnabled) return value;
-    return Math.round(value / this.gridSize) * this.gridSize;
-  }
-
   private snapDeltaToGrid(delta: number): number {
     if (!this.gridEnabled) return delta;
     return Math.round(delta / this.gridSize) * this.gridSize;
@@ -2115,7 +2126,7 @@ export class EditorScene extends Phaser.Scene {
       this.cameras.main.setScroll(scrollX, scrollY);
       return;
     }
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     const clamped = clampCameraScroll(
       scrollX,
       scrollY,
@@ -2131,7 +2142,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private emitViewState(): void {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     EventBus.emit('scene-view-state', {
       zoom: this.currentZoom,
       worldWidth: world.width,
@@ -2140,7 +2151,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private shouldStartPan(pointer: Phaser.Input.Pointer): boolean {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     return canPanCamera(this.scale.width, this.scale.height, world.width, world.height, this.currentZoom)
       && (this.isMiddleMouseDown || pointer.button === 1 || (this.isSpacePanning && pointer.leftButtonDown()));
   }
