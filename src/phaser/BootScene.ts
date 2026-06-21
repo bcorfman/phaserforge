@@ -8,7 +8,7 @@ import { OpRegistry } from '../compiler/opRegistry';
 import { createRuntimeServices } from './runtimeServices';
 import type { RuntimeServices } from '../runtime/services/RuntimeServices';
 import { resolveTarget, flattenTarget } from '../runtime/targets/resolveTarget';
-import { readStoredViewState, type ViewState } from '../util/viewStateStorage';
+import type { ViewState } from '../util/viewStateStorage';
 
 export class BootScene extends Phaser.Scene {
   private project?: ProjectSpec;
@@ -232,12 +232,8 @@ export class BootScene extends Phaser.Scene {
     // prevent the default `fitView()` centering from running.
     if (this.project) {
       this.captureViewStateForProjectReload(mode);
-    } else if (typeof window !== 'undefined') {
-      try {
-        this.lastViewState = readStoredViewState(window.localStorage, project.id);
-      } catch {
-        this.lastViewState = undefined;
-      }
+    } else {
+      this.lastViewState = undefined;
     }
     this.project = project;
     this.authoredSceneId = currentSceneId;

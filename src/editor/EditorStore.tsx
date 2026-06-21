@@ -56,9 +56,6 @@ import {
   type SidebarScope,
 } from './projectTreeHistory';
 
-export const PROJECT_STORAGE_KEY = 'phaserforge.projectYaml.v1';
-export const PROJECT_LAST_SAVED_AT_STORAGE_KEY = 'phaserforge.projectLastSavedAtMs.v1';
-export const WORKSPACE_BACKUP_STORAGE_KEY = 'phaserforge.workspaceBackupYaml.v1';
 export const SCENE_STORAGE_KEY_V1 = 'phaserforge.sceneYaml.v1';
 export const SCENE_STORAGE_KEY = 'phaserforge.sceneYaml.v2';
 export const STARTUP_MODE_STORAGE_KEY = 'phaserforge.startupMode.v1';
@@ -3469,21 +3466,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       if (cancelled) return;
 
       const storedMode = snapshot.preferences?.startupMode ?? config.startupMode;
-      const storedThemeMode = snapshot.preferences?.themeMode ?? (
-        typeof window !== 'undefined'
-          ? coerceThemeMode(window.localStorage.getItem(THEME_MODE_STORAGE_KEY))
-          : 'system'
-      );
-      const storedUiScale = snapshot.preferences?.uiScale ?? (
-        typeof window !== 'undefined'
-          ? coerceUiScale(window.localStorage.getItem(UI_SCALE_STORAGE_KEY), DEFAULT_UI_SCALE)
-          : DEFAULT_UI_SCALE
-      );
-      const storedShowHitboxOverlay = snapshot.preferences?.showHitboxOverlay ?? (
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem(SHOW_HITBOX_OVERLAY_STORAGE_KEY) !== '0'
-          : true
-      );
+      const storedThemeMode = snapshot.preferences?.themeMode ?? 'system';
+      const storedUiScale = snapshot.preferences?.uiScale ?? DEFAULT_UI_SCALE;
+      const storedShowHitboxOverlay = snapshot.preferences?.showHitboxOverlay ?? true;
       const initialRecord = snapshot.localProjects.find((record) => record.id === snapshot.workspace.activeProjectId)
         ?? snapshot.localProjects[0]
         ?? await projectPersistence.createLocalProject(createEmptyProject());
@@ -3514,49 +3499,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !state.initialized) return;
-    try {
-      window.localStorage.setItem(STARTUP_MODE_STORAGE_KEY, state.startupMode);
-    } catch {
-      // ignore storage errors
-    }
-  }, [state.initialized, state.startupMode]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !state.initialized) return;
-    try {
-      window.localStorage.setItem(THEME_MODE_STORAGE_KEY, state.themeMode);
-    } catch {
-      // ignore storage errors
-    }
-  }, [state.initialized, state.themeMode]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !state.initialized) return;
-    try {
-      window.localStorage.setItem(UI_SCALE_STORAGE_KEY, String(state.uiScale));
-    } catch {
-      // ignore storage errors
-    }
-  }, [state.initialized, state.uiScale]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !state.initialized) return;
-    try {
-      window.localStorage.setItem(SHOW_HITBOX_OVERLAY_STORAGE_KEY, state.showHitboxOverlay ? '1' : '0');
-    } catch {
-      // ignore storage errors
-    }
-  }, [state.initialized, state.showHitboxOverlay]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !state.initialized) return;
-    try {
-      window.localStorage.setItem(PROJECT_STORAGE_KEY, serializeProjectToYaml(state.project));
-      window.localStorage.setItem(PROJECT_LAST_SAVED_AT_STORAGE_KEY, String(Date.now()));
-    } catch {
-      // ignore storage errors
-    }
+    if (!state.initialized) return;
     const currentRecordId = activeProjectId ?? state.project.id;
     const previous = activeRecordRef.current;
     const nextRecord = buildStoredProjectRecord(state.project, {
@@ -3572,9 +3515,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     });
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
-    void projectPersistence.saveProjectRecord(nextRecord).then((records) => {
+    void projectPersistence.saveActiveProjectRecord(nextRecord, state.syncMode).then((records) => {
       setLocalProjects(records.map(mapStoredProject));
-      void projectPersistence.setActiveProject(currentRecordId, state.syncMode);
     });
   }, [activeProjectId, state.initialized, state.project, state.syncMode]);
 

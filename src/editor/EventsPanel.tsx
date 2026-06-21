@@ -3,8 +3,8 @@ import type { AttachmentSpec, AttachmentTriggerSpec, EditorRegistryConfig, Event
 import { getAttachmentsForTargetAndEvent, type AttachedActionRow, buildAttachedActionRowsForTargetAndEvent } from './attachmentCommands';
 import { getTargetLabel } from './attachmentCommands';
 import { ActionLibraryDrawer } from './ActionLibraryDrawer';
-import { loadPinnedActionTypes, togglePinnedActionType } from './actionPins';
-import { loadPinnedPatternIds, togglePinnedPatternId } from './patternPins';
+import { loadPinnedActionTypes, loadPinnedActionTypesFromPersistence, togglePinnedActionType } from './actionPins';
+import { loadPinnedPatternIds, loadPinnedPatternIdsFromPersistence, togglePinnedPatternId } from './patternPins';
 
 const SUPPORTED_PRESETS = new Set([
   'MoveUntil',
@@ -426,6 +426,17 @@ function EventBlockCard({
   const [menuAnchorRect, setMenuAnchorRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const menuRootRef = useRef<HTMLDivElement | null>(null);
   const addButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([loadPinnedActionTypesFromPersistence(), loadPinnedPatternIdsFromPersistence()]).then(([types, patternIds]) => {
+      if (cancelled) return;
+      setPinnedTypes(new Set(types));
+      setPinnedPatternIds(new Set(patternIds));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   useEffect(() => {
     if (!overflowMenu) return;
     const onPointerDown = (event: PointerEvent) => {
@@ -1032,9 +1043,13 @@ function EventBlockCard({
         actions={supportedPresetEntries}
         patterns={patternsSorted.map((p) => ({ id: p.id, name: p.name }))}
         pinnedTypes={pinnedTypes}
-        onTogglePin={(type) => setPinnedTypes(new Set(togglePinnedActionType(type)))}
+        onTogglePin={(type) => {
+          void togglePinnedActionType(type).then((types) => setPinnedTypes(new Set(types)));
+        }}
         pinnedPatternIds={pinnedPatternIds}
-        onTogglePinnedPattern={(id) => setPinnedPatternIds(new Set(togglePinnedPatternId(id)))}
+        onTogglePinnedPattern={(id) => {
+          void togglePinnedPatternId(id).then((ids) => setPinnedPatternIds(new Set(ids)));
+        }}
         selectedCategory={drawerCategory}
         onSelectCategory={setDrawerCategory}
         onPickAction={(type) => pickPreset(type)}
@@ -1275,8 +1290,8 @@ function EventBlockCard({
                 data-testid={`attachment-menu-add-above-${overflowMenu.attachmentId}`}
                 onClick={() => {
                   setPendingInsert({ kind: 'above', anchorAttachmentId: overflowMenu.attachmentId });
-                  setPinnedTypes(new Set(loadPinnedActionTypes()));
-                  setPinnedPatternIds(new Set(loadPinnedPatternIds()));
+                  void loadPinnedActionTypesFromPersistence().then((types) => setPinnedTypes(new Set(types)));
+                  void loadPinnedPatternIdsFromPersistence().then((ids) => setPinnedPatternIds(new Set(ids)));
                   if (menuAnchorRect) setDrawerAnchorRect(menuAnchorRect);
                   setDrawerOpen(true);
                   setOverflowMenu(null);
@@ -1291,8 +1306,8 @@ function EventBlockCard({
                 data-testid={`attachment-menu-add-below-${overflowMenu.attachmentId}`}
                 onClick={() => {
                   setPendingInsert({ kind: 'below', anchorAttachmentId: overflowMenu.attachmentId });
-                  setPinnedTypes(new Set(loadPinnedActionTypes()));
-                  setPinnedPatternIds(new Set(loadPinnedPatternIds()));
+                  void loadPinnedActionTypesFromPersistence().then((types) => setPinnedTypes(new Set(types)));
+                  void loadPinnedPatternIdsFromPersistence().then((ids) => setPinnedPatternIds(new Set(ids)));
                   if (menuAnchorRect) setDrawerAnchorRect(menuAnchorRect);
                   setDrawerOpen(true);
                   setOverflowMenu(null);
@@ -1307,8 +1322,8 @@ function EventBlockCard({
                 data-testid={`attachment-menu-add-child-${overflowMenu.attachmentId}`}
                 onClick={() => {
                   setPendingInsert({ kind: 'child', anchorAttachmentId: overflowMenu.attachmentId });
-                  setPinnedTypes(new Set(loadPinnedActionTypes()));
-                  setPinnedPatternIds(new Set(loadPinnedPatternIds()));
+                  void loadPinnedActionTypesFromPersistence().then((types) => setPinnedTypes(new Set(types)));
+                  void loadPinnedPatternIdsFromPersistence().then((ids) => setPinnedPatternIds(new Set(ids)));
                   if (menuAnchorRect) setDrawerAnchorRect(menuAnchorRect);
                   setDrawerOpen(true);
                   setOverflowMenu(null);
