@@ -38,6 +38,20 @@ function baseState(): any {
   };
 }
 
+function applyProjectMetadataAction(current: any, action: any) {
+  return {
+    ...current,
+    project: {
+      ...current.project,
+      ...(typeof action.title === 'string' ? { title: action.title } : {}),
+      ...(typeof action.publishTitle === 'string' ? { publishTitle: action.publishTitle } : {}),
+      ...(typeof action.publishGithubPagesRepo === 'string'
+        ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+        : {}),
+    },
+  };
+}
+
 function renderIntoDom(element: React.ReactElement) {
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -464,6 +478,150 @@ describe('CloudAccountPanel publish gating', () => {
       });
 
       expect(preview?.textContent).toContain('https://bcorfman.github.io/zoof/');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('keeps the Publish title local while typing and does not rename the project tree title', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({ ok: true, login: 'alice', pagesBaseUrl: 'https://alice.github.io/' });
+
+    const dispatch = vi.fn();
+
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Project Tree Title',
+          publishTitle: 'Initial Publish Title',
+          publishGithubPagesRepo: 'zoof',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <>
+          <div data-testid="project-tree-title">{state.project.title}</div>
+          <div data-testid="publish-title-state">{state.project.publishTitle}</div>
+          <CloudAccountPanel
+            state={state}
+            dispatch={(action) => {
+              dispatch(action);
+              if (action.type !== 'set-project-metadata') return;
+              setState((current: any) => applyProjectMetadataAction(current, action));
+            }}
+            onLoadYaml={() => {}}
+            onStatus={() => {}}
+            onError={() => {}}
+          />
+        </>
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+
+      const titleInput = document.querySelector('[data-testid="cloud-publish-pages-section"] input[placeholder="My Game"]') as HTMLInputElement | null;
+      expect(titleInput?.value).toBe('Initial Publish Title');
+
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+        if (setter) setter.call(titleInput, 'Published Title Only');
+        else titleInput!.value = 'Published Title Only';
+        titleInput!.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        titleInput!.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        await Promise.resolve();
+      });
+
+      expect(titleInput?.value).toBe('Published Title Only');
+      expect(document.querySelector('[data-testid="project-tree-title"]')?.textContent).toBe('Project Tree Title');
+      expect(document.querySelector('[data-testid="publish-title-state"]')?.textContent).toBe('Initial Publish Title');
+      expect(dispatch).not.toHaveBeenCalled();
+
+      await act(async () => {
+        titleInput?.focus();
+        titleInput?.blur();
+        await Promise.resolve();
+      });
+
+      expect(document.querySelector('[data-testid="project-tree-title"]')?.textContent).toBe('Project Tree Title');
+      expect(document.querySelector('[data-testid="publish-title-state"]')?.textContent).toBe('Published Title Only');
+      expect(dispatch).toHaveBeenCalledWith({ type: 'set-project-metadata', publishTitle: 'Published Title Only' });
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('keeps the Publish repository local while typing and persists it on blur', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValueOnce({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+    });
+
+    const dispatch = vi.fn();
+
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Project Tree Title',
+          publishTitle: 'Publish Title',
+          publishGithubPagesRepo: 'old-repo',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <>
+          <div data-testid="repo-state">{state.project.publishGithubPagesRepo}</div>
+          <CloudAccountPanel
+            state={state}
+            dispatch={(action) => {
+              dispatch(action);
+              if (action.type !== 'set-project-metadata') return;
+              setState((current: any) => applyProjectMetadataAction(current, action));
+            }}
+            onLoadYaml={() => {}}
+            onStatus={() => {}}
+            onError={() => {}}
+          />
+        </>
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+
+      const routeInput = document.querySelector('[aria-label="Publish repository"]') as HTMLInputElement | null;
+      const preview = document.querySelector('[data-testid="cloud-publish-pages-target"]') as HTMLElement | null;
+
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+        if (setter) setter.call(routeInput, 'new-repo');
+        else routeInput!.value = 'new-repo';
+        routeInput!.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        routeInput!.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        await Promise.resolve();
+      });
+
+      expect(routeInput?.value).toBe('new-repo');
+      expect(preview?.textContent).toContain('https://bcorfman.github.io/new-repo/');
+      expect(document.querySelector('[data-testid="repo-state"]')?.textContent).toBe('old-repo');
+      expect(dispatch).not.toHaveBeenCalled();
+
+      await act(async () => {
+        routeInput?.focus();
+        routeInput?.blur();
+        await Promise.resolve();
+      });
+
+      expect(document.querySelector('[data-testid="repo-state"]')?.textContent).toBe('new-repo');
+      expect(dispatch).toHaveBeenCalledWith({ type: 'set-project-metadata', publishGithubPagesRepo: 'new-repo' });
     } finally {
       view.cleanup();
     }

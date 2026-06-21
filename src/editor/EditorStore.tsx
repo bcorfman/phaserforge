@@ -175,7 +175,7 @@ export type EditorAction =
   | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; syncMode: ProjectSyncMode; registry: EditorRegistryConfig }
   | { type: 'set-sync-mode'; syncMode: ProjectSyncMode }
   | { type: 'reset-project' }
-  | { type: 'set-project-metadata'; title?: string; publishGithubPagesRepo?: string }
+  | { type: 'set-project-metadata'; title?: string; publishTitle?: string; publishGithubPagesRepo?: string }
   | { type: 'set-theme-mode'; themeMode: ThemeMode }
   | { type: 'set-ui-scale'; uiScale: number }
   | { type: 'set-show-hitbox-overlay'; value: boolean }
@@ -1120,6 +1120,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const nextProject: ProjectSpec = {
         ...state.project,
         ...(typeof action.title === 'string' ? { title: action.title } : {}),
+        ...(typeof action.publishTitle === 'string' ? { publishTitle: action.publishTitle } : {}),
         ...(typeof action.publishGithubPagesRepo === 'string' ? { publishGithubPagesRepo: action.publishGithubPagesRepo } : {}),
       };
       return { ...state, project: nextProject, dirty: true, error: undefined, projectRootEditing: false };

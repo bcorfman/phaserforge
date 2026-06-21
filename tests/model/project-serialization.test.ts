@@ -115,10 +115,11 @@ describe('project YAML serialization', () => {
     expect(reserialized).not.toMatch(/\nmacros:\n/);
   });
 
-  it('round-trips optional project title and GitHub Pages repo', () => {
+  it('round-trips optional project title and publish metadata', () => {
     const project = {
       id: 'project-1',
       title: 'My Game',
+      publishTitle: 'My Published Game',
       publishGithubPagesRepo: 'mygame',
       assets: { images: {}, spriteSheets: {}, fonts: {} },
       audio: { sounds: {} },
@@ -129,6 +130,7 @@ describe('project YAML serialization', () => {
 
     const yaml = serializeProjectToYaml(project as any);
     expect(yaml).toMatch(/\ntitle:\s*My Game\n/);
+    expect(yaml).toMatch(/\npublishTitle:\s*My Published Game\n/);
     expect(yaml).toMatch(/\npublishGithubPagesRepo:\s*mygame\n/);
     expect(parseProjectYaml(yaml)).toEqual(project);
   });

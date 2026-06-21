@@ -7,7 +7,7 @@ import { computeAabbBounds } from '../runtime/geometry/aabbBounds';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { getSceneWorld } from '../editor/sceneWorld';
 import { resolveTextEntityDefaults, resolveTextFontFamily } from '../editor/textEntity';
-import { clampCameraScroll, clampZoom, getMaxZoom, getResizedViewportScroll } from '../editor/viewport';
+import { clampZoom, getMaxZoom, getResizedViewportScroll } from '../editor/viewport';
 import { getPreferredTextResolution } from './textResolution';
 import { OpRegistry } from '../compiler/opRegistry';
 import { BasicAudioService } from '../runtime/services/BasicAudioService';
@@ -21,6 +21,7 @@ import type { TriggerZoneSpec } from '../model/types';
 import type { ViewState } from '../util/viewStateStorage';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
+const EMPTY_SCENE_SPEC: SceneSpec = { id: '', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} };
 
 type PhysicsObject =
   | Phaser.Types.Physics.Arcade.ImageWithDynamicBody
@@ -93,6 +94,10 @@ export class GameScene extends Phaser.Scene {
   };
   private listenersBound = false;
 
+  private getSceneSpec(): SceneSpec {
+    return this.compiled?.scene ?? EMPTY_SCENE_SPEC;
+  }
+
   private restoreViewState(view: ViewState): void {
     this.setPendingViewState(view);
     if (!this.compiled) return;
@@ -134,6 +139,14 @@ export class GameScene extends Phaser.Scene {
 
   public setRuntimeOps(opRegistry: OpRegistry): void {
     this.opRegistry = opRegistry;
+  }
+
+  public getInputActionState(actionId: string) {
+    return this.inputService?.getActionState(actionId) ?? { pressed: false, held: false, released: false };
+  }
+
+  public getVarsService(): BasicVarsService {
+    return this.varsService;
   }
 
   create(): void {
@@ -370,7 +383,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   public getSceneWorldSize(): { width: number; height: number } {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     return { width: world.width, height: world.height };
   }
 
@@ -437,7 +450,7 @@ export class GameScene extends Phaser.Scene {
     activeCollisionEventCount?: number;
     activeLastProcessedCollisionEventCount?: number;
   } {
-    const world = getSceneWorld(this.compiled?.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
+    const world = getSceneWorld(this.getSceneSpec());
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const audio = this.audioService?.getSnapshot();
     const audioPlayback = this.audioService?.getDebugPlayback?.();
@@ -609,6 +622,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   public getGroupLabelVisible(_id: string): boolean | null {
+    return null;
+  }
+
+  public getHitboxOverlayInfo(): { visible: boolean; labelX: number; labelY: number } | null {
     return null;
   }
 
@@ -1408,7 +1425,6 @@ export class GameScene extends Phaser.Scene {
         ? globalThis.setTimeout(() => resolve(), 2500)
         : null;
       this.load.once(Phaser.Loader.Events.COMPLETE, finish);
-      this.load.once(Phaser.Loader.Events.LOAD_ERROR, finish);
       // Audio loads can occasionally stall without surfacing a global error; keep the timeout fallback for those cases.
       this.load.start();
     });

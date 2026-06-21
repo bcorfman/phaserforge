@@ -170,6 +170,10 @@ export interface ProjectSpec {
    */
   title?: string;
   /**
+   * Optional publish-only title used by cloud publishing surfaces.
+   */
+  publishTitle?: string;
+  /**
    * Optional GitHub Pages publish repository name (editor metadata; serialized to YAML).
    */
   publishGithubPagesRepo?: string;
