@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createEmptyProject } from '../../src/model/emptyProject';
+import { serializeProjectToYaml } from '../../src/model/serialization';
 
 const api = vi.hoisted(() => {
   return {
@@ -221,6 +222,172 @@ describe('CloudAccountPanel publish gating', () => {
       expect(JSON.parse(window.localStorage.getItem('phaserforge.cloud.project_game_id_map_v1') ?? '{}')).toEqual({
         [project.id]: 'g1',
       });
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('notifies the host when autosave links a project to a new cloud game', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const project = createEmptyProject();
+    project.id = 'project-create';
+    project.title = 'Cloud Save Demo';
+    const onCloudGameLinked = vi.fn();
+
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project }}
+        dispatch={vi.fn() as any}
+        onLoadYaml={() => {}}
+        onCloudGameLinked={onCloudGameLinked}
+        onStatus={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+
+    try {
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      await flushEffects();
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(onCloudGameLinked).toHaveBeenCalledWith('g1');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('autosaves edits to the active cloud-backed project even when the local mapping is missing', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+
+    const dispatch = vi.fn();
+    const onStatus = vi.fn();
+    const onError = vi.fn();
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project }}
+        activeCloudGameId="g-1"
+        dispatch={dispatch as any}
+        onLoadYaml={() => {}}
+        onStatus={onStatus}
+        onError={onError}
+      />,
+    );
+
+    try {
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      api.updateGame.mockClear();
+      api.createGame.mockClear();
+
+      const edited = structuredClone(project);
+      edited.publishTitle = 'Pattern Demo';
+
+      act(() => {
+        view.root.render(
+          <CloudAccountPanel
+            state={{ project: edited }}
+            activeCloudGameId="g-1"
+            dispatch={dispatch as any}
+            onLoadYaml={() => {}}
+            onStatus={onStatus}
+            onError={onError}
+          />,
+        );
+      });
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(api.updateGame).toHaveBeenCalledWith(
+        'g-1',
+        expect.objectContaining({
+          title: 'Pattern Demo',
+          yaml: expect.stringContaining('publishTitle: Pattern Demo'),
+        }),
+        'csrf',
+      );
+      expect(api.createGame).not.toHaveBeenCalled();
+      expect(onError).not.toHaveBeenCalled();
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('checks conflict against the active mapped cloud project before falling back to the latest cloud game', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const deviceProject = createEmptyProject();
+    deviceProject.id = 'project-1';
+    deviceProject.title = 'Device Project';
+    const currentCloudProject = structuredClone(deviceProject);
+    currentCloudProject.title = 'Current Cloud Project';
+
+    window.localStorage.setItem('phaserforge.projectYaml.v1', serializeProjectToYaml(deviceProject));
+    window.localStorage.setItem('phaserforge.projectLastSavedAtMs.v1', String(Date.now()));
+
+    api.getGame.mockImplementation(async (id: string) => {
+      if (id === 'g1') {
+        return {
+          game: {
+            id: 'g1',
+            title: 'Current Cloud Project',
+            created_at: 'c',
+            updated_at: 'u1',
+            yaml: serializeProjectToYaml(currentCloudProject),
+          },
+        };
+      }
+      if (id === 'g2') {
+        return {
+          game: {
+            id: 'g2',
+            title: 'Latest Unrelated Game',
+            created_at: 'c',
+            updated_at: 'u2',
+            yaml: serializeProjectToYaml(createEmptyProject()),
+          },
+        };
+      }
+      throw new Error(`unexpected game id ${id}`);
+    });
+    api.listGames.mockResolvedValueOnce({
+      games: [
+        { id: 'g2', title: 'Latest Unrelated Game', created_at: 'c', updated_at: '2026-06-21T13:00:00.000Z' },
+      ],
+    });
+
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project: deviceProject }}
+        activeCloudGameId="g1"
+        dispatch={vi.fn() as any}
+        onLoadYaml={() => {}}
+        onStatus={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+
+    try {
+      await flushEffects();
+      await flushEffects();
+
+      expect(api.getGame).toHaveBeenCalledWith('g1');
+      expect(api.getGame).not.toHaveBeenCalledWith('g2');
+      expect(document.querySelector('[data-testid="workspace-conflict-modal"]')).toBeTruthy();
+      expect(document.querySelector('[data-testid="workspace-conflict-cloud-card"]')?.textContent).toContain('Current Cloud Project');
     } finally {
       view.cleanup();
     }
