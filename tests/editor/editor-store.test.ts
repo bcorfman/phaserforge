@@ -77,6 +77,44 @@ describe('EditorStore reducer', () => {
     expect(next.dirty).toBe(true);
   });
 
+  it('mirrors a project rename into the publish title only when the publish title is empty', () => {
+    const state = {
+      ...seededState(),
+      project: {
+        ...sampleProject,
+        title: 'Untitled Project',
+        publishTitle: '',
+      },
+    };
+
+    const next = reducer(state, {
+      type: 'set-project-metadata',
+      title: 'History Demo',
+    } as any);
+
+    expect(next.project.title).toBe('History Demo');
+    expect(next.project.publishTitle).toBe('History Demo');
+  });
+
+  it('keeps an existing publish title when the project title changes', () => {
+    const state = {
+      ...seededState(),
+      project: {
+        ...sampleProject,
+        title: 'Untitled Project',
+        publishTitle: 'Launch Title',
+      },
+    };
+
+    const next = reducer(state, {
+      type: 'set-project-metadata',
+      title: 'History Demo',
+    } as any);
+
+    expect(next.project.title).toBe('History Demo');
+    expect(next.project.publishTitle).toBe('Launch Title');
+  });
+
   it('toggles hitbox overlay visibility flag', () => {
     const state = initState();
     expect(state.showHitboxOverlay).toBe(true);
