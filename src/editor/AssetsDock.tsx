@@ -6,6 +6,7 @@ import { assetIdBaseFromOriginalName, getDemoPackAssetKind } from './demoPackAss
 import { ASSET_DRAG_MIME } from './dragAssets';
 import { fileToDataUrl } from './fileDataUrl';
 import { loadImageMetadataFromFile, type LoadedImageMetadata } from './imageMetadata';
+import { projectPersistence } from './projectPersistence';
 
 const DEMO_PACK_ASSETS = {
   ...import.meta.glob('../../res/images/*.png', {
@@ -147,13 +148,8 @@ export function AssetsDock({
 }) {
   const [tab, setTab] = useState<AssetTab>('images');
   const [search, setSearch] = useState('');
-  const [showImageThumbnails, setShowImageThumbnails] = useState(() => {
-    const storage: any = (globalThis as any).localStorage;
-    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaserforge.assetsDockShowThumbnails.v1') : null;
-    if (raw === '0') return false;
-    if (raw === '1') return true;
-    return true;
-  });
+  const [showImageThumbnails, setShowImageThumbnails] = useState(true);
+  const [thumbnailPrefHydrated, setThumbnailPrefHydrated] = useState(false);
   const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null);
   const addMenuRootRef = useRef<HTMLDivElement | null>(null);
   const deviceFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -163,9 +159,21 @@ export function AssetsDock({
   const rowMenuRootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const storage: any = (globalThis as any).localStorage;
-    if (typeof storage?.setItem === 'function') storage.setItem('phaserforge.assetsDockShowThumbnails.v1', showImageThumbnails ? '1' : '0');
-  }, [showImageThumbnails]);
+    let cancelled = false;
+    void projectPersistence.loadPreferencesRecord().then((preferences) => {
+      if (cancelled) return;
+      setShowImageThumbnails(preferences?.assetsDockShowThumbnails ?? true);
+      setThumbnailPrefHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!thumbnailPrefHydrated) return;
+    void projectPersistence.updatePreferencesRecord({ assetsDockShowThumbnails: showImageThumbnails });
+  }, [showImageThumbnails, thumbnailPrefHydrated]);
 
   const normalizedSearch = search.trim().toLowerCase();
 

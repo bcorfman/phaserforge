@@ -3,22 +3,47 @@ import { gotoStudio, waitForEmptyScene } from './helpers';
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';
 import { createEmptyProject } from '../../src/model/emptyProject';
+import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 
 test('Cloud login shows conflict picker when cloud and device diverge @smoke', async ({ page }) => {
   const deviceYaml = serializeProjectToYaml(sampleProject);
   const cloudYaml = serializeProjectToYaml(createEmptyProject());
+  const deviceRecord = buildStoredProjectRecord(sampleProject, {
+    id: sampleProject.id,
+    yaml: deviceYaml,
+    updatedAt: new Date(Date.now() - 60_000).toISOString(),
+    origin: 'local-only',
+    syncStatus: 'local',
+  });
 
-  await page.addInitScript((yaml) => {
-    let storage: Storage;
-    try {
-      storage = window.localStorage;
-    } catch {
-      return;
-    }
-    storage.setItem('phaserforge.projectYaml.v1', yaml);
-    storage.setItem('phaserforge.projectLastSavedAtMs.v1', String(Date.now() - 60_000));
-    storage.setItem('phaserforge.startupMode.v1', 'new_empty_scene');
-  }, deviceYaml);
+  await page.addInitScript(async ({ record }) => {
+    const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+      const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+      request.onerror = () => reject(request.error);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('workspaceState')) db.createObjectStore('workspaceState');
+        if (!db.objectStoreNames.contains('preferences')) db.createObjectStore('preferences');
+      };
+      request.onsuccess = () => resolve(request.result);
+    });
+
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore('projects').put(record);
+      tx.objectStore('workspaceState').put({
+        activeProjectId: record.id,
+        syncMode: 'online',
+      }, 'workspace');
+      tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+    });
+
+    window.localStorage.setItem('phaserforge.startupMode.v1', 'new_empty_scene');
+  }, { record: deviceRecord });
 
   await page.route('**/api/v1/auth/csrf', async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ csrfToken: 'csrf' }), contentType: 'application/json' });
@@ -71,7 +96,22 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
   await page.getByTestId('workspace-conflict-use-cloud').click();
   await waitForEmptyScene(page);
 
-  const backup = await page.evaluate(() => window.localStorage.getItem('phaserforge.workspaceBackupYaml.v1'));
-  expect(typeof backup).toBe('string');
-  expect(backup?.length).toBeGreaterThan(20);
+  const backup = await page.evaluate(async () => {
+    const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+      const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
+    const db = await openDb();
+    const saved = await new Promise<any>((resolve, reject) => {
+      const tx = db.transaction('workspaceState', 'readonly');
+      const request = tx.objectStore('workspaceState').get('workspaceBackup');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return saved ?? null;
+  });
+  expect(backup?.source).toBe('device');
+  expect(typeof backup?.yaml).toBe('string');
+  expect(backup?.yaml.length).toBeGreaterThan(20);
 });

@@ -9,7 +9,6 @@ import { sampleProject } from '../../src/model/sampleProject';
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
-    window.localStorage.removeItem('phaserforge.projectYaml.v1');
     window.localStorage.removeItem('phaserforge.startupMode.v1');
     window.localStorage.removeItem('phaserforge.themeMode.v1');
     window.localStorage.removeItem('phaserforge.uiScale.v1');
