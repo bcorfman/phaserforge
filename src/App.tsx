@@ -13,7 +13,7 @@ import { loadProjectFonts } from './editor/fontLoader';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
-import { readStoredViewState, VIEW_STATE_STORAGE_KEY, writeStoredViewState } from './util/viewStateStorage';
+import { readStoredViewState, shouldPersistViewState, VIEW_STATE_STORAGE_KEY, writeStoredViewState } from './util/viewStateStorage';
 import {
   registerAppStateGetter,
   registerActionDispatcher,
@@ -286,6 +286,14 @@ function AppShell() {
       setZoom(payload.zoom);
       if (!state.hasSeenViewHint) {
         dispatch({ type: 'dismiss-view-hint' });
+      }
+
+      if (!shouldPersistViewState({
+        projectId: appStateRef.current.project.id,
+        initialized: appStateRef.current.initialized,
+        restoreAttempted: viewRestoreAttemptedRef.current,
+      })) {
+        return;
       }
 
       try {

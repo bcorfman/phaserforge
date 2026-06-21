@@ -44,6 +44,7 @@ import {
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { resolvePointerModifier } from './inputModifiers';
 import { getPreferredTextResolution } from './textResolution';
+import type { ViewState } from '../util/viewStateStorage';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
 const REFERENCE_GHOST_ALPHA_MULTIPLIER = 0.35;
@@ -99,7 +100,7 @@ export class EditorScene extends Phaser.Scene {
   private worldFrameGraphics?: Phaser.GameObjects.Graphics;
   private currentZoom = 1;
   private hasInitializedView = false;
-  private pendingViewState?: { zoom: number; scrollX: number; scrollY: number };
+  private pendingViewState?: ViewState;
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private lastViewportSize = { width: 0, height: 0 };
   private isSpacePanning = false;
@@ -204,19 +205,38 @@ export class EditorScene extends Phaser.Scene {
     this.loadScene(undefined, projectOrScene as GameSceneSpec, 'edit');
   }
 
-  public getViewState(): { zoom: number; scrollX: number; scrollY: number } {
+  public getViewState(): ViewState {
     return {
       zoom: this.currentZoom,
       scrollX: this.cameras.main.scrollX,
       scrollY: this.cameras.main.scrollY,
+      viewportWidth: this.scale.width,
+      viewportHeight: this.scale.height,
     };
   }
 
-  public setPendingViewState(view: { zoom: number; scrollX: number; scrollY: number } | undefined): void {
+  public setPendingViewState(view: ViewState | undefined): void {
     this.pendingViewState = view;
   }
 
-  private restoreViewState(view: { zoom: number; scrollX: number; scrollY: number }): void {
+  private getRestoredScroll(view: ViewState, zoom: number): { scrollX: number; scrollY: number } {
+    if (!view.viewportWidth || !view.viewportHeight) {
+      return { scrollX: view.scrollX, scrollY: view.scrollY };
+    }
+    return getResizedViewportScroll(
+      view.scrollX,
+      view.scrollY,
+      view.viewportWidth,
+      view.viewportHeight,
+      this.scale.width,
+      this.scale.height,
+      zoom,
+      this.cameras.main.originX,
+      this.cameras.main.originY
+    );
+  }
+
+  private restoreViewState(view: ViewState): void {
     if (!this.compiled) {
       this.setPendingViewState(view);
       return;
@@ -225,10 +245,10 @@ export class EditorScene extends Phaser.Scene {
     const world = getSceneWorld(this.compiled.scene ?? { id: '', entities: {}, groups: {}, behaviors: {}, actions: {}, conditions: {} });
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const nextZoom = clampZoom(view.zoom, maxZoom);
+    const restored = this.getRestoredScroll(view, nextZoom);
     this.currentZoom = nextZoom;
     this.cameras.main.setZoom(nextZoom);
-    // Preserve stored scroll exactly; clamping against a slightly different viewport can shift the restored position.
-    this.applyScroll(view.scrollX, view.scrollY, false);
+    this.applyScroll(restored.scrollX, restored.scrollY, false);
     this.hasInitializedView = true;
     this.emitViewState();
   }
@@ -803,10 +823,10 @@ export class EditorScene extends Phaser.Scene {
       const world = getSceneWorld(sceneSpec);
       const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
       const nextZoom = clampZoom(this.pendingViewState.zoom, maxZoom);
+      const restored = this.getRestoredScroll(this.pendingViewState, nextZoom);
       this.currentZoom = nextZoom;
       this.cameras.main.setZoom(nextZoom);
-      // Preserve the captured scroll exactly; clamping against a slightly different viewport can shift the restored position.
-      this.applyScroll(this.pendingViewState.scrollX, this.pendingViewState.scrollY, false);
+      this.applyScroll(restored.scrollX, restored.scrollY, false);
       this.pendingViewState = undefined;
       this.hasInitializedView = true;
       this.emitViewState();
