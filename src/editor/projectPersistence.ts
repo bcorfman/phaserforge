@@ -49,6 +49,8 @@ type PersistenceSnapshot = {
 };
 
 type LegacyStorageReader = Pick<Storage, 'getItem'>;
+const LEGACY_PROJECT_STORAGE_KEY = 'phaserforge.projectYaml.v1';
+const LEGACY_PROJECT_LAST_SAVED_AT_KEY = 'phaserforge.projectLastSavedAtMs.v1';
 
 const defaultWorkspace = (): WorkspaceStateRecord => ({
   activeProjectId: null,
@@ -86,19 +88,56 @@ function requestValue<T>(request: IDBRequest<T>): Promise<T> {
 }
 
 function fallbackProjectFromLegacyYaml(reader: LegacyStorageReader): StoredProjectRecord | null {
-  const yaml = reader.getItem('phaserforge.projectYaml.v1');
+  const yaml = reader.getItem(LEGACY_PROJECT_STORAGE_KEY);
   if (!yaml) return null;
   try {
     const project = parseProjectYaml(yaml);
+    const savedAtRaw = reader.getItem(LEGACY_PROJECT_LAST_SAVED_AT_KEY);
+    const savedAtMs = savedAtRaw == null ? NaN : Number(savedAtRaw);
     return buildStoredProjectRecord(project, {
       id: project.id,
       yaml,
       origin: 'anonymous',
       syncStatus: 'local',
+      updatedAt: Number.isFinite(savedAtMs) ? new Date(savedAtMs).toISOString() : undefined,
     });
   } catch {
     return null;
   }
+}
+
+export function mergeSnapshotWithLegacyActiveProject(
+  snapshot: PersistenceSnapshot,
+  legacyProject: StoredProjectRecord | null,
+): PersistenceSnapshot {
+  if (!legacyProject) return snapshot;
+  if (snapshot.workspace.activeProjectId !== legacyProject.id) return snapshot;
+
+  const existingIndex = snapshot.localProjects.findIndex((record) => record.id === legacyProject.id);
+  if (existingIndex === -1) {
+    return {
+      ...snapshot,
+      localProjects: [legacyProject, ...snapshot.localProjects],
+    };
+  }
+
+  const existing = snapshot.localProjects[existingIndex];
+  const existingUpdatedAt = Date.parse(existing.updatedAt);
+  const legacyUpdatedAt = Date.parse(legacyProject.updatedAt);
+  if (Number.isFinite(existingUpdatedAt) && Number.isFinite(legacyUpdatedAt) && existingUpdatedAt >= legacyUpdatedAt) {
+    return snapshot;
+  }
+
+  const localProjects = snapshot.localProjects.slice();
+  localProjects[existingIndex] = {
+    ...existing,
+    ...legacyProject,
+    origin: existing.origin,
+    syncStatus: existing.syncStatus,
+    cloudProjectId: existing.cloudProjectId,
+    revisions: existing.revisions,
+  };
+  return { ...snapshot, localProjects };
 }
 
 function buildPreferencesFromLegacy(reader: LegacyStorageReader): PreferencesRecord | null {
@@ -120,6 +159,7 @@ export function buildStoredProjectRecord(
   options?: {
     id?: string;
     yaml?: string;
+    updatedAt?: string;
     origin?: StoredProjectOrigin;
     syncStatus?: StoredProjectSyncStatus;
     cloudProjectId?: string;
@@ -131,7 +171,7 @@ export function buildStoredProjectRecord(
     projectId: project.id,
     title: project.title?.trim() || 'Untitled Project',
     yaml: options?.yaml ?? serializeProjectToYaml(project),
-    updatedAt: new Date().toISOString(),
+    updatedAt: options?.updatedAt ?? new Date().toISOString(),
     sceneCount: Object.keys(project.scenes ?? {}).length,
     origin: options?.origin ?? 'local-only',
     syncStatus: options?.syncStatus ?? 'local',
@@ -197,7 +237,7 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
   }
   await migrateLegacyStorage(db);
   const [localProjects, workspace, preferences] = await Promise.all([readAllProjects(db), readWorkspace(db), readPreferences(db)]);
-  return { localProjects, workspace, preferences };
+  return mergeSnapshotWithLegacyActiveProject({ localProjects, workspace, preferences }, fallbackProjectFromLegacyYaml(window.localStorage));
 }
 
 async function upsertProjectRecord(record: StoredProjectRecord): Promise<void> {
