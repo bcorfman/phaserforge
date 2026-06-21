@@ -1117,10 +1117,19 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       };
     }
     case 'set-project-metadata': {
+      const shouldMirrorPublishTitle = (
+        typeof action.title === 'string'
+        && typeof action.publishTitle !== 'string'
+        && (typeof state.project.publishTitle !== 'string' || state.project.publishTitle.trim().length === 0)
+      );
       const nextProject: ProjectSpec = {
         ...state.project,
         ...(typeof action.title === 'string' ? { title: action.title } : {}),
-        ...(typeof action.publishTitle === 'string' ? { publishTitle: action.publishTitle } : {}),
+        ...(typeof action.publishTitle === 'string'
+          ? { publishTitle: action.publishTitle }
+          : shouldMirrorPublishTitle
+            ? { publishTitle: action.title }
+            : {}),
         ...(typeof action.publishGithubPagesRepo === 'string' ? { publishGithubPagesRepo: action.publishGithubPagesRepo } : {}),
       };
       return { ...state, project: nextProject, dirty: true, error: undefined, projectRootEditing: false };
