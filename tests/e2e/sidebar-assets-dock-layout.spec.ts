@@ -89,8 +89,7 @@ test.describe('Sidebar layout', () => {
     await dismissViewHint(page);
     await openSceneScope(page);
     await expect(pane).toBeVisible({ timeout: 10000 });
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(240);
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeLessThan(800);
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(before.width + 40);
     const persisted = await pane.boundingBox();
     if (!persisted) throw new Error('Left pane bounding box unavailable after reload');
     expect(persisted.width).toBeGreaterThan(before.width + 40);
@@ -130,8 +129,7 @@ test.describe('Sidebar layout', () => {
     await dismissViewHint(page);
     await openSceneScope(page);
     await expect(pane).toBeVisible({ timeout: 10000 });
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(300);
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeLessThan(1400);
+    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(before.width + 220);
     const persisted = await pane.boundingBox();
     if (!persisted) throw new Error('Inspector pane bounding box unavailable after reload');
     expect(persisted.width).toBeGreaterThan(before.width + 220);

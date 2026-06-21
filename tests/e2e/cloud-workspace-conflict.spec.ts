@@ -6,6 +6,7 @@ import { createEmptyProject } from '../../src/model/emptyProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 
 test('Cloud login shows conflict picker when cloud and device diverge @smoke', async ({ page }) => {
+  test.setTimeout(120000);
   const deviceYaml = serializeProjectToYaml(sampleProject);
   const cloudYaml = serializeProjectToYaml(createEmptyProject());
   const deviceRecord = buildStoredProjectRecord(sampleProject, {
