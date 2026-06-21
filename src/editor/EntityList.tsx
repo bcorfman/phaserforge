@@ -660,7 +660,7 @@ export function EntityListView({
               {revisions.length === 0 ? (
                 <div className="muted">No saved revisions yet.</div>
               ) : (
-                revisions.map((revision) => (
+                revisions.map((revision, index) => (
                   <div key={revision.id} className="behavior-block" data-testid={`project-revision-${revision.id}`}>
                     <button
                       className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
@@ -683,7 +683,7 @@ export function EntityListView({
                           className="list-item-meta"
                           style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
                         >
-                          {formatProjectRevisionSummary(revision)}
+                          {formatProjectRevisionSummary(revision, revisions[index + 1])}
                         </span>
                       </div>
                       <span className="list-item-meta">{formatProjectRevisionTimestamp(revision)}</span>

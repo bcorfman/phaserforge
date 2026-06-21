@@ -149,8 +149,15 @@ describe('EntityList', () => {
   });
 
   it('renders richer revision metadata in project revisions mode', () => {
-    const revision = createProjectRevision(sampleProject, {
+    const olderRevision = createProjectRevision(sampleProject, {
       id: 'rev-1',
+      updatedAt: '2026-06-17T10:11:00.000Z',
+      reason: 'autosave',
+    });
+    const renamedProject = structuredClone(sampleProject);
+    renamedProject.title = 'History Demo';
+    const revision = createProjectRevision(renamedProject, {
+      id: 'rev-2',
       updatedAt: '2026-06-17T10:12:00.000Z',
       reason: 'autosave',
     });
@@ -162,7 +169,7 @@ describe('EntityList', () => {
         scene={sampleProject.scenes[sampleProject.initialSceneId]}
         selection={{ kind: 'none' }}
         sidebarScope="projectRevisions"
-        revisions={[revision]}
+        revisions={[revision, olderRevision]}
         expandedGroups={{ 'g-enemies': false }}
         mode="edit"
         dispatch={() => {}}
@@ -170,9 +177,9 @@ describe('EntityList', () => {
     );
 
     expect(markup).toContain(formatProjectRevisionTimestamp(revision));
-    expect(markup).toContain('Autosave checkpoint');
-    expect(markup).toContain('15 entities');
-    expect(markup).toContain('Start: scene-1');
+    expect(markup).toContain('Renamed to History Demo');
+    expect(markup).not.toContain('Autosave checkpoint');
+    expect(markup).not.toContain('Start: scene-1');
   });
 
   it('flexes the scenes list so the assets dock can reach the bottom', () => {

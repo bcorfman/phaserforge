@@ -23,7 +23,7 @@ describe('project tree + history helpers', () => {
     expect(rows[1]).toMatchObject({ kind: 'scene', isCurrent: true });
   });
 
-  it('formats revision summaries with reason, counts, and starting scene detail', () => {
+  it('formats the oldest revision as an initial snapshot summary', () => {
     const project = structuredClone(sampleProject);
     project.scenes[project.initialSceneId].entities.e2.name = 'Player Spawn';
     project.scenes[project.initialSceneId].entities.e3.name = 'Boss Gate';
@@ -32,8 +32,50 @@ describe('project tree + history helpers', () => {
       updatedAt: '2026-06-17T10:12:00.000Z',
     });
 
-    expect(formatProjectRevisionSummary(revision)).toBe('Autosave checkpoint · 1 scene · 15 entities · Start: scene-1');
+    expect(formatProjectRevisionSummary(revision)).toBe('Initial snapshot · 1 scene · 15 entities');
     expect(formatProjectRevisionTimestamp(revision)).toMatch(/^Jun 17, (6|10):12 AM$/);
+  });
+
+  it('formats revision summaries as meaningful diffs against the previous version', () => {
+    const olderProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.title = 'Pattern Demo';
+    newerProject.scenes[newerProject.initialSceneId].entities.e16 = {
+      id: 'e16',
+      name: 'Checkpoint',
+      x: 128,
+      y: 96,
+      width: 16,
+      height: 16,
+    };
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-17T10:11:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-17T10:12:00.000Z',
+    });
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Renamed to Pattern Demo · 1 entity added');
+  });
+
+  it('collapses insignificant revisions into a minor edits label', () => {
+    const olderProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.scenes[newerProject.initialSceneId].entities.e2.name = 'Player Spawn';
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-17T10:11:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-17T10:12:00.000Z',
+    });
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Minor edits');
   });
 
   it('builds a copy default name from the revision date', () => {
