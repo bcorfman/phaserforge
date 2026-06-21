@@ -8,6 +8,7 @@ import { OpRegistry } from '../compiler/opRegistry';
 import { createRuntimeServices } from './runtimeServices';
 import type { RuntimeServices } from '../runtime/services/RuntimeServices';
 import { resolveTarget, flattenTarget } from '../runtime/targets/resolveTarget';
+import { readStoredViewState, type ViewState } from '../util/viewStateStorage';
 
 export class BootScene extends Phaser.Scene {
   private project?: ProjectSpec;
@@ -15,7 +16,7 @@ export class BootScene extends Phaser.Scene {
   private runtimeSceneId?: string;
   private playStartSceneId?: string;
   private mode: 'edit' | 'play' = 'edit';
-  private lastViewState?: { zoom: number; scrollX: number; scrollY: number };
+  private lastViewState?: ViewState;
   private gotoVersion = 0;
   private services: RuntimeServices;
   private opRegistry: OpRegistry;
@@ -229,7 +230,15 @@ export class BootScene extends Phaser.Scene {
     // Only preserve camera state on reloads. On initial app startup the editor scene has not
     // initialized its view yet, so capturing `{ zoom: 1, scrollX: 0, scrollY: 0 }` would
     // prevent the default `fitView()` centering from running.
-    if (this.project) this.captureViewStateForProjectReload(mode);
+    if (this.project) {
+      this.captureViewStateForProjectReload(mode);
+    } else if (typeof window !== 'undefined') {
+      try {
+        this.lastViewState = readStoredViewState(window.localStorage, project.id);
+      } catch {
+        this.lastViewState = undefined;
+      }
+    }
     this.project = project;
     this.authoredSceneId = currentSceneId;
     this.runtimeSceneId = currentSceneId;
