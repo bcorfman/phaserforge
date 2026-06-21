@@ -37,6 +37,20 @@ export function doesReportedViewMatchCurrentScene(options: {
   return options.reportedWorldWidth === options.currentWorldWidth && options.reportedWorldHeight === options.currentWorldHeight;
 }
 
+export function canRestorePersistedView(options: {
+  initialized: boolean;
+  restoreAttempted: boolean;
+  activeSceneWorldWidth?: number;
+  activeSceneWorldHeight?: number;
+  currentWorldWidth: number;
+  currentWorldHeight: number;
+}): boolean {
+  if (!options.initialized || options.restoreAttempted) return false;
+  if (!Number.isFinite(options.activeSceneWorldWidth) || !Number.isFinite(options.activeSceneWorldHeight)) return false;
+  return options.activeSceneWorldWidth === options.currentWorldWidth
+    && options.activeSceneWorldHeight === options.currentWorldHeight;
+}
+
 export function parseStoredViewState(raw: string | null | undefined): StoredViewState | undefined {
   if (!raw) return undefined;
   try {
