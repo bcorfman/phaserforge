@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getState, gotoStudio } from './helpers';
+import { dismissViewHint, dispatchAction, getState, gotoStudio } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -16,8 +16,17 @@ test.beforeEach(async ({ page }) => {
   });
 
   await page.goto('/');
-  await page.evaluate(() => {
-    window.localStorage.removeItem('phaserforge.projectYaml.v1');
+  await page.evaluate(async () => {
+    try {
+      const request = window.indexedDB.deleteDatabase('phaserforge.persistence.v1');
+      await new Promise<void>((resolve, reject) => {
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => resolve();
+      });
+    } catch {
+      // ignore
+    }
     window.localStorage.removeItem('phaserforge.startupMode.v1');
     window.localStorage.removeItem('phaserforge.themeMode.v1');
     window.localStorage.removeItem('phaserforge.uiScale.v1');
@@ -42,12 +51,8 @@ test('creates a text entity, edits it, and round-trips via YAML @critical', asyn
   const savedYaml = await page.evaluate(() => (window as any).__TEXT_ENTITY_YAML_SAVE__?.saved?.[0] ?? null);
   expect(typeof savedYaml).toBe('string');
 
-  await page.evaluate((yaml) => {
-    window.localStorage.setItem('phaserforge.projectYaml.v1', String(yaml));
-    window.localStorage.setItem('phaserforge.startupMode.v1', 'new_empty_scene');
-  }, savedYaml);
-
   await gotoStudio(page, { forceNavigate: true });
+  await dispatchAction(page, { type: 'load-yaml-text', text: String(savedYaml), sourceLabel: 'roundtrip-text.yaml' });
   await dismissViewHint(page);
 
   await expect.poll(async () => {

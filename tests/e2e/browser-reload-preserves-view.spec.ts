@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getSceneSnapshot, panByScreenDelta, seedProject, waitForSceneReady, waitForViewportToSettle } from './helpers';
+import { dismissViewHint, getSceneSnapshot, gotoStudio, panByScreenDelta, seedProject, waitForViewportToSettle } from './helpers';
 
 function getCameraCenterWorld(snapshot: {
   scrollX: number;
@@ -56,7 +56,7 @@ test('browser reload preserves editor camera view @smoke @regression', async ({ 
   expect(beforeDistanceFromInitial).toBeGreaterThan(20);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForSceneReady(page);
+  await gotoStudio(page);
   await waitForViewportToSettle(page);
 
   const afterView = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number; viewportWidth: number; viewportHeight: number }>(page);

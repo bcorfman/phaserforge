@@ -1,8 +1,17 @@
 // @vitest-environment jsdom
 import React, { useEffect } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { useInspectorFoldouts } from '../../src/editor/InspectorFoldout';
+
+const persistence = vi.hoisted(() => ({
+  loadPreferencesRecord: vi.fn(async () => ({ inspectorFoldouts: {} })),
+  updatePreferencesRecord: vi.fn(async () => ({})),
+}));
+
+vi.mock('../../src/editor/projectPersistence', () => ({
+  projectPersistence: persistence,
+}));
 
 function Harness({ onValue }: { onValue: (value: string) => void }) {
   const foldouts = useInspectorFoldouts();
@@ -14,33 +23,10 @@ function Harness({ onValue }: { onValue: (value: string) => void }) {
 }
 
 describe('useInspectorFoldouts test reset event', () => {
-  it('reloads foldout state from localStorage when the test reset event fires', async () => {
+  it('reloads foldout state from persistence when the test reset event fires', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-
-    const store = new Map<string, string>();
-    const memoryStorage: Storage = {
-      get length() {
-        return store.size;
-      },
-      clear() {
-        store.clear();
-      },
-      getItem(key: string) {
-        return store.has(key) ? store.get(key)! : null;
-      },
-      key(index: number) {
-        return Array.from(store.keys())[index] ?? null;
-      },
-      removeItem(key: string) {
-        store.delete(key);
-      },
-      setItem(key: string, value: string) {
-        store.set(key, String(value));
-      },
-    };
-    Object.defineProperty(window, 'localStorage', { value: memoryStorage, configurable: true });
-
-    window.localStorage.setItem('phaserforge.inspectorFoldouts.v1', 'group.members: true\n');
+    const store = { inspectorFoldouts: { 'group.members': true } };
+    persistence.loadPreferencesRecord.mockImplementation(async () => store);
 
     const container = document.createElement('div');
     document.body.appendChild(container);
@@ -52,12 +38,17 @@ describe('useInspectorFoldouts test reset event', () => {
       root.render(<Harness onValue={(v) => observed.push(v)} />);
     });
 
+    await React.act(async () => {
+      await Promise.resolve();
+    });
+
     expect(container.querySelector('[data-testid="value"]')?.textContent).toBe('open');
 
-    window.localStorage.removeItem('phaserforge.inspectorFoldouts.v1');
+    store.inspectorFoldouts = {};
 
     await React.act(async () => {
       window.dispatchEvent(new Event('phaserforge:test-reset-ui'));
+      await Promise.resolve();
     });
 
     expect(container.querySelector('[data-testid="value"]')?.textContent).toBe('closed');

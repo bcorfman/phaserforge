@@ -1,7 +1,8 @@
 import { type Dispatch, useEffect, useMemo, useRef, useState } from 'react';
 import { checkGithubPagesTarget, createGame, disconnectGithub, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame } from '../cloud/api';
 import { serializeProjectToYaml } from '../model/serialization';
-import { PROJECT_LAST_SAVED_AT_STORAGE_KEY, PROJECT_STORAGE_KEY, WORKSPACE_BACKUP_STORAGE_KEY, type EditorAction, type EditorState } from './EditorStore';
+import type { EditorAction, EditorState } from './EditorStore';
+import { projectPersistence } from './projectPersistence';
 import { WorkspaceConflictModal } from './WorkspaceConflictModal';
 import { summarizeYamlWorkspace } from './workspaceSummary';
 
@@ -162,8 +163,6 @@ export function CloudAccountPanel({
   onStatus: (message: string) => void;
   onError: (message: string) => void;
 }) {
-  const LAST_PUBLISH_STORAGE_KEY = 'phaserforge.cloud.last_github_pages_publish_v1';
-  const CLOUD_GAME_MAP_STORAGE_KEY = 'phaserforge.cloud.project_game_id_map_v1';
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [user, setUser] = useState<CloudAccountUser>(cachedCloudAccountUser ?? null);
   const [authResolved, setAuthResolved] = useState(cachedCloudAccountUser !== undefined);
@@ -245,33 +244,8 @@ export function CloudAccountPanel({
   useEffect(() => {
     let cancelled = false;
     const init = async () => {
-      try {
-        const raw = window.localStorage.getItem(LAST_PUBLISH_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as { url?: unknown; publishedAtMs?: unknown };
-          if (typeof parsed.url === 'string' && typeof parsed.publishedAtMs === 'number' && Number.isFinite(parsed.publishedAtMs) && !cancelled) {
-            setLastPublish({ url: parsed.url, publishedAtMs: parsed.publishedAtMs });
-          }
-        }
-      } catch {
-        // ignore
-      }
-
-      try {
-        const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
-        if (activeCloudGameId && !cancelled) {
-          setCloudGameId(activeCloudGameId);
-        }
-        if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, unknown>;
-          const id = state.project?.id;
-          if (id) {
-            const mapped = parsed[id];
-            if (!activeCloudGameId && typeof mapped === 'string' && mapped.length > 0 && !cancelled) setCloudGameId(mapped);
-          }
-        }
-      } catch {
-        // ignore
+      if (activeCloudGameId && !cancelled) {
+        setCloudGameId(activeCloudGameId);
       }
 
       try {
@@ -294,30 +268,12 @@ export function CloudAccountPanel({
     return () => {
       cancelled = true;
     };
-  }, [state.project?.id]);
+  }, [activeCloudGameId, state.project?.id]);
 
   useEffect(() => {
-    try {
-      if (activeCloudGameId) {
-        setCloudGameId(activeCloudGameId);
-        setCloudGameLookupResolved(true);
-        return;
-      }
-      const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
-      if (!raw) {
-        setCloudGameId(null);
-        setCloudGameLookupResolved(true);
-        return;
-      }
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      const mapped = parsed[state.project.id];
-      setCloudGameId(typeof mapped === 'string' && mapped.length > 0 ? mapped : null);
-      setCloudGameLookupResolved(true);
-    } catch {
-      setCloudGameId(null);
-      setCloudGameLookupResolved(true);
-    }
-  }, [activeCloudGameId, state.project.id]);
+    setCloudGameId(activeCloudGameId ?? null);
+    setCloudGameLookupResolved(true);
+  }, [activeCloudGameId]);
 
   useEffect(() => {
     cloudGameIdRef.current = cloudGameId;
@@ -330,21 +286,6 @@ export function CloudAccountPanel({
     if (hasCheckedConflictRef.current) return;
     hasCheckedConflictRef.current = true;
     setConflictCheckComplete(false);
-
-    const readDeviceSnapshot = (): { yaml: string | null; savedAtMs: number | null } => {
-      if (typeof window === 'undefined') return { yaml: null, savedAtMs: null };
-      let storage: Storage | null = null;
-      try {
-        storage = window.localStorage;
-      } catch {
-        storage = null;
-      }
-      if (!storage) return { yaml: null, savedAtMs: null };
-      const yaml = storage.getItem(PROJECT_STORAGE_KEY);
-      const savedAtRaw = storage.getItem(PROJECT_LAST_SAVED_AT_STORAGE_KEY);
-      const savedAtMs = savedAtRaw != null && savedAtRaw.length > 0 ? Number(savedAtRaw) : NaN;
-      return { yaml, savedAtMs: Number.isFinite(savedAtMs) ? savedAtMs : null };
-    };
 
     const formatDeviceLastSaved = (savedAtMs: number | null): string => {
       if (!savedAtMs) return 'Unknown';
@@ -366,7 +307,14 @@ export function CloudAccountPanel({
     };
 
     const detectConflict = async () => {
-      const device = readDeviceSnapshot();
+      const persistedRecord = await projectPersistence.loadActiveProjectRecord();
+      const device = {
+        yaml: serializeProjectToYaml(state.project),
+        savedAtMs: (() => {
+          const savedAt = persistedRecord?.updatedAt ? Date.parse(persistedRecord.updatedAt) : NaN;
+          return Number.isFinite(savedAt) ? savedAt : null;
+        })(),
+      };
       if (!device.yaml) {
         if (!cancelled) setConflictCheckComplete(true);
         return;
@@ -457,6 +405,21 @@ export function CloudAccountPanel({
       }
     };
     void loadPublishInfo();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setLastPublish(null);
+      return;
+    }
+    void projectPersistence.loadLastPublishInfo(user.id).then((entry) => {
+      if (cancelled) return;
+      setLastPublish(entry);
+    });
     return () => {
       cancelled = true;
     };
@@ -599,17 +562,6 @@ export function CloudAccountPanel({
     }
   };
 
-  const persistCloudGameId = (projectId: string, gameId: string) => {
-    try {
-      const raw = window.localStorage.getItem(CLOUD_GAME_MAP_STORAGE_KEY);
-      const existing = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
-      const next = { ...existing, [projectId]: gameId };
-      window.localStorage.setItem(CLOUD_GAME_MAP_STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
-  };
-
   const ensureCloudGameSaved = async (): Promise<string | null> => {
     if (!user) return null;
     const yaml = serializeProjectToYaml(state.project);
@@ -621,7 +573,6 @@ export function CloudAccountPanel({
     const created = await runWithCsrfRetry((csrf) => createGame(title, yaml, csrf));
     const id = created.game.id;
     setCloudGameId(id);
-    persistCloudGameId(state.project.id, id);
     void onCloudGameLinked?.(id);
     return id;
   };
@@ -663,7 +614,6 @@ export function CloudAccountPanel({
         const nextCloudGameId = created.game.id;
         cloudGameIdRef.current = nextCloudGameId;
         setCloudGameId(nextCloudGameId);
-        persistCloudGameId(pending.projectId, nextCloudGameId);
         void onCloudGameLinked?.(nextCloudGameId);
       }
       lastAutosavedSignatureRef.current = pending.signature;
@@ -777,13 +727,11 @@ export function CloudAccountPanel({
           ? `Repository ${result.repo} is live at ${result.url}`
           : `GitHub Pages accepted the deployment for ${result.repo}. If the URL is not live yet, wait about a minute and reload.`,
       );
-      try {
-        const publishedAtMs = Date.now();
-        window.localStorage.setItem(LAST_PUBLISH_STORAGE_KEY, JSON.stringify({ url: result.url, publishedAtMs }));
-        setLastPublish({ url: result.url, publishedAtMs });
-      } catch {
-        // ignore
+      const publishedAtMs = Date.now();
+      if (user?.id) {
+        void projectPersistence.saveLastPublishInfo(user.id, { url: result.url, publishedAtMs });
       }
+      setLastPublish({ url: result.url, publishedAtMs });
       onStatus(
         result.deploymentStatus === 'built'
           ? `Published ${result.repo} to ${result.url}`
@@ -860,21 +808,13 @@ export function CloudAccountPanel({
             onStatus('Exported both YAML snapshots');
           }}
           onChooseCloud={() => {
-            try {
-              window.localStorage.setItem(WORKSPACE_BACKUP_STORAGE_KEY, workspaceConflict.device.yaml);
-            } catch {
-              // ignore
-            }
+            void projectPersistence.saveWorkspaceBackup(workspaceConflict.device.yaml, 'device');
             onLoadYaml(workspaceConflict.cloud.yaml, 'cloud:workspace');
             setWorkspaceConflict(null);
             onStatus('Loaded cloud workspace (device backup saved)');
           }}
           onChooseDevice={() => {
-            try {
-              window.localStorage.setItem(WORKSPACE_BACKUP_STORAGE_KEY, workspaceConflict.cloud.yaml);
-            } catch {
-              // ignore
-            }
+            void projectPersistence.saveWorkspaceBackup(workspaceConflict.cloud.yaml, 'cloud');
             onLoadYaml(workspaceConflict.device.yaml, 'device:workspace');
             setWorkspaceConflict(null);
             onStatus('Kept device workspace (cloud backup saved)');

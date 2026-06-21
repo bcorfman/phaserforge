@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getSceneSnapshot, gotoStudio, waitForSampleScene } from './helpers';
-import { serializeProjectToYaml } from '../../src/model/serialization';
+import { dismissViewHint, getSceneSnapshot, seedProject } from './helpers';
 import { sampleProject } from '../../src/model/sampleProject';
 
 test.setTimeout(120000);
@@ -32,16 +31,7 @@ test('background layer configuration survives edit/play mode switches @browser',
       },
     },
   };
-
-  const yaml = serializeProjectToYaml(project as any);
-  await page.addInitScript(([projectYaml]) => {
-    window.localStorage.removeItem('phaserforge.inspectorFoldouts.v1');
-    window.localStorage.setItem('phaserforge.projectYaml.v1', projectYaml);
-    window.localStorage.setItem('phaserforge.startupMode.v1', 'new_empty_scene');
-  }, [yaml]);
-
-  await gotoStudio(page);
-  await waitForSampleScene(page);
+  await seedProject(page, project);
   await dismissViewHint(page);
 
   const inspector = page.getByTestId('inspector');

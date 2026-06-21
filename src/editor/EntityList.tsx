@@ -20,10 +20,9 @@ import {
   type ProjectRevisionRecord,
   type SidebarScope,
 } from './projectTreeHistory';
+import { projectPersistence } from './projectPersistence';
 
 const ENTITY_DRAG_MIME = 'application/x-phaserforge-entity-ids';
-const ASSETS_DOCK_HEIGHT_STORAGE_KEY = 'phaserforge.assetsDockHeight.v1';
-
 function isSelected(selection: Selection, kind: Selection['kind'], id: string): boolean {
   if (selection.kind === 'entities') {
     return kind === 'entity' && selection.ids.includes(id);
@@ -204,12 +203,8 @@ export function EntityListView({
   onRestoreRevision?: (revisionId: string) => void;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [assetsDockHeight, setAssetsDockHeight] = useState(() => {
-    const storage: any = (globalThis as any).localStorage;
-    const raw = typeof storage?.getItem === 'function' ? storage.getItem(ASSETS_DOCK_HEIGHT_STORAGE_KEY) : null;
-    const parsed = raw == null ? NaN : Number(raw);
-    return Number.isFinite(parsed) ? Math.max(120, Math.min(420, parsed)) : 200;
-  });
+  const [assetsDockHeight, setAssetsDockHeight] = useState(200);
+  const [assetsDockHeightHydrated, setAssetsDockHeightHydrated] = useState(false);
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -335,13 +330,23 @@ export function EntityListView({
   }, []);
 
   useEffect(() => {
-    try {
-      const storage: any = (globalThis as any).localStorage;
-      if (typeof storage?.setItem === 'function') storage.setItem(ASSETS_DOCK_HEIGHT_STORAGE_KEY, String(assetsDockHeight));
-    } catch {
-      // ignore storage errors
-    }
-  }, [assetsDockHeight]);
+    let cancelled = false;
+    void projectPersistence.loadWorkspaceStateRecord().then((workspace) => {
+      if (cancelled) return;
+      if (Number.isFinite(workspace.assetsDockHeight)) {
+        setAssetsDockHeight(Math.max(120, Math.min(420, workspace.assetsDockHeight as number)));
+      }
+      setAssetsDockHeightHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!assetsDockHeightHydrated) return;
+    void projectPersistence.updateWorkspaceStateRecord({ assetsDockHeight });
+  }, [assetsDockHeight, assetsDockHeightHydrated]);
 
   const startEditing = (kind: 'entity' | 'group' | 'scene' | 'trigger' | 'project', id: string, currentName: string) => {
     setEditingKind(kind);

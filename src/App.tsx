@@ -10,6 +10,7 @@ import { CanvasOverlay } from './editor/CanvasOverlay';
 import { ViewbarYamlControls } from './editor/ViewbarYamlControls';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
 import { loadProjectFonts } from './editor/fontLoader';
+import { projectPersistence } from './editor/projectPersistence';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
@@ -17,11 +18,8 @@ import {
   canRestorePersistedView,
   doesReportedViewMatchCurrentScene,
   isViewStateApproximatelyEqual,
-  readStoredViewState,
   shouldPersistViewState,
   shouldResetViewStateForProjectChange,
-  VIEW_STATE_STORAGE_KEY,
-  writeStoredViewState,
 } from './util/viewStateStorage';
 import {
   registerAppStateGetter,
@@ -56,6 +54,7 @@ function AppShell() {
   const runtimeLoadedRef = useRef(false);
   const viewRestoreAttemptedRef = useRef(false);
   const lastViewProjectIdRef = useRef<string | null>(null);
+  const layoutHydratedRef = useRef(false);
   const appStateRef = useRef<AppStateSnapshot>({
     project: state.project,
     currentSceneId: displaySceneId,
@@ -350,10 +349,10 @@ function AppShell() {
           projectId: appStateRef.current.project.id,
           view,
         });
-        writeStoredViewState(window.localStorage, appStateRef.current.project.id, view);
+        void projectPersistence.saveViewState(appStateRef.current.project.id, view);
         lastViewProjectIdRef.current = appStateRef.current.project.id;
       } catch {
-        // ignore persistence errors (localStorage may be unavailable in transient docs)
+        // ignore persistence errors
       }
     };
 
@@ -400,44 +399,42 @@ function AppShell() {
         return false;
       }
 
-      try {
-        const projectId = appStateRef.current.project.id;
-        lastViewProjectIdRef.current = projectId;
-        const view = readStoredViewState(window.localStorage, projectId);
-        viewRestoreAttemptedRef.current = true;
+      const projectId = appStateRef.current.project.id;
+      lastViewProjectIdRef.current = projectId;
+      viewRestoreAttemptedRef.current = true;
+      void projectPersistence.loadViewState(projectId).then((view) => {
+        if (cancelled || !view) return;
         logViewDebug('restore-read-storage', {
           projectId,
           storedView: view,
         });
-        if (view) {
-          const currentView = activeScene && typeof activeScene.getViewState === 'function'
-            ? (activeScene.getViewState() as { zoom: number; scrollX: number; scrollY: number; viewportWidth?: number; viewportHeight?: number })
-            : null;
-          if (isViewStateApproximatelyEqual(currentView, view)) {
-            logViewDebug('restore-skipped-already-applied', {
-              projectId,
-              currentView,
-              storedView: view,
-            });
-            return true;
-          }
-          EventBus.emit('scene-restore-view-state', view);
-          const restoredScene = getActiveScene() as any;
-          const restoredView = restoredScene && typeof restoredScene.getViewState === 'function'
-            ? (restoredScene.getViewState() as { zoom: number; scrollX: number; scrollY: number; viewportWidth?: number; viewportHeight?: number })
-            : null;
-          logViewDebug('restore-emitted', {
+        const currentView = activeScene && typeof activeScene.getViewState === 'function'
+          ? (activeScene.getViewState() as { zoom: number; scrollX: number; scrollY: number; viewportWidth?: number; viewportHeight?: number })
+          : null;
+        if (isViewStateApproximatelyEqual(currentView, view)) {
+          logViewDebug('restore-skipped-already-applied', {
             projectId,
-            requestedView: view,
-            restoredView,
+            currentView,
+            storedView: view,
           });
-          if (restoredView) {
-            writeStoredViewState(window.localStorage, projectId, restoredView);
-          }
+          return;
         }
-      } catch {
-        viewRestoreAttemptedRef.current = true;
-      }
+        EventBus.emit('scene-restore-view-state', view);
+        const restoredScene = getActiveScene() as any;
+        const restoredView = restoredScene && typeof restoredScene.getViewState === 'function'
+          ? (restoredScene.getViewState() as { zoom: number; scrollX: number; scrollY: number; viewportWidth?: number; viewportHeight?: number })
+          : null;
+        logViewDebug('restore-emitted', {
+          projectId,
+          requestedView: view,
+          restoredView,
+        });
+        if (restoredView) {
+          void projectPersistence.saveViewState(projectId, restoredView);
+        }
+      }).catch(() => {
+        // ignore persistence errors
+      });
 
       return true;
     };
@@ -482,11 +479,6 @@ function AppShell() {
     // A different project was loaded; reset view to default and avoid leaking view state across projects.
     lastViewProjectIdRef.current = currentProjectId;
     viewRestoreAttemptedRef.current = false;
-    try {
-      window.localStorage.removeItem(VIEW_STATE_STORAGE_KEY);
-    } catch {
-      // ignore
-    }
     EventBus.emit('scene-fit-view');
   }, [state.initialized, state.project.id]);
 
@@ -633,27 +625,30 @@ function AppShell() {
   const rightPaneDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [leftPaneMouseDragging, setLeftPaneMouseDragging] = useState(false);
   const [rightPaneMouseDragging, setRightPaneMouseDragging] = useState(false);
-  const [leftPaneWidth, setLeftPaneWidth] = useState(() => {
-    const storage: any = (globalThis as any).localStorage;
-    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaserforge.leftPaneWidth.v1') : null;
-    const parsed = raw == null ? NaN : Number(raw);
-    return Number.isFinite(parsed) ? Math.max(240, Math.min(520, parsed)) : 300;
-  });
-  const [rightPaneWidth, setRightPaneWidth] = useState(() => {
-    const storage: any = (globalThis as any).localStorage;
-    const raw = typeof storage?.getItem === 'function' ? storage.getItem('phaserforge.rightPaneWidth.v1') : null;
-    const parsed = raw == null ? NaN : Number(raw);
-    return Number.isFinite(parsed) ? Math.max(340, Math.min(1040, parsed)) : 380;
-  });
+  const [leftPaneWidth, setLeftPaneWidth] = useState(300);
+  const [rightPaneWidth, setRightPaneWidth] = useState(380);
 
   useEffect(() => {
-    const storage: any = (globalThis as any).localStorage;
-    if (typeof storage?.setItem === 'function') storage.setItem('phaserforge.leftPaneWidth.v1', String(leftPaneWidth));
+    let cancelled = false;
+    void projectPersistence.loadWorkspaceStateRecord().then((workspace) => {
+      if (cancelled) return;
+      if (Number.isFinite(workspace.leftPaneWidth)) setLeftPaneWidth(Math.max(240, Math.min(520, workspace.leftPaneWidth as number)));
+      if (Number.isFinite(workspace.rightPaneWidth)) setRightPaneWidth(Math.max(340, Math.min(1040, workspace.rightPaneWidth as number)));
+      layoutHydratedRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!layoutHydratedRef.current) return;
+    void projectPersistence.updateWorkspaceStateRecord({ leftPaneWidth });
   }, [leftPaneWidth]);
 
   useEffect(() => {
-    const storage: any = (globalThis as any).localStorage;
-    if (typeof storage?.setItem === 'function') storage.setItem('phaserforge.rightPaneWidth.v1', String(rightPaneWidth));
+    if (!layoutHydratedRef.current) return;
+    void projectPersistence.updateWorkspaceStateRecord({ rightPaneWidth });
   }, [rightPaneWidth]);
 
   const startLeftPaneDrag = (clientX: number) => {
