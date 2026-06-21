@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canRestorePersistedView,
   doesReportedViewMatchCurrentScene,
+  isViewStateApproximatelyEqual,
   parseStoredViewState,
   shouldResetViewStateForProjectChange,
   shouldPersistViewState,
@@ -153,5 +154,24 @@ describe('viewStateStorage', () => {
       currentWorldWidth: 800,
       currentWorldHeight: 600,
     })).toBe(true);
+  });
+
+  it('treats near-identical view states as equal', () => {
+    expect(isViewStateApproximatelyEqual(
+      { zoom: 1.34, scrollX: 120, scrollY: -80 },
+      { zoom: 1.34, scrollX: 120, scrollY: -80 }
+    )).toBe(true);
+    expect(isViewStateApproximatelyEqual(
+      { zoom: 1.339, scrollX: 120.7, scrollY: -79.4 },
+      { zoom: 1.34, scrollX: 120, scrollY: -80 }
+    )).toBe(true);
+    expect(isViewStateApproximatelyEqual(
+      { zoom: 1.14, scrollX: 120, scrollY: -80 },
+      { zoom: 1.34, scrollX: 120, scrollY: -80 }
+    )).toBe(false);
+    expect(isViewStateApproximatelyEqual(
+      { zoom: 1.34, scrollX: 124, scrollY: -80 },
+      { zoom: 1.34, scrollX: 120, scrollY: -80 }
+    )).toBe(false);
   });
 });
