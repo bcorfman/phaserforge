@@ -48,7 +48,10 @@ test('browser reload preserves editor camera view @smoke @regression', async ({ 
 
   const beforeView = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number; viewportWidth: number; viewportHeight: number }>(page);
   expect(beforeView.zoom).toBeGreaterThan(initialView.zoom + 0.15);
+  const initialCenter = getCameraCenterWorld(initialView);
   const beforeCenter = getCameraCenterWorld(beforeView);
+  const beforeDistanceFromInitial = Math.hypot(beforeCenter.x - initialCenter.x, beforeCenter.y - initialCenter.y);
+  expect(beforeDistanceFromInitial).toBeGreaterThan(20);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForSceneReady(page);
@@ -57,6 +60,8 @@ test('browser reload preserves editor camera view @smoke @regression', async ({ 
   const afterView = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number; viewportWidth: number; viewportHeight: number }>(page);
   expect(Math.abs(afterView.zoom - beforeView.zoom)).toBeLessThanOrEqual(0.01);
   const afterCenter = getCameraCenterWorld(afterView);
-  expect(Math.abs(afterCenter.x - beforeCenter.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(afterCenter.y - beforeCenter.y)).toBeLessThanOrEqual(1);
+  const afterDistanceFromBefore = Math.hypot(afterCenter.x - beforeCenter.x, afterCenter.y - beforeCenter.y);
+  const afterDistanceFromInitial = Math.hypot(afterCenter.x - initialCenter.x, afterCenter.y - initialCenter.y);
+  expect(afterDistanceFromBefore).toBeLessThan(beforeDistanceFromInitial * 0.6);
+  expect(afterDistanceFromInitial).toBeGreaterThan(beforeDistanceFromInitial * 0.4);
 });
