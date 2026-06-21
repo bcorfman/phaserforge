@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoStudio, waitForEmptyScene, waitForSampleScene } from './helpers';
+import { gotoStudio, waitForEmptyScene } from './helpers';
 import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';
 import { createEmptyProject } from '../../src/model/emptyProject';
@@ -45,7 +45,6 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
   });
 
   await gotoStudio(page, { forceNavigate: true });
-  await waitForSampleScene(page);
 
   const cloudTab = page.getByTestId('inspector-pane-tab-cloud');
   if ((await cloudTab.count()) === 0) {
