@@ -42,7 +42,13 @@ test.describe('Project tree + history', () => {
 
     await page.getByTestId('project-tree-manage-button').click();
     await page.getByTestId('project-manage-history').click();
-    await page.getByTestId(/project-revision-copy-/).first().click();
+    await expect(revisionsPane).toBeVisible();
+    const firstRevisionCard = page.locator('.behavior-block[data-testid^="project-revision-"]').first();
+    await expect(firstRevisionCard).toBeVisible();
+    const firstCopyButton = firstRevisionCard.getByRole('button', { name: 'Copy...' });
+    await expect(firstCopyButton).toBeVisible();
+    await firstCopyButton.scrollIntoViewIfNeeded();
+    await firstCopyButton.click();
     await expect(page.getByTestId('copy-revision-dialog')).toBeVisible();
     await page.getByTestId('copy-revision-name-input').fill('History Fork');
     await page.getByTestId('copy-revision-confirm-button').click();
