@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  doesReportedViewMatchCurrentScene,
   parseStoredViewState,
+  shouldResetViewStateForProjectChange,
   shouldPersistViewState,
   VIEW_STATE_STORAGE_KEY,
   type ViewState,
@@ -73,5 +75,47 @@ describe('viewStateStorage', () => {
     expect(shouldPersistViewState({ projectId: 'p1', initialized: true, restoreAttempted: false })).toBe(false);
     expect(shouldPersistViewState({ projectId: '', initialized: true, restoreAttempted: true })).toBe(false);
     expect(shouldPersistViewState({ projectId: 'p1', initialized: true, restoreAttempted: true })).toBe(true);
+  });
+
+  it('ignores boot-time project swaps until initialization is complete', () => {
+    expect(shouldResetViewStateForProjectChange({
+      initialized: false,
+      currentProjectId: 'project-real',
+      lastProjectId: 'project-1',
+    })).toBe(false);
+    expect(shouldResetViewStateForProjectChange({
+      initialized: true,
+      currentProjectId: 'project-real',
+      lastProjectId: 'project-real',
+    })).toBe(false);
+    expect(shouldResetViewStateForProjectChange({
+      initialized: true,
+      currentProjectId: 'project-real',
+      lastProjectId: 'project-1',
+    })).toBe(true);
+  });
+
+  it('waits for view-state events from the currently loaded scene before restoring', () => {
+    expect(doesReportedViewMatchCurrentScene({
+      initialized: false,
+      reportedWorldWidth: 1024,
+      reportedWorldHeight: 768,
+      currentWorldWidth: 800,
+      currentWorldHeight: 600,
+    })).toBe(true);
+    expect(doesReportedViewMatchCurrentScene({
+      initialized: true,
+      reportedWorldWidth: 1024,
+      reportedWorldHeight: 768,
+      currentWorldWidth: 800,
+      currentWorldHeight: 600,
+    })).toBe(false);
+    expect(doesReportedViewMatchCurrentScene({
+      initialized: true,
+      reportedWorldWidth: 800,
+      reportedWorldHeight: 600,
+      currentWorldWidth: 800,
+      currentWorldHeight: 600,
+    })).toBe(true);
   });
 });
