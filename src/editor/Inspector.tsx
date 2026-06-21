@@ -5,11 +5,10 @@ import { summarizeGridLayout } from './grouping';
 import { inferGroupGridLayout } from './formationLayout';
 import { EventsPanel } from './EventsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
-import { AttachmentSpec, AttachmentTriggerSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
+import { AttachmentSpec, AttachmentTriggerSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type Id, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { resolveTextEntityDefaults } from './textEntity';
 import { boundsToCenterSpan, computeEdgeSafeBounds, computeTargetAabb } from './boundsHelper';
-import { getNextFormationName } from './behaviorCommands';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedNumberTextInput, ValidatedOptionalNumberInput, ValidatedTextareaInput } from './ValidatedNumberInput';
 import { parseCallArgsJson } from './callArgsJson';
@@ -315,6 +314,7 @@ export function renderEntityInspector(
     onSelectAttachment: (id: string) => void;
     onMoveAttachment: (id: string, direction: 'up' | 'down') => void;
     onReorderAttachments: (opts: { eventId: Id | undefined; parentAttachmentId: Id | undefined; orderedAttachmentIds: Id[] }) => void;
+    onNestAttachmentsUnderRepeat: (opts: { eventId: Id | undefined; repeatId: Id; attachmentIds: Id[] }) => void;
     onRemoveAttachment: (id: string) => void;
     onMakeParallelAttachments: (ids: Id[]) => void;
     onUngroupParallelAttachments: (groupId: string, eventId?: Id) => void;
@@ -2374,7 +2374,7 @@ function AttachmentInspector({
           </div>
         )}
 
-        {attachment.condition?.type === 'BoundsHit' && !hasPresetBoundsEditor && (
+        {boundsCondition && !hasPresetBoundsEditor && (
           <InspectorFoldout
             title="Bounds"
             open={foldouts.isOpen('attachment.until.bounds', true)}
@@ -2384,9 +2384,9 @@ function AttachmentInspector({
               <span>Behavior</span>
               <select
                 aria-label="Behavior"
-                value={attachment.condition.behavior ?? 'limit'}
+                value={boundsCondition.behavior ?? 'limit'}
                 onChange={(e) =>
-                  onUpdate({ ...attachment, condition: { ...attachment.condition, behavior: e.target.value as any } as any })
+                  onUpdate({ ...attachment, condition: { ...boundsCondition, behavior: e.target.value as any } as any })
                 }
               >
                 <option value="stop">Stop</option>
@@ -2396,10 +2396,10 @@ function AttachmentInspector({
               </select>
             </label>
             <BoundsMinMaxCenterSpanEditor
-              bounds={attachment.condition.bounds}
+              bounds={boundsCondition.bounds}
               resetKey={`${attachment.id}:until-bounds`}
               testIdPrefix="until-bounds"
-              onCommitBounds={(next) => onUpdate({ ...attachment, condition: { ...attachment.condition, bounds: next } as any })}
+              onCommitBounds={(next) => onUpdate({ ...attachment, condition: { ...boundsCondition, bounds: next } as any })}
               minMax={
                 <>
                   <div className="inspector-grid-2">
@@ -2407,11 +2407,11 @@ function AttachmentInspector({
                       <span>Min X</span>
                       <ValidatedNumberInput
                         aria-label="Bounds Min X"
-                        value={attachment.condition.bounds.minX}
+                        value={boundsCondition.bounds.minX}
                         onCommit={(next) =>
                           onUpdate({
                             ...attachment,
-                            condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, minX: next } } as any,
+                            condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minX: next } } as any,
                           })
                         }
                       />
@@ -2420,11 +2420,11 @@ function AttachmentInspector({
                       <span>Min Y</span>
                       <ValidatedNumberInput
                         aria-label="Bounds Min Y"
-                        value={attachment.condition.bounds.minY}
+                        value={boundsCondition.bounds.minY}
                         onCommit={(next) =>
                           onUpdate({
                             ...attachment,
-                            condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, minY: next } } as any,
+                            condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, minY: next } } as any,
                           })
                         }
                       />
@@ -2435,11 +2435,11 @@ function AttachmentInspector({
                       <span>Max X</span>
                       <ValidatedNumberInput
                         aria-label="Bounds Max X"
-                        value={attachment.condition.bounds.maxX}
+                        value={boundsCondition.bounds.maxX}
                         onCommit={(next) =>
                           onUpdate({
                             ...attachment,
-                            condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, maxX: next } } as any,
+                            condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxX: next } } as any,
                           })
                         }
                       />
@@ -2448,11 +2448,11 @@ function AttachmentInspector({
                       <span>Max Y</span>
                       <ValidatedNumberInput
                         aria-label="Bounds Max Y"
-                        value={attachment.condition.bounds.maxY}
+                        value={boundsCondition.bounds.maxY}
                         onCommit={(next) =>
                           onUpdate({
                             ...attachment,
-                            condition: { ...attachment.condition, bounds: { ...attachment.condition.bounds, maxY: next } } as any,
+                            condition: { ...boundsCondition, bounds: { ...boundsCondition.bounds, maxY: next } } as any,
                           })
                         }
                       />
@@ -3231,7 +3231,7 @@ function AttachmentInspector({
 	                aria-label="Spiral Flip X"
 	                type="checkbox"
 	                checked={params.flipX === true}
-	                onChange={(e) => onUpdate({ ...attachment, params: { ...params, flipX: e.target.checked ? true : undefined } })}
+	                onChange={(e) => onUpdate({ ...attachment, params: { ...params, flipX: e.target.checked } })}
 	              />
 	            </label>
 	            <label className="field">
@@ -3240,7 +3240,7 @@ function AttachmentInspector({
 	                aria-label="Spiral Flip Y"
 	                type="checkbox"
 	                checked={params.flipY === true}
-	                onChange={(e) => onUpdate({ ...attachment, params: { ...params, flipY: e.target.checked ? true : undefined } })}
+	                onChange={(e) => onUpdate({ ...attachment, params: { ...params, flipY: e.target.checked } })}
 	              />
 	            </label>
 	          </div>

@@ -62,6 +62,21 @@ describe('EditorStore reducer', () => {
     expect(closed.projectRootEditing).toBe(false);
   });
 
+  it('stores publish metadata without renaming the project', () => {
+    const state = seededState();
+
+    const next = reducer(state, {
+      type: 'set-project-metadata',
+      publishTitle: 'Published Title',
+      publishGithubPagesRepo: 'published-repo',
+    } as any);
+
+    expect(next.project.title).toBe(state.project.title);
+    expect((next.project as any).publishTitle).toBe('Published Title');
+    expect(next.project.publishGithubPagesRepo).toBe('published-repo');
+    expect(next.dirty).toBe(true);
+  });
+
   it('toggles hitbox overlay visibility flag', () => {
     const state = initState();
     expect(state.showHitboxOverlay).toBe(true);
