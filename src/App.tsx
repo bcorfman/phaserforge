@@ -13,7 +13,14 @@ import { loadProjectFonts } from './editor/fontLoader';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
-import { readStoredViewState, shouldPersistViewState, VIEW_STATE_STORAGE_KEY, writeStoredViewState } from './util/viewStateStorage';
+import {
+  doesReportedViewMatchCurrentScene,
+  readStoredViewState,
+  shouldPersistViewState,
+  shouldResetViewStateForProjectChange,
+  VIEW_STATE_STORAGE_KEY,
+  writeStoredViewState,
+} from './util/viewStateStorage';
 import {
   registerAppStateGetter,
   registerActionDispatcher,
@@ -282,10 +289,43 @@ function AppShell() {
   }, [sceneReady, state.currentSceneId, state.formationDraft, state.project]);
 
   useEffect(() => {
-    const handleViewState = (payload: { zoom: number }) => {
+    const handleViewState = (payload: { zoom: number; worldWidth?: number; worldHeight?: number }) => {
       setZoom(payload.zoom);
       if (!state.hasSeenViewHint) {
         dispatch({ type: 'dismiss-view-hint' });
+      }
+
+      const expectedWorld = getSceneWorld(appStateRef.current.scene);
+      if (!doesReportedViewMatchCurrentScene({
+        initialized: appStateRef.current.initialized,
+        reportedWorldWidth: payload.worldWidth,
+        reportedWorldHeight: payload.worldHeight,
+        currentWorldWidth: expectedWorld.width,
+        currentWorldHeight: expectedWorld.height,
+      })) {
+        return;
+      }
+
+      if (appStateRef.current.initialized && !viewRestoreAttemptedRef.current) {
+        try {
+          const projectId = appStateRef.current.project.id;
+          lastViewProjectIdRef.current = projectId;
+          const view = readStoredViewState(window.localStorage, projectId);
+          viewRestoreAttemptedRef.current = true;
+          if (view) {
+            EventBus.emit('scene-restore-view-state', view);
+            const scene = getActiveScene() as any;
+            const restoredView = scene && typeof scene.getViewState === 'function'
+              ? (scene.getViewState() as { zoom: number; scrollX: number; scrollY: number; viewportWidth?: number; viewportHeight?: number })
+              : null;
+            if (restoredView) {
+              writeStoredViewState(window.localStorage, projectId, restoredView);
+            }
+            return;
+          }
+        } catch {
+          viewRestoreAttemptedRef.current = true;
+        }
       }
 
       if (!shouldPersistViewState({
@@ -314,30 +354,18 @@ function AppShell() {
   }, [dispatch, state.hasSeenViewHint]);
 
   useEffect(() => {
-    if (viewRestoreAttemptedRef.current) return;
-    if (!sceneReady || !runtimeLoadedRef.current) return;
-    if (!state.initialized) return;
-
-    try {
-      const projectId = state.project.id;
-      lastViewProjectIdRef.current = projectId;
-      const view = readStoredViewState(window.localStorage, projectId);
-      if (view) EventBus.emit('scene-restore-view-state', view);
-    } catch {
-      // ignore restore errors
-    } finally {
-      viewRestoreAttemptedRef.current = true;
-    }
-  }, [sceneReady, state.initialized, state.project.id]);
-
-  useEffect(() => {
     const currentProjectId = state.project.id;
     const lastProjectId = lastViewProjectIdRef.current;
+    if (!state.initialized) return;
     if (!lastProjectId) {
       lastViewProjectIdRef.current = currentProjectId;
       return;
     }
-    if (currentProjectId === lastProjectId) return;
+    if (!shouldResetViewStateForProjectChange({
+      initialized: state.initialized,
+      currentProjectId,
+      lastProjectId,
+    })) return;
 
     // A different project was loaded; reset view to default and avoid leaking view state across projects.
     lastViewProjectIdRef.current = currentProjectId;
@@ -348,7 +376,7 @@ function AppShell() {
       // ignore
     }
     EventBus.emit('scene-fit-view');
-  }, [state.project.id]);
+  }, [state.initialized, state.project.id]);
 
   useEffect(() => {
     const handleGridToggled = (enabled: boolean) => setGridSnapEnabled(enabled);

@@ -17,6 +17,26 @@ export function shouldPersistViewState(options: {
   return Boolean(options.projectId) && options.initialized && options.restoreAttempted;
 }
 
+export function shouldResetViewStateForProjectChange(options: {
+  initialized: boolean;
+  currentProjectId: string | null | undefined;
+  lastProjectId: string | null | undefined;
+}): boolean {
+  return Boolean(options.initialized && options.currentProjectId && options.lastProjectId && options.currentProjectId !== options.lastProjectId);
+}
+
+export function doesReportedViewMatchCurrentScene(options: {
+  initialized: boolean;
+  reportedWorldWidth?: number;
+  reportedWorldHeight?: number;
+  currentWorldWidth: number;
+  currentWorldHeight: number;
+}): boolean {
+  if (!options.initialized) return true;
+  if (!Number.isFinite(options.reportedWorldWidth) || !Number.isFinite(options.reportedWorldHeight)) return false;
+  return options.reportedWorldWidth === options.currentWorldWidth && options.reportedWorldHeight === options.currentWorldHeight;
+}
+
 export function parseStoredViewState(raw: string | null | undefined): StoredViewState | undefined {
   if (!raw) return undefined;
   try {
