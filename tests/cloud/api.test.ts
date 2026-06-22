@@ -49,6 +49,20 @@ describe('cloud api', () => {
     });
   });
 
+  it('surfaces a readable error when a cloud save payload is too large', async () => {
+    vi.resetModules();
+    delete process.env.VITE_API_BASE_URL;
+    const { updateGame } = await import('../../src/cloud/api');
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ error: 'payload_too_large' }), { status: 413, headers: { 'content-type': 'application/json' } }),
+    );
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    await expect(updateGame('g1', { yaml: 'huge' }, 'csrf')).rejects.toThrow(
+      'Project is too large to save to the cloud. Reduce project size and try again.',
+    );
+  });
+
   it('checkGithubPagesTarget posts json body with credentials', async () => {
     vi.resetModules();
     delete process.env.VITE_API_BASE_URL;
