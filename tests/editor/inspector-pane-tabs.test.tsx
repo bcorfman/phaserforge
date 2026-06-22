@@ -68,6 +68,17 @@ describe('InspectorPane tabs', () => {
     expect(screen.queryByTestId('mock-cloud-panel')).toBeNull();
   });
 
+  it('can force-enable the cloud tab on localhost for test-driven E2E coverage', () => {
+    (globalThis as { location?: { hostname: string } }).location = { hostname: 'localhost' };
+    window.sessionStorage.setItem('phaserforge.testForceCloudEnabled.v1', '1');
+    cloudPanelSpy.resolveUser.mockResolvedValueOnce(null);
+
+    render(<InspectorPane />);
+
+    expect(screen.getByTestId('inspector-pane-tab-cloud')).toBeTruthy();
+    expect(screen.getByTestId('mock-cloud-panel')).toBeTruthy();
+  });
+
   it('keeps the cloud panel mounted while the inspector tab is active', () => {
     (globalThis as { location?: { hostname: string } }).location = { hostname: 'phaserforge.app' };
     cloudPanelSpy.cachedUser = { id: 'u1', email: 'alice@example.com' };

@@ -12,6 +12,7 @@ type PhaserForgeRect = {
 
 interface PhaserForgeTestBridge {
   isEnabled: boolean;
+  forceCloudEnabled?: boolean;
   clearStoredScene(): void;
   getState(): unknown;
   reloadRuntime(): Promise<void>;

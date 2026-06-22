@@ -56,9 +56,9 @@ test('boots empty by default and loads scenes @smoke', async ({ page }) => {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
-      return project?.yaml ?? null;
+      return project?.project?.scenes?.[project?.project?.initialSceneId]?.groups?.['g-enemies']?.name ?? null;
     });
-  }).toContain('Enemy Formation');
+  }).toBe('Enemy Formation');
   await page.reload();
   await gotoStudio(page);
   await waitForSampleScene(page);
@@ -100,9 +100,9 @@ test('persists the last active project across reloads without a startup mode con
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
-      return project?.yaml ?? null;
+      return project?.project?.scenes?.[project?.project?.initialSceneId]?.groups?.['g-enemies']?.name ?? null;
     });
-  }).toContain('Persisted Wing');
+  }).toBe('Persisted Wing');
   await expect.poll(async () => {
     return page.evaluate(() => window.localStorage.getItem('phaserforge.projectYaml.v1'));
   }).toBeNull();
