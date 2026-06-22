@@ -1,3 +1,6 @@
+import { serializeProjectToYaml } from '../model/serialization';
+import type { ProjectSpec } from '../model/types';
+
 const PERSISTENCE_DEBUG_FLAG_KEY = 'phaserforge.debugPersistence.v1';
 const PERSISTENCE_DEBUG_LOG_KEY = 'phaserforge.debugPersistenceLog.v1';
 const PERSISTENCE_DEBUG_MAX_ENTRIES = 200;
@@ -127,6 +130,23 @@ export function summarizeYamlForDebug(yaml: string): { yamlHash: string; yamlLen
   return {
     yamlHash: (hash >>> 0).toString(16).padStart(8, '0'),
     yamlLength: yaml.length,
+  };
+}
+
+export function summarizeProjectLoadForDebug(options: {
+  sourceLabel: string;
+  project: ProjectSpec;
+  activeProjectId?: string | null;
+  currentProjectId?: string | null;
+}) {
+  const yaml = serializeProjectToYaml(options.project);
+  return {
+    sourceLabel: options.sourceLabel,
+    activeProjectId: options.activeProjectId ?? null,
+    currentProjectId: options.currentProjectId ?? null,
+    nextProjectId: options.project.id,
+    nextTitle: options.project.title?.trim() || 'Untitled Project',
+    ...summarizeYamlForDebug(yaml),
   };
 }
 

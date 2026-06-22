@@ -22,6 +22,7 @@ import {
   type SidebarScope,
 } from './projectTreeHistory';
 import { projectPersistence } from './projectPersistence';
+import { appendPersistenceDebugEntry } from '../util/persistenceDebug';
 
 const ENTITY_DRAG_MIME = 'application/x-phaserforge-entity-ids';
 function isSelected(selection: Selection, kind: Selection['kind'], id: string): boolean {
@@ -118,6 +119,7 @@ export function EntityList() {
         const handle = handles?.[0];
         if (handle) {
           const { text, label } = await readFileHandleText(handle);
+          appendPersistenceDebugEntry('entity-list:load-yaml-text-dispatch', { sourceLabel: label });
           dispatch({ type: 'load-yaml-text', text, sourceLabel: label });
           return;
         }
