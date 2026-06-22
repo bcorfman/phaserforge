@@ -15,6 +15,7 @@ import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
 import { appendPersistenceDebugEntry, installPersistenceDebugBridge } from './util/persistenceDebug';
+import { installViewDebugBridge, isViewDebugEnabled } from './util/viewDebug';
 import {
   canRestorePersistedView,
   doesReportedViewMatchCurrentScene,
@@ -38,8 +39,6 @@ import {
   type AppStateSnapshot,
 } from './testing/testBridge';
 import './app/layout.css';
-
-const VIEW_DEBUG_STORAGE_KEY = 'phaserforge.debugViewRestore.v1';
 
 function AppShell() {
   const { state, dispatch } = useEditorStore();
@@ -73,11 +72,7 @@ function AppShell() {
 
   const logViewDebug = (...args: unknown[]) => {
     if (typeof window === 'undefined') return;
-    try {
-      if (window.localStorage.getItem(VIEW_DEBUG_STORAGE_KEY) !== '1') return;
-    } catch {
-      return;
-    }
+    if (!isViewDebugEnabled()) return;
     const timestamp = new Date().toISOString();
     console.info('[phaserforge:view-debug]', timestamp, ...args);
   };
@@ -89,6 +84,7 @@ function AppShell() {
 
   useEffect(() => {
     installPersistenceDebugBridge();
+    installViewDebugBridge();
   }, []);
 
   useEffect(() => {
