@@ -25,7 +25,8 @@ export type StoredProjectRecord = {
   id: string;
   projectId: string;
   title: string;
-  yaml: string;
+  project: ProjectSpec;
+  yaml?: string;
   updatedAt: string;
   sceneCount: number;
   origin: StoredProjectOrigin;
@@ -201,7 +202,8 @@ export function buildStoredProjectRecord(
     id: options?.id ?? project.id,
     projectId: project.id,
     title: project.title?.trim() || 'Untitled Project',
-    yaml: options?.yaml ?? serializeProjectToYaml(project),
+    project: cloneProject(project),
+    yaml: options?.yaml,
     updatedAt: options?.updatedAt ?? new Date().toISOString(),
     sceneCount: Object.keys(project.scenes ?? {}).length,
     origin: options?.origin ?? 'local-only',
@@ -211,11 +213,25 @@ export function buildStoredProjectRecord(
   };
 }
 
+function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectRecord {
+  if (record.project) return record;
+  if (record.yaml) {
+    return {
+      ...record,
+      project: parseProjectYaml(record.yaml),
+    };
+  }
+  return {
+    ...record,
+    project: createEmptyProject(),
+  };
+}
+
 async function readAllProjects(db: IDBDatabase): Promise<StoredProjectRecord[]> {
   const tx = db.transaction(PROJECTS_STORE, 'readonly');
   const rows = await requestValue(tx.objectStore(PROJECTS_STORE).getAll());
   await txComplete(tx);
-  return Array.isArray(rows) ? (rows as StoredProjectRecord[]) : [];
+  return Array.isArray(rows) ? (rows as StoredProjectRecord[]).map(hydrateStoredProjectRecord) : [];
 }
 
 async function readWorkspace(db: IDBDatabase): Promise<WorkspaceStateRecord> {
@@ -343,7 +359,7 @@ async function getProjectRecord(projectId: string): Promise<StoredProjectRecord 
   const tx = db.transaction(PROJECTS_STORE, 'readonly');
   const record = await requestValue(tx.objectStore(PROJECTS_STORE).get(projectId));
   await txComplete(tx);
-  return (record as StoredProjectRecord | undefined) ?? null;
+  return record ? hydrateStoredProjectRecord(record as StoredProjectRecord) : null;
 }
 
 async function getWorkspaceState(options?: { awaitPendingWrites?: boolean }): Promise<WorkspaceStateRecord> {
@@ -369,8 +385,9 @@ function cloneProject(project: ProjectSpec): ProjectSpec {
 }
 
 function summarizeRecordForDebug(
-  record: Pick<StoredProjectRecord, 'cloudProjectId' | 'id' | 'origin' | 'projectId' | 'revisions' | 'syncStatus' | 'title' | 'updatedAt' | 'yaml'>,
+  record: Pick<StoredProjectRecord, 'cloudProjectId' | 'id' | 'origin' | 'project' | 'projectId' | 'revisions' | 'syncStatus' | 'title' | 'updatedAt' | 'yaml'>,
 ) {
+  const yaml = record.yaml ?? serializeProjectToYaml(record.project);
   return {
     recordId: record.id,
     projectId: record.projectId,
@@ -380,7 +397,7 @@ function summarizeRecordForDebug(
     syncStatus: record.syncStatus,
     cloudProjectId: record.cloudProjectId ?? null,
     revisionCount: record.revisions?.length ?? 0,
-    ...summarizeYamlForDebug(record.yaml),
+    ...summarizeYamlForDebug(yaml),
   };
 }
 
@@ -576,10 +593,9 @@ export const projectPersistence = {
   },
 
   async duplicateProject(record: StoredProjectRecord): Promise<StoredProjectRecord> {
-    const parsed = parseProjectYaml(record.yaml);
-    const duplicate = cloneProject(parsed);
+    const duplicate = cloneProject(record.project);
     duplicate.id = allocateProjectId();
-    duplicate.title = `${parsed.title?.trim() || 'Untitled Project'} Copy`;
+    duplicate.title = `${record.project.title?.trim() || 'Untitled Project'} Copy`;
     const next = buildStoredProjectRecord(duplicate, {
       id: duplicate.id,
       origin: 'local-only',

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { projectPersistence } from '../../src/editor/projectPersistence';
+import { buildStoredProjectRecord, projectPersistence } from '../../src/editor/projectPersistence';
+import { appendProjectRevision, createProjectRevision, materializeProjectRevision } from '../../src/editor/projectTreeHistory';
 
 function installLocalStorageMock() {
   const storage = new Map<string, string>();
@@ -82,5 +83,43 @@ describe('projectPersistence steady-state storage', () => {
     } finally {
       window.indexedDB = originalIndexedDb;
     }
+  });
+
+  it('stores the active project as structured data instead of requiring YAML', () => {
+    const project = createEmptyProject();
+    project.title = 'Pattern Demo';
+
+    const record = buildStoredProjectRecord(project);
+
+    expect(record.project).toEqual(project);
+    expect(record.yaml).toBeUndefined();
+  });
+
+  it('can still retain an explicit YAML payload for import-export compatibility', () => {
+    const project = createEmptyProject();
+
+    const record = buildStoredProjectRecord(project, {
+      yaml: 'project:\n  title: Pattern Demo\n',
+    });
+
+    expect(record.project).toEqual(project);
+    expect(record.yaml).toBe('project:\n  title: Pattern Demo\n');
+  });
+
+  it('stores revisions as compact deltas while still materializing the edited project', () => {
+    const olderProject = createEmptyProject();
+    const newerProject = structuredClone(olderProject);
+    newerProject.title = 'Pattern Demo';
+    newerProject.publishGithubPagesRepo = 'zoof';
+
+    const olderRevision = createProjectRevision(olderProject, { id: 'rev-older' });
+    const newerRevision = createProjectRevision(newerProject, { id: 'rev-newer' });
+    const revisions = appendProjectRevision([olderRevision], newerRevision);
+    const storedNewestRevision = revisions[0];
+
+    expect(storedNewestRevision.kind).toBe('delta');
+    expect(storedNewestRevision.patch).toBeTruthy();
+    expect(storedNewestRevision.project).toBeUndefined();
+    expect(materializeProjectRevision(revisions, storedNewestRevision.id)).toEqual(newerProject);
   });
 });
