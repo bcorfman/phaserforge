@@ -4,6 +4,16 @@ export type CloudGame = CloudGameMeta & { yaml: string };
 
 type Json = Record<string, unknown>;
 
+function mapApiError(error: string): string {
+  switch (error) {
+    case 'payload_too_large':
+    case 'http_413':
+      return 'Project is too large to save to the cloud. Reduce project size and try again.';
+    default:
+      return error;
+  }
+}
+
 function getApiBaseUrl(): string | undefined {
   const metaEnv = (import.meta as any)?.env as Record<string, unknown> | undefined;
   const fromMeta = typeof metaEnv?.VITE_API_BASE_URL === 'string' ? metaEnv.VITE_API_BASE_URL : undefined;
@@ -42,7 +52,7 @@ async function api<T extends Json>(path: string, init: RequestInit = {}): Promis
   if (!res.ok) {
     const errorVal = (json as unknown as { error?: unknown })?.error;
     const error = typeof errorVal === 'string' ? errorVal : `http_${res.status}`;
-    throw new Error(error);
+    throw new Error(mapApiError(error));
   }
   return json;
 }
