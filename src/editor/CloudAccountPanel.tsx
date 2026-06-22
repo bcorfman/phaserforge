@@ -584,6 +584,12 @@ export function CloudAccountPanel({
     }
   };
 
+  const flushPendingAutosaveNow = () => {
+    if (!pendingAutosaveRef.current || autosaveInFlightRef.current) return;
+    clearAutosaveTimer();
+    void flushCloudAutosave();
+  };
+
   const scheduleAutosaveRetry = () => {
     if (autosaveRetryTimerRef.current != null) return;
     autosaveRetryTimerRef.current = window.setTimeout(() => {
@@ -652,7 +658,25 @@ export function CloudAccountPanel({
   }, [authResolved, cloudGameLookupResolved, conflictCheckComplete, state.project, user, workspaceConflict]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'hidden') return;
+      flushPendingAutosaveNow();
+    };
+    const handlePageHide = () => {
+      flushPendingAutosaveNow();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [authResolved, cloudGameLookupResolved, conflictCheckComplete, user, workspaceConflict]);
+
+  useEffect(() => {
+    return () => {
+      flushPendingAutosaveNow();
       clearAutosaveTimer();
       if (autosaveRetryTimerRef.current != null) {
         window.clearTimeout(autosaveRetryTimerRef.current);

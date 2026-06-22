@@ -198,6 +198,68 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
+  it('flushes a pending cloud autosave when the page is hidden before the debounce elapses', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project }}
+        activeCloudGameId="g-1"
+        dispatch={vi.fn() as any}
+        onLoadYaml={() => {}}
+        onStatus={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+
+    try {
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      api.updateGame.mockClear();
+
+      const edited = structuredClone(project);
+      edited.title = 'Pattern Demo 2';
+
+      act(() => {
+        view.root.render(
+          <CloudAccountPanel
+            state={{ project: edited }}
+            activeCloudGameId="g-1"
+            dispatch={vi.fn() as any}
+            onLoadYaml={() => {}}
+            onStatus={vi.fn()}
+            onError={vi.fn()}
+          />
+        );
+      });
+
+      act(() => {
+        window.dispatchEvent(new PageTransitionEvent('pagehide'));
+      });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(api.updateGame).toHaveBeenCalledWith(
+        'g-1',
+        expect.objectContaining({
+          title: 'Pattern Demo 2',
+          yaml: expect.stringContaining('Pattern Demo 2'),
+        }),
+        'csrf',
+      );
+    } finally {
+      view.cleanup();
+    }
+  });
+
   it('creates a cloud game for a signed-in project when no mapping exists yet', async () => {
     vi.useFakeTimers();
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });

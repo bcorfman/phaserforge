@@ -3445,6 +3445,11 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeProjectRevisions, setActiveProjectRevisions] = useState<ProjectRevisionRecord[]>([]);
   const activeRecordRef = React.useRef<StoredProjectRecord | null>(null);
+  const latestStateRef = React.useRef<EditorState>(state);
+  const latestActiveProjectIdRef = React.useRef<string | null>(activeProjectId);
+
+  latestStateRef.current = state;
+  latestActiveProjectIdRef.current = activeProjectId;
 
   const mapStoredProject = (record: StoredProjectRecord): ProjectLibraryEntry => ({
     id: record.id,
@@ -3457,6 +3462,21 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     isCurrent: record.id === activeProjectId,
     cloudProjectId: record.cloudProjectId,
   });
+
+  const buildActiveProjectRecordSnapshot = (project: ProjectSpec, syncMode: ProjectSyncMode, recordId?: string | null): StoredProjectRecord => {
+    const previous = activeRecordRef.current;
+    return buildStoredProjectRecord(project, {
+      id: recordId ?? latestActiveProjectIdRef.current ?? project.id,
+      origin: previous?.origin ?? 'local-only',
+      syncStatus: syncMode === 'offline'
+        ? (previous?.cloudProjectId ? 'unsynced' : 'local')
+        : (previous?.cloudProjectId ? 'cloud' : 'local'),
+      cloudProjectId: previous?.cloudProjectId,
+      revisions: previous?.yaml && previous.yaml !== serializeProjectToYaml(project)
+        ? appendProjectRevision(previous.revisions, createProjectRevision(project, { reason: 'autosave' }))
+        : (previous?.revisions ?? []),
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -3500,25 +3520,40 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!state.initialized) return;
-    const currentRecordId = activeProjectId ?? state.project.id;
-    const previous = activeRecordRef.current;
-    const nextRecord = buildStoredProjectRecord(state.project, {
-      id: currentRecordId,
-      origin: previous?.origin ?? 'local-only',
-      syncStatus: state.syncMode === 'offline'
-        ? (previous?.cloudProjectId ? 'unsynced' : 'local')
-        : (previous?.cloudProjectId ? 'cloud' : 'local'),
-      cloudProjectId: previous?.cloudProjectId,
-      revisions: previous?.yaml && previous.yaml !== serializeProjectToYaml(state.project)
-        ? appendProjectRevision(previous.revisions, createProjectRevision(state.project, { reason: 'autosave' }))
-        : (previous?.revisions ?? []),
-    });
+    const nextRecord = buildActiveProjectRecordSnapshot(state.project, state.syncMode, activeProjectId ?? state.project.id);
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
     void projectPersistence.saveActiveProjectRecord(nextRecord, state.syncMode).then((records) => {
       setLocalProjects(records.map(mapStoredProject));
     });
   }, [activeProjectId, state.initialized, state.project, state.syncMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const persistLatestProject = () => {
+      const currentState = latestStateRef.current;
+      if (!currentState.initialized) return;
+      const nextRecord = buildActiveProjectRecordSnapshot(
+        currentState.project,
+        currentState.syncMode,
+        latestActiveProjectIdRef.current ?? currentState.project.id,
+      );
+      activeRecordRef.current = nextRecord;
+      void projectPersistence.saveActiveProjectRecord(nextRecord, currentState.syncMode).then((records) => {
+        setLocalProjects(records.map(mapStoredProject));
+      });
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'hidden') return;
+      persistLatestProject();
+    };
+    window.addEventListener('pagehide', persistLatestProject);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', persistLatestProject);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!state.initialized) return;
