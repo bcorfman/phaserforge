@@ -17,6 +17,7 @@ import {
   buildProjectTreeRows,
   formatProjectRevisionTimestamp,
   formatProjectRevisionSummary,
+  materializeProjectRevision,
   type ProjectRevisionRecord,
   type SidebarScope,
 } from './projectTreeHistory';
@@ -671,7 +672,8 @@ export function EntityListView({
                       className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
                       type="button"
                       onClick={() => {
-                        const previewProject = parseProjectYaml(revision.yaml);
+                        const previewProject = materializeProjectRevision(revisions, revision.id);
+                        if (!previewProject) return;
                         dispatch({
                           type: 'set-revision-preview',
                           revisionId: revision.id,

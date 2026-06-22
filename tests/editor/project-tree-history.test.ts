@@ -8,6 +8,7 @@ import {
   createProjectRevision,
   formatProjectRevisionTimestamp,
   formatProjectRevisionSummary,
+  materializeProjectRevision,
 } from '../../src/editor/projectTreeHistory';
 
 describe('project tree + history helpers', () => {
@@ -195,7 +196,8 @@ describe('project tree + history helpers', () => {
 
     const revisions = appendProjectRevision([older], newer, 1);
 
-    expect(revisions).toEqual([newer]);
+    expect(revisions).toHaveLength(1);
+    expect(revisions[0].id).toBe('newer');
   });
 
   it('coalesces nearby autosaves when they continue the same entity editing burst', () => {
@@ -264,5 +266,52 @@ describe('project tree + history helpers', () => {
     const revisions = appendProjectRevision([audioRevision, baseRevision], publishRevision, 25);
 
     expect(revisions.map((revision) => revision.id)).toEqual(['rev-publish', 'rev-audio', 'rev-base']);
+  });
+
+  it('stores later revisions as deltas against the previous checkpoint instead of full snapshots', () => {
+    const baseProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.title = 'Pattern Demo';
+    newerProject.publishGithubPagesRepo = 'zoof';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-17T10:11:00.000Z',
+    });
+
+    const revisions = appendProjectRevision([baseRevision], newerRevision, 25);
+
+    expect(revisions[0]).toMatchObject({
+      id: 'rev-newer',
+      kind: 'delta',
+      baseRevisionId: 'rev-base',
+    });
+    expect(revisions[0].project).toBeUndefined();
+    expect(revisions[0].patch).toBeTruthy();
+  });
+
+  it('materializes delta revisions back into full projects for preview, copy, and restore flows', () => {
+    const baseProject = structuredClone(sampleProject);
+    const renamedProject = structuredClone(sampleProject);
+    renamedProject.title = 'Pattern Demo';
+    renamedProject.publishGithubPagesRepo = 'zoof';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const renamedRevision = createProjectRevision(renamedProject, {
+      id: 'rev-renamed',
+      updatedAt: '2026-06-17T10:11:00.000Z',
+    });
+
+    const revisions = appendProjectRevision([baseRevision], renamedRevision, 25);
+
+    expect(materializeProjectRevision(revisions, 'rev-base')).toEqual(baseProject);
+    expect(materializeProjectRevision(revisions, 'rev-renamed')).toEqual(renamedProject);
   });
 });

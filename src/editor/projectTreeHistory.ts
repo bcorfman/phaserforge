@@ -1,18 +1,26 @@
 import type { Id, ProjectSpec } from '../model/types';
-import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
+import { parseProjectYaml } from '../model/serialization';
 
 export type SidebarScope = 'projectTree' | 'projectRevisions' | 'scene' | 'project';
+
+export type ProjectRevisionPatchOperation =
+  | { op: 'set'; path: Array<string | number>; value: unknown }
+  | { op: 'delete'; path: Array<string | number> };
 
 export type ProjectRevisionRecord = {
   id: string;
   projectId: string;
   title: string;
-  yaml: string;
   updatedAt: string;
   sceneCount: number;
   entityCount?: number;
   initialSceneLabel?: string;
   reason: 'autosave' | 'protective' | 'restore';
+  kind: 'checkpoint' | 'delta';
+  project?: ProjectSpec;
+  yaml?: string;
+  baseRevisionId?: string;
+  patch?: ProjectRevisionPatchOperation[];
 };
 
 export type ProjectTreeRow =
@@ -81,11 +89,128 @@ function formatAudioLabel(
     || assetId;
 }
 
-function summarizeRevisionContent(revision: ProjectRevisionRecord): RevisionSnapshot {
+function cloneProject(project: ProjectSpec): ProjectSpec {
+  return structuredClone(project);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function diffProjectValue(
+  current: unknown,
+  previous: unknown,
+  path: Array<string | number> = [],
+): ProjectRevisionPatchOperation[] {
+  if (JSON.stringify(current) === JSON.stringify(previous)) return [];
+
+  if (Array.isArray(current) && Array.isArray(previous)) {
+    return [{ op: 'set', path, value: structuredClone(current) }];
+  }
+
+  if (isRecord(current) && isRecord(previous)) {
+    const ops: ProjectRevisionPatchOperation[] = [];
+    const keys = new Set([...Object.keys(previous), ...Object.keys(current)]);
+    for (const key of keys) {
+      if (!(key in current)) {
+        ops.push({ op: 'delete', path: [...path, key] });
+        continue;
+      }
+      if (!(key in previous)) {
+        ops.push({ op: 'set', path: [...path, key], value: structuredClone(current[key]) });
+        continue;
+      }
+      ops.push(...diffProjectValue(current[key], previous[key], [...path, key]));
+    }
+    return ops;
+  }
+
+  return [{ op: 'set', path, value: structuredClone(current) }];
+}
+
+function applyProjectPatch(baseProject: ProjectSpec, patch: ProjectRevisionPatchOperation[]): ProjectSpec {
+  const nextProject = cloneProject(baseProject);
+  for (const operation of patch) {
+    if (operation.path.length === 0) {
+      if (operation.op === 'set') return structuredClone(operation.value as ProjectSpec);
+      continue;
+    }
+
+    let target: unknown = nextProject;
+    for (let index = 0; index < operation.path.length - 1; index += 1) {
+      const segment = operation.path[index];
+      if (target == null || (typeof target !== 'object' && !Array.isArray(target))) break;
+      const container = target as Record<string | number, unknown>;
+      if (container[segment] == null) {
+        const nextSegment = operation.path[index + 1];
+        container[segment] = typeof nextSegment === 'number' ? [] : {};
+      }
+      target = container[segment];
+    }
+
+    if (target == null || (typeof target !== 'object' && !Array.isArray(target))) continue;
+    const lastSegment = operation.path[operation.path.length - 1];
+    if (operation.op === 'delete') {
+      if (Array.isArray(target) && typeof lastSegment === 'number') {
+        target.splice(lastSegment, 1);
+      } else {
+        delete (target as Record<string | number, unknown>)[lastSegment];
+      }
+      continue;
+    }
+    (target as Record<string | number, unknown>)[lastSegment] = structuredClone(operation.value);
+  }
+  return nextProject;
+}
+
+function materializeRevisionProjectWithBase(
+  revision: ProjectRevisionRecord,
+  baseProject?: ProjectSpec,
+): ProjectSpec | null {
+  if (revision.project) return cloneProject(revision.project);
+  if (revision.yaml) {
+    try {
+      return parseProjectYaml(revision.yaml);
+    } catch {
+      return null;
+    }
+  }
+  if (revision.kind === 'delta' && baseProject && revision.patch) {
+    return applyProjectPatch(baseProject, revision.patch);
+  }
+  return null;
+}
+
+export function materializeProjectRevision(
+  revisions: ProjectRevisionRecord[],
+  revisionId: string,
+): ProjectSpec | null {
+  const revisionById = new Map(revisions.map((revision) => [revision.id, revision]));
+  const materializedCache = new Map<string, ProjectSpec | null>();
+
+  const resolveRevision = (id: string): ProjectSpec | null => {
+    if (materializedCache.has(id)) return materializedCache.get(id) ?? null;
+    const revision = revisionById.get(id);
+    if (!revision) return null;
+    let materialized: ProjectSpec | null = null;
+    if (revision.kind === 'delta' && revision.baseRevisionId) {
+      const baseProject = resolveRevision(revision.baseRevisionId);
+      materialized = baseProject && revision.patch ? applyProjectPatch(baseProject, revision.patch) : null;
+    } else {
+      materialized = materializeRevisionProjectWithBase(revision);
+    }
+    materializedCache.set(id, materialized);
+    return materialized;
+  };
+
+  return resolveRevision(revisionId);
+}
+
+function summarizeRevisionContent(revision: ProjectRevisionRecord, previousRevision?: ProjectRevisionRecord): RevisionSnapshot {
   if (typeof revision.entityCount === 'number' && revision.initialSceneLabel) {
     const title = revision.title?.trim() || 'Untitled Project';
-    try {
-      const project = parseProjectYaml(revision.yaml);
+    const project = materializeRevisionProjectWithBase(revision, previousRevision ? materializeRevisionProjectWithBase(previousRevision) ?? undefined : undefined);
+    if (project) {
       const sceneLabelsById = new Map(
         Object.keys(project.scenes ?? {}).map((sceneId) => [
           sceneId,
@@ -127,24 +252,23 @@ function summarizeRevisionContent(revision: ProjectRevisionRecord): RevisionSnap
         soundLabelsById,
         sceneMusicById,
       };
-    } catch {
-      return {
-        title,
-        sceneCount: revision.sceneCount,
-        entityCount: revision.entityCount,
-        initialSceneLabel: revision.initialSceneLabel,
-        scenesById: new Map(),
-        sceneLabelsById: new Map(),
-        sceneFingerprintsById: new Map(),
-        entitySceneById: new Map(),
-        soundLabelsById: new Map(),
-        sceneMusicById: new Map(),
-      };
     }
+    return {
+      title,
+      sceneCount: revision.sceneCount,
+      entityCount: revision.entityCount,
+      initialSceneLabel: revision.initialSceneLabel,
+      scenesById: new Map(),
+      sceneLabelsById: new Map(),
+      sceneFingerprintsById: new Map(),
+      entitySceneById: new Map(),
+      soundLabelsById: new Map(),
+      sceneMusicById: new Map(),
+    };
   }
   const title = revision.title?.trim() || 'Untitled Project';
-  try {
-    const project = parseProjectYaml(revision.yaml);
+  const project = materializeRevisionProjectWithBase(revision, previousRevision ? materializeRevisionProjectWithBase(previousRevision) ?? undefined : undefined);
+  if (project) {
     const sceneLabelsById = new Map(
       Object.keys(project.scenes ?? {}).map((sceneId) => [
         sceneId,
@@ -186,20 +310,19 @@ function summarizeRevisionContent(revision: ProjectRevisionRecord): RevisionSnap
       soundLabelsById,
       sceneMusicById,
     };
-  } catch {
-    return {
-      title,
-      sceneCount: revision.sceneCount,
-      entityCount: revision.entityCount,
-      initialSceneLabel: revision.initialSceneLabel,
-      scenesById: new Map(),
-      sceneLabelsById: new Map(),
-      sceneFingerprintsById: new Map(),
-      entitySceneById: new Map(),
-      soundLabelsById: new Map(),
-      sceneMusicById: new Map(),
-    };
   }
+  return {
+    title,
+    sceneCount: revision.sceneCount,
+    entityCount: revision.entityCount,
+    initialSceneLabel: revision.initialSceneLabel,
+    scenesById: new Map(),
+    sceneLabelsById: new Map(),
+    sceneFingerprintsById: new Map(),
+    entitySceneById: new Map(),
+    soundLabelsById: new Map(),
+    sceneMusicById: new Map(),
+  };
 }
 
 function formatCountLabel(count: number, singular: string, plural: string): string {
@@ -529,7 +652,7 @@ export function formatProjectRevisionTimestamp(revision: ProjectRevisionRecord):
 }
 
 export function formatProjectRevisionSummary(revision: ProjectRevisionRecord, previousRevision?: ProjectRevisionRecord): string {
-  const current = summarizeRevisionContent(revision);
+  const current = summarizeRevisionContent(revision, previousRevision);
   if (!previousRevision) {
     const sceneLabel = current.sceneCount === 1 ? '1 scene' : `${current.sceneCount} scenes`;
     const entityLabel = typeof current.entityCount === 'number'
@@ -563,7 +686,11 @@ export function formatProjectRevisionSummary(revision: ProjectRevisionRecord, pr
   if (broadSceneChange) return broadSceneChange;
   const projectSystemChange = formatProjectSystemDiff(current, previous);
   if (projectSystemChange) return projectSystemChange;
-  return revision.yaml !== previousRevision.yaml ? 'Updated project settings' : 'Minor edits';
+  const currentProject = materializeRevisionProjectWithBase(revision, previous.project);
+  const previousProject = previous.project;
+  return currentProject && previousProject && JSON.stringify(currentProject) !== JSON.stringify(previousProject)
+    ? 'Updated project settings'
+    : 'Minor edits';
 }
 
 export function buildCopyRevisionDefaultName(projectTitle: string | undefined, revision: ProjectRevisionRecord): string {
@@ -583,13 +710,13 @@ export function createProjectRevision(
     id?: string;
     updatedAt?: string;
     reason?: ProjectRevisionRecord['reason'];
+    yaml?: string;
   }
 ): ProjectRevisionRecord {
   return {
     id: options?.id ?? `revision-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     projectId: project.id,
     title: project.title?.trim() || 'Untitled Project',
-    yaml: serializeProjectToYaml(project),
     updatedAt: options?.updatedAt ?? new Date().toISOString(),
     sceneCount: Object.keys(project.scenes ?? {}).length,
     entityCount: Object.values(project.scenes ?? {}).reduce(
@@ -598,6 +725,9 @@ export function createProjectRevision(
     ),
     initialSceneLabel: project.sceneMeta?.[project.initialSceneId]?.name?.trim() || project.initialSceneId,
     reason: options?.reason ?? 'autosave',
+    kind: 'checkpoint',
+    project: cloneProject(project),
+    yaml: options?.yaml,
   };
 }
 
@@ -611,7 +741,7 @@ function buildRevisionChangeProfile(
   previousRevision?: ProjectRevisionRecord,
 ): RevisionChangeProfile {
   if (!previousRevision) return { domains: new Set(), focusKeys: new Set() };
-  const current = summarizeRevisionContent(revision);
+  const current = summarizeRevisionContent(revision, previousRevision);
   const previous = summarizeRevisionContent(previousRevision);
   const domains = new Set<string>();
   const focusKeys = new Set<string>();
@@ -720,8 +850,20 @@ export function appendProjectRevision(
 ): ProjectRevisionRecord[] {
   const existing = Array.isArray(revisions) ? revisions : [];
   const withoutDuplicate = existing.filter((revision) => revision.id !== nextRevision.id);
-  if (shouldCoalesceAutosaveRevision(withoutDuplicate[1], withoutDuplicate[0], nextRevision)) {
-    return [nextRevision, ...withoutDuplicate.slice(1)].slice(0, limit);
+  const latestRevision = withoutDuplicate[0];
+  const nextProject = materializeRevisionProjectWithBase(nextRevision);
+  const latestProject = latestRevision ? materializeProjectRevision(withoutDuplicate, latestRevision.id) : null;
+  const compactRevision = latestRevision
+    ? {
+      ...nextRevision,
+      kind: 'delta' as const,
+      baseRevisionId: latestRevision.id,
+      patch: diffProjectValue(nextProject, latestProject),
+      project: undefined,
+    }
+    : nextRevision;
+  if (shouldCoalesceAutosaveRevision(withoutDuplicate[1], withoutDuplicate[0], compactRevision)) {
+    return [compactRevision, ...withoutDuplicate.slice(1)].slice(0, limit);
   }
-  return [nextRevision, ...withoutDuplicate].slice(0, limit);
+  return [compactRevision, ...withoutDuplicate].slice(0, limit);
 }

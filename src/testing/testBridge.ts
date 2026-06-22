@@ -122,6 +122,7 @@ function ensureBridge(): void {
 
   window.__PHASER_FORGE_TEST__ = {
     isEnabled: true,
+    forceCloudEnabled: false,
     clearStoredScene() {
       window.localStorage.removeItem(SCENE_STORAGE_KEY);
     },
