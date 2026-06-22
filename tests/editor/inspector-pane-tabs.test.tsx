@@ -65,6 +65,19 @@ describe('InspectorPane tabs', () => {
 
     expect(screen.queryByTestId('inspector-pane-tab-cloud')).toBeNull();
     expect(screen.getByTestId('mock-inspector').textContent).toBe('Inspector body');
+    expect(screen.queryByTestId('mock-cloud-panel')).toBeNull();
+  });
+
+  it('keeps the cloud panel mounted while the inspector tab is active', () => {
+    (globalThis as { location?: { hostname: string } }).location = { hostname: 'phaserforge.app' };
+    cloudPanelSpy.cachedUser = { id: 'u1', email: 'alice@example.com' };
+
+    render(<InspectorPane />);
+
+    expect(screen.getByTestId('mock-inspector')).toBeTruthy();
+    expect(screen.getByTestId('mock-cloud-panel')).toBeTruthy();
+    expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(false);
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(true);
   });
 
   it('switches to cloud and routes panel callbacks back through dispatch', () => {
@@ -76,6 +89,8 @@ describe('InspectorPane tabs', () => {
 
     fireEvent.click(screen.getByTestId('inspector-pane-tab-cloud'));
     expect(screen.getByTestId('mock-cloud-panel').textContent).toBe('Cloud body');
+    expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(true);
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(false);
 
     cloudPanelSpy.onLoadYaml?.('id: test', 'demo.yaml');
     cloudPanelSpy.onStatus?.('Synced');
@@ -110,10 +125,13 @@ describe('InspectorPane tabs', () => {
     render(<InspectorPane />);
 
     expect(screen.getByTestId('mock-cloud-panel').textContent).toBe('Cloud body');
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(false);
 
     resolveAuth?.({ id: 'u1', email: 'alice@example.com' });
 
     expect(await screen.findByTestId('mock-inspector')).toBeTruthy();
+    expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(false);
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(true);
   });
 
   it('stays on Cloud after auth resolves when no user is signed in', async () => {
@@ -124,7 +142,9 @@ describe('InspectorPane tabs', () => {
 
     expect(screen.getByTestId('mock-cloud-panel').textContent).toBe('Cloud body');
     expect(await screen.findByTestId('mock-cloud-panel')).toBeTruthy();
-    expect(screen.queryByTestId('mock-inspector')).toBeNull();
+    expect(screen.getByTestId('mock-inspector')).toBeTruthy();
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(false);
+    expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(true);
   });
 
   it('stays on Cloud after auth resolves when the OAuth return marker is set', async () => {
@@ -145,7 +165,9 @@ describe('InspectorPane tabs', () => {
     resolveAuth?.({ id: 'u1', email: 'alice@example.com' });
 
     expect(await screen.findByTestId('mock-cloud-panel')).toBeTruthy();
-    expect(screen.queryByTestId('mock-inspector')).toBeNull();
+    expect(screen.getByTestId('mock-inspector')).toBeTruthy();
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(false);
+    expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(true);
     expect(window.sessionStorage.getItem('phaserforge.cloud.return_to_cloud_after_auth')).toBeNull();
   });
 });

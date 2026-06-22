@@ -54,7 +54,28 @@ export function InspectorPaneView({
         </div>
       ) : null}
 
-      {effectiveTab === 'inspector' ? inspectorContent : cloudContent}
+      {cloudEnabled ? (
+        <>
+          <div
+            data-testid="inspector-pane-panel-inspector"
+            role="tabpanel"
+            aria-hidden={effectiveTab !== 'inspector'}
+            hidden={effectiveTab !== 'inspector'}
+          >
+            {inspectorContent}
+          </div>
+          <div
+            data-testid="inspector-pane-panel-cloud"
+            role="tabpanel"
+            aria-hidden={effectiveTab !== 'cloud'}
+            hidden={effectiveTab !== 'cloud'}
+          >
+            {cloudContent}
+          </div>
+        </>
+      ) : (
+        inspectorContent
+      )}
     </>
   );
 }
