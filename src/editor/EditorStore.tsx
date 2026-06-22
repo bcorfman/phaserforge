@@ -56,7 +56,7 @@ import {
   type ProjectRevisionRecord,
   type SidebarScope,
 } from './projectTreeHistory';
-import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
+import { appendPersistenceDebugEntry, summarizeProjectLoadForDebug, summarizeYamlForDebug } from '../util/persistenceDebug';
 
 export const SCENE_STORAGE_KEY_V1 = 'phaserforge.sceneYaml.v1';
 export const SCENE_STORAGE_KEY = 'phaserforge.sceneYaml.v2';
@@ -3494,6 +3494,16 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     ...summarizeYamlForDebug(record.yaml ?? serializeProjectToYaml(record.project)),
   });
 
+  const dispatchProjectLoad = (project: ProjectSpec, sourceLabel: string) => {
+    appendPersistenceDebugEntry('editor-store:load-yaml-text-dispatch', summarizeProjectLoadForDebug({
+      sourceLabel,
+      project,
+      activeProjectId: activeProjectId ?? latestActiveProjectIdRef.current,
+      currentProjectId: latestStateRef.current.project.id,
+    }));
+    dispatch({ type: 'load-yaml-text', text: serializeProjectToYaml(project), sourceLabel });
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -3520,6 +3530,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         'initialize',
         snapshot.workspace.syncMode,
       ));
+      appendPersistenceDebugEntry('editor-store:initialize-project-hydrate', summarizeProjectLoadForDebug({
+        sourceLabel: 'initialize:active-record',
+        project,
+        activeProjectId: initialRecord.id,
+        currentProjectId: null,
+      }));
 
       dispatch({
         type: 'initialize',
@@ -3665,7 +3681,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       activeRecordRef.current = local;
       setActiveProjectId(local.id);
       setActiveProjectRevisions(local.revisions ?? []);
-      dispatch({ type: 'load-yaml-text', text: serializeProjectToYaml(local.project), sourceLabel: local.title });
+      dispatchProjectLoad(local.project, `open-project:local:${local.title}`);
       const nextSyncMode: ProjectSyncMode = local.cloudProjectId ? 'online' : state.syncMode;
       dispatch({ type: 'set-sync-mode', syncMode: nextSyncMode });
       await projectPersistence.setActiveProject(local.id, nextSyncMode);
@@ -3687,7 +3703,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     activeRecordRef.current = cacheRecord;
     setActiveProjectId(cacheRecord.id);
     setActiveProjectRevisions(cacheRecord.revisions ?? []);
-    dispatch({ type: 'load-yaml-text', text: serializeProjectToYaml(cacheRecord.project), sourceLabel: cloud.game.title });
+    dispatchProjectLoad(cacheRecord.project, `open-project:cloud:${cloud.game.title}`);
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     await projectPersistence.setActiveProject(cacheRecord.id, 'online');
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
@@ -3698,7 +3714,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     activeRecordRef.current = record;
     setActiveProjectId(record.id);
     setActiveProjectRevisions(record.revisions ?? []);
-    dispatch({ type: 'load-yaml-text', text: serializeProjectToYaml(record.project), sourceLabel: record.title });
+    dispatchProjectLoad(record.project, `create-project:${record.title}`);
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
   };
@@ -3709,7 +3725,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     activeRecordRef.current = duplicate;
     setActiveProjectId(duplicate.id);
     setActiveProjectRevisions(duplicate.revisions ?? []);
-    dispatch({ type: 'load-yaml-text', text: serializeProjectToYaml(duplicate.project), sourceLabel: duplicate.title });
+    dispatchProjectLoad(duplicate.project, `duplicate-project:${duplicate.title}`);
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
   };
@@ -3754,7 +3770,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     activeRecordRef.current = record;
     setActiveProjectId(record.id);
     setActiveProjectRevisions(record.revisions ?? []);
-    dispatch({ type: 'load-yaml-text', text: serializeProjectToYaml(record.project), sourceLabel: record.title });
+    dispatchProjectLoad(record.project, `copy-revision:${record.title}`);
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
   };
@@ -3770,7 +3786,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       activeRecordRef.current = protectedRecord;
       setActiveProjectRevisions(protectedRecord.revisions ?? []);
     }
-    dispatch({ type: 'load-yaml-text', text: serializeProjectToYaml(restoredProject), sourceLabel: revision.title });
+    dispatchProjectLoad(restoredProject, `restore-revision:${revision.title}`);
     const restoreStatus = buildRestoreRevisionStatus(revision);
     dispatch({ type: 'set-status', message: restoreStatus.message, expiresAt: Date.now() + 4000 });
   };

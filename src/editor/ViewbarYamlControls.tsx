@@ -4,6 +4,7 @@ import { useEditorStore } from './EditorStore';
 import { exportYamlToDisk } from './yamlFileExport';
 import { getYamlFileHandle, getYamlFileSourceLabel, getYamlPickerStartIn, setYamlFileHandle, setYamlFileSourceLabel, setYamlPickerStartIn } from './yamlPickerState';
 import { getOpenFilePicker, readFileHandleText, writeTextToHandle } from './yamlFileHandles';
+import { appendPersistenceDebugEntry } from '../util/persistenceDebug';
 
 type ViewbarYamlControlsViewProps = {
   project: ReturnType<typeof useEditorStore>['state']['project'];
@@ -33,15 +34,16 @@ export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlContro
           ],
           ...(getYamlPickerStartIn() ? { startIn: getYamlPickerStartIn() } : {}),
         });
-        const handle = handles?.[0];
-        if (handle) {
-          setYamlPickerStartIn(handle);
-          setYamlFileHandle(handle);
-          const { text, label } = await readFileHandleText(handle);
-          setYamlFileSourceLabel(label);
-          dispatch({ type: 'load-yaml-text', text, sourceLabel: label });
-          return;
-        }
+          const handle = handles?.[0];
+          if (handle) {
+            setYamlPickerStartIn(handle);
+            setYamlFileHandle(handle);
+            const { text, label } = await readFileHandleText(handle);
+            setYamlFileSourceLabel(label);
+            appendPersistenceDebugEntry('viewbar:load-yaml-text-dispatch', { sourceLabel: label });
+            dispatch({ type: 'load-yaml-text', text, sourceLabel: label });
+            return;
+          }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         // Fall back to <input type=file>.
@@ -67,6 +69,7 @@ export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlContro
       const text = await file.text();
       setYamlFileHandle(undefined);
       setYamlFileSourceLabel(file.name ?? 'picked file');
+      appendPersistenceDebugEntry('viewbar:load-yaml-text-dispatch', { sourceLabel: file.name ?? 'picked file' });
       dispatch({ type: 'load-yaml-text', text, sourceLabel: file.name ?? 'picked file' });
     } catch (err) {
       dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to open YAML' });
