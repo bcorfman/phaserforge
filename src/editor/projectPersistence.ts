@@ -3,6 +3,7 @@ import { createEmptyProject } from '../model/emptyProject';
 import type { ProjectSpec, StartupMode } from '../model/types';
 import { appendProjectRevision, createProjectRevision, type ProjectRevisionRecord } from './projectTreeHistory';
 import { createSerializedAsyncQueue } from './serializedAsyncQueue';
+import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
 import type { ViewState } from '../util/viewStateStorage';
 
 const DB_NAME = 'phaserforge.persistence.v1';
@@ -262,6 +263,12 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
   await workspaceMutationQueue.drain();
   const db = await openDb();
   if (!db) {
+    appendPersistenceDebugEntry('project-persistence:load-snapshot', {
+      localProjectCount: 0,
+      activeProjectId: null,
+      syncMode: 'online',
+      storage: 'unavailable',
+    });
     return {
       localProjects: [],
       workspace: defaultWorkspace(),
@@ -270,6 +277,13 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
   }
   await migrateLegacyStorage(db);
   const [localProjects, workspace, preferences] = await Promise.all([readAllProjects(db), readWorkspace(db), readPreferences(db)]);
+  const activeProject = localProjects.find((record) => record.id === workspace.activeProjectId) ?? null;
+  appendPersistenceDebugEntry('project-persistence:load-snapshot', {
+    localProjectCount: localProjects.length,
+    activeProjectId: workspace.activeProjectId,
+    syncMode: workspace.syncMode,
+    activeProject: activeProject ? summarizeRecordForDebug(activeProject) : null,
+  });
   return { localProjects, workspace, preferences };
 }
 
@@ -354,6 +368,22 @@ function cloneProject(project: ProjectSpec): ProjectSpec {
   return structuredClone(project);
 }
 
+function summarizeRecordForDebug(
+  record: Pick<StoredProjectRecord, 'cloudProjectId' | 'id' | 'origin' | 'projectId' | 'revisions' | 'syncStatus' | 'title' | 'updatedAt' | 'yaml'>,
+) {
+  return {
+    recordId: record.id,
+    projectId: record.projectId,
+    title: record.title,
+    updatedAt: record.updatedAt,
+    origin: record.origin,
+    syncStatus: record.syncStatus,
+    cloudProjectId: record.cloudProjectId ?? null,
+    revisionCount: record.revisions?.length ?? 0,
+    ...summarizeYamlForDebug(record.yaml),
+  };
+}
+
 function allocateProjectId(prefix: string = 'project'): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -372,25 +402,64 @@ export const projectPersistence = {
   },
 
   async saveProjectRecord(record: StoredProjectRecord): Promise<StoredProjectRecord[]> {
-    await upsertProjectRecord(record);
-    const snapshot = await this.load();
-    return snapshot.localProjects;
+    appendPersistenceDebugEntry('project-persistence:save-project-record-start', summarizeRecordForDebug(record));
+    try {
+      await upsertProjectRecord(record);
+      const snapshot = await this.load();
+      appendPersistenceDebugEntry('project-persistence:save-project-record-success', {
+        ...summarizeRecordForDebug(record),
+        localProjectCount: snapshot.localProjects.length,
+      });
+      return snapshot.localProjects;
+    } catch (error) {
+      appendPersistenceDebugEntry('project-persistence:save-project-record-error', {
+        ...summarizeRecordForDebug(record),
+        error,
+      });
+      throw error;
+    }
   },
 
   async saveActiveProjectRecord(record: StoredProjectRecord, syncMode: ProjectSyncMode): Promise<StoredProjectRecord[]> {
-    await workspaceMutationQueue.run(async () => {
-      const currentWorkspace = await getWorkspaceState();
-      await writeProjectRecordAndWorkspace(record, { ...currentWorkspace, activeProjectId: record.id, syncMode });
+    appendPersistenceDebugEntry('project-persistence:save-active-project-record-start', {
+      ...summarizeRecordForDebug(record),
+      syncMode,
     });
-    const snapshot = await this.load();
-    return snapshot.localProjects;
+    try {
+      await workspaceMutationQueue.run(async () => {
+        const currentWorkspace = await getWorkspaceState();
+        await writeProjectRecordAndWorkspace(record, { ...currentWorkspace, activeProjectId: record.id, syncMode });
+      });
+      const snapshot = await this.load();
+      appendPersistenceDebugEntry('project-persistence:save-active-project-record-success', {
+        ...summarizeRecordForDebug(record),
+        syncMode,
+        localProjectCount: snapshot.localProjects.length,
+      });
+      return snapshot.localProjects;
+    } catch (error) {
+      appendPersistenceDebugEntry('project-persistence:save-active-project-record-error', {
+        ...summarizeRecordForDebug(record),
+        syncMode,
+        error,
+      });
+      throw error;
+    }
   },
 
   async setActiveProject(projectId: string | null, syncMode: ProjectSyncMode): Promise<void> {
+    appendPersistenceDebugEntry('project-persistence:set-active-project', {
+      activeProjectId: projectId,
+      syncMode,
+    });
     await updateWorkspaceState({ activeProjectId: projectId, syncMode });
   },
 
   async setSyncMode(projectId: string | null, syncMode: ProjectSyncMode): Promise<void> {
+    appendPersistenceDebugEntry('project-persistence:set-sync-mode', {
+      activeProjectId: projectId,
+      syncMode,
+    });
     await updateWorkspaceState({ activeProjectId: projectId, syncMode });
   },
 
@@ -423,7 +492,13 @@ export const projectPersistence = {
   async loadActiveProjectRecord(): Promise<StoredProjectRecord | null> {
     const workspace = await getWorkspaceState({ awaitPendingWrites: true });
     if (!workspace.activeProjectId) return null;
-    return getProjectRecord(workspace.activeProjectId);
+    const record = await getProjectRecord(workspace.activeProjectId);
+    appendPersistenceDebugEntry('project-persistence:load-active-project-record', {
+      activeProjectId: workspace.activeProjectId,
+      syncMode: workspace.syncMode,
+      record: record ? summarizeRecordForDebug(record) : null,
+    });
+    return record;
   },
 
   async saveWorkspaceBackup(yaml: string, source: WorkspaceBackupRecord['source']): Promise<void> {
