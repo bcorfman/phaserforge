@@ -82,7 +82,15 @@ export function InspectorPaneView({
 
 export function InspectorPane() {
   const { state, dispatch, persistence } = useEditorStore();
-  const cloudEnabled = !isLocalHostname(globalThis.location?.hostname);
+  const forceCloudEnabledFromTest = (() => {
+    if (globalThis.window?.__PHASER_FORGE_TEST__?.forceCloudEnabled === true) return true;
+    try {
+      return globalThis.window?.sessionStorage?.getItem('phaserforge.testForceCloudEnabled.v1') === '1';
+    } catch {
+      return false;
+    }
+  })();
+  const cloudEnabled = forceCloudEnabledFromTest || !isLocalHostname(globalThis.location?.hostname);
   const activeProjectId = persistence?.activeProjectId ?? null;
   const activeCloudGameId = persistence?.localProjects?.find((entry) => entry.id === activeProjectId)?.cloudProjectId ?? null;
   const [tab, setTab] = useState<'inspector' | 'cloud'>(() => {
