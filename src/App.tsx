@@ -14,6 +14,7 @@ import { projectPersistence } from './editor/projectPersistence';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
+import { installPersistenceDebugBridge } from './util/persistenceDebug';
 import {
   canRestorePersistedView,
   doesReportedViewMatchCurrentScene,
@@ -85,6 +86,10 @@ function AppShell() {
     setWorldWidthDraft(String(world.width));
     setWorldHeightDraft(String(world.height));
   }, [world.width, world.height]);
+
+  useEffect(() => {
+    installPersistenceDebugBridge();
+  }, []);
 
   useEffect(() => {
     void loadProjectFonts(displayProject.assets.fonts);

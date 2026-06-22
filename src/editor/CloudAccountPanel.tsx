@@ -1,6 +1,7 @@
 import { type Dispatch, useEffect, useMemo, useRef, useState } from 'react';
 import { checkGithubPagesTarget, createGame, disconnectGithub, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame } from '../cloud/api';
 import { serializeProjectToYaml } from '../model/serialization';
+import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
 import type { EditorAction, EditorState } from './EditorStore';
 import { projectPersistence } from './projectPersistence';
 import { WorkspaceConflictModal } from './WorkspaceConflictModal';
@@ -445,6 +446,17 @@ export function CloudAccountPanel({
     .filter(Boolean)
     .join(' ');
 
+  const buildProjectDebugDetails = () => ({
+    projectId: state.project.id,
+    title: state.project.title ?? null,
+    publishTitle: state.project.publishTitle ?? null,
+    storedPublishRepo: state.project.publishGithubPagesRepo ?? null,
+    publishTitleDraft,
+    publishRepoDraft,
+    activeCloudGameId: activeCloudGameId ?? null,
+    cloudGameId: cloudGameIdRef.current ?? cloudGameId,
+  });
+
   useEffect(() => {
     setPublishTitleDraft(storedPublishTitle ?? projectTitle);
   }, [projectTitle, storedPublishTitle, state.project.id]);
@@ -454,12 +466,36 @@ export function CloudAccountPanel({
   }, [storedPublishRepo, state.project.id]);
 
   const persistPublishTitleDraft = () => {
-    if (publishTitleDraft === (storedPublishTitle ?? projectTitle)) return;
+    if (publishTitleDraft === (storedPublishTitle ?? projectTitle)) {
+      appendPersistenceDebugEntry('cloud:publish-title-draft-persist-skip', {
+        ...buildProjectDebugDetails(),
+        draft: publishTitleDraft,
+        stored: storedPublishTitle ?? projectTitle,
+      });
+      return;
+    }
+    appendPersistenceDebugEntry('cloud:publish-title-draft-persist-dispatch', {
+      ...buildProjectDebugDetails(),
+      draft: publishTitleDraft,
+      stored: storedPublishTitle ?? projectTitle,
+    });
     dispatch({ type: 'set-project-metadata', publishTitle: publishTitleDraft });
   };
 
   const persistPublishRepoDraft = () => {
-    if (publishRepoDraft === storedPublishRepo) return;
+    if (publishRepoDraft === storedPublishRepo) {
+      appendPersistenceDebugEntry('cloud:publish-repo-draft-persist-skip', {
+        ...buildProjectDebugDetails(),
+        draft: publishRepoDraft,
+        stored: storedPublishRepo,
+      });
+      return;
+    }
+    appendPersistenceDebugEntry('cloud:publish-repo-draft-persist-dispatch', {
+      ...buildProjectDebugDetails(),
+      draft: publishRepoDraft,
+      stored: storedPublishRepo,
+    });
     dispatch({ type: 'set-project-metadata', publishGithubPagesRepo: publishRepoDraft });
   };
 
@@ -584,7 +620,15 @@ export function CloudAccountPanel({
     }
   };
 
-  const flushPendingAutosaveNow = () => {
+  const flushPendingAutosaveNow = (trigger: 'pagehide' | 'unmount' | 'visibility-hidden') => {
+    appendPersistenceDebugEntry('cloud:flush-pending-autosave-now', {
+      trigger,
+      hasPending: Boolean(pendingAutosaveRef.current),
+      autosaveInFlight: autosaveInFlightRef.current,
+      pendingProjectId: pendingAutosaveRef.current?.projectId ?? null,
+      pendingTitle: pendingAutosaveRef.current?.title ?? null,
+      ...buildProjectDebugDetails(),
+    });
     if (!pendingAutosaveRef.current || autosaveInFlightRef.current) return;
     clearAutosaveTimer();
     void flushCloudAutosave();
@@ -601,18 +645,42 @@ export function CloudAccountPanel({
   };
 
   const flushCloudAutosave = async (): Promise<void> => {
-    if (autosaveInFlightRef.current) return;
+    if (autosaveInFlightRef.current) {
+      appendPersistenceDebugEntry('cloud:autosave-flush-skip-in-flight', buildProjectDebugDetails());
+      return;
+    }
     const pending = pendingAutosaveRef.current;
-    if (!pending || !user) return;
+    if (!pending || !user) {
+      appendPersistenceDebugEntry('cloud:autosave-flush-skip-missing-pending-or-user', {
+        ...buildProjectDebugDetails(),
+        hasPending: Boolean(pending),
+        hasUser: Boolean(user),
+      });
+      return;
+    }
     if (pending.signature === lastAutosavedSignatureRef.current) {
       pendingAutosaveRef.current = null;
+      appendPersistenceDebugEntry('cloud:autosave-flush-skip-duplicate-signature', {
+        ...buildProjectDebugDetails(),
+        pendingProjectId: pending.projectId,
+        pendingTitle: pending.title,
+        signatureHash: summarizeYamlForDebug(pending.yaml).yamlHash,
+      });
       return;
     }
 
     autosaveInFlightRef.current = true;
     pendingAutosaveRef.current = null;
+    const pendingYamlSummary = summarizeYamlForDebug(pending.yaml);
     try {
       const existingCloudGameId = cloudGameIdRef.current;
+      appendPersistenceDebugEntry('cloud:autosave-flush-start', {
+        ...buildProjectDebugDetails(),
+        pendingProjectId: pending.projectId,
+        pendingTitle: pending.title,
+        cloudGameId: existingCloudGameId ?? null,
+        ...pendingYamlSummary,
+      });
       if (existingCloudGameId) {
         await runWithCsrfRetry((csrf) => updateGame(existingCloudGameId, { title: pending.title, yaml: pending.yaml }, csrf));
       } else {
@@ -623,9 +691,23 @@ export function CloudAccountPanel({
         void onCloudGameLinked?.(nextCloudGameId);
       }
       lastAutosavedSignatureRef.current = pending.signature;
+      appendPersistenceDebugEntry('cloud:autosave-flush-success', {
+        ...buildProjectDebugDetails(),
+        pendingProjectId: pending.projectId,
+        pendingTitle: pending.title,
+        cloudGameId: cloudGameIdRef.current ?? existingCloudGameId ?? null,
+        ...pendingYamlSummary,
+      });
     } catch (err) {
       pendingAutosaveRef.current = pending;
       scheduleAutosaveRetry();
+      appendPersistenceDebugEntry('cloud:autosave-flush-error', {
+        ...buildProjectDebugDetails(),
+        pendingProjectId: pending.projectId,
+        pendingTitle: pending.title,
+        ...pendingYamlSummary,
+        error: err,
+      });
       onError(err instanceof Error ? err.message : 'Cloud save failed');
     } finally {
       autosaveInFlightRef.current = false;
@@ -646,6 +728,12 @@ export function CloudAccountPanel({
     const signature = `${state.project.id}\n${title}\n${yaml}`;
     if (signature === lastAutosavedSignatureRef.current) return;
     pendingAutosaveRef.current = { projectId: state.project.id, title, yaml, signature };
+    appendPersistenceDebugEntry('cloud:autosave-scheduled', {
+      ...buildProjectDebugDetails(),
+      pendingProjectId: state.project.id,
+      pendingTitle: title,
+      ...summarizeYamlForDebug(yaml),
+    });
     clearAutosaveTimer();
     autosaveTimerRef.current = window.setTimeout(() => {
       autosaveTimerRef.current = null;
@@ -661,10 +749,15 @@ export function CloudAccountPanel({
     if (typeof window === 'undefined') return;
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'hidden') return;
-      flushPendingAutosaveNow();
+      appendPersistenceDebugEntry('cloud:visibility-hidden-flush', {
+        ...buildProjectDebugDetails(),
+        visibilityState: document.visibilityState,
+      });
+      flushPendingAutosaveNow('visibility-hidden');
     };
     const handlePageHide = () => {
-      flushPendingAutosaveNow();
+      appendPersistenceDebugEntry('cloud:pagehide-flush', buildProjectDebugDetails());
+      flushPendingAutosaveNow('pagehide');
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handlePageHide);
@@ -676,7 +769,7 @@ export function CloudAccountPanel({
 
   useEffect(() => {
     return () => {
-      flushPendingAutosaveNow();
+      flushPendingAutosaveNow('unmount');
       clearAutosaveTimer();
       if (autosaveRetryTimerRef.current != null) {
         window.clearTimeout(autosaveRetryTimerRef.current);

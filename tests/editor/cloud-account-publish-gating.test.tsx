@@ -5,6 +5,11 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { serializeProjectToYaml } from '../../src/model/serialization';
+import {
+  clearPersistenceDebugEntries,
+  readPersistenceDebugEntries,
+  setPersistenceDebugEnabled,
+} from '../../src/util/persistenceDebug';
 
 const api = vi.hoisted(() => {
   return {
@@ -130,6 +135,8 @@ describe('CloudAccountPanel publish gating', () => {
   afterEach(() => {
     __resetCloudAccountPanelAuthCacheForTests();
     window.localStorage.clear();
+    clearPersistenceDebugEntries();
+    setPersistenceDebugEnabled(false);
     vi.clearAllMocks();
     vi.useRealTimers();
   });
@@ -201,6 +208,7 @@ describe('CloudAccountPanel publish gating', () => {
   it('flushes a pending cloud autosave when the page is hidden before the debounce elapses', async () => {
     vi.useFakeTimers();
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+    setPersistenceDebugEnabled(true);
 
     const project = createEmptyProject();
     project.id = 'project-1';
@@ -255,6 +263,11 @@ describe('CloudAccountPanel publish gating', () => {
         }),
         'csrf',
       );
+
+      const events = readPersistenceDebugEntries().map((entry) => entry.event);
+      expect(events).toContain('cloud:pagehide-flush');
+      expect(events).toContain('cloud:autosave-flush-start');
+      expect(events).toContain('cloud:autosave-flush-success');
     } finally {
       view.cleanup();
     }
@@ -920,6 +933,7 @@ describe('CloudAccountPanel publish gating', () => {
       login: 'bcorfman',
       pagesBaseUrl: 'https://bcorfman.github.io/',
     });
+    setPersistenceDebugEnabled(true);
 
     const dispatch = vi.fn();
 
@@ -981,6 +995,15 @@ describe('CloudAccountPanel publish gating', () => {
 
       expect(document.querySelector('[data-testid="repo-state"]')?.textContent).toBe('new-repo');
       expect(dispatch).toHaveBeenCalledWith({ type: 'set-project-metadata', publishGithubPagesRepo: 'new-repo' });
+      expect(readPersistenceDebugEntries()).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          event: 'cloud:publish-repo-draft-persist-dispatch',
+          details: expect.objectContaining({
+            draft: 'new-repo',
+            stored: 'old-repo',
+          }),
+        }),
+      ]));
     } finally {
       view.cleanup();
     }
