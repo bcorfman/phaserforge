@@ -71,6 +71,7 @@ type PersistenceSnapshot = {
 type LegacyStorageReader = Pick<Storage, 'getItem'>;
 const EMPTY_LEGACY_STORAGE_READER: LegacyStorageReader = { getItem: () => null };
 const workspaceMutationQueue = createSerializedAsyncQueue();
+let cachedSnapshot: PersistenceSnapshot | null = null;
 
 const defaultWorkspace = (): WorkspaceStateRecord => ({
   activeProjectId: null,
@@ -300,7 +301,34 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
     syncMode: workspace.syncMode,
     activeProject: activeProject ? summarizeRecordForDebug(activeProject) : null,
   });
-  return { localProjects, workspace, preferences };
+  const snapshot = { localProjects, workspace, preferences };
+  cachedSnapshot = snapshot;
+  return snapshot;
+}
+
+function mergeLocalProjects(records: StoredProjectRecord[], nextRecord: StoredProjectRecord): StoredProjectRecord[] {
+  const withoutDuplicate = records.filter((record) => record.id !== nextRecord.id);
+  return [nextRecord, ...withoutDuplicate]
+    .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+}
+
+function updateCachedSnapshot(
+  record: StoredProjectRecord,
+  workspacePatch?: Partial<WorkspaceStateRecord>,
+): PersistenceSnapshot {
+  const nextWorkspace = {
+    ...(cachedSnapshot?.workspace ?? defaultWorkspace()),
+    ...workspacePatch,
+  };
+  const nextPreferences = cachedSnapshot?.preferences ?? buildPreferencesFromLegacy(getLegacyStorageReader());
+  const nextLocalProjects = mergeLocalProjects(cachedSnapshot?.localProjects ?? [], record);
+  const nextSnapshot = {
+    localProjects: nextLocalProjects,
+    workspace: nextWorkspace,
+    preferences: nextPreferences,
+  } satisfies PersistenceSnapshot;
+  cachedSnapshot = nextSnapshot;
+  return nextSnapshot;
 }
 
 async function upsertProjectRecord(record: StoredProjectRecord): Promise<void> {
@@ -422,7 +450,7 @@ export const projectPersistence = {
     appendPersistenceDebugEntry('project-persistence:save-project-record-start', summarizeRecordForDebug(record));
     try {
       await upsertProjectRecord(record);
-      const snapshot = await this.load();
+      const snapshot = updateCachedSnapshot(record);
       appendPersistenceDebugEntry('project-persistence:save-project-record-success', {
         ...summarizeRecordForDebug(record),
         localProjectCount: snapshot.localProjects.length,
@@ -447,7 +475,7 @@ export const projectPersistence = {
         const currentWorkspace = await getWorkspaceState();
         await writeProjectRecordAndWorkspace(record, { ...currentWorkspace, activeProjectId: record.id, syncMode });
       });
-      const snapshot = await this.load();
+      const snapshot = updateCachedSnapshot(record, { activeProjectId: record.id, syncMode });
       appendPersistenceDebugEntry('project-persistence:save-active-project-record-success', {
         ...summarizeRecordForDebug(record),
         syncMode,
@@ -470,6 +498,16 @@ export const projectPersistence = {
       syncMode,
     });
     await updateWorkspaceState({ activeProjectId: projectId, syncMode });
+    if (cachedSnapshot) {
+      cachedSnapshot = {
+        ...cachedSnapshot,
+        workspace: {
+          ...cachedSnapshot.workspace,
+          activeProjectId: projectId,
+          syncMode,
+        },
+      };
+    }
   },
 
   async setSyncMode(projectId: string | null, syncMode: ProjectSyncMode): Promise<void> {
@@ -589,6 +627,7 @@ export const projectPersistence = {
     const record = buildStoredProjectRecord(nextProject, { id: nextProject.id, origin: 'local-only', syncStatus: 'local' });
     await upsertProjectRecord(record);
     await updateWorkspaceState({ activeProjectId: record.id, syncMode: 'online' });
+    updateCachedSnapshot(record, { activeProjectId: record.id, syncMode: 'online' });
     return record;
   },
 
@@ -603,6 +642,7 @@ export const projectPersistence = {
     });
     await upsertProjectRecord(next);
     await updateWorkspaceState({ activeProjectId: next.id, syncMode: 'online' });
+    updateCachedSnapshot(next, { activeProjectId: next.id, syncMode: 'online' });
     return next;
   },
 
@@ -615,6 +655,7 @@ export const projectPersistence = {
       revisions: appendProjectRevision(existing.revisions, revision),
     } satisfies StoredProjectRecord;
     await upsertProjectRecord(next);
+    updateCachedSnapshot(next);
     return next;
   },
 };
