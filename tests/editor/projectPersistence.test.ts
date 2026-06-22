@@ -122,4 +122,39 @@ describe('projectPersistence steady-state storage', () => {
     expect(storedNewestRevision.project).toBeUndefined();
     expect(materializeProjectRevision(revisions, storedNewestRevision.id)).toEqual(newerProject);
   });
+
+  it('does not reopen indexeddb just to rebuild local projects after saving the active record', async () => {
+    const originalIndexedDb = window.indexedDB;
+    const originalLoad = projectPersistence.load;
+    let loadCount = 0;
+    // @ts-expect-error test override
+    window.indexedDB = undefined;
+    projectPersistence.load = (async () => {
+      loadCount += 1;
+      return {
+        localProjects: [],
+        workspace: { activeProjectId: null, syncMode: 'online' },
+        preferences: null,
+      };
+    }) as typeof projectPersistence.load;
+
+    try {
+      const project = createEmptyProject();
+      const record = buildStoredProjectRecord(project);
+
+      await projectPersistence.saveActiveProjectRecord({
+        ...record,
+        project: {
+          ...record.project,
+          title: 'Pattern Demo',
+        },
+        title: 'Pattern Demo',
+      }, 'online');
+
+      expect(loadCount).toBe(0);
+    } finally {
+      window.indexedDB = originalIndexedDb;
+      projectPersistence.load = originalLoad;
+    }
+  });
 });
