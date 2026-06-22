@@ -55,6 +55,7 @@ import {
   type ProjectRevisionRecord,
   type SidebarScope,
 } from './projectTreeHistory';
+import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
 
 export const SCENE_STORAGE_KEY_V1 = 'phaserforge.sceneYaml.v1';
 export const SCENE_STORAGE_KEY = 'phaserforge.sceneYaml.v2';
@@ -3478,6 +3479,19 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const summarizeActiveProjectForDebug = (project: ProjectSpec, record: StoredProjectRecord, trigger: string, syncMode: ProjectSyncMode) => ({
+    trigger,
+    syncMode,
+    projectId: project.id,
+    title: project.title ?? null,
+    publishTitle: project.publishTitle ?? null,
+    publishGithubPagesRepo: project.publishGithubPagesRepo ?? null,
+    recordId: record.id,
+    cloudProjectId: record.cloudProjectId ?? null,
+    revisionCount: record.revisions?.length ?? 0,
+    ...summarizeYamlForDebug(record.yaml),
+  });
+
   useEffect(() => {
     let cancelled = false;
 
@@ -3498,6 +3512,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       setLocalProjects((snapshot.localProjects.length > 0 ? snapshot.localProjects : [initialRecord]).map(mapStoredProject));
       const project = parseProjectYaml(initialRecord.yaml);
       const currentSceneId = project.initialSceneId;
+      appendPersistenceDebugEntry('editor-store:initialize-loaded-project', summarizeActiveProjectForDebug(
+        project,
+        initialRecord,
+        'initialize',
+        snapshot.workspace.syncMode,
+      ));
 
       dispatch({
         type: 'initialize',
@@ -3523,14 +3543,31 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     const nextRecord = buildActiveProjectRecordSnapshot(state.project, state.syncMode, activeProjectId ?? state.project.id);
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
-    void projectPersistence.saveActiveProjectRecord(nextRecord, state.syncMode).then((records) => {
-      setLocalProjects(records.map(mapStoredProject));
-    });
+    appendPersistenceDebugEntry('editor-store:save-active-start', summarizeActiveProjectForDebug(
+      state.project,
+      nextRecord,
+      'state-change',
+      state.syncMode,
+    ));
+    void projectPersistence.saveActiveProjectRecord(nextRecord, state.syncMode)
+      .then((records) => {
+        appendPersistenceDebugEntry('editor-store:save-active-success', {
+          ...summarizeActiveProjectForDebug(state.project, nextRecord, 'state-change', state.syncMode),
+          localProjectCount: records.length,
+        });
+        setLocalProjects(records.map(mapStoredProject));
+      })
+      .catch((error) => {
+        appendPersistenceDebugEntry('editor-store:save-active-error', {
+          ...summarizeActiveProjectForDebug(state.project, nextRecord, 'state-change', state.syncMode),
+          error,
+        });
+      });
   }, [activeProjectId, state.initialized, state.project, state.syncMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const persistLatestProject = () => {
+    const persistLatestProject = (trigger: 'pagehide' | 'visibility-hidden') => {
       const currentState = latestStateRef.current;
       if (!currentState.initialized) return;
       const nextRecord = buildActiveProjectRecordSnapshot(
@@ -3539,18 +3576,49 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         latestActiveProjectIdRef.current ?? currentState.project.id,
       );
       activeRecordRef.current = nextRecord;
-      void projectPersistence.saveActiveProjectRecord(nextRecord, currentState.syncMode).then((records) => {
-        setLocalProjects(records.map(mapStoredProject));
-      });
+      appendPersistenceDebugEntry('editor-store:save-active-start', summarizeActiveProjectForDebug(
+        currentState.project,
+        nextRecord,
+        trigger,
+        currentState.syncMode,
+      ));
+      void projectPersistence.saveActiveProjectRecord(nextRecord, currentState.syncMode)
+        .then((records) => {
+          appendPersistenceDebugEntry('editor-store:save-active-success', {
+            ...summarizeActiveProjectForDebug(currentState.project, nextRecord, trigger, currentState.syncMode),
+            localProjectCount: records.length,
+          });
+          setLocalProjects(records.map(mapStoredProject));
+        })
+        .catch((error) => {
+          appendPersistenceDebugEntry('editor-store:save-active-error', {
+            ...summarizeActiveProjectForDebug(currentState.project, nextRecord, trigger, currentState.syncMode),
+            error,
+          });
+        });
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'hidden') return;
-      persistLatestProject();
+      appendPersistenceDebugEntry('editor-store:visibility-hidden', {
+        visibilityState: document.visibilityState,
+        projectId: latestStateRef.current.project.id,
+        title: latestStateRef.current.project.title ?? null,
+        publishGithubPagesRepo: latestStateRef.current.project.publishGithubPagesRepo ?? null,
+      });
+      persistLatestProject('visibility-hidden');
     };
-    window.addEventListener('pagehide', persistLatestProject);
+    const handlePageHide = () => {
+      appendPersistenceDebugEntry('editor-store:pagehide', {
+        projectId: latestStateRef.current.project.id,
+        title: latestStateRef.current.project.title ?? null,
+        publishGithubPagesRepo: latestStateRef.current.project.publishGithubPagesRepo ?? null,
+      });
+      persistLatestProject('pagehide');
+    };
+    window.addEventListener('pagehide', handlePageHide);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      window.removeEventListener('pagehide', persistLatestProject);
+      window.removeEventListener('pagehide', handlePageHide);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
