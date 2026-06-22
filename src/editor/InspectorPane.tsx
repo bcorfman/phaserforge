@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useEditorStore } from './EditorStore';
 import { Inspector } from './Inspector';
+import { parseProjectYaml } from '../model/serialization';
 import {
   CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY,
   CloudAccountPanel,
@@ -9,6 +10,7 @@ import {
   resolveCachedCloudAccountUser,
 } from './CloudAccountPanel';
 import { isLocalHostname } from '../util/isLocalHostname';
+import { appendPersistenceDebugEntry, summarizeProjectLoadForDebug } from '../util/persistenceDebug';
 
 export type InspectorPaneTab = 'inspector' | 'cloud';
 
@@ -145,7 +147,24 @@ export function InspectorPane() {
           state={state}
           activeCloudGameId={activeCloudGameId}
           dispatch={dispatch}
-          onLoadYaml={(yaml, sourceLabel) => dispatch({ type: 'load-yaml-text', text: yaml, sourceLabel })}
+          onLoadYaml={(yaml, sourceLabel) => {
+            try {
+              const parsed = parseProjectYaml(yaml);
+              appendPersistenceDebugEntry('inspector-pane:on-load-yaml-dispatch', summarizeProjectLoadForDebug({
+                sourceLabel,
+                project: parsed,
+                activeProjectId,
+                currentProjectId: state.project?.id ?? null,
+              }));
+            } catch {
+              appendPersistenceDebugEntry('inspector-pane:on-load-yaml-dispatch', {
+                sourceLabel,
+                activeProjectId,
+                currentProjectId: state.project?.id ?? null,
+              });
+            }
+            dispatch({ type: 'load-yaml-text', text: yaml, sourceLabel });
+          }}
           onCloudGameLinked={(gameId) => persistence.linkActiveProjectToCloudGame(gameId)}
           onStatus={(message) => dispatch({ type: 'set-status', message, expiresAt: Date.now() + 4000 })}
           onError={(message) => dispatch({ type: 'set-error', error: message })}

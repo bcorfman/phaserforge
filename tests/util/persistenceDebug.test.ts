@@ -5,8 +5,10 @@ import {
   clearPersistenceDebugEntries,
   installPersistenceDebugBridge,
   readPersistenceDebugEntries,
+  summarizeProjectLoadForDebug,
   setPersistenceDebugEnabled,
 } from '../../src/util/persistenceDebug';
+import { sampleProject } from '../../src/model/sampleProject';
 
 function createStorageMock(): Storage {
   let store = new Map<string, string>();
@@ -92,5 +94,24 @@ describe('persistenceDebug', () => {
 
     window.__PHASER_FORGE_PERSISTENCE_DEBUG__?.clear();
     expect(window.__PHASER_FORGE_PERSISTENCE_DEBUG__?.read()).toEqual([]);
+  });
+
+  it('summarizes project load details with source labels and YAML fingerprints', () => {
+    const details = summarizeProjectLoadForDebug({
+      sourceLabel: 'cloud:workspace',
+      project: sampleProject,
+      activeProjectId: 'cloud:g1',
+      currentProjectId: 'project-1',
+    });
+
+    expect(details).toEqual(expect.objectContaining({
+      sourceLabel: 'cloud:workspace',
+      activeProjectId: 'cloud:g1',
+      currentProjectId: 'project-1',
+      nextProjectId: 'project-1',
+      nextTitle: 'Untitled Project',
+    }));
+    expect(details.yamlHash).toEqual(expect.any(String));
+    expect(details.yamlLength).toBeGreaterThan(100);
   });
 });
