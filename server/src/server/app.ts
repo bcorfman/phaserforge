@@ -58,6 +58,15 @@ export function createApp(options: CreateAppOptions) {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    if (
+      err &&
+      typeof err === 'object' &&
+      'type' in err &&
+      (err as { type?: unknown }).type === 'entity.too.large'
+    ) {
+      res.status(413).json({ error: 'payload_too_large' });
+      return;
+    }
     // Avoid leaking stack traces by default.
     res.status(500).json({ error: 'internal_error' });
   });
