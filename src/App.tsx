@@ -14,7 +14,7 @@ import { projectPersistence } from './editor/projectPersistence';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
-import { installPersistenceDebugBridge } from './util/persistenceDebug';
+import { appendPersistenceDebugEntry, installPersistenceDebugBridge } from './util/persistenceDebug';
 import {
   canRestorePersistedView,
   doesReportedViewMatchCurrentScene,
@@ -632,14 +632,42 @@ function AppShell() {
   const [rightPaneMouseDragging, setRightPaneMouseDragging] = useState(false);
   const [leftPaneWidth, setLeftPaneWidth] = useState(300);
   const [rightPaneWidth, setRightPaneWidth] = useState(380);
+  const latestLeftPaneWidthRef = useRef(leftPaneWidth);
+  const latestRightPaneWidthRef = useRef(rightPaneWidth);
+
+  latestLeftPaneWidthRef.current = leftPaneWidth;
+  latestRightPaneWidthRef.current = rightPaneWidth;
+
+  const persistSidebarLayout = (trigger: 'drag-end-left' | 'drag-end-right' | 'left-pane-width-effect' | 'pagehide' | 'right-pane-width-effect' | 'visibility-hidden') => {
+    if (!layoutHydratedRef.current) return;
+    const nextLeftPaneWidth = latestLeftPaneWidthRef.current;
+    const nextRightPaneWidth = latestRightPaneWidthRef.current;
+    appendPersistenceDebugEntry('layout:persist-sidebar-widths', {
+      trigger,
+      leftPaneWidth: nextLeftPaneWidth,
+      rightPaneWidth: nextRightPaneWidth,
+    });
+    void projectPersistence.updateWorkspaceStateRecord({
+      leftPaneWidth: nextLeftPaneWidth,
+      rightPaneWidth: nextRightPaneWidth,
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
     void projectPersistence.loadWorkspaceStateRecord().then((workspace) => {
       if (cancelled) return;
-      if (Number.isFinite(workspace.leftPaneWidth)) setLeftPaneWidth(Math.max(240, Math.min(520, workspace.leftPaneWidth as number)));
-      if (Number.isFinite(workspace.rightPaneWidth)) setRightPaneWidth(Math.max(340, Math.min(1040, workspace.rightPaneWidth as number)));
+      const nextLeftPaneWidth = Number.isFinite(workspace.leftPaneWidth) ? Math.max(240, Math.min(520, workspace.leftPaneWidth as number)) : leftPaneWidth;
+      const nextRightPaneWidth = Number.isFinite(workspace.rightPaneWidth) ? Math.max(340, Math.min(1040, workspace.rightPaneWidth as number)) : rightPaneWidth;
+      latestLeftPaneWidthRef.current = nextLeftPaneWidth;
+      latestRightPaneWidthRef.current = nextRightPaneWidth;
+      if (Number.isFinite(workspace.leftPaneWidth)) setLeftPaneWidth(nextLeftPaneWidth);
+      if (Number.isFinite(workspace.rightPaneWidth)) setRightPaneWidth(nextRightPaneWidth);
       layoutHydratedRef.current = true;
+      appendPersistenceDebugEntry('layout:hydrate-sidebar-widths', {
+        leftPaneWidth: nextLeftPaneWidth,
+        rightPaneWidth: nextRightPaneWidth,
+      });
     });
     return () => {
       cancelled = true;
@@ -648,12 +676,12 @@ function AppShell() {
 
   useEffect(() => {
     if (!layoutHydratedRef.current) return;
-    void projectPersistence.updateWorkspaceStateRecord({ leftPaneWidth });
+    persistSidebarLayout('left-pane-width-effect');
   }, [leftPaneWidth]);
 
   useEffect(() => {
     if (!layoutHydratedRef.current) return;
-    void projectPersistence.updateWorkspaceStateRecord({ rightPaneWidth });
+    persistSidebarLayout('right-pane-width-effect');
   }, [rightPaneWidth]);
 
   const startLeftPaneDrag = (clientX: number) => {
@@ -678,9 +706,12 @@ function AppShell() {
       const minCanvas = 480;
       const available = bodyRect.width - 24 - rightPaneWidth - minCanvas;
       const maxByCanvas = Math.max(minWidth, Math.min(maxWidth, available));
-      setLeftPaneWidth(Math.max(minWidth, Math.min(maxByCanvas, clamped)));
+      const nextLeftPaneWidth = Math.max(minWidth, Math.min(maxByCanvas, clamped));
+      latestLeftPaneWidthRef.current = nextLeftPaneWidth;
+      setLeftPaneWidth(nextLeftPaneWidth);
       return;
     }
+    latestLeftPaneWidthRef.current = clamped;
     setLeftPaneWidth(clamped);
   };
 
@@ -698,18 +729,23 @@ function AppShell() {
       const minCanvas = 480;
       const available = bodyRect.width - 24 - leftPaneWidth - minCanvas;
       const maxByCanvas = Math.max(minWidth, Math.min(maxWidth, available));
-      setRightPaneWidth(Math.max(minWidth, Math.min(maxByCanvas, clamped)));
+      const nextRightPaneWidth = Math.max(minWidth, Math.min(maxByCanvas, clamped));
+      latestRightPaneWidthRef.current = nextRightPaneWidth;
+      setRightPaneWidth(nextRightPaneWidth);
       return;
     }
+    latestRightPaneWidthRef.current = clamped;
     setRightPaneWidth(clamped);
   };
 
   const endLeftPaneDrag = () => {
     leftPaneDragRef.current = null;
+    persistSidebarLayout('drag-end-left');
   };
 
   const endRightPaneDrag = () => {
     rightPaneDragRef.current = null;
+    persistSidebarLayout('drag-end-right');
   };
 
   useEffect(() => {
@@ -747,6 +783,22 @@ function AppShell() {
       window.removeEventListener('mouseup', onMouseUp);
     };
   }, [rightPaneMouseDragging]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'hidden') return;
+      persistSidebarLayout('visibility-hidden');
+    };
+    const handlePageHide = () => {
+      persistSidebarLayout('pagehide');
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, []);
 
   return (
     <div className="app-root" data-testid="app-root">
