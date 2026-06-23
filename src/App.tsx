@@ -707,6 +707,10 @@ function AppShell() {
       leftPaneWidth: nextLeftPaneWidth,
       rightPaneWidth: nextRightPaneWidth,
     });
+    projectPersistence.writeCachedWorkspaceStateRecord?.({
+      leftPaneWidth: nextLeftPaneWidth,
+      rightPaneWidth: nextRightPaneWidth,
+    });
     void projectPersistence.updateWorkspaceStateRecord({
       leftPaneWidth: nextLeftPaneWidth,
       rightPaneWidth: nextRightPaneWidth,

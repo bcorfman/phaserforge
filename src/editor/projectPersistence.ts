@@ -135,6 +135,13 @@ function writeJsonStorageRecord(key: string, value: unknown): void {
   }
 }
 
+function mergeWorkspaceState(
+  base: WorkspaceStateRecord,
+  patch: Partial<WorkspaceStateRecord> | ((current: WorkspaceStateRecord) => WorkspaceStateRecord),
+): WorkspaceStateRecord {
+  return typeof patch === 'function' ? patch(base) : { ...base, ...patch };
+}
+
 function openDb(): Promise<IDBDatabase | null> {
   if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined') return Promise.resolve(null);
   return new Promise((resolve, reject) => {
@@ -573,7 +580,7 @@ async function updateWorkspaceState(
 ): Promise<WorkspaceStateRecord> {
   return workspaceMutationQueue.run(async () => {
     const current = await getWorkspaceState();
-    const next = typeof patch === 'function' ? patch(current) : { ...current, ...patch };
+    const next = mergeWorkspaceState(current, patch);
     await writeWorkspace(next);
     return next;
   });
@@ -727,6 +734,15 @@ export const projectPersistence = {
 
   readCachedWorkspaceStateRecord(): WorkspaceStateRecord | null {
     return readJsonStorageRecord<WorkspaceStateRecord>(WORKSPACE_BOOT_CACHE_KEY);
+  },
+
+  writeCachedWorkspaceStateRecord(
+    patch: Partial<WorkspaceStateRecord> | ((current: WorkspaceStateRecord) => WorkspaceStateRecord),
+  ): WorkspaceStateRecord {
+    const current = this.readCachedWorkspaceStateRecord() ?? defaultWorkspace();
+    const next = mergeWorkspaceState(current, patch);
+    writeJsonStorageRecord(WORKSPACE_BOOT_CACHE_KEY, next);
+    return next;
   },
 
   readCachedPreferencesRecord(): PreferencesRecord | null {
