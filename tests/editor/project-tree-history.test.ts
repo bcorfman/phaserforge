@@ -225,6 +225,147 @@ describe('project tree + history helpers', () => {
     expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
   });
 
+  it('coalesces nearby autosaves when they continue the same counter editing burst', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.counters = {
+      score: {
+        id: 'score',
+        name: 'Score',
+        scope: 'global',
+        value: 0,
+      },
+    };
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.counters!.score.value = 5;
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-17T10:10:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
+  });
+
+  it('coalesces nearby autosaves when they continue the same collision-rule editing burst', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.scenes[firstEdit.initialSceneId].collisionRules = [{
+      id: 'player-vs-enemies',
+      a: { type: 'layer', layer: 'player' },
+      b: { type: 'layer', layer: 'enemies' },
+      interaction: 'overlap',
+    }];
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.scenes[secondEdit.initialSceneId].collisionRules![0].onEnter = {
+      callId: 'scene.flash',
+      args: { durationMs: 120 },
+    };
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-17T10:10:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
+  });
+
+  it('coalesces nearby autosaves when they continue the same event-block editing burst', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.scenes[firstEdit.initialSceneId].eventBlocks = {
+      'wave-start': {
+        id: 'wave-start',
+        name: 'Wave Start',
+        target: { type: 'group', groupId: 'g-enemies' },
+      },
+    };
+    firstEdit.scenes[firstEdit.initialSceneId].attachments['att-loop'].eventId = 'wave-start';
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.scenes[secondEdit.initialSceneId].eventBlocks!['wave-start'].name = 'Opening Wave';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-17T10:10:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
+  });
+
+  it('coalesces nearby autosaves when they continue the same image asset editing burst', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.assets.images.hero = {
+      id: 'hero',
+      source: {
+        kind: 'embedded',
+        dataUrl: 'data:image/png;base64,AAAA',
+        mimeType: 'image/png',
+        originalName: 'hero.png',
+      },
+      name: 'Hero',
+      width: 16,
+      height: 16,
+    };
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.assets.images.hero.name = 'Hero Idle';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-17T10:10:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
+  });
+
   it('splits autosaves when the user switches to an unrelated editing domain', () => {
     const baseProject = structuredClone(sampleProject);
     const audioEdit = structuredClone(sampleProject);
