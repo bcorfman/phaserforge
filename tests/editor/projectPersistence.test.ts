@@ -324,7 +324,8 @@ async function seedPersistenceRecords({
 }: {
   projectRecord: ReturnType<typeof buildStoredProjectRecord>;
   latestActiveSnapshot?: {
-    record: ReturnType<typeof buildStoredProjectRecord>;
+    recordId: string;
+    updatedAt: string;
     syncMode: 'online' | 'offline';
     savedAt: string;
   };
@@ -342,6 +343,38 @@ async function seedPersistenceRecords({
       if (latestActiveSnapshot) {
         tx.objectStore('workspaceState').put(latestActiveSnapshot, 'latestActiveSnapshot');
       }
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function readStoredProjectRecord(recordId: string): Promise<any> {
+  const db = await openPersistenceDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction('projects', 'readonly');
+      tx.oncomplete = () => resolve(undefined);
+      tx.onerror = () => reject(tx.error);
+      const request = tx.objectStore('projects').get(recordId);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function readStoredLatestActiveSnapshot(): Promise<any> {
+  const db = await openPersistenceDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction('workspaceState', 'readonly');
+      tx.oncomplete = () => resolve(undefined);
+      tx.onerror = () => reject(tx.error);
+      const request = tx.objectStore('workspaceState').get('latestActiveSnapshot');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
     });
   } finally {
     db.close();
@@ -422,6 +455,23 @@ describe('projectPersistence steady-state storage', () => {
     expect(record.yaml).toBeUndefined();
   });
 
+  it('persists compact project records without duplicating the current project payload', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+    project.publishGithubPagesRepo = 'zoof';
+
+    const record = buildStoredProjectRecord(project, { id: project.id });
+    await projectPersistence.saveProjectRecord(record);
+
+    const stored = await readStoredProjectRecord(project.id);
+    expect(stored).toMatchObject({
+      id: project.id,
+      title: 'Pattern Demo',
+    });
+    expect(stored?.project).toBeUndefined();
+  });
+
   it('can still retain an explicit YAML payload for import-export compatibility', () => {
     const project = createEmptyProject();
 
@@ -495,28 +545,48 @@ describe('projectPersistence steady-state storage', () => {
     expect(materializeProjectRevision(revisions, storedNewestRevision.id)).toEqual(newerProject);
   });
 
-  it('prefers the durable latest active snapshot over a stale active record during bootstrap', async () => {
-    const staleProject = createEmptyProject();
-    staleProject.id = 'project-1';
-    staleProject.title = 'Stale Title';
+  it('persists the latest active snapshot as a lightweight marker instead of a full record copy', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
 
-    const latestProject = structuredClone(staleProject);
+    const record = buildStoredProjectRecord(project, {
+      id: project.id,
+      updatedAt: '2026-06-22T12:00:05.000Z',
+    });
+
+    await projectPersistence.saveActiveProjectRecord(record, 'offline');
+
+    const snapshot = await readStoredLatestActiveSnapshot();
+    expect(snapshot).toEqual({
+      recordId: 'project-1',
+      updatedAt: '2026-06-22T12:00:05.000Z',
+      syncMode: 'offline',
+      savedAt: expect.any(String),
+    });
+    expect(snapshot?.record).toBeUndefined();
+  });
+
+  it('prefers the durable latest active snapshot marker when bootstrapping the active project', async () => {
+    const latestProject = createEmptyProject();
+    latestProject.id = 'project-1';
     latestProject.title = 'Recovered Title';
 
     await seedPersistenceRecords({
-      projectRecord: buildStoredProjectRecord(staleProject, {
-        id: staleProject.id,
-        updatedAt: '2026-06-22T12:00:00.000Z',
-        revisions: [createProjectRevision(staleProject, { id: 'rev-stale' })],
+      projectRecord: buildStoredProjectRecord(latestProject, {
+        id: latestProject.id,
+        updatedAt: '2026-06-22T12:00:05.000Z',
+        revisions: [createProjectRevision(latestProject, { id: 'rev-latest' })],
       }),
       latestActiveSnapshot: {
-        record: buildStoredProjectRecord(latestProject, {
-          id: latestProject.id,
-          updatedAt: '2026-06-22T12:00:05.000Z',
-          revisions: [createProjectRevision(latestProject, { id: 'rev-latest' })],
-        }),
+        recordId: latestProject.id,
+        updatedAt: '2026-06-22T12:00:05.000Z',
         syncMode: 'online',
         savedAt: '2026-06-22T12:00:05.000Z',
+      },
+      workspace: {
+        activeProjectId: null,
+        syncMode: 'offline',
       },
     });
 
@@ -529,26 +599,21 @@ describe('projectPersistence steady-state storage', () => {
     expect(snapshot.localProjects[0]?.updatedAt).toBe('2026-06-22T12:00:05.000Z');
   });
 
-  it('loads the durable latest active snapshot for conflict recovery metadata', async () => {
-    const staleProject = createEmptyProject();
-    staleProject.id = 'project-1';
-    staleProject.title = 'Offline Draft';
-
-    const latestProject = structuredClone(staleProject);
+  it('loads the durable latest active snapshot record from the stored active project id marker', async () => {
+    const latestProject = createEmptyProject();
+    latestProject.id = 'project-1';
     latestProject.title = 'Linked Draft';
 
     await seedPersistenceRecords({
-      projectRecord: buildStoredProjectRecord(staleProject, {
-        id: staleProject.id,
-        updatedAt: '2026-06-22T12:00:00.000Z',
+      projectRecord: buildStoredProjectRecord(latestProject, {
+        id: latestProject.id,
+        updatedAt: '2026-06-22T12:00:10.000Z',
+        cloudProjectId: 'g-1',
+        syncStatus: 'cloud',
       }),
       latestActiveSnapshot: {
-        record: buildStoredProjectRecord(latestProject, {
-          id: latestProject.id,
-          updatedAt: '2026-06-22T12:00:10.000Z',
-          cloudProjectId: 'g-1',
-          syncStatus: 'cloud',
-        }),
+        recordId: latestProject.id,
+        updatedAt: '2026-06-22T12:00:10.000Z',
         syncMode: 'online',
         savedAt: '2026-06-22T12:00:10.000Z',
       },

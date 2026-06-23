@@ -31,7 +31,7 @@ async function readPersistenceTitles(page: Parameters<typeof gotoStudio>[0]) {
       })
       : null;
     return {
-      snapshotTitle: latestSnapshot?.record?.title ?? null,
+      snapshotRecordId: latestSnapshot?.recordId ?? null,
       projectTitle: activeProject?.title ?? null,
     };
   });
@@ -51,10 +51,8 @@ test('refresh during the async persistence window restores the latest head from 
   await expect(page.getByTestId('project-tree-root-button')).toContainText('Snapshot Rescue');
 
   await expect.poll(async () => readPersistenceTitles(page)).toMatchObject({
-    snapshotTitle: 'Snapshot Rescue',
-  });
-  await expect.poll(async () => readPersistenceTitles(page)).toMatchObject({
-    projectTitle: 'Untitled Project',
+    snapshotRecordId: expect.any(String),
+    projectTitle: 'Snapshot Rescue',
   });
 
   await page.reload({ waitUntil: 'domcontentloaded' });
