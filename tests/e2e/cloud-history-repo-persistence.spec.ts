@@ -149,7 +149,15 @@ test('rename + publish repo + history + close/reopen persists latest head locall
   await expect(repoInput).toBeVisible();
   const cloudSaveRequestPromise = page.waitForRequest((request) => {
     if (!['POST', 'PUT'].includes(request.method())) return false;
-    return /\/api\/v1\/games(?:\/g1)?$/.test(request.url());
+    if (!/\/api\/v1\/games(?:\/g1)?$/.test(request.url())) return false;
+    try {
+      const payload = request.postDataJSON() as { title?: string; project?: { title?: string; publishGithubPagesRepo?: string } };
+      return payload.title === 'Pattern Demo'
+        && payload.project?.title === 'Pattern Demo'
+        && payload.project?.publishGithubPagesRepo === 'zoof';
+    } catch {
+      return false;
+    }
   }, { timeout: 15000 });
 
   await page.getByTestId('project-tree-manage-button').click();
