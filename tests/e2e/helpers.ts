@@ -174,7 +174,70 @@ export async function seedSampleScene(page: Page, options: { once?: boolean } = 
   if (shouldSeed) {
     await dispatchAction(page, { type: 'load-yaml-text', text: yaml, sourceLabel: 'sample-project.yaml' });
   }
-  await waitForSampleScene(page);
+  const expectedSceneId = sampleProject.initialSceneId;
+  const expectedScene = sampleProject.scenes?.[expectedSceneId];
+  await expect.poll(async () => {
+    const state = await getState<{
+      project?: {
+        id?: string;
+        scenes?: Record<string, { entities?: Record<string, unknown>; groups?: Record<string, unknown>; attachments?: Record<string, unknown> }>;
+      };
+      currentSceneId?: string;
+      scene?: { entities?: Record<string, unknown>; groups?: Record<string, unknown>; attachments?: Record<string, unknown> };
+    } | null>(page);
+    const stateScene = state?.scene;
+    return {
+      projectId: state?.project?.id ?? null,
+      currentSceneId: state?.currentSceneId ?? null,
+      entityCount: Object.keys(stateScene?.entities ?? {}).length,
+      groupCount: Object.keys(stateScene?.groups ?? {}).length,
+      attachmentCount: Object.keys(stateScene?.attachments ?? {}).length,
+    };
+  }, { timeout: SCENE_CONTENT_TIMEOUT_MS }).toEqual({
+    projectId: sampleProject.id,
+    currentSceneId: expectedSceneId,
+    entityCount: Object.keys(expectedScene?.entities ?? {}).length,
+    groupCount: Object.keys(expectedScene?.groups ?? {}).length,
+    attachmentCount: Object.keys(expectedScene?.attachments ?? {}).length,
+  });
+
+  await expect.poll(async () => {
+    return page.evaluate(async () => {
+      const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+        const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+      });
+      const db = await openDb();
+      const workspace = await new Promise<any>((resolve, reject) => {
+        const tx = db.transaction('workspaceState', 'readonly');
+        const request = tx.objectStore('workspaceState').get('workspace');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      if (!workspace?.activeProjectId) return null;
+      const project = await new Promise<any>((resolve, reject) => {
+        const tx = db.transaction('projects', 'readonly');
+        const request = tx.objectStore('projects').get(workspace.activeProjectId);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const headRevision = Array.isArray(project?.revisions) ? project.revisions[0] : null;
+      return {
+        id: project?.id ?? null,
+        hasProjectPayload: Boolean(project?.project),
+        revisionCount: Array.isArray(project?.revisions) ? project.revisions.length : 0,
+        sceneCount: Number(headRevision?.sceneCount ?? project?.sceneCount ?? 0),
+        entityCount: Number(headRevision?.entityCount ?? 0),
+      };
+    });
+  }, { timeout: SCENE_CONTENT_TIMEOUT_MS }).toEqual({
+    id: expect.any(String),
+    hasProjectPayload: false,
+    revisionCount: expect.any(Number),
+    sceneCount: Object.keys(sampleProject.scenes ?? {}).length,
+    entityCount: Object.keys(expectedScene?.entities ?? {}).length,
+  });
 }
 
 export async function seedProject(page: Page, project: any): Promise<void> {
