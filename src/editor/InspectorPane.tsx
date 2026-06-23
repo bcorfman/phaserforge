@@ -138,16 +138,20 @@ export function InspectorPane() {
 
   useEffect(() => {
     if (!state.initialized) return;
-    const debugKey = `${state.project.id}:${state.currentSceneId}:${state.selection.kind}:${tab}`;
+    const projectId = state.project?.id;
+    const currentSceneId = state.currentSceneId;
+    const selectionKind = state.selection?.kind;
+    if (!projectId || !currentSceneId || !selectionKind) return;
+    const debugKey = `${projectId}:${currentSceneId}:${selectionKind}:${tab}`;
     if (stabilityDebugKeyRef.current === debugKey) return;
     stabilityDebugKeyRef.current = debugKey;
     appendPersistenceDebugEntry('restore:inspector-pane-stable', {
-      projectId: state.project.id,
-      currentSceneId: state.currentSceneId,
-      selectionKind: state.selection.kind,
+      projectId,
+      currentSceneId,
+      selectionKind,
       tab,
     });
-  }, [state.currentSceneId, state.initialized, state.project.id, state.selection.kind, tab]);
+  }, [state.currentSceneId, state.initialized, state.project?.id, state.selection?.kind, tab]);
 
   return (
     <InspectorPaneView
