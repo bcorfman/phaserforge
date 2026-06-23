@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoStudio, waitForEmptyScene } from './helpers';
+import { enablePersistenceDebug, expectPersistenceDebugEvents, expectProjectRestoreState, gotoStudio, waitForEmptyScene } from './helpers';
 import { sampleProject } from '../../src/model/sampleProject';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
@@ -7,6 +7,7 @@ import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 test('Cloud login shows conflict picker when cloud and device diverge @smoke', async ({ page }) => {
   test.setTimeout(120000);
   const cloudProject = createEmptyProject();
+  await enablePersistenceDebug(page);
   const deviceRecord = buildStoredProjectRecord(sampleProject, {
     id: sampleProject.id,
     updatedAt: new Date(Date.now() - 60_000).toISOString(),
@@ -93,6 +94,19 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
 
   await page.getByTestId('workspace-conflict-use-cloud').click();
   await waitForEmptyScene(page);
+  await expectProjectRestoreState(page, {
+    projectId: cloudProject.id,
+    title: cloudProject.title ?? 'Untitled Project',
+    currentSceneId: cloudProject.initialSceneId,
+    entityCount: 0,
+    groupCount: 0,
+  });
+  await expectPersistenceDebugEvents(page, [
+    'cloud:workspace-conflict-detected',
+    'cloud:workspace-conflict-choice-applied',
+    'restore:project-dispatched',
+    'restore:inspector-entity-list-stable',
+  ]);
 
   const backup = await page.evaluate(async () => {
     const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {

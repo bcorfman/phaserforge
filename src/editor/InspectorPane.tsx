@@ -100,6 +100,7 @@ export function InspectorPane() {
     return cachedUser ? 'inspector' : 'cloud';
   });
   const userSelectedTabRef = useRef(false);
+  const stabilityDebugKeyRef = useRef<string | null>(null);
 
   const consumeReturnToCloudAfterAuth = (): boolean => {
     try {
@@ -135,6 +136,23 @@ export function InspectorPane() {
     setTab(nextTab);
   };
 
+  useEffect(() => {
+    if (!state.initialized) return;
+    const projectId = state.project?.id;
+    const currentSceneId = state.currentSceneId;
+    const selectionKind = state.selection?.kind;
+    if (!projectId || !currentSceneId || !selectionKind) return;
+    const debugKey = `${projectId}:${currentSceneId}:${selectionKind}:${tab}`;
+    if (stabilityDebugKeyRef.current === debugKey) return;
+    stabilityDebugKeyRef.current = debugKey;
+    appendPersistenceDebugEntry('restore:inspector-pane-stable', {
+      projectId,
+      currentSceneId,
+      selectionKind,
+      tab,
+    });
+  }, [state.currentSceneId, state.initialized, state.project?.id, state.selection?.kind, tab]);
+
   return (
     <InspectorPaneView
       cloudEnabled={cloudEnabled}
@@ -155,12 +173,14 @@ export function InspectorPane() {
             dispatch({ type: 'load-yaml-text', text: yaml, sourceLabel });
           }}
           onLoadProject={(project, sourceLabel) => {
-            appendPersistenceDebugEntry('inspector-pane:on-load-project-dispatch', summarizeProjectLoadForDebug({
+            const details = summarizeProjectLoadForDebug({
               sourceLabel,
               project,
               activeProjectId,
               currentProjectId: state.project?.id ?? null,
-            }));
+            });
+            appendPersistenceDebugEntry('inspector-pane:on-load-project-dispatch', details);
+            appendPersistenceDebugEntry('restore:project-dispatched', details);
             dispatch({ type: 'load-project', project, sourceLabel });
           }}
           onCloudGameLinked={(gameId) => persistence.linkActiveProjectToCloudGame(gameId)}

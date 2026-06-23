@@ -4,6 +4,9 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const persistence = vi.hoisted(() => ({
+  readCachedWorkspaceStateRecord: vi.fn(() => null),
+  readCachedPreferencesRecord: vi.fn(() => null),
+  writeCachedWorkspaceStateRecord: vi.fn(),
   loadWorkspaceStateRecord: vi.fn(async () => ({
     activeProjectId: null,
     syncMode: 'online' as const,
@@ -58,7 +61,12 @@ const mockState = {
 };
 
 vi.mock('../../src/phaser/PhaserHost', () => ({
-  PhaserGame: () => <div data-testid="mock-phaser-game" />,
+  PhaserGame: ({ currentActiveScene }: { currentActiveScene?: () => void }) => {
+    React.useEffect(() => {
+      currentActiveScene?.();
+    }, [currentActiveScene]);
+    return <div data-testid="mock-phaser-game" />;
+  },
 }));
 
 vi.mock('../../src/phaser/EventBus', () => ({
@@ -201,12 +209,60 @@ describe('App sidebar layout persistence', () => {
     const callsBeforePageHide = persistence.updateWorkspaceStateRecord.mock.calls.length;
     window.dispatchEvent(new PageTransitionEvent('pagehide'));
 
+    expect(persistence.writeCachedWorkspaceStateRecord).toHaveBeenLastCalledWith({
+      leftPaneWidth: 300,
+      rightPaneWidth: 900,
+    });
     await waitFor(() => {
       expect(persistence.updateWorkspaceStateRecord.mock.calls.length).toBeGreaterThan(callsBeforePageHide);
     });
     expect(persistence.updateWorkspaceStateRecord).toHaveBeenLastCalledWith({
       leftPaneWidth: 300,
       rightPaneWidth: 900,
+    });
+  });
+
+  it('seeds the first render from cached sidebar widths before async hydration finishes', () => {
+    persistence.readCachedWorkspaceStateRecord.mockReturnValueOnce({
+      activeProjectId: 'project-1',
+      syncMode: 'online',
+      leftPaneWidth: 336,
+      rightPaneWidth: 712,
+    });
+    persistence.loadWorkspaceStateRecord.mockImplementationOnce(() => new Promise(() => {}));
+
+    const view = render(<App />);
+    const appBody = view.container.querySelector('.app-body') as HTMLElement | null;
+    if (!appBody) throw new Error('App body not rendered');
+
+    expect(appBody.style.gridTemplateColumns).toContain('336px');
+    expect(appBody.style.gridTemplateColumns).toContain('712px');
+    expect(view.getByTestId('app-root').getAttribute('data-boot-ready')).toBe('true');
+  });
+
+  it('keeps the shell boot-hidden until workspace hydration finishes when no cached layout exists', async () => {
+    let resolveWorkspace: ((workspace: {
+      activeProjectId: null;
+      syncMode: 'online';
+      leftPaneWidth: number;
+      rightPaneWidth: number;
+    }) => void) | null = null;
+    persistence.loadWorkspaceStateRecord.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveWorkspace = resolve;
+    }));
+
+    const view = render(<App />);
+    expect(view.getByTestId('app-root').getAttribute('data-boot-ready')).toBe('false');
+
+    resolveWorkspace?.({
+      activeProjectId: null,
+      syncMode: 'online',
+      leftPaneWidth: 300,
+      rightPaneWidth: 380,
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('app-root').getAttribute('data-boot-ready')).toBe('true');
     });
   });
 });
