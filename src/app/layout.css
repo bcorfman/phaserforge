@@ -156,6 +156,30 @@ textarea:focus-visible {
   padding: 1rem;
   gap: 1rem;
   overflow: hidden;
+  position: relative;
+}
+
+.app-root.app-root-booting > :not(.app-boot-splash) {
+  visibility: hidden;
+}
+
+.app-boot-splash {
+  position: absolute;
+  inset: 1rem;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.app-boot-splash-card {
+  min-width: min(28rem, calc(100vw - 4rem));
+  padding: 1.4rem 1.6rem;
+  border-radius: 1.25rem;
+  border: 1px solid var(--stroke);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-align: center;
 }
 
 .toolbar,
