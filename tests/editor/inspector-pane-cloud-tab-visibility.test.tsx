@@ -2,9 +2,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+const inspectorPaneStore = vi.hoisted(() => ({
+  state: {} as Record<string, unknown>,
+}));
+
 vi.mock('../../src/editor/EditorStore', () => {
   return {
-    useEditorStore: () => ({ state: {}, dispatch: () => {} }),
+    useEditorStore: () => ({ state: inspectorPaneStore.state, dispatch: () => {} }),
   };
 });
 
@@ -30,6 +34,7 @@ function setHostname(hostname: string) {
 
 afterEach(() => {
   delete (globalThis as any).location;
+  inspectorPaneStore.state = {};
 });
 
 describe('InspectorPane Cloud tab visibility', () => {
@@ -46,5 +51,14 @@ describe('InspectorPane Cloud tab visibility', () => {
     const markup = renderToStaticMarkup(<InspectorPane />);
     expect(markup).toContain('data-testid="inspector-pane-tab-inspector"');
     expect(markup).toContain('data-testid="inspector-pane-tab-cloud"');
+  });
+
+  it('does not crash when initialized test state is missing project metadata', () => {
+    inspectorPaneStore.state = { initialized: true };
+
+    setHostname('phaserforge.app');
+    const markup = renderToStaticMarkup(<InspectorPane />);
+
+    expect(markup).toContain('data-testid="inspector-pane-tab-inspector"');
   });
 });
