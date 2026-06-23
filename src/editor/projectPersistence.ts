@@ -1,5 +1,6 @@
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { createEmptyProject } from '../model/emptyProject';
+import { projectsSemanticallyEqual } from '../model/projectCanonical';
 import type { ProjectSpec, StartupMode } from '../model/types';
 import { validateProjectSpec } from '../model/validation';
 import { appendProjectRevision, createProjectRevision, materializeProjectRevision, type ProjectRevisionRecord } from './projectTreeHistory';
@@ -370,12 +371,18 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
     const currentActiveRecord = localProjects.find((record) => record.id === workspace.activeProjectId) ?? null;
     const snapshotMs = Date.parse(latestActiveSnapshot.updatedAt || latestActiveSnapshot.savedAt);
     const currentActiveMs = Date.parse(currentActiveRecord?.updatedAt ?? '');
+    const snapshotLooksPlaceholder = isPlaceholderProjectRecord(snapshotRecord);
+    const currentActiveLooksMeaningful = currentActiveRecord != null && !isPlaceholderProjectRecord(currentActiveRecord);
+    const shouldUseTimestampTiebreak =
+      !(snapshotLooksPlaceholder && currentActiveLooksMeaningful);
     const shouldPreferSnapshot =
       !currentActiveRecord
       || !workspace.activeProjectId
       || latestActiveSnapshot.recordId === workspace.activeProjectId
-      || !Number.isFinite(currentActiveMs)
-      || (Number.isFinite(snapshotMs) && snapshotMs >= currentActiveMs);
+      || (shouldUseTimestampTiebreak && (
+        !Number.isFinite(currentActiveMs)
+        || (Number.isFinite(snapshotMs) && snapshotMs >= currentActiveMs)
+      ));
     if (shouldPreferSnapshot && snapshotRecord) {
       if (existingIndex > 0) {
         localProjects.splice(existingIndex, 1);
@@ -509,6 +516,20 @@ async function updateWorkspaceState(
 
 function cloneProject(project: ProjectSpec): ProjectSpec {
   return structuredClone(project);
+}
+
+function isPlaceholderProjectRecord(record: StoredProjectRecord | null): boolean {
+  if (!record) return false;
+  const normalized = cloneProject(record.project);
+  normalized.id = 'project-placeholder';
+  delete (normalized as Partial<ProjectSpec>).title;
+  delete (normalized as Partial<ProjectSpec>).publishTitle;
+  delete (normalized as Partial<ProjectSpec>).publishGithubPagesRepo;
+
+  const empty = createEmptyProject();
+  empty.id = 'project-placeholder';
+  return (record.title?.trim() || 'Untitled Project') === 'Untitled Project'
+    && projectsSemanticallyEqual(normalized, empty);
 }
 
 function summarizeRecordForDebug(

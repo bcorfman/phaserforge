@@ -637,6 +637,52 @@ describe('projectPersistence steady-state storage', () => {
     expect(snapshot.localProjects[0]?.updatedAt).toBe('2026-06-22T12:00:05.000Z');
   });
 
+  it('does not let a newer placeholder snapshot override an explicitly active saved project', async () => {
+    const realProject = createEmptyProject();
+    realProject.id = 'project-real';
+    realProject.title = 'Recovered Title';
+
+    const placeholderProject = createEmptyProject();
+    placeholderProject.id = 'project-placeholder';
+    placeholderProject.title = 'Untitled Project';
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(buildStoredProjectRecord(realProject, {
+          id: realProject.id,
+          updatedAt: '2026-06-22T12:00:00.000Z',
+        }));
+        tx.objectStore('projects').put(buildStoredProjectRecord(placeholderProject, {
+          id: placeholderProject.id,
+          updatedAt: '2026-06-22T12:05:00.000Z',
+        }));
+        tx.objectStore('workspaceState').put({
+          activeProjectId: realProject.id,
+          syncMode: 'online',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put({
+          recordId: placeholderProject.id,
+          updatedAt: '2026-06-22T12:05:00.000Z',
+          syncMode: 'online',
+          savedAt: '2026-06-22T12:05:00.000Z',
+        }, 'latestActiveSnapshot');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.workspace.activeProjectId).toBe('project-real');
+    expect(snapshot.localProjects[0]?.id).toBe('project-real');
+    expect(snapshot.localProjects[0]?.title).toBe('Recovered Title');
+  });
+
   it('loads the durable latest active snapshot record from the stored active project id marker', async () => {
     const latestProject = createEmptyProject();
     latestProject.id = 'project-1';
