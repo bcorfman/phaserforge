@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const persistence = vi.hoisted(() => ({
   readCachedWorkspaceStateRecord: vi.fn(() => null),
   readCachedPreferencesRecord: vi.fn(() => null),
+  writeCachedWorkspaceStateRecord: vi.fn(),
   loadWorkspaceStateRecord: vi.fn(async () => ({
     activeProjectId: null,
     syncMode: 'online' as const,
@@ -208,6 +209,10 @@ describe('App sidebar layout persistence', () => {
     const callsBeforePageHide = persistence.updateWorkspaceStateRecord.mock.calls.length;
     window.dispatchEvent(new PageTransitionEvent('pagehide'));
 
+    expect(persistence.writeCachedWorkspaceStateRecord).toHaveBeenLastCalledWith({
+      leftPaneWidth: 300,
+      rightPaneWidth: 900,
+    });
     await waitFor(() => {
       expect(persistence.updateWorkspaceStateRecord.mock.calls.length).toBeGreaterThan(callsBeforePageHide);
     });
