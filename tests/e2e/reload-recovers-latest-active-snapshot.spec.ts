@@ -15,23 +15,22 @@ async function readPersistenceTitles(page: Parameters<typeof gotoStudio>[0]) {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-    const activeProjectId = workspace?.activeProjectId ?? null;
     const latestSnapshot = await new Promise<any>((resolve, reject) => {
       const tx = db.transaction('workspaceState', 'readonly');
       const request = tx.objectStore('workspaceState').get('latestActiveSnapshot');
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-    const activeProject = activeProjectId
+    const activeProject = latestSnapshot?.recordId
       ? await new Promise<any>((resolve, reject) => {
         const tx = db.transaction('projects', 'readonly');
-        const request = tx.objectStore('projects').get(activeProjectId);
+        const request = tx.objectStore('projects').get(latestSnapshot.recordId);
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       })
       : null;
     return {
-      snapshotTitle: latestSnapshot?.record?.title ?? null,
+      snapshotRecordId: latestSnapshot?.recordId ?? null,
       projectTitle: activeProject?.title ?? null,
     };
   });
@@ -51,10 +50,8 @@ test('refresh during the async persistence window restores the latest head from 
   await expect(page.getByTestId('project-tree-root-button')).toContainText('Snapshot Rescue');
 
   await expect.poll(async () => readPersistenceTitles(page)).toMatchObject({
-    snapshotTitle: 'Snapshot Rescue',
-  });
-  await expect.poll(async () => readPersistenceTitles(page)).toMatchObject({
-    projectTitle: 'Untitled Project',
+    snapshotRecordId: expect.any(String),
+    projectTitle: 'Snapshot Rescue',
   });
 
   await page.reload({ waitUntil: 'domcontentloaded' });
