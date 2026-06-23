@@ -545,6 +545,20 @@ export const projectPersistence = {
     return loadIndexedDbSnapshot();
   },
 
+  async saveProjectRecordImmediately(record: StoredProjectRecord): Promise<void> {
+    appendPersistenceDebugEntry('project-persistence:save-project-record-immediate-start', summarizeRecordForDebug(record));
+    try {
+      await upsertProjectRecord(record);
+      appendPersistenceDebugEntry('project-persistence:save-project-record-immediate-success', summarizeRecordForDebug(record));
+    } catch (error) {
+      appendPersistenceDebugEntry('project-persistence:save-project-record-immediate-error', {
+        ...summarizeRecordForDebug(record),
+        error,
+      });
+      throw error;
+    }
+  },
+
   async saveProjectRecord(record: StoredProjectRecord): Promise<StoredProjectRecord[]> {
     appendPersistenceDebugEntry('project-persistence:save-project-record-start', summarizeRecordForDebug(record));
     try {

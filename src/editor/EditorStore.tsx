@@ -3598,6 +3598,13 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     const nextRecord = buildActiveProjectRecordSnapshot(state.project, state.syncMode, activeProjectId ?? state.project.id);
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
+    void projectPersistence.saveProjectRecordImmediately(nextRecord)
+      .catch((error) => {
+        appendPersistenceDebugEntry('editor-store:save-project-record-immediate-error', {
+          ...summarizeActiveProjectForDebug(state.project, nextRecord, 'state-change', state.syncMode),
+          error,
+        });
+      });
     appendPersistenceDebugEntry('editor-store:save-active-start', summarizeActiveProjectForDebug(
       state.project,
       nextRecord,
@@ -3631,6 +3638,13 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         latestActiveProjectIdRef.current ?? currentState.project.id,
       );
       activeRecordRef.current = nextRecord;
+      void projectPersistence.saveProjectRecordImmediately(nextRecord)
+        .catch((error) => {
+          appendPersistenceDebugEntry('editor-store:save-project-record-immediate-error', {
+            ...summarizeActiveProjectForDebug(currentState.project, nextRecord, trigger, currentState.syncMode),
+            error,
+          });
+        });
       appendPersistenceDebugEntry('editor-store:save-active-start', summarizeActiveProjectForDebug(
         currentState.project,
         nextRecord,

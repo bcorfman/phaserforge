@@ -2,7 +2,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { serializeProjectToYaml } from '../../src/model/serialization';
-import { buildStoredProjectRecord, projectPersistence } from '../../src/editor/projectPersistence';
+import {
+  __pauseActiveProjectRecordPersistenceForTests,
+  __resumeActiveProjectRecordPersistenceForTests,
+  buildStoredProjectRecord,
+  projectPersistence,
+} from '../../src/editor/projectPersistence';
 import { appendProjectRevision, createProjectRevision, materializeProjectRevision } from '../../src/editor/projectTreeHistory';
 
 function installLocalStorageMock() {
@@ -565,6 +570,39 @@ describe('projectPersistence steady-state storage', () => {
       savedAt: expect.any(String),
     });
     expect(snapshot?.record).toBeUndefined();
+  });
+
+  it('can durably upsert the active project row even while active project marker writes are paused', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Untitled Project';
+
+    const initialRecord = buildStoredProjectRecord(project, {
+      id: project.id,
+      updatedAt: '2026-06-22T12:00:00.000Z',
+    });
+
+    await projectPersistence.saveActiveProjectRecord(initialRecord, 'online');
+
+    const renamedProject = structuredClone(project);
+    renamedProject.title = 'Snapshot Rescue';
+    const renamedRecord = buildStoredProjectRecord(renamedProject, {
+      id: project.id,
+      updatedAt: '2026-06-22T12:00:05.000Z',
+    });
+
+    __pauseActiveProjectRecordPersistenceForTests();
+    try {
+      await projectPersistence.saveProjectRecordImmediately(renamedRecord);
+      const stored = await readStoredProjectRecord(project.id);
+      expect(stored).toMatchObject({
+        id: 'project-1',
+        title: 'Snapshot Rescue',
+        updatedAt: '2026-06-22T12:00:05.000Z',
+      });
+    } finally {
+      __resumeActiveProjectRecordPersistenceForTests();
+    }
   });
 
   it('prefers the durable latest active snapshot marker when bootstrapping the active project', async () => {
