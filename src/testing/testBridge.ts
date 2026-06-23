@@ -1,6 +1,10 @@
 import type { Selection } from '../editor/EditorStore';
 import type { ProjectSpec, SceneSpec, StartupMode } from '../model/types';
 import { SCENE_STORAGE_KEY } from '../editor/EditorStore';
+import {
+  __pauseActiveProjectRecordPersistenceForTests,
+  __resumeActiveProjectRecordPersistenceForTests,
+} from '../editor/projectPersistence';
 
 type Point = { x: number; y: number };
 type Rect = { minX: number; minY: number; maxX: number; maxY: number };
@@ -234,6 +238,12 @@ function ensureBridge(): void {
     },
     select(selection: Selection) {
       selectionSetter?.(selection);
+    },
+    pauseActiveProjectRecordPersistence() {
+      __pauseActiveProjectRecordPersistenceForTests();
+    },
+    resumeActiveProjectRecordPersistence() {
+      __resumeActiveProjectRecordPersistenceForTests();
     },
   };
 }

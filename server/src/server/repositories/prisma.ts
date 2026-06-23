@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { serializeProjectToYaml } from '../../../../src/model/serialization';
 
 import type {
   CloudGame,
@@ -17,6 +18,13 @@ import type {
 
 function toIso(date: Date): string {
   return date.toISOString();
+}
+
+function requireStructuredProject(gameId: string, value: unknown): CloudGame['project'] {
+  if (!value || typeof value !== 'object') {
+    throw new Error(`cloud_game_unmigrated:${gameId}`);
+  }
+  return structuredClone(value as CloudGame['project']);
 }
 
 export function createPrismaRepositories(prisma: PrismaClient): Repositories {
@@ -245,21 +253,23 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
       }));
     },
     async create(game) {
+      const yaml = serializeProjectToYaml(game.project);
       const row = await prisma.game.create({
         data: {
           id: game.id,
           userId: game.userId,
           title: game.title,
-          yaml: game.yaml,
+          yaml,
+          project: game.project as any,
           createdAt: new Date(game.createdAt),
           updatedAt: new Date(game.updatedAt),
-        },
+        } as any,
       });
       return {
         id: row.id,
         userId: row.userId,
         title: row.title,
-        yaml: row.yaml,
+        project: requireStructuredProject(row.id, (row as any).project),
         createdAt: toIso(row.createdAt),
         updatedAt: toIso(row.updatedAt),
       };
@@ -271,19 +281,21 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
         id: row.id,
         userId: row.userId,
         title: row.title,
-        yaml: row.yaml,
+        project: requireStructuredProject(row.id, (row as any).project),
         createdAt: toIso(row.createdAt),
         updatedAt: toIso(row.updatedAt),
       };
     },
     async updateForUser(id, userId, patch) {
+      const yaml = patch.project ? serializeProjectToYaml(patch.project) : undefined;
       const row = await prisma.game.updateMany({
         where: { id, userId },
         data: {
           ...(typeof patch.title === 'string' ? { title: patch.title } : {}),
-          ...(typeof patch.yaml === 'string' ? { yaml: patch.yaml } : {}),
+          ...(typeof yaml === 'string' ? { yaml } : {}),
+          ...(patch.project ? { project: patch.project as any } : {}),
           updatedAt: new Date(patch.updatedAt),
-        },
+        } as any,
       });
       if (row.count === 0) return null;
       return { updatedAt: patch.updatedAt };

@@ -142,6 +142,23 @@ describe('EditorStore reducer', () => {
     expect(next.statusExpiresAt).toBeGreaterThan(now);
   });
 
+  it('loads a structured project directly and sets a transient status message', () => {
+    const now = 1_700_000_000_000;
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+
+    const state = initState();
+    const next = reducer(state, { type: 'load-project', project: sampleProject, sourceLabel: 'cloud:workspace' } as any);
+
+    expect(next.project).toEqual(sampleProject);
+    expect(sceneOf(next)).toEqual(sampleProject.scenes[sampleProject.initialSceneId]);
+    expect(next.yamlText).toBe(serializeProjectToYaml(sampleProject));
+    expect(next.dirty).toBe(false);
+    expect(next.error).toBeUndefined();
+    expect(next.selection).toEqual({ kind: 'none' });
+    expect(next.statusMessage).toContain('cloud:workspace');
+    expect(next.statusExpiresAt).toBeGreaterThan(now);
+  });
+
   it('does not set a success status message when YAML parsing fails', () => {
     const now = 1_700_000_000_000;
     vi.spyOn(Date, 'now').mockReturnValue(now);

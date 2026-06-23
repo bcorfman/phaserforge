@@ -1,17 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { gotoStudio, waitForEmptyScene } from './helpers';
-import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 
 test('Cloud login shows conflict picker when cloud and device diverge @smoke', async ({ page }) => {
   test.setTimeout(120000);
-  const deviceYaml = serializeProjectToYaml(sampleProject);
-  const cloudYaml = serializeProjectToYaml(createEmptyProject());
+  const cloudProject = createEmptyProject();
   const deviceRecord = buildStoredProjectRecord(sampleProject, {
     id: sampleProject.id,
-    yaml: deviceYaml,
     updatedAt: new Date(Date.now() - 60_000).toISOString(),
     origin: 'local-only',
     syncStatus: 'local',
@@ -65,7 +62,7 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
   await page.route('**/api/v1/games/g1', async (route) => {
     await route.fulfill({
       status: 200,
-      body: JSON.stringify({ game: { id: 'g1', title: 'Workspace', created_at: '2026-05-28T10:00:00.000Z', updated_at: '2026-05-28T10:14:00.000Z', yaml: cloudYaml } }),
+      body: JSON.stringify({ game: { id: 'g1', title: 'Workspace', created_at: '2026-05-28T10:00:00.000Z', updated_at: '2026-05-28T10:14:00.000Z', project: cloudProject } }),
       contentType: 'application/json',
     });
   });
@@ -113,6 +110,6 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
     return saved ?? null;
   });
   expect(backup?.source).toBe('device');
-  expect(typeof backup?.yaml).toBe('string');
-  expect(backup?.yaml.length).toBeGreaterThan(20);
+  expect(backup?.project?.id).toBe(sampleProject.id);
+  expect(Object.keys(backup?.project?.scenes ?? {})).not.toHaveLength(0);
 });

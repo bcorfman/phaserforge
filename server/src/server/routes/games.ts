@@ -49,7 +49,7 @@ export function gamesRouter(settings: Settings, repositories: Repositories) {
 
   router.put('/:id', writeLimiter, async (req, res) => {
     const parsed = GameSchemas.update.safeParse(req.body);
-    if (!parsed.success || (!parsed.data.title && !parsed.data.yaml)) {
+    if (!parsed.success || (!parsed.data.title && !parsed.data.project)) {
       res.status(400).json({ error: 'invalid_request' });
       return;
     }
@@ -73,4 +73,3 @@ export function gamesRouter(settings: Settings, repositories: Repositories) {
 
   return router;
 }
-

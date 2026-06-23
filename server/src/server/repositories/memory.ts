@@ -234,12 +234,12 @@ class MemoryGameRepository implements GameRepository {
   async updateForUser(
     id: string,
     userId: string,
-    patch: { title?: string; yaml?: string; updatedAt: string },
+    patch: { title?: string; project?: CloudGame['project']; updatedAt: string },
   ): Promise<{ updatedAt: string } | null> {
     const existing = this.byId.get(id);
     if (!existing || existing.userId !== userId) return null;
     if (typeof patch.title === 'string') existing.title = patch.title;
-    if (typeof patch.yaml === 'string') existing.yaml = patch.yaml;
+    if (patch.project) existing.project = clone(patch.project);
     existing.updatedAt = patch.updatedAt;
     return { updatedAt: patch.updatedAt };
   }

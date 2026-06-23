@@ -2,6 +2,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 
 import { createApp } from '../../server/src/server/app';
+import { createEmptyProject } from '../../src/model/emptyProject';
 
 function makeApp() {
   const app = createApp({
@@ -46,11 +47,12 @@ describe('games', () => {
     const { app } = makeApp();
     const agent = request.agent(app);
     const { csrf } = await signup(agent);
+    const project = createEmptyProject();
 
     await agent
       .post('/api/v1/games')
       .set('x-csrf-token', csrf)
-      .send({ title: 'Huge Game', yaml: 'x'.repeat(1_100_000) })
+      .send({ title: 'Huge Game', project: { ...project, title: 'x'.repeat(1_100_000) } })
       .expect(413)
       .expect({ error: 'payload_too_large' });
   });
@@ -59,11 +61,14 @@ describe('games', () => {
     const { app } = makeApp();
     const agent = request.agent(app);
     const { csrf } = await signup(agent);
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'My Game';
 
     const created = await agent
       .post('/api/v1/games')
       .set('x-csrf-token', csrf)
-      .send({ title: 'My Game', yaml: 'scenes: []' })
+      .send({ title: 'My Game', project })
       .expect(201);
 
     const id = created.body.game.id as string;
@@ -71,6 +76,6 @@ describe('games', () => {
 
     const fetched = await agent.get(`/api/v1/games/${id}`).expect(200);
     expect(fetched.body.game.title).toBe('My Game');
-    expect(fetched.body.game.yaml).toBe('scenes: []');
+    expect(fetched.body.game.project).toEqual(project);
   });
 });
