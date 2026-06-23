@@ -1,5 +1,6 @@
 import {
   CollisionRuleSpec,
+  ProjectSpec,
   SpriteAssetSpec,
   SceneSpec,
   ActionSpec,
@@ -15,6 +16,33 @@ import {
   type InlineConditionSpec,
 } from './types';
 import { resolveEntityDefaults } from './entityDefaults';
+
+export function validateProjectSpec(project: ProjectSpec): void {
+  if (!project || typeof project !== 'object') throw new Error('Project must be an object');
+  if (typeof project.id !== 'string' || project.id.length === 0) throw new Error('Project must have an id');
+  if (!project.assets || typeof project.assets !== 'object') throw new Error('Project must have assets');
+  if (!project.audio || typeof project.audio !== 'object') throw new Error('Project must have audio');
+  if (!project.inputMaps || typeof project.inputMaps !== 'object') throw new Error('Project must have inputMaps');
+  if (!project.scenes || typeof project.scenes !== 'object') throw new Error('Project must have scenes');
+  if (typeof project.initialSceneId !== 'string' || project.initialSceneId.length === 0) {
+    throw new Error('Project must have an initialSceneId');
+  }
+  if (!project.scenes[project.initialSceneId]) {
+    throw new Error(`initialSceneId references unknown scene ${project.initialSceneId}`);
+  }
+  if (project.baseSceneId && !project.scenes[project.baseSceneId]) {
+    throw new Error(`baseSceneId references unknown scene ${project.baseSceneId}`);
+  }
+  if (project.defaultInputMapId && !project.inputMaps[project.defaultInputMapId]) {
+    throw new Error(`defaultInputMapId references unknown input map ${project.defaultInputMapId}`);
+  }
+  for (const [sceneId, scene] of Object.entries(project.scenes)) {
+    if (scene.id !== sceneId) {
+      throw new Error(`Scene id mismatch: key=${sceneId} value=${scene.id}`);
+    }
+    validateSceneSpec(scene);
+  }
+}
 
 export function validateSceneSpec(scene: SceneSpec): void {
   validateEntities(scene);

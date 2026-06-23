@@ -16,6 +16,8 @@ describe('testBridge mode helpers', () => {
 
     expect(window.__PHASER_FORGE_TEST__?.isEnabled).toBe(true);
     expect(typeof window.__PHASER_FORGE_TEST__?.setMode).toBe('function');
+    expect(typeof window.__PHASER_FORGE_TEST__?.pauseActiveProjectRecordPersistence).toBe('function');
+    expect(typeof window.__PHASER_FORGE_TEST__?.resumeActiveProjectRecordPersistence).toBe('function');
 
     window.__PHASER_FORGE_TEST__?.setMode?.('play');
     expect(handler).toHaveBeenCalledTimes(1);
@@ -24,4 +26,3 @@ describe('testBridge mode helpers', () => {
     unregisterModeToggleHandler(handler);
   });
 });
-

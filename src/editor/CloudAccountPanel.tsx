@@ -1,6 +1,8 @@
 import { type Dispatch, useEffect, useMemo, useRef, useState } from 'react';
 import { checkGithubPagesTarget, createGame, disconnectGithub, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame } from '../cloud/api';
+import { canonicalizeProjectForComparison, projectsSemanticallyEqual } from '../model/projectCanonical';
 import { serializeProjectToYaml } from '../model/serialization';
+import type { ProjectSpec } from '../model/types';
 import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
 import type { EditorAction, EditorState } from './EditorStore';
 import { projectPersistence } from './projectPersistence';
@@ -152,6 +154,7 @@ export function CloudAccountPanel({
   activeCloudGameId,
   dispatch,
   onLoadYaml,
+  onLoadProject,
   onCloudGameLinked,
   onStatus,
   onError,
@@ -160,6 +163,7 @@ export function CloudAccountPanel({
   activeCloudGameId?: string | null;
   dispatch: Dispatch<EditorAction>;
   onLoadYaml: (yaml: string, sourceLabel: string) => void;
+  onLoadProject?: (project: ProjectSpec, sourceLabel: string) => void;
   onCloudGameLinked?: (gameId: string) => void | Promise<void>;
   onStatus: (message: string) => void;
   onError: (message: string) => void;
@@ -195,15 +199,15 @@ export function CloudAccountPanel({
   const [cloudGameLookupResolved, setCloudGameLookupResolved] = useState(false);
   const [conflictCheckComplete, setConflictCheckComplete] = useState(false);
   const [workspaceConflict, setWorkspaceConflict] = useState<{
-    cloud: { yaml: string; updatedAt: string; label: string };
-    device: { yaml: string; savedAtMs: number | null; label: string };
+    cloud: { project: ProjectSpec; updatedAt: string; label: string };
+    device: { project: ProjectSpec; savedAtMs: number | null; label: string };
   } | null>(null);
   const hasCheckedConflictRef = useRef(false);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const cloudGameIdRef = useRef<string | null>(null);
   const autosaveTimerRef = useRef<number | null>(null);
   const autosaveInFlightRef = useRef(false);
-  const pendingAutosaveRef = useRef<null | { projectId: string; title: string; yaml: string; signature: string }>(null);
+  const pendingAutosaveRef = useRef<null | { projectId: string; title: string; project: ProjectSpec; signature: string }>(null);
   const lastAutosavedSignatureRef = useRef<string>('');
   const autosaveRetryTimerRef = useRef<number | null>(null);
 
@@ -308,29 +312,25 @@ export function CloudAccountPanel({
     };
 
     const detectConflict = async () => {
-      const persistedRecord = await projectPersistence.loadActiveProjectRecord();
+      const persistedRecord = await projectPersistence.loadLatestActiveProjectSnapshotRecord();
       const device = {
-        yaml: serializeProjectToYaml(state.project),
+        project: structuredClone(persistedRecord?.project ?? state.project),
         savedAtMs: (() => {
           const savedAt = persistedRecord?.updatedAt ? Date.parse(persistedRecord.updatedAt) : NaN;
           return Number.isFinite(savedAt) ? savedAt : null;
         })(),
       };
-      if (!device.yaml) {
-        if (!cancelled) setConflictCheckComplete(true);
-        return;
-      }
 
       try {
         const mappedCloudGameId = activeCloudGameId ?? cloudGameIdRef.current;
         let cloudLabel = 'Cloud';
         let cloudUpdatedAt = '';
-        let cloudYaml: string | null = null;
+        let cloudProject: ProjectSpec | null = null;
 
         if (mappedCloudGameId) {
           const full = await getGame(mappedCloudGameId);
-          if (!full?.game?.yaml) return;
-          cloudYaml = full.game.yaml;
+          if (!full?.game?.project) return;
+          cloudProject = full.game.project;
           cloudUpdatedAt = full.game.updated_at;
           cloudLabel = `Cloud (current project: ${full.game.title})`;
         } else {
@@ -345,27 +345,25 @@ export function CloudAccountPanel({
             return curMs > bestMs ? cur : best;
           });
           const full = await getGame(latest.id);
-          if (!full?.game?.yaml) return;
-          cloudYaml = full.game.yaml;
+          if (!full?.game?.project) return;
+          cloudProject = full.game.project;
           cloudUpdatedAt = latest.updated_at;
           cloudLabel = `Cloud (last game: ${latest.title})`;
         }
 
-        const deviceParsed = summarizeYamlWorkspace(device.yaml);
-        const cloudParsed = summarizeYamlWorkspace(cloudYaml);
-        const isEquivalent =
-          deviceParsed.ok && cloudParsed.ok ? deviceParsed.canonicalYaml === cloudParsed.canonicalYaml : false;
+        if (!cloudProject) return;
+        const isEquivalent = projectsSemanticallyEqual(device.project, cloudProject);
         if (isEquivalent) return;
         if (cancelled) return;
 
         setWorkspaceConflict({
           cloud: {
-            yaml: cloudYaml,
+            project: cloudProject,
             updatedAt: cloudUpdatedAt,
             label: cloudLabel,
           },
           device: {
-            yaml: device.yaml,
+            project: device.project,
             savedAtMs: device.savedAtMs,
             label: 'This device',
           },
@@ -600,16 +598,16 @@ export function CloudAccountPanel({
 
   const ensureCloudGameSaved = async (): Promise<string | null> => {
     if (!user) return null;
-    const yaml = serializeProjectToYaml(state.project);
+    const project = structuredClone(state.project);
     const title = publishTitleDraft.trim() || state.project.title?.trim() || 'Untitled';
     if (cloudGameId) {
-      await runWithCsrfRetry((csrf) => updateGame(cloudGameId, { title, yaml }, csrf));
+      await runWithCsrfRetry((csrf) => updateGame(cloudGameId, { title, project }, csrf));
       return cloudGameId;
     }
-    const created = await runWithCsrfRetry((csrf) => createGame(title, yaml, csrf));
+    const created = await runWithCsrfRetry((csrf) => createGame(title, project, csrf));
     const id = created.game.id;
     setCloudGameId(id);
-    void onCloudGameLinked?.(id);
+    await onCloudGameLinked?.(id);
     return id;
   };
 
@@ -664,14 +662,15 @@ export function CloudAccountPanel({
         ...buildProjectDebugDetails(),
         pendingProjectId: pending.projectId,
         pendingTitle: pending.title,
-        signatureHash: summarizeYamlForDebug(pending.yaml).yamlHash,
+        signatureHash: canonicalizeProjectForComparison(pending.project),
       });
       return;
     }
 
     autosaveInFlightRef.current = true;
     pendingAutosaveRef.current = null;
-    const pendingYamlSummary = summarizeYamlForDebug(pending.yaml);
+    const pendingYaml = serializeProjectToYaml(pending.project);
+    const pendingYamlSummary = summarizeYamlForDebug(pendingYaml);
     try {
       const existingCloudGameId = cloudGameIdRef.current;
       appendPersistenceDebugEntry('cloud:autosave-flush-start', {
@@ -682,13 +681,13 @@ export function CloudAccountPanel({
         ...pendingYamlSummary,
       });
       if (existingCloudGameId) {
-        await runWithCsrfRetry((csrf) => updateGame(existingCloudGameId, { title: pending.title, yaml: pending.yaml }, csrf));
+        await runWithCsrfRetry((csrf) => updateGame(existingCloudGameId, { title: pending.title, project: pending.project }, csrf));
       } else {
-        const created = await runWithCsrfRetry((csrf) => createGame(pending.title, pending.yaml, csrf));
+        const created = await runWithCsrfRetry((csrf) => createGame(pending.title, pending.project, csrf));
         const nextCloudGameId = created.game.id;
         cloudGameIdRef.current = nextCloudGameId;
         setCloudGameId(nextCloudGameId);
-        void onCloudGameLinked?.(nextCloudGameId);
+        await onCloudGameLinked?.(nextCloudGameId);
       }
       lastAutosavedSignatureRef.current = pending.signature;
       appendPersistenceDebugEntry('cloud:autosave-flush-success', {
@@ -724,15 +723,15 @@ export function CloudAccountPanel({
   useEffect(() => {
     if (!authResolved || !user || !cloudGameLookupResolved || !conflictCheckComplete || workspaceConflict) return;
     const title = state.project.publishTitle?.trim() || state.project.title?.trim() || 'Untitled';
-    const yaml = serializeProjectToYaml(state.project);
-    const signature = `${state.project.id}\n${title}\n${yaml}`;
+    const project = structuredClone(state.project);
+    const signature = `${state.project.id}\n${title}\n${canonicalizeProjectForComparison(project)}`;
     if (signature === lastAutosavedSignatureRef.current) return;
-    pendingAutosaveRef.current = { projectId: state.project.id, title, yaml, signature };
+    pendingAutosaveRef.current = { projectId: state.project.id, title, project, signature };
     appendPersistenceDebugEntry('cloud:autosave-scheduled', {
       ...buildProjectDebugDetails(),
       pendingProjectId: state.project.id,
       pendingTitle: title,
-      ...summarizeYamlForDebug(yaml),
+      ...summarizeYamlForDebug(serializeProjectToYaml(project)),
     });
     clearAutosaveTimer();
     autosaveTimerRef.current = window.setTimeout(() => {
@@ -862,6 +861,14 @@ export function CloudAccountPanel({
     }
   };
 
+  const loadConflictProject = (project: ProjectSpec, sourceLabel: string) => {
+    if (onLoadProject) {
+      onLoadProject(project, sourceLabel);
+      return;
+    }
+    onLoadYaml(serializeProjectToYaml(project), sourceLabel);
+  };
+
   return (
     <div className="panel cloud-panel" data-testid="cloud-panel">
       {workspaceConflict ? (
@@ -877,8 +884,8 @@ export function CloudAccountPanel({
                 return workspaceConflict.cloud.updatedAt || 'Unknown';
               }
             })(),
-            yamlText: workspaceConflict.cloud.yaml,
-            parsed: summarizeYamlWorkspace(workspaceConflict.cloud.yaml),
+            yamlText: serializeProjectToYaml(workspaceConflict.cloud.project),
+            parsed: summarizeYamlWorkspace(serializeProjectToYaml(workspaceConflict.cloud.project)),
           }}
           device={{
             kind: 'device',
@@ -892,8 +899,8 @@ export function CloudAccountPanel({
                 return 'Unknown';
               }
             })(),
-            yamlText: workspaceConflict.device.yaml,
-            parsed: summarizeYamlWorkspace(workspaceConflict.device.yaml),
+            yamlText: serializeProjectToYaml(workspaceConflict.device.project),
+            parsed: summarizeYamlWorkspace(serializeProjectToYaml(workspaceConflict.device.project)),
           }}
           onExportBoth={() => {
             const formatName = (kind: 'cloud' | 'device', time: string) => {
@@ -920,19 +927,19 @@ export function CloudAccountPanel({
 
             const cloudTime = workspaceConflict.cloud.updatedAt || 'cloud';
             const deviceTime = workspaceConflict.device.savedAtMs ? new Date(workspaceConflict.device.savedAtMs).toISOString() : 'device';
-            download(formatName('cloud', cloudTime), workspaceConflict.cloud.yaml);
-            download(formatName('device', deviceTime), workspaceConflict.device.yaml);
+            download(formatName('cloud', cloudTime), serializeProjectToYaml(workspaceConflict.cloud.project));
+            download(formatName('device', deviceTime), serializeProjectToYaml(workspaceConflict.device.project));
             onStatus('Exported both YAML snapshots');
           }}
           onChooseCloud={() => {
-            void projectPersistence.saveWorkspaceBackup(workspaceConflict.device.yaml, 'device');
-            onLoadYaml(workspaceConflict.cloud.yaml, 'cloud:workspace');
+            void projectPersistence.saveWorkspaceBackup(workspaceConflict.device.project, 'device');
+            loadConflictProject(workspaceConflict.cloud.project, 'cloud:workspace');
             setWorkspaceConflict(null);
             onStatus('Loaded cloud workspace (device backup saved)');
           }}
           onChooseDevice={() => {
-            void projectPersistence.saveWorkspaceBackup(workspaceConflict.cloud.yaml, 'cloud');
-            onLoadYaml(workspaceConflict.device.yaml, 'device:workspace');
+            void projectPersistence.saveWorkspaceBackup(workspaceConflict.cloud.project, 'cloud');
+            loadConflictProject(workspaceConflict.device.project, 'device:workspace');
             setWorkspaceConflict(null);
             onStatus('Kept device workspace (cloud backup saved)');
           }}

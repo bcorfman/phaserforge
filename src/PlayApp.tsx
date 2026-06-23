@@ -35,20 +35,21 @@ export default function PlayApp() {
     let cancelled = false;
     const load = async () => {
       try {
-        let yamlText: string;
         if (yamlUrl) {
           const res = await fetch(yamlUrl, { credentials: 'omit' });
           if (!res.ok) throw new Error(`http_${res.status}`);
-          yamlText = await res.text();
+          const yamlText = await res.text();
+          const parsed = parseProjectYaml(yamlText);
+          if (cancelled) return;
+          setProject(parsed);
+          setSceneId(parsed.initialSceneId);
         } else {
           if (!gameId) throw new Error('Missing playGameId');
           const res = await getGame(gameId);
-          yamlText = res.game.yaml;
+          if (cancelled) return;
+          setProject(res.game.project);
+          setSceneId(res.game.project.initialSceneId);
         }
-        const parsed = parseProjectYaml(yamlText);
-        if (cancelled) return;
-        setProject(parsed);
-        setSceneId(parsed.initialSceneId);
       } catch (err) {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : 'Failed to load game';

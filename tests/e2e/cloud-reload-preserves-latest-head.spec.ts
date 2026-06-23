@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 import { appendProjectRevision, createProjectRevision } from '../../src/editor/projectTreeHistory';
@@ -25,7 +24,6 @@ test('cloud-backed active project reload restores the latest IndexedDB head and 
     fadeMs: 250,
   };
 
-  const latestYaml = serializeProjectToYaml(latestProject);
   const staleRevision = createProjectRevision(sampleProject, {
     id: 'rev-stale',
     updatedAt: '2026-06-20T20:00:00.000Z',
@@ -39,7 +37,6 @@ test('cloud-backed active project reload restores the latest IndexedDB head and 
   const latestRecord = {
     ...buildStoredProjectRecord(latestProject, {
       id: 'cloud:g1',
-      yaml: latestYaml,
       updatedAt: '2026-06-20T20:05:00.000Z',
       origin: 'cloud-cache',
       syncStatus: 'cloud',

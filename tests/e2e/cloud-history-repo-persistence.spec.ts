@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleProject } from '../../src/model/sampleProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 import { dismissViewHint, gotoStudio, waitForSampleScene } from './helpers';
@@ -42,11 +41,9 @@ async function readStoredActiveProject(page: Parameters<typeof test>[0]['page'])
 test('rename + publish repo + history + close/reopen persists latest head locally and to cloud @regression', async ({ page }) => {
   test.fail(true, 'Cloud autosave does not yet persist the rename + publish repo flow in this repro.');
   const cloudProject = structuredClone(sampleProject);
-  const cloudYaml = serializeProjectToYaml(cloudProject);
   const record = {
     ...buildStoredProjectRecord(cloudProject, {
       id: cloudProject.id,
-      yaml: cloudYaml,
       updatedAt: '2026-06-21T21:00:00.000Z',
       origin: 'local-only',
       syncStatus: 'local',
@@ -54,7 +51,7 @@ test('rename + publish repo + history + close/reopen persists latest head locall
     id: cloudProject.id,
     projectId: cloudProject.id,
   };
-  const cloudSaves: Array<{ title?: string; yaml?: string }> = [];
+  const cloudSaves: Array<{ title?: string; project?: typeof cloudProject }> = [];
 
   await page.addInitScript(async ({ seededRecord }) => {
     window.localStorage.setItem('phaserforge.debugPersistence.v1', '1');
@@ -118,7 +115,7 @@ test('rename + publish repo + history + close/reopen persists latest head locall
       return;
     }
 
-    const patch = route.request().postDataJSON() as { title?: string; yaml?: string };
+    const patch = route.request().postDataJSON() as { title?: string; project?: typeof cloudProject };
     cloudSaves.push(patch);
     await route.fulfill({
       status: 200,
@@ -129,7 +126,7 @@ test('rename + publish repo + history + close/reopen persists latest head locall
     });
   });
   await page.route('**/api/v1/games/g1', async (route) => {
-    const patch = route.request().postDataJSON() as { title?: string; yaml?: string };
+    const patch = route.request().postDataJSON() as { title?: string; project?: typeof cloudProject };
     cloudSaves.push(patch);
     await route.fulfill({
       status: 200,
@@ -181,9 +178,12 @@ test('rename + publish repo + history + close/reopen persists latest head locall
 
   await expect.poll(() => cloudSaves.at(-1) ?? null, { timeout: 15000 }).toMatchObject({
     title: 'Pattern Demo',
-    yaml: expect.stringContaining('publishGithubPagesRepo: zoof'),
+    project: expect.objectContaining({
+      title: 'Pattern Demo',
+      publishGithubPagesRepo: 'zoof',
+    }),
   });
-  await expect(cloudSaves.at(-1)?.yaml ?? '').toContain('title: Pattern Demo');
+  expect(cloudSaves.at(-1)?.project?.title).toBe('Pattern Demo');
 
   await expect.poll(async () => {
     return page.evaluate(() => (window.__PHASER_FORGE_PERSISTENCE_DEBUG__?.read() ?? []).map((entry) => entry.event));
