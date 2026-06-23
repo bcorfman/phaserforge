@@ -2,9 +2,10 @@ import { expect, test } from '@playwright/test';
 import { sampleProject } from '../../src/model/sampleProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 import { appendProjectRevision, createProjectRevision } from '../../src/editor/projectTreeHistory';
-import { getState, gotoStudio } from './helpers';
+import { enablePersistenceDebug, expectPersistenceDebugEvents, expectProjectRestoreState, getState, gotoStudio } from './helpers';
 
 test('cloud-backed active project reload restores the latest IndexedDB head and history without legacy localStorage project state @regression', async ({ page }) => {
+  await enablePersistenceDebug(page);
   const latestProject = structuredClone(sampleProject);
   latestProject.title = 'Pattern Demo';
   latestProject.publishTitle = 'Pattern Demo';
@@ -92,6 +93,13 @@ test('cloud-backed active project reload restores the latest IndexedDB head and 
 
   const assertLatestHead = async () => {
     await expect(page.getByTestId('project-tree-root-button')).toContainText('Pattern Demo');
+    await expectProjectRestoreState(page, {
+      projectId: latestProject.id,
+      title: 'Pattern Demo',
+      currentSceneId: latestProject.initialSceneId,
+      entityCount: Object.keys(latestProject.scenes[latestProject.initialSceneId]?.entities ?? {}).length,
+      groupCount: Object.keys(latestProject.scenes[latestProject.initialSceneId]?.groups ?? {}).length,
+    });
     await expect.poll(async () => {
       return page.evaluate(() => window.localStorage.getItem('phaserforge.projectYaml.v1'));
     }).toBeNull();
@@ -126,6 +134,15 @@ test('cloud-backed active project reload restores the latest IndexedDB head and 
     await expect(revisionsPane).toBeVisible();
     await expect(revisionsPane).toContainText('Pattern Demo');
     await expect(revisionsPane).toContainText(/Renamed to Pattern Demo|Added audio pattern-theme\.mp3|Music -> pattern-theme\.mp3|Set publish title to Pattern Demo/);
+    await expectPersistenceDebugEvents(page, [
+      'restore:workspace-state-loaded',
+      'restore:latest-active-marker-loaded',
+      'restore:active-project-selected',
+      'restore:project-dispatched',
+      'restore:scene-load-complete',
+      'restore:view-state-restored',
+      'restore:inspector-entity-list-stable',
+    ]);
   };
 
   await gotoStudio(page, { forceNavigate: true });

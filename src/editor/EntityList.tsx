@@ -98,6 +98,7 @@ export function EntityList() {
   const { state, dispatch, persistence } = useEditorStore();
   const { project, currentSceneId, selection, sidebarScope, expandedGroups, mode, projectRootEditing, revisionDialogs, revisionPreview } = state;
   const scene = project.scenes[currentSceneId];
+  const stabilityDebugKeyRef = useRef<string | null>(null);
   const [projectSearch, setProjectSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState<ProjectPickerFilter>('recent');
   const projectModel = buildProjectPickerModel({
@@ -129,6 +130,25 @@ export function EntityList() {
     }
     dispatch({ type: 'set-error', error: 'File picker unavailable' });
   };
+
+  useEffect(() => {
+    if (!state.initialized) return;
+    const debugKey = `${project.id}:${currentSceneId}:${sidebarScope}:${selection.kind}`;
+    if (stabilityDebugKeyRef.current === debugKey) return;
+    stabilityDebugKeyRef.current = debugKey;
+    appendPersistenceDebugEntry('restore:entity-list-stable', {
+      projectId: project.id,
+      currentSceneId,
+      sidebarScope,
+      selectionKind: selection.kind,
+    });
+    appendPersistenceDebugEntry('restore:inspector-entity-list-stable', {
+      projectId: project.id,
+      currentSceneId,
+      sidebarScope,
+      selectionKind: selection.kind,
+    });
+  }, [currentSceneId, project.id, selection.kind, sidebarScope, state.initialized]);
 
   return (
     <EntityListView
@@ -206,7 +226,12 @@ export function EntityListView({
   onRestoreRevision?: (revisionId: string) => void;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [assetsDockHeight, setAssetsDockHeight] = useState(200);
+  const cachedWorkspace = projectPersistence.readCachedWorkspaceStateRecord?.();
+  const [assetsDockHeight, setAssetsDockHeight] = useState(() => (
+    Number.isFinite(cachedWorkspace?.assetsDockHeight)
+      ? Math.max(120, Math.min(420, cachedWorkspace?.assetsDockHeight as number))
+      : 200
+  ));
   const [assetsDockHeightHydrated, setAssetsDockHeightHydrated] = useState(false);
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 

@@ -18,6 +18,8 @@ const LEGACY_MIGRATED_KEY = 'legacyMigrated';
 const WORKSPACE_KEY = 'workspace';
 const WORKSPACE_BACKUP_KEY = 'workspaceBackup';
 const PREFERENCES_KEY = 'preferences';
+const WORKSPACE_BOOT_CACHE_KEY = 'phaserforge.workspaceBootCache.v1';
+const PREFERENCES_BOOT_CACHE_KEY = 'phaserforge.preferencesBootCache.v1';
 
 export type ProjectSyncMode = 'online' | 'offline';
 export type StoredThemeMode = 'system' | 'light' | 'dark';
@@ -99,6 +101,37 @@ function getLegacyStorageReader(): LegacyStorageReader {
     return window.localStorage ?? EMPTY_LEGACY_STORAGE_READER;
   } catch {
     return EMPTY_LEGACY_STORAGE_READER;
+  }
+}
+
+function getLocalStorageWriter(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readJsonStorageRecord<T>(key: string): T | null {
+  const storage = getLocalStorageWriter();
+  if (!storage) return null;
+  const raw = storage.getItem(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function writeJsonStorageRecord(key: string, value: unknown): void {
+  const storage = getLocalStorageWriter();
+  if (!storage) return;
+  try {
+    storage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore localStorage write failures; indexeddb remains the source of truth
   }
 }
 
@@ -363,8 +396,27 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
     readPreferences(db),
     readLatestActiveSnapshot(db),
   ]);
+  appendPersistenceDebugEntry('restore:workspace-state-loaded', {
+    activeProjectId: storedWorkspace.activeProjectId,
+    syncMode: storedWorkspace.syncMode,
+    viewStateProjectCount: Object.keys(storedWorkspace.viewStateByProject ?? {}).length,
+  });
+  appendPersistenceDebugEntry('restore:latest-active-marker-loaded', latestActiveSnapshot
+    ? {
+      recordId: latestActiveSnapshot.recordId,
+      updatedAt: latestActiveSnapshot.updatedAt,
+      syncMode: latestActiveSnapshot.syncMode,
+      savedAt: latestActiveSnapshot.savedAt,
+    }
+    : {
+      recordId: null,
+      updatedAt: null,
+      syncMode: null,
+      savedAt: null,
+    });
   const localProjects = [...storedProjects];
   let workspace = storedWorkspace;
+  let activeProjectSelectionSource: 'latest-active-snapshot' | 'workspace-active-project' | 'none' = 'none';
   if (latestActiveSnapshot) {
     const existingIndex = localProjects.findIndex((record) => record.id === latestActiveSnapshot.recordId);
     const snapshotRecord = existingIndex >= 0 ? localProjects[existingIndex] : null;
@@ -393,9 +445,20 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
         activeProjectId: latestActiveSnapshot.recordId,
         syncMode: latestActiveSnapshot.syncMode,
       };
+      activeProjectSelectionSource = 'latest-active-snapshot';
     }
   }
+  if (workspace.activeProjectId && activeProjectSelectionSource === 'none') {
+    activeProjectSelectionSource = 'workspace-active-project';
+  }
   const activeProject = localProjects.find((record) => record.id === workspace.activeProjectId) ?? null;
+  appendPersistenceDebugEntry('restore:active-project-selected', {
+    activeProjectId: workspace.activeProjectId,
+    syncMode: workspace.syncMode,
+    source: activeProjectSelectionSource,
+    activeProject: activeProject ? summarizeRecordForDebug(activeProject) : null,
+    localProjectCount: localProjects.length,
+  });
   appendPersistenceDebugEntry('project-persistence:load-snapshot', {
     localProjectCount: localProjects.length,
     activeProjectId: workspace.activeProjectId,
@@ -448,6 +511,7 @@ async function writeProjectRecordAndWorkspace(record: StoredProjectRecord, works
 }
 
 async function writeWorkspace(workspace: WorkspaceStateRecord): Promise<void> {
+  writeJsonStorageRecord(WORKSPACE_BOOT_CACHE_KEY, workspace);
   const db = await openDb();
   if (!db) return;
   const tx = db.transaction(WORKSPACE_STORE, 'readwrite');
@@ -456,6 +520,7 @@ async function writeWorkspace(workspace: WorkspaceStateRecord): Promise<void> {
 }
 
 async function writePreferences(preferences: PreferencesRecord): Promise<void> {
+  writeJsonStorageRecord(PREFERENCES_BOOT_CACHE_KEY, preferences);
   const db = await openDb();
   if (!db) return;
   const tx = db.transaction(PREFERENCES_STORE, 'readwrite');
@@ -658,6 +723,15 @@ export const projectPersistence = {
 
   async savePreferences(preferences: PreferencesRecord): Promise<void> {
     await writePreferences(preferences);
+  },
+
+  readCachedWorkspaceStateRecord(): WorkspaceStateRecord | null {
+    return readJsonStorageRecord<WorkspaceStateRecord>(WORKSPACE_BOOT_CACHE_KEY);
+  },
+
+  readCachedPreferencesRecord(): PreferencesRecord | null {
+    const cached = readJsonStorageRecord<PreferencesRecord>(PREFERENCES_BOOT_CACHE_KEY);
+    return cached ?? buildPreferencesFromLegacy(getLegacyStorageReader());
   },
 
   async loadPreferencesRecord(): Promise<PreferencesRecord | null> {

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { sampleProject } from '../../src/model/sampleProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
-import { dismissViewHint, gotoStudio, waitForSampleScene } from './helpers';
+import { dismissViewHint, waitForSampleScene, waitForSceneReady } from './helpers';
 
 async function readStoredActiveProject(page: Parameters<typeof test>[0]['page']) {
   return page.evaluate(async () => {
@@ -37,8 +37,14 @@ async function readStoredActiveProject(page: Parameters<typeof test>[0]['page'])
   });
 }
 
+async function gotoStudioWithoutDefaultApiStub(page: Parameters<typeof test>[0]['page']) {
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+  await page.waitForFunction(() => Boolean(window.__PHASER_FORGE_TEST__?.isEnabled), { timeout: 10000 });
+  await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 10000 });
+  await waitForSceneReady(page);
+}
+
 test('rename + publish repo + history + close/reopen persists latest head locally and to cloud @regression', async ({ page }) => {
-  test.fail(true, 'Cloud autosave does not yet persist the rename + publish repo flow in this repro.');
   const cloudProject = structuredClone(sampleProject);
   const record = {
     ...buildStoredProjectRecord(cloudProject, {
@@ -81,28 +87,28 @@ test('rename + publish repo + history + close/reopen persists latest head locall
     });
   }, { seededRecord: record });
 
-  await page.route('**/api/v1/auth/csrf', async (route) => {
+  await page.context().route('**/api/v1/auth/csrf', async (route) => {
     await route.fulfill({
       status: 200,
       body: JSON.stringify({ csrfToken: 'csrf-token' }),
       contentType: 'application/json',
     });
   });
-  await page.route('**/api/v1/auth/me', async (route) => {
+  await page.context().route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
       body: JSON.stringify({ user: { id: 'u1', email: 'a@b.c' } }),
       contentType: 'application/json',
     });
   });
-  await page.route('**/api/v1/publish/github-pages/info', async (route) => {
+  await page.context().route('**/api/v1/publish/github-pages/info', async (route) => {
     await route.fulfill({
       status: 200,
       body: JSON.stringify({ ok: true, login: 'bcorfman', pagesBaseUrl: 'https://bcorfman.github.io/' }),
       contentType: 'application/json',
     });
   });
-  await page.route('**/api/v1/games', async (route) => {
+  await page.context().route('**/api/v1/games', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
@@ -124,7 +130,7 @@ test('rename + publish repo + history + close/reopen persists latest head locall
       contentType: 'application/json',
     });
   });
-  await page.route('**/api/v1/games/g1', async (route) => {
+  await page.context().route('**/api/v1/games/g1', async (route) => {
     const patch = route.request().postDataJSON() as { title?: string; project?: typeof cloudProject };
     cloudSaves.push(patch);
     await route.fulfill({
@@ -134,13 +140,17 @@ test('rename + publish repo + history + close/reopen persists latest head locall
     });
   });
 
-  await gotoStudio(page, { forceNavigate: true });
+  await gotoStudioWithoutDefaultApiStub(page);
   await waitForSampleScene(page);
   await dismissViewHint(page);
 
   await page.getByTestId('inspector-pane-tab-cloud').click();
   const repoInput = page.getByLabel('Publish repository');
   await expect(repoInput).toBeVisible();
+  const cloudSaveRequestPromise = page.waitForRequest((request) => {
+    if (!['POST', 'PUT'].includes(request.method())) return false;
+    return /\/api\/v1\/games(?:\/g1)?$/.test(request.url());
+  }, { timeout: 15000 });
 
   await page.getByTestId('project-tree-manage-button').click();
   await page.getByTestId('project-manage-rename').click();
@@ -173,14 +183,15 @@ test('rename + publish repo + history + close/reopen persists latest head locall
     revisionKinds: expect.arrayContaining(['delta']),
   });
 
-  await expect.poll(() => cloudSaves.at(-1) ?? null, { timeout: 15000 }).toMatchObject({
+  const cloudSaveRequest = await cloudSaveRequestPromise;
+  expect(cloudSaveRequest.postDataJSON()).toMatchObject({
     title: 'Pattern Demo',
     project: expect.objectContaining({
       title: 'Pattern Demo',
       publishGithubPagesRepo: 'zoof',
     }),
   });
-  expect(cloudSaves.at(-1)?.project?.title).toBe('Pattern Demo');
+  expect((cloudSaveRequest.postDataJSON() as any)?.project?.title).toBe('Pattern Demo');
 
   await expect.poll(async () => {
     return page.evaluate(() => (window.__PHASER_FORGE_PERSISTENCE_DEBUG__?.read() ?? []).map((entry) => entry.event));
@@ -194,7 +205,10 @@ test('rename + publish repo + history + close/reopen persists latest head locall
 
   const reopenedPage = await page.context().newPage();
   try {
-    await gotoStudio(reopenedPage, { forceNavigate: true });
+    await reopenedPage.addInitScript(() => {
+      window.sessionStorage.setItem('phaserforge.testForceCloudEnabled.v1', '1');
+    });
+    await gotoStudioWithoutDefaultApiStub(reopenedPage);
     await waitForSampleScene(reopenedPage);
     await dismissViewHint(reopenedPage);
 

@@ -9,6 +9,7 @@ import {
   projectPersistence,
 } from '../../src/editor/projectPersistence';
 import { appendProjectRevision, createProjectRevision, materializeProjectRevision } from '../../src/editor/projectTreeHistory';
+import { clearPersistenceDebugEntries, readPersistenceDebugEntries, setPersistenceDebugEnabled } from '../../src/util/persistenceDebug';
 
 function installLocalStorageMock() {
   const storage = new Map<string, string>();
@@ -391,7 +392,10 @@ describe('projectPersistence steady-state storage', () => {
   installIndexedDbMock();
 
   afterEach(async () => {
+    __resumeActiveProjectRecordPersistenceForTests();
     window.localStorage.clear();
+    clearPersistenceDebugEntries();
+    setPersistenceDebugEnabled(false);
     await deletePersistenceDb();
   });
 
@@ -637,6 +641,56 @@ describe('projectPersistence steady-state storage', () => {
     expect(snapshot.localProjects[0]?.updatedAt).toBe('2026-06-22T12:00:05.000Z');
   });
 
+  it('records restore milestone debug events while selecting the active project during bootstrap', async () => {
+    setPersistenceDebugEnabled(true);
+    const latestProject = createEmptyProject();
+    latestProject.id = 'project-1';
+    latestProject.title = 'Recovered Title';
+
+    await seedPersistenceRecords({
+      projectRecord: buildStoredProjectRecord(latestProject, {
+        id: latestProject.id,
+        updatedAt: '2026-06-22T12:00:05.000Z',
+      }),
+      latestActiveSnapshot: {
+        recordId: latestProject.id,
+        updatedAt: '2026-06-22T12:00:05.000Z',
+        syncMode: 'online',
+        savedAt: '2026-06-22T12:00:05.000Z',
+      },
+      workspace: {
+        activeProjectId: null,
+        syncMode: 'offline',
+      },
+    });
+
+    await projectPersistence.load();
+
+    expect(readPersistenceDebugEntries()).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event: 'restore:workspace-state-loaded',
+        details: expect.objectContaining({
+          activeProjectId: null,
+          syncMode: 'offline',
+        }),
+      }),
+      expect.objectContaining({
+        event: 'restore:latest-active-marker-loaded',
+        details: expect.objectContaining({
+          recordId: 'project-1',
+          syncMode: 'online',
+        }),
+      }),
+      expect.objectContaining({
+        event: 'restore:active-project-selected',
+        details: expect.objectContaining({
+          activeProjectId: 'project-1',
+          source: 'latest-active-snapshot',
+        }),
+      }),
+    ]));
+  });
+
   it('does not let a newer placeholder snapshot override an explicitly active saved project', async () => {
     const realProject = createEmptyProject();
     realProject.id = 'project-real';
@@ -736,6 +790,40 @@ describe('projectPersistence steady-state storage', () => {
       cloudProjectId: 'g-123',
       syncStatus: 'cloud',
       updatedAt: '2026-06-22T12:05:00.000Z',
+    });
+  });
+
+  it('updates the synchronous workspace boot cache when workspace state changes', async () => {
+    await projectPersistence.updateWorkspaceStateRecord({
+      activeProjectId: 'project-cached',
+      syncMode: 'online',
+      leftPaneWidth: 344,
+      rightPaneWidth: 688,
+      assetsDockHeight: 264,
+    });
+
+    expect(projectPersistence.readCachedWorkspaceStateRecord?.()).toEqual({
+      activeProjectId: 'project-cached',
+      syncMode: 'online',
+      leftPaneWidth: 344,
+      rightPaneWidth: 688,
+      assetsDockHeight: 264,
+    });
+  });
+
+  it('updates the synchronous preferences boot cache when preferences change', async () => {
+    await projectPersistence.savePreferences({
+      startupMode: 'new_empty_scene',
+      themeMode: 'dark',
+      uiScale: 1.1,
+      showHitboxOverlay: false,
+    });
+
+    expect(projectPersistence.readCachedPreferencesRecord?.()).toEqual({
+      startupMode: 'new_empty_scene',
+      themeMode: 'dark',
+      uiScale: 1.1,
+      showHitboxOverlay: false,
     });
   });
 });
