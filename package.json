@@ -57,6 +57,8 @@
         "test:e2e:webkit": "PW_PROJECTS=webkit PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 LD_LIBRARY_PATH=$(pwd)/.playwright-lib-compat:$HOME/.cache/ms-playwright/webkit-2287/minibrowser-wpe/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} node scripts/playwright-no-deprecation.cjs test",
         "test:e2e:webkit:docker": "bash scripts/test-e2e-webkit-docker.sh",
         "test:e2e:ui": "node scripts/playwright-no-deprecation.cjs test --ui",
+        "ci:checks": "node --import tsx scripts/inspect-gh-actions-failures.ts",
+        "ci:checks:json": "node --import tsx scripts/inspect-gh-actions-failures.ts --json",
         "test:all": "npm run test:unit && npm run test:e2e",
         "storybook": "storybook dev -p 6006",
         "build-storybook": "storybook build",
