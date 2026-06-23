@@ -4,7 +4,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { serializeProjectToYaml } from '../../src/model/serialization';
 import {
   clearPersistenceDebugEntries,
   readPersistenceDebugEntries,
@@ -25,7 +24,9 @@ const api = vi.hoisted(() => {
     }),
     logout: vi.fn(async () => {}),
     listGames: vi.fn(async () => ({ games: [] })),
-    getGame: vi.fn(async () => ({ game: { id: 'g1', title: 'G', created_at: 'c', updated_at: 'u', yaml: '' } })),
+    getGame: vi.fn(async () => {
+      throw new Error('not_found');
+    }),
     createGame: vi.fn(async () => ({ game: { id: 'g1', title: 'G', created_at: 'c', updated_at: 'u' } })),
     updateGame: vi.fn(async () => ({ game: { id: 'g1', title: 'G', created_at: 'c', updated_at: 'u' } })),
     disconnectGithub: vi.fn(async () => {}),
@@ -37,7 +38,7 @@ const api = vi.hoisted(() => {
 
 const persistence = vi.hoisted(() => {
   return {
-    loadActiveProjectRecord: vi.fn(async () => null),
+    loadLatestActiveProjectSnapshotRecord: vi.fn(async () => null),
     saveWorkspaceBackup: vi.fn(async () => {}),
     loadLastPublishInfo: vi.fn(async () => null),
     saveLastPublishInfo: vi.fn(async () => {}),
@@ -195,7 +196,9 @@ describe('CloudAccountPanel publish gating', () => {
         'g-1',
         expect.objectContaining({
           title: 'Pattern Demo 2',
-          yaml: expect.stringContaining('Pattern Demo 2'),
+          project: expect.objectContaining({
+            title: 'Pattern Demo 2',
+          }),
         }),
         'csrf',
       );
@@ -259,7 +262,9 @@ describe('CloudAccountPanel publish gating', () => {
         'g-1',
         expect.objectContaining({
           title: 'Pattern Demo 2',
-          yaml: expect.stringContaining('Pattern Demo 2'),
+          project: expect.objectContaining({
+            title: 'Pattern Demo 2',
+          }),
         }),
         'csrf',
       );
@@ -304,7 +309,10 @@ describe('CloudAccountPanel publish gating', () => {
 
       expect(api.createGame).toHaveBeenCalledWith(
         'Cloud Save Demo',
-        expect.stringContaining('Cloud Save Demo'),
+        expect.objectContaining({
+          id: 'project-create',
+          title: 'Cloud Save Demo',
+        }),
         'csrf',
       );
     } finally {
@@ -400,7 +408,9 @@ describe('CloudAccountPanel publish gating', () => {
         'g-1',
         expect.objectContaining({
           title: 'Pattern Demo',
-          yaml: expect.stringContaining('publishTitle: Pattern Demo'),
+          project: expect.objectContaining({
+            publishTitle: 'Pattern Demo',
+          }),
         }),
         'csrf',
       );
@@ -420,11 +430,11 @@ describe('CloudAccountPanel publish gating', () => {
     const currentCloudProject = structuredClone(deviceProject);
     currentCloudProject.title = 'Current Cloud Project';
 
-    persistence.loadActiveProjectRecord.mockResolvedValueOnce({
+    persistence.loadLatestActiveProjectSnapshotRecord.mockResolvedValueOnce({
       id: 'project-1',
       projectId: 'project-1',
       title: 'Device Project',
-      yaml: serializeProjectToYaml(deviceProject),
+      project: deviceProject,
       updatedAt: '2026-06-21T11:16:00.000Z',
       sceneCount: 1,
       origin: 'local-only',
@@ -440,7 +450,7 @@ describe('CloudAccountPanel publish gating', () => {
             title: 'Current Cloud Project',
             created_at: 'c',
             updated_at: 'u1',
-            yaml: serializeProjectToYaml(currentCloudProject),
+            project: currentCloudProject,
           },
         };
       }
@@ -451,7 +461,7 @@ describe('CloudAccountPanel publish gating', () => {
             title: 'Latest Unrelated Game',
             created_at: 'c',
             updated_at: 'u2',
-            yaml: serializeProjectToYaml(createEmptyProject()),
+            project: createEmptyProject(),
           },
         };
       }
@@ -462,14 +472,15 @@ describe('CloudAccountPanel publish gating', () => {
         { id: 'g2', title: 'Latest Unrelated Game', created_at: 'c', updated_at: '2026-06-21T13:00:00.000Z' },
       ],
     });
-    const onLoadYaml = vi.fn();
+    const onLoadProject = vi.fn();
 
     const view = renderIntoDom(
       <CloudAccountPanel
         state={{ project: deviceProject }}
         activeCloudGameId="g1"
         dispatch={vi.fn() as any}
-        onLoadYaml={onLoadYaml}
+        onLoadYaml={() => {}}
+        onLoadProject={onLoadProject}
         onStatus={vi.fn()}
         onError={vi.fn()}
       />
@@ -484,8 +495,8 @@ describe('CloudAccountPanel publish gating', () => {
       expect(document.querySelector('[data-testid="workspace-conflict-modal"]')).toBeTruthy();
       expect(document.querySelector('[data-testid="workspace-conflict-cloud-card"]')?.textContent).toContain('Current Cloud Project');
       (document.querySelector('[data-testid="workspace-conflict-use-cloud"]') as HTMLButtonElement | null)?.click();
-      expect(persistence.saveWorkspaceBackup).toHaveBeenCalledWith(serializeProjectToYaml(deviceProject), 'device');
-      expect(onLoadYaml).toHaveBeenCalledWith(serializeProjectToYaml(currentCloudProject), 'cloud:workspace');
+      expect(persistence.saveWorkspaceBackup).toHaveBeenCalledWith(deviceProject, 'device');
+      expect(onLoadProject).toHaveBeenCalledWith(currentCloudProject, 'cloud:workspace');
     } finally {
       view.cleanup();
     }

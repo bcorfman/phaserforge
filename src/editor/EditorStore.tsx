@@ -18,7 +18,7 @@ import {
   type SpriteAssetSpec,
 } from '../model/types';
 import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject';
-import { validateSceneSpec } from '../model/validation';
+import { validateProjectSpec, validateSceneSpec } from '../model/validation';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { applyGroupArrangeLayout, applyGroupGridLayout, applyGroupGridLayoutPreserveMembers, inferGroupGridLayout, type GroupGridLayout } from './formationLayout';
 import { addEntitiesToGroup, dissolveGroup, insertEntitiesIntoGroup, removeEntitiesFromGroups, removeEntityFromGroup, updateGroupLayoutPosition } from './groupCommands';
@@ -199,6 +199,7 @@ export type EditorAction =
   | { type: 'mark-saved' }
   | { type: 'load-yaml' }
   | { type: 'load-yaml-text'; text: string; sourceLabel: string }
+  | { type: 'load-project'; project: ProjectSpec; sourceLabel: string }
   | { type: 'reset-scene' }
   | { type: 'clear-scene'; sceneId: Id }
   | { type: 'set-current-scene'; sceneId: Id }
@@ -758,6 +759,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'clear-scene':
     case 'load-yaml':
     case 'load-yaml-text':
+    case 'load-project':
     case 'add-background-layer-from-file':
     case 'add-image-asset-from-file':
     case 'add-spritesheet-asset-from-file':
@@ -799,6 +801,7 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'toggle-base-scene':
     case 'load-yaml':
     case 'load-yaml-text':
+    case 'load-project':
     case 'reset-scene':
     case 'clear-scene':
     case 'add-background-layer-from-file':
@@ -1236,6 +1239,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     case 'load-yaml': {
       try {
         const parsed = parseProjectYaml(state.yamlText);
+        validateProjectSpec(parsed);
         for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
         const currentSceneId = parsed.initialSceneId;
         return {
@@ -1263,6 +1267,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     case 'load-yaml-text': {
       try {
         const parsed = parseProjectYaml(action.text);
+        validateProjectSpec(parsed);
         for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
         const currentSceneId = parsed.initialSceneId;
         const expiresAt = Date.now() + 4000;
@@ -1286,6 +1291,38 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         return {
           ...state,
           error: err instanceof Error ? err.message : 'Invalid YAML',
+          statusMessage: undefined,
+          statusExpiresAt: undefined,
+        };
+      }
+    }
+    case 'load-project': {
+      try {
+        const parsed = structuredClone(action.project);
+        validateProjectSpec(parsed);
+        for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
+        const currentSceneId = parsed.initialSceneId;
+        const expiresAt = Date.now() + 4000;
+        return {
+          ...state,
+          project: parsed,
+          currentSceneId,
+          sidebarScope: 'projectTree',
+          projectRootEditing: false,
+          revisionPreview: undefined,
+          revisionDialogs: {},
+          expandedGroups: defaultExpandedGroups(parsed.scenes[currentSceneId]),
+          dirty: false,
+          error: undefined,
+          selection: { kind: 'none' },
+          yamlText: serializeProjectToYaml(parsed),
+          statusMessage: `Loaded project: ${action.sourceLabel}`,
+          statusExpiresAt: expiresAt,
+        };
+      } catch (err) {
+        return {
+          ...state,
+          error: err instanceof Error ? err.message : 'Invalid project',
           statusMessage: undefined,
           statusExpiresAt: undefined,
         };
@@ -3495,13 +3532,13 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   });
 
   const dispatchProjectLoad = (project: ProjectSpec, sourceLabel: string) => {
-    appendPersistenceDebugEntry('editor-store:load-yaml-text-dispatch', summarizeProjectLoadForDebug({
+    appendPersistenceDebugEntry('editor-store:load-project-dispatch', summarizeProjectLoadForDebug({
       sourceLabel,
       project,
       activeProjectId: activeProjectId ?? latestActiveProjectIdRef.current,
       currentProjectId: latestStateRef.current.project.id,
     }));
-    dispatch({ type: 'load-yaml-text', text: serializeProjectToYaml(project), sourceLabel });
+    dispatch({ type: 'load-project', project, sourceLabel });
   };
 
   useEffect(() => {
@@ -3690,11 +3727,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     }
 
     const cloud = await getGame(projectId);
-    if (!cloud?.game?.yaml) return;
-    const parsed = parseProjectYaml(cloud.game.yaml);
-    const cacheRecord = buildStoredProjectRecord(parsed, {
+    if (!cloud?.game?.project) return;
+    const cacheRecord = buildStoredProjectRecord(cloud.game.project, {
       id: `cloud:${cloud.game.id}`,
-      yaml: cloud.game.yaml,
       origin: 'cloud-cache',
       syncStatus: state.syncMode === 'offline' ? 'unsynced' : 'cloud',
       cloudProjectId: cloud.game.id,

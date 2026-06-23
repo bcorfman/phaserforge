@@ -67,6 +67,7 @@ model Game {
   userId    String
   title     String
   yaml      String   @db.Text
+  project   Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -1,4 +1,5 @@
 import type { Settings } from '../settings';
+import type { ProjectSpec } from '../../src/model/types';
 
 export type AuthUser = {
   id: string;
@@ -14,7 +15,7 @@ export type CloudGameMeta = {
 };
 
 export type CloudGame = CloudGameMeta & {
-  yaml: string;
+  project: ProjectSpec;
 };
 
 export type SessionRecord = {
@@ -91,7 +92,7 @@ export type GameRepository = {
   updateForUser(
     id: string,
     userId: string,
-    patch: { title?: string; yaml?: string; updatedAt: string },
+    patch: { title?: string; project?: ProjectSpec; updatedAt: string },
   ): Promise<{ updatedAt: string } | null>;
   deleteForUser(id: string, userId: string): Promise<boolean>;
 };

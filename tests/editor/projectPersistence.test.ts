@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEmptyProject } from '../../src/model/emptyProject';
+import { serializeProjectToYaml } from '../../src/model/serialization';
 import { buildStoredProjectRecord, projectPersistence } from '../../src/editor/projectPersistence';
 import { appendProjectRevision, createProjectRevision, materializeProjectRevision } from '../../src/editor/projectTreeHistory';
 
@@ -23,11 +24,337 @@ function installLocalStorageMock() {
   });
 }
 
+function installIndexedDbMock() {
+  type StoreState = { keyPath?: string; values: Map<IDBValidKey, unknown> };
+  type DatabaseState = { version: number; stores: Map<string, StoreState> };
+  const databases = new Map<string, DatabaseState>();
+
+  const clone = <T,>(value: T): T => (value === undefined ? value : structuredClone(value));
+  const queueTask = (fn: () => void) => {
+    setTimeout(fn, 0);
+  };
+
+  const createRequest = <T,>(run: (resolve: (value: T) => void, reject: (error: unknown) => void) => void) => {
+    const request: IDBRequest<T> = {
+      onsuccess: null,
+      onerror: null,
+      result: undefined as T,
+      error: null,
+      readyState: 'pending',
+      source: null,
+      transaction: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    };
+    queueTask(() => {
+      run(
+        (value) => {
+          request.result = value;
+          request.readyState = 'done';
+          request.onsuccess?.({ target: request } as Event);
+        },
+        (error) => {
+          request.error = error instanceof Error ? error : new Error(String(error));
+          request.readyState = 'done';
+          request.onerror?.({ target: request } as Event);
+        },
+      );
+    });
+    return request;
+  };
+
+  const createDatabase = (name: string, state: DatabaseState): IDBDatabase => {
+    const db = {
+      name,
+      version: state.version,
+      objectStoreNames: {
+        contains(storeName: string) {
+          return state.stores.has(storeName);
+        },
+        get length() {
+          return state.stores.size;
+        },
+        item(index: number) {
+          return Array.from(state.stores.keys())[index] ?? null;
+        },
+        [Symbol.iterator]: function* () {
+          yield* state.stores.keys();
+        },
+      } satisfies DOMStringList,
+      createObjectStore(storeName: string, options?: IDBObjectStoreParameters) {
+        const store: StoreState = { keyPath: typeof options?.keyPath === 'string' ? options.keyPath : undefined, values: new Map() };
+        state.stores.set(storeName, store);
+        return {
+          name: storeName,
+          keyPath: store.keyPath ?? null,
+          indexNames: {
+            contains: () => false,
+            length: 0,
+            item: () => null,
+            [Symbol.iterator]: function* () {},
+          } satisfies DOMStringList,
+          transaction: null,
+          autoIncrement: false,
+        } as IDBObjectStore;
+      },
+      deleteObjectStore(storeName: string) {
+        state.stores.delete(storeName);
+      },
+      transaction(storeNames: string | string[]) {
+        const requestedNames = Array.isArray(storeNames) ? storeNames : [storeNames];
+        const tx = {
+          db,
+          mode: 'readwrite',
+          error: null,
+          objectStore(name: string) {
+            const store = state.stores.get(name);
+            if (!store) throw new Error(`missing object store: ${name}`);
+            return createObjectStore(name, store, tx as unknown as IDBTransaction);
+          },
+          onabort: null,
+          oncomplete: null,
+          onerror: null,
+          abort() {},
+          commit() {},
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => true,
+        } as IDBTransaction;
+        let pending = 0;
+        let completionQueued = false;
+        const scheduleCompletion = () => {
+          if (completionQueued || pending > 0) return;
+          completionQueued = true;
+          queueTask(() => {
+            completionQueued = false;
+            if (pending === 0) tx.oncomplete?.({ target: tx } as Event);
+          });
+        };
+        const createObjectStore = (storeName: string, store: StoreState, transaction: IDBTransaction | null): IDBObjectStore => ({
+          name: storeName,
+          keyPath: store.keyPath ?? null,
+          indexNames: {
+            contains: () => false,
+            length: 0,
+            item: () => null,
+            [Symbol.iterator]: function* () {},
+          } satisfies DOMStringList,
+          transaction,
+          autoIncrement: false,
+          add(value: unknown, key?: IDBValidKey) {
+            return this.put(value, key);
+          },
+          clear() {
+            pending += 1;
+            return createRequest<void>((resolve) => {
+              store.values.clear();
+              resolve(undefined);
+              pending -= 1;
+              scheduleCompletion();
+            });
+          },
+          count() {
+            pending += 1;
+            return createRequest<number>((resolve) => {
+              resolve(store.values.size);
+              pending -= 1;
+              scheduleCompletion();
+            });
+          },
+          createIndex() {
+            throw new Error('not implemented');
+          },
+          delete(key: IDBValidKey | IDBKeyRange) {
+            pending += 1;
+            return createRequest<void>((resolve) => {
+              store.values.delete(key as IDBValidKey);
+              resolve(undefined);
+              pending -= 1;
+              scheduleCompletion();
+            });
+          },
+          deleteIndex() {},
+          get(key: IDBValidKey | IDBKeyRange) {
+            pending += 1;
+            return createRequest<unknown>((resolve) => {
+              resolve(clone(store.values.get(key as IDBValidKey)));
+              pending -= 1;
+              scheduleCompletion();
+            });
+          },
+          getAll() {
+            pending += 1;
+            return createRequest<unknown[]>((resolve) => {
+              resolve(Array.from(store.values.values(), (value) => clone(value)));
+              pending -= 1;
+              scheduleCompletion();
+            });
+          },
+          getAllKeys() {
+            pending += 1;
+            return createRequest<IDBValidKey[]>((resolve) => {
+              resolve(Array.from(store.values.keys()));
+              pending -= 1;
+              scheduleCompletion();
+            });
+          },
+          getKey() {
+            pending += 1;
+            return createRequest<IDBValidKey | undefined>((resolve) => {
+              resolve(undefined);
+              pending -= 1;
+              scheduleCompletion();
+            });
+          },
+          index() {
+            throw new Error('not implemented');
+          },
+          openCursor() {
+            throw new Error('not implemented');
+          },
+          openKeyCursor() {
+            throw new Error('not implemented');
+          },
+          put(value: any, key?: IDBValidKey) {
+            pending += 1;
+            return createRequest<IDBValidKey>((resolve) => {
+              const derivedKey = key ?? (store.keyPath ? value?.[store.keyPath] : undefined);
+              if (derivedKey === undefined || derivedKey === null) throw new Error(`missing key for store ${storeName}`);
+              store.values.set(derivedKey, clone(value));
+              resolve(derivedKey);
+              pending -= 1;
+              scheduleCompletion();
+            });
+          },
+        } as IDBObjectStore);
+        for (const storeName of requestedNames) {
+          const store = state.stores.get(storeName);
+          if (!store) throw new Error(`missing object store: ${storeName}`);
+        }
+        scheduleCompletion();
+        return tx;
+      },
+      close() {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    } as IDBDatabase;
+    return db;
+  };
+
+  const indexedDb = {
+    open(name: string, version?: number) {
+      const request: IDBOpenDBRequest = {
+        onsuccess: null,
+        onerror: null,
+        onupgradeneeded: null,
+        onblocked: null,
+        result: undefined as IDBDatabase,
+        error: null,
+        readyState: 'pending',
+        source: null,
+        transaction: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => true,
+      };
+      queueTask(() => {
+        const existing = databases.get(name);
+        const nextVersion = version ?? existing?.version ?? 1;
+        const needsUpgrade = !existing || nextVersion > existing.version;
+        const state = existing ?? { version: nextVersion, stores: new Map<string, StoreState>() };
+        state.version = nextVersion;
+        databases.set(name, state);
+        const db = createDatabase(name, state);
+        request.result = db;
+        request.readyState = 'done';
+        if (needsUpgrade) request.onupgradeneeded?.({ target: request } as IDBVersionChangeEvent);
+        request.onsuccess?.({ target: request } as Event);
+      });
+      return request;
+    },
+    deleteDatabase(name: string) {
+      return createRequest<void>((resolve) => {
+        databases.delete(name);
+        resolve(undefined);
+      }) as IDBOpenDBRequest;
+    },
+    cmp(first: IDBValidKey, second: IDBValidKey) {
+      if (first === second) return 0;
+      return first > second ? 1 : -1;
+    },
+  } satisfies IDBFactory;
+
+  Object.defineProperty(window, 'indexedDB', {
+    configurable: true,
+    writable: true,
+    value: indexedDb,
+  });
+}
+
+function deletePersistenceDb(): Promise<void> {
+  if (typeof window.indexedDB === 'undefined') return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.deleteDatabase('phaserforge.persistence.v1');
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('indexeddb_delete_blocked'));
+    request.onsuccess = () => resolve();
+  });
+}
+
+function openPersistenceDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+    request.onerror = () => reject(request.error);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('workspaceState')) db.createObjectStore('workspaceState');
+      if (!db.objectStoreNames.contains('preferences')) db.createObjectStore('preferences');
+    };
+    request.onsuccess = () => resolve(request.result);
+  });
+}
+
+async function seedPersistenceRecords({
+  projectRecord,
+  latestActiveSnapshot,
+  workspace = { activeProjectId: projectRecord.id, syncMode: 'online' as const },
+}: {
+  projectRecord: ReturnType<typeof buildStoredProjectRecord>;
+  latestActiveSnapshot?: {
+    record: ReturnType<typeof buildStoredProjectRecord>;
+    syncMode: 'online' | 'offline';
+    savedAt: string;
+  };
+  workspace?: { activeProjectId: string | null; syncMode: 'online' | 'offline' };
+}) {
+  const db = await openPersistenceDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore('projects').put(projectRecord);
+      tx.objectStore('workspaceState').put(workspace, 'workspace');
+      tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      if (latestActiveSnapshot) {
+        tx.objectStore('workspaceState').put(latestActiveSnapshot, 'latestActiveSnapshot');
+      }
+    });
+  } finally {
+    db.close();
+  }
+}
+
 describe('projectPersistence steady-state storage', () => {
   installLocalStorageMock();
+  installIndexedDbMock();
 
-  afterEach(() => {
+  afterEach(async () => {
     window.localStorage.clear();
+    await deletePersistenceDb();
   });
 
   it('does not bootstrap a project from legacy localStorage project YAML when indexeddb is unavailable', async () => {
@@ -106,6 +433,51 @@ describe('projectPersistence steady-state storage', () => {
     expect(record.yaml).toBe('project:\n  title: Pattern Demo\n');
   });
 
+  it('stores and restores workspace backups as structured projects', async () => {
+    const project = createEmptyProject();
+    project.id = 'backup-project';
+    project.title = 'Backup Project';
+    project.publishGithubPagesRepo = 'zoof';
+
+    await projectPersistence.saveWorkspaceBackup(project, 'device');
+
+    await expect(projectPersistence.loadWorkspaceBackup()).resolves.toEqual({
+      project,
+      source: 'device',
+      savedAt: expect.any(String),
+    });
+  });
+
+  it('hydrates a legacy YAML workspace backup into structured project data', async () => {
+    const project = createEmptyProject();
+    project.id = 'legacy-backup-project';
+    project.title = 'Legacy Backup Project';
+
+    await projectPersistence.saveWorkspaceBackup(createEmptyProject(), 'device');
+
+    await new Promise<void>((resolve, reject) => {
+      const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction('workspaceState', 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('workspaceState').put({
+          yaml: serializeProjectToYaml(project),
+          source: 'cloud',
+          savedAt: '2026-06-22T12:00:00.000Z',
+        }, 'workspaceBackup');
+      };
+    });
+
+    await expect(projectPersistence.loadWorkspaceBackup()).resolves.toEqual({
+      project,
+      source: 'cloud',
+      savedAt: '2026-06-22T12:00:00.000Z',
+    });
+  });
+
   it('stores revisions as compact deltas while still materializing the edited project', () => {
     const olderProject = createEmptyProject();
     const newerProject = structuredClone(olderProject);
@@ -121,5 +493,100 @@ describe('projectPersistence steady-state storage', () => {
     expect(storedNewestRevision.patch).toBeTruthy();
     expect(storedNewestRevision.project).toBeUndefined();
     expect(materializeProjectRevision(revisions, storedNewestRevision.id)).toEqual(newerProject);
+  });
+
+  it('prefers the durable latest active snapshot over a stale active record during bootstrap', async () => {
+    const staleProject = createEmptyProject();
+    staleProject.id = 'project-1';
+    staleProject.title = 'Stale Title';
+
+    const latestProject = structuredClone(staleProject);
+    latestProject.title = 'Recovered Title';
+
+    await seedPersistenceRecords({
+      projectRecord: buildStoredProjectRecord(staleProject, {
+        id: staleProject.id,
+        updatedAt: '2026-06-22T12:00:00.000Z',
+        revisions: [createProjectRevision(staleProject, { id: 'rev-stale' })],
+      }),
+      latestActiveSnapshot: {
+        record: buildStoredProjectRecord(latestProject, {
+          id: latestProject.id,
+          updatedAt: '2026-06-22T12:00:05.000Z',
+          revisions: [createProjectRevision(latestProject, { id: 'rev-latest' })],
+        }),
+        syncMode: 'online',
+        savedAt: '2026-06-22T12:00:05.000Z',
+      },
+    });
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.workspace.activeProjectId).toBe('project-1');
+    expect(snapshot.localProjects).toHaveLength(1);
+    expect(snapshot.localProjects[0]?.title).toBe('Recovered Title');
+    expect(snapshot.localProjects[0]?.project.title).toBe('Recovered Title');
+    expect(snapshot.localProjects[0]?.updatedAt).toBe('2026-06-22T12:00:05.000Z');
+  });
+
+  it('loads the durable latest active snapshot for conflict recovery metadata', async () => {
+    const staleProject = createEmptyProject();
+    staleProject.id = 'project-1';
+    staleProject.title = 'Offline Draft';
+
+    const latestProject = structuredClone(staleProject);
+    latestProject.title = 'Linked Draft';
+
+    await seedPersistenceRecords({
+      projectRecord: buildStoredProjectRecord(staleProject, {
+        id: staleProject.id,
+        updatedAt: '2026-06-22T12:00:00.000Z',
+      }),
+      latestActiveSnapshot: {
+        record: buildStoredProjectRecord(latestProject, {
+          id: latestProject.id,
+          updatedAt: '2026-06-22T12:00:10.000Z',
+          cloudProjectId: 'g-1',
+          syncStatus: 'cloud',
+        }),
+        syncMode: 'online',
+        savedAt: '2026-06-22T12:00:10.000Z',
+      },
+    });
+
+    const record = await projectPersistence.loadLatestActiveProjectSnapshotRecord();
+
+    expect(record).toMatchObject({
+      id: 'project-1',
+      title: 'Linked Draft',
+      updatedAt: '2026-06-22T12:00:10.000Z',
+      cloudProjectId: 'g-1',
+      syncStatus: 'cloud',
+    });
+  });
+
+  it('keeps the durable latest active snapshot in sync when the active record gains a cloud project id', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Cloud Link Demo';
+
+    const created = await projectPersistence.createLocalProject(project);
+    const linkedRecord = {
+      ...created,
+      cloudProjectId: 'g-123',
+      syncStatus: 'cloud' as const,
+      updatedAt: '2026-06-22T12:05:00.000Z',
+    };
+
+    await projectPersistence.saveProjectRecord(linkedRecord);
+
+    const snapshotRecord = await projectPersistence.loadLatestActiveProjectSnapshotRecord();
+
+    expect(snapshotRecord).toMatchObject({
+      id: created.id,
+      cloudProjectId: 'g-123',
+      syncStatus: 'cloud',
+      updatedAt: '2026-06-22T12:05:00.000Z',
+    });
   });
 });

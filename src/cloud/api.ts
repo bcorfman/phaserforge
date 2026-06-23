@@ -1,6 +1,8 @@
+import type { ProjectSpec } from '../model/types';
+
 export type AuthUser = { id: string; email: string };
 export type CloudGameMeta = { id: string; title: string; created_at: string; updated_at: string };
-export type CloudGame = CloudGameMeta & { yaml: string };
+export type CloudGame = CloudGameMeta & { project: ProjectSpec };
 
 type Json = Record<string, unknown>;
 
@@ -100,11 +102,11 @@ export async function listGames(): Promise<{ games: CloudGameMeta[] }> {
   return json;
 }
 
-export async function createGame(title: string, yaml: string, csrfToken: string): Promise<{ game: CloudGameMeta }> {
+export async function createGame(title: string, project: ProjectSpec, csrfToken: string): Promise<{ game: CloudGameMeta }> {
   const json = await api<{ game: CloudGameMeta }>('/api/v1/games', {
     method: 'POST',
     headers: { 'x-csrf-token': csrfToken },
-    body: JSON.stringify({ title, yaml }),
+    body: JSON.stringify({ title, project }),
   });
   return json;
 }
@@ -116,7 +118,7 @@ export async function getGame(id: string): Promise<{ game: CloudGame }> {
 
 export async function updateGame(
   id: string,
-  patch: { title?: string; yaml?: string },
+  patch: { title?: string; project?: ProjectSpec },
   csrfToken: string,
 ): Promise<{ updated_at: string }> {
   const json = await api<{ updated_at: string }>(`/api/v1/games/${encodeURIComponent(id)}`, {
