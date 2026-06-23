@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { createApp } from './server/app';
 import { loadSettingsFromEnv } from './settings';
 import { createPrismaRepositories } from './server/repositories/prisma';
@@ -9,7 +10,7 @@ const settings = loadSettingsFromEnv(process.env);
 async function ensureStructuredCloudGamesReady(prisma: ReturnType<typeof createPrismaClient>): Promise<void> {
   if (!prisma) return;
   const unmigratedCount = await (prisma as any).game.count({
-    where: { project: null },
+    where: { project: { equals: Prisma.DbNull } },
   });
   if (unmigratedCount > 0) {
     throw new Error(`cloud_game_project_migration_required:${unmigratedCount}`);
