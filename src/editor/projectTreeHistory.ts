@@ -736,6 +736,144 @@ type RevisionChangeProfile = {
   focusKeys: Set<string>;
 };
 
+const REVISION_MILESTONE_DOMAINS = new Set([
+  'project-title',
+  'publish',
+  'scene-metadata',
+  'scenes',
+]);
+
+const REVISION_ALLOWED_DOMAIN_GROUPS = [
+  new Set(['audio', 'music', 'ambience']),
+  new Set(['attachments', 'event-blocks']),
+  new Set(['actions', 'behaviors', 'conditions']),
+  new Set(['input-maps', 'scene-input']),
+];
+
+function addRecordDiffFocus(
+  domains: Set<string>,
+  focusKeys: Set<string>,
+  domain: string,
+  focusPrefix: string,
+  currentRecord: Record<string, unknown> | undefined,
+  previousRecord: Record<string, unknown> | undefined,
+): string[] {
+  const diff = diffRecordKeys(currentRecord, previousRecord);
+  const changedKeys = [...diff.added, ...diff.removed, ...diff.changed];
+  if (changedKeys.length === 0) return [];
+  domains.add(domain);
+  changedKeys.forEach((key) => focusKeys.add(`${focusPrefix}:${key}`));
+  return changedKeys;
+}
+
+function diffRecordPresenceKeys(
+  currentRecord: Record<string, unknown> | undefined,
+  previousRecord: Record<string, unknown> | undefined,
+): string[] {
+  const currentKeys = new Set(Object.keys(currentRecord ?? {}));
+  const previousKeys = new Set(Object.keys(previousRecord ?? {}));
+  return [
+    ...[...currentKeys].filter((key) => !previousKeys.has(key)),
+    ...[...previousKeys].filter((key) => !currentKeys.has(key)),
+  ];
+}
+
+function addListDiffFocus<T extends { id: string }>(
+  domains: Set<string>,
+  focusKeys: Set<string>,
+  domain: string,
+  focusPrefix: string,
+  currentItems: T[] | undefined,
+  previousItems: T[] | undefined,
+): T[] {
+  const diff = diffListById(currentItems, previousItems);
+  const changedItems = [...diff.added, ...diff.removed, ...diff.changed];
+  if (changedItems.length === 0) return [];
+  domains.add(domain);
+  changedItems.forEach((item) => focusKeys.add(`${focusPrefix}:${item.id}`));
+  return changedItems;
+}
+
+function addEntityRelatedFocusKeys(focusKeys: Set<string>, sceneId: string, entity: ProjectSpec['scenes'][string]['entities'][string] | undefined): void {
+  if (!entity) return;
+  if (entity.asset?.source.kind === 'asset' && entity.asset.source.assetId) {
+    const assetPrefix = entity.asset.imageType === 'spritesheet' ? 'spritesheet' : 'image';
+    focusKeys.add(`${assetPrefix}:${entity.asset.source.assetId}`);
+  }
+  if (entity.text?.fontAssetId) {
+    focusKeys.add(`font:${entity.text.fontAssetId}`);
+  }
+  focusKeys.add(`scene-entity:${sceneId}:${entity.id}`);
+}
+
+function addSceneTargetFocusKey(
+  focusKeys: Set<string>,
+  sceneId: string,
+  target: { type: 'entity'; entityId: string } | { type: 'group'; groupId: string } | undefined,
+): void {
+  if (!target) return;
+  if (target.type === 'entity') {
+    focusKeys.add(`entity:${sceneId}:${target.entityId}`);
+    return;
+  }
+  focusKeys.add(`group:${sceneId}:${target.groupId}`);
+}
+
+function addAttachmentRelatedFocusKeys(
+  focusKeys: Set<string>,
+  sceneId: string,
+  attachment: ProjectSpec['scenes'][string]['attachments'][string] | undefined,
+): void {
+  if (!attachment) return;
+  addSceneTargetFocusKey(focusKeys, sceneId, attachment.target);
+  if (attachment.eventId) focusKeys.add(`event-block:${sceneId}:${attachment.eventId}`);
+  if (attachment.parentAttachmentId) focusKeys.add(`attachment:${sceneId}:${attachment.parentAttachmentId}`);
+}
+
+function addEventBlockRelatedFocusKeys(
+  focusKeys: Set<string>,
+  sceneId: string,
+  eventBlock: NonNullable<ProjectSpec['scenes'][string]['eventBlocks']>[string] | undefined,
+): void {
+  if (!eventBlock) return;
+  addSceneTargetFocusKey(focusKeys, sceneId, eventBlock.target);
+}
+
+function addBehaviorRelatedFocusKeys(
+  focusKeys: Set<string>,
+  sceneId: string,
+  behavior: ProjectSpec['scenes'][string]['behaviors'][string] | undefined,
+): void {
+  if (!behavior) return;
+  addSceneTargetFocusKey(focusKeys, sceneId, behavior.target);
+  if (behavior.rootActionId) focusKeys.add(`action:${sceneId}:${behavior.rootActionId}`);
+}
+
+function addSceneInputRelatedFocusKeys(
+  focusKeys: Set<string>,
+  sceneId: string,
+  input: ProjectSpec['scenes'][string]['input'] | undefined,
+): void {
+  focusKeys.add(`scene-input:${sceneId}`);
+  if (input?.activeMapId) focusKeys.add(`input-map:${input.activeMapId}`);
+  if (input?.fallbackMapId) focusKeys.add(`input-map:${input.fallbackMapId}`);
+  if (input?.mouse?.driveEntityId) focusKeys.add(`entity:${sceneId}:${input.mouse.driveEntityId}`);
+}
+
+function addSceneAssetFocusKeys(focusKeys: Set<string>, sceneId: string, scene: ProjectSpec['scenes'][string] | undefined): void {
+  if (!scene) return;
+  scene.backgroundLayers?.forEach((layer) => focusKeys.add(`image:${layer.assetId}`));
+  scene.ambience?.forEach((entry) => focusKeys.add(`audio:${entry.assetId}`));
+  if (scene.music?.assetId) focusKeys.add(`audio:${scene.music.assetId}`);
+  focusKeys.add(`scene:${sceneId}`);
+}
+
+function isAllowedRevisionDomainBlend(domains: Set<string>): boolean {
+  return REVISION_ALLOWED_DOMAIN_GROUPS.some((allowedDomains) => (
+    domains.size > 1 && [...domains].every((domain) => allowedDomains.has(domain))
+  ));
+}
+
 function buildRevisionChangeProfile(
   revision: ProjectRevisionRecord,
   previousRevision?: ProjectRevisionRecord,
@@ -750,6 +888,10 @@ function buildRevisionChangeProfile(
     domains.add('project-title');
     focusKeys.add('project-title');
   }
+
+  addRecordDiffFocus(domains, focusKeys, 'image-assets', 'image', current.project?.assets.images, previous.project?.assets.images);
+  addRecordDiffFocus(domains, focusKeys, 'spritesheets', 'spritesheet', current.project?.assets.spriteSheets, previous.project?.assets.spriteSheets);
+  addRecordDiffFocus(domains, focusKeys, 'fonts', 'font', current.project?.assets.fonts, previous.project?.assets.fonts);
 
   const addedSoundIds = [...current.soundLabelsById.keys()].filter((assetId) => !previous.soundLabelsById.has(assetId));
   const removedSoundIds = [...previous.soundLabelsById.keys()].filter((assetId) => !current.soundLabelsById.has(assetId));
@@ -770,11 +912,12 @@ function buildRevisionChangeProfile(
     });
   }
 
-  const inputMapDiff = diffRecordKeys(current.project?.inputMaps, previous.project?.inputMaps);
-  if (inputMapDiff.added.length + inputMapDiff.removed.length + inputMapDiff.changed.length > 0) {
+  if (current.project?.defaultInputMapId !== previous.project?.defaultInputMapId) {
     domains.add('input-maps');
-    [...inputMapDiff.added, ...inputMapDiff.removed, ...inputMapDiff.changed].forEach((mapId) => focusKeys.add(`input-map:${mapId}`));
+    if (current.project?.defaultInputMapId) focusKeys.add(`input-map:${current.project.defaultInputMapId}`);
+    if (previous.project?.defaultInputMapId) focusKeys.add(`input-map:${previous.project.defaultInputMapId}`);
   }
+  addRecordDiffFocus(domains, focusKeys, 'input-maps', 'input-map', current.project?.inputMaps, previous.project?.inputMaps);
 
   if (
     current.project?.publishTitle !== previous.project?.publishTitle
@@ -785,9 +928,27 @@ function buildRevisionChangeProfile(
     if (current.project?.publishGithubPagesRepo !== previous.project?.publishGithubPagesRepo) focusKeys.add('publish:repo');
   }
 
+  if (current.project?.baseSceneId !== previous.project?.baseSceneId) {
+    domains.add('scenes');
+    if (current.project?.baseSceneId) focusKeys.add(`scene:${current.project.baseSceneId}`);
+    if (previous.project?.baseSceneId) focusKeys.add(`scene:${previous.project.baseSceneId}`);
+  }
+  const changedSceneIds = diffRecordPresenceKeys(current.project?.scenes, previous.project?.scenes);
+  if (changedSceneIds.length > 0) {
+    domains.add('scenes');
+    changedSceneIds.forEach((sceneId) => focusKeys.add(`scene:${sceneId}`));
+  }
+  addRecordDiffFocus(domains, focusKeys, 'scene-metadata', 'scene-meta', current.project?.sceneMeta, previous.project?.sceneMeta);
+  addRecordDiffFocus(domains, focusKeys, 'collections', 'collection', current.project?.collections, previous.project?.collections);
+  addRecordDiffFocus(domains, focusKeys, 'counters', 'counter', current.project?.counters, previous.project?.counters);
+  addRecordDiffFocus(domains, focusKeys, 'patterns', 'pattern', current.project?.patterns, previous.project?.patterns);
+
   for (const [sceneId, currentScene] of current.scenesById.entries()) {
     const previousScene = previous.scenesById.get(sceneId);
     if (!previousScene) continue;
+
+    const changedGroups = addRecordDiffFocus(domains, focusKeys, 'groups', `group:${sceneId}`, currentScene.groups, previousScene.groups);
+    if (changedGroups.length > 0) focusKeys.add(`scene:${sceneId}`);
 
     const entityIds = new Set([
       ...Object.keys(currentScene.entities ?? {}),
@@ -797,15 +958,74 @@ function buildRevisionChangeProfile(
       if (JSON.stringify(currentScene.entities?.[entityId]) !== JSON.stringify(previousScene.entities?.[entityId])) {
         domains.add('entity');
         focusKeys.add(`entity:${sceneId}:${entityId}`);
+        addEntityRelatedFocusKeys(focusKeys, sceneId, currentScene.entities?.[entityId] ?? previousScene.entities?.[entityId]);
       }
     }
 
-    const triggerDiff = diffListById(currentScene.triggers, previousScene.triggers);
-    if (triggerDiff.added.length + triggerDiff.removed.length + triggerDiff.changed.length > 0) {
-      domains.add('triggers');
-      [...triggerDiff.added, ...triggerDiff.removed, ...triggerDiff.changed].forEach((trigger) => {
-        focusKeys.add(`trigger:${sceneId}:${trigger.id}`);
-      });
+    addListDiffFocus(domains, focusKeys, 'collision-rules', `collision-rule:${sceneId}`, currentScene.collisionRules, previousScene.collisionRules);
+    addListDiffFocus(domains, focusKeys, 'triggers', `trigger:${sceneId}`, currentScene.triggers, previousScene.triggers);
+
+    const changedAttachments = addRecordDiffFocus(
+      domains,
+      focusKeys,
+      'attachments',
+      `attachment:${sceneId}`,
+      currentScene.attachments,
+      previousScene.attachments,
+    );
+    changedAttachments.forEach((attachmentId) => {
+      addAttachmentRelatedFocusKeys(
+        focusKeys,
+        sceneId,
+        currentScene.attachments?.[attachmentId] ?? previousScene.attachments?.[attachmentId],
+      );
+    });
+
+    const changedEventBlocks = addRecordDiffFocus(
+      domains,
+      focusKeys,
+      'event-blocks',
+      `event-block:${sceneId}`,
+      currentScene.eventBlocks,
+      previousScene.eventBlocks,
+    );
+    changedEventBlocks.forEach((eventBlockId) => {
+      addEventBlockRelatedFocusKeys(
+        focusKeys,
+        sceneId,
+        currentScene.eventBlocks?.[eventBlockId] ?? previousScene.eventBlocks?.[eventBlockId],
+      );
+    });
+
+    const changedBehaviors = addRecordDiffFocus(
+      domains,
+      focusKeys,
+      'behaviors',
+      `behavior:${sceneId}`,
+      currentScene.behaviors,
+      previousScene.behaviors,
+    );
+    changedBehaviors.forEach((behaviorId) => {
+      addBehaviorRelatedFocusKeys(
+        focusKeys,
+        sceneId,
+        currentScene.behaviors?.[behaviorId] ?? previousScene.behaviors?.[behaviorId],
+      );
+    });
+
+    addRecordDiffFocus(domains, focusKeys, 'actions', `action:${sceneId}`, currentScene.actions, previousScene.actions);
+    addRecordDiffFocus(domains, focusKeys, 'conditions', `condition:${sceneId}`, currentScene.conditions, previousScene.conditions);
+
+    if (JSON.stringify(currentScene.ambience ?? []) !== JSON.stringify(previousScene.ambience ?? [])) {
+      domains.add('ambience');
+      addSceneAssetFocusKeys(focusKeys, sceneId, currentScene);
+      addSceneAssetFocusKeys(focusKeys, sceneId, previousScene);
+    }
+
+    if (JSON.stringify(currentScene.input ?? undefined) !== JSON.stringify(previousScene.input ?? undefined)) {
+      domains.add('scene-input');
+      addSceneInputRelatedFocusKeys(focusKeys, sceneId, currentScene.input);
+      addSceneInputRelatedFocusKeys(focusKeys, sceneId, previousScene.input);
     }
   }
 
@@ -833,14 +1053,19 @@ function shouldCoalesceAutosaveRevision(
   const nextProfile = buildRevisionChangeProfile(nextRevision, latestRevision);
   if (burstProfile.domains.size === 0 || nextProfile.domains.size === 0) return false;
 
+  const combinedDomains = new Set([...burstProfile.domains, ...nextProfile.domains]);
+  if (combinedDomains.size > 1 && [...combinedDomains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain))) {
+    return false;
+  }
+
   const overlappingFocus = [...nextProfile.focusKeys].some((key) => burstProfile.focusKeys.has(key));
   if (overlappingFocus) return true;
 
-  const combinedDomains = new Set([...burstProfile.domains, ...nextProfile.domains]);
   if (combinedDomains.size === 1) return true;
 
-  const combinedDomainKey = [...combinedDomains].sort().join('|');
-  return combinedDomainKey === 'audio|music';
+  if (isAllowedRevisionDomainBlend(combinedDomains)) return true;
+
+  return false;
 }
 
 export function appendProjectRevision(

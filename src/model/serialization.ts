@@ -282,6 +282,8 @@ export function parseProjectYaml(text: string): ProjectSpec {
     ...(sceneMeta ? { sceneMeta } : {}),
     scenes,
     initialSceneId,
+    ...(raw.collections !== undefined ? { collections: coerceRecord(raw.collections) } : {}),
+    ...(raw.counters !== undefined ? { counters: coerceRecord(raw.counters) } : {}),
     ...(patterns !== undefined ? { patterns } : {}),
   };
 }
