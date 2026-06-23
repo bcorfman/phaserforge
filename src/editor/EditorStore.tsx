@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useReducer, useState } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useState } from 'react';
 import {
   CollisionRuleSpec,
   EditorRegistryConfig,
@@ -3593,7 +3593,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!state.initialized) return;
     const nextRecord = buildActiveProjectRecordSnapshot(state.project, state.syncMode, activeProjectId ?? state.project.id);
     activeRecordRef.current = nextRecord;

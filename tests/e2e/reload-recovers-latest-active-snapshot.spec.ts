@@ -1,41 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { dismissViewHint, gotoStudio, openProjectScope } from './helpers';
 
-async function readPersistenceTitles(page: Parameters<typeof gotoStudio>[0]) {
-  return page.evaluate(async () => {
-    const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
-      const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
-    });
-    const db = await openDb();
-    const workspace = await new Promise<any>((resolve, reject) => {
-      const tx = db.transaction('workspaceState', 'readonly');
-      const request = tx.objectStore('workspaceState').get('workspace');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const latestSnapshot = await new Promise<any>((resolve, reject) => {
-      const tx = db.transaction('workspaceState', 'readonly');
-      const request = tx.objectStore('workspaceState').get('latestActiveSnapshot');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const activeProject = latestSnapshot?.recordId
-      ? await new Promise<any>((resolve, reject) => {
-        const tx = db.transaction('projects', 'readonly');
-        const request = tx.objectStore('projects').get(latestSnapshot.recordId);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      })
-      : null;
-    return {
-      snapshotRecordId: latestSnapshot?.recordId ?? null,
-      projectTitle: activeProject?.title ?? null,
-    };
-  });
-}
-
 test('refresh during the async persistence window restores the latest head from IndexedDB alone @smoke', async ({ page }) => {
   await gotoStudio(page, { forceNavigate: true });
   await dismissViewHint(page);
@@ -48,11 +13,6 @@ test('refresh during the async persistence window restores the latest head from 
   await page.getByTestId('rename-project-input').fill('Snapshot Rescue');
   await page.getByTestId('rename-project-input').press('Enter');
   await expect(page.getByTestId('project-tree-root-button')).toContainText('Snapshot Rescue');
-
-  await expect.poll(async () => readPersistenceTitles(page)).toMatchObject({
-    snapshotRecordId: expect.any(String),
-    projectTitle: 'Snapshot Rescue',
-  });
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await gotoStudio(page);
