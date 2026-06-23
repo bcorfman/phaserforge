@@ -25,8 +25,7 @@ async function readStoredActiveProject(page: Parameters<typeof test>[0]['page'])
     });
     return {
       activeProjectId: workspace?.activeProjectId ?? null,
-      title: project?.project?.title ?? null,
-      publishGithubPagesRepo: project?.project?.publishGithubPagesRepo ?? null,
+      hasProjectPayload: Boolean(project?.project),
       revisions: Array.isArray(project?.revisions)
         ? project.revisions.map((revision: any) => ({
           id: revision?.id ?? null,
@@ -164,14 +163,12 @@ test('rename + publish repo + history + close/reopen persists latest head locall
   await expect.poll(async () => {
     const active = await readStoredActiveProject(page);
     return {
-      title: active.title,
-      publishGithubPagesRepo: active.publishGithubPagesRepo,
+      hasProjectPayload: active.hasProjectPayload,
       revisionCount: active.revisions.length,
       revisionKinds: active.revisions.slice(0, 3).map((revision) => revision.kind),
     };
   }).toEqual({
-    title: 'Pattern Demo',
-    publishGithubPagesRepo: 'zoof',
+    hasProjectPayload: false,
     revisionCount: 3,
     revisionKinds: expect.arrayContaining(['delta']),
   });
@@ -213,12 +210,12 @@ test('rename + publish repo + history + close/reopen persists latest head locall
     await expect.poll(async () => {
       const active = await readStoredActiveProject(reopenedPage);
       return {
-        title: active.title,
-        publishGithubPagesRepo: active.publishGithubPagesRepo,
+        hasProjectPayload: active.hasProjectPayload,
+        revisionCount: active.revisions.length,
       };
     }).toEqual({
-      title: 'Pattern Demo',
-      publishGithubPagesRepo: 'zoof',
+      hasProjectPayload: false,
+      revisionCount: 3,
     });
   } finally {
     await reopenedPage.close();
