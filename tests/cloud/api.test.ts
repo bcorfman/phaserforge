@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createEmptyProject } from '../../src/model/emptyProject';
 
 describe('cloud api', () => {
   it('fetchCsrfToken hits /api/auth/csrf with credentials', async () => {
@@ -34,17 +35,20 @@ describe('cloud api', () => {
     vi.resetModules();
     delete process.env.VITE_API_BASE_URL;
     const { createGame } = await import('../../src/cloud/api');
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'My Game';
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       expect(String(input)).toBe('/api/v1/games');
       expect(init?.method).toBe('POST');
       expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
       expect((init?.headers as any)['content-type']).toBe('application/json');
-      expect(init?.body).toBe(JSON.stringify({ title: 'My Game', yaml: 'scenes: []' }));
+      expect(init?.body).toBe(JSON.stringify({ title: 'My Game', project }));
       return new Response(JSON.stringify({ game: { id: 'g', title: 'My Game', created_at: 'c', updated_at: 'u' } }), { status: 201 });
     });
     vi.stubGlobal('fetch', fetchMock as any);
 
-    await expect(createGame('My Game', 'scenes: []', 'csrf')).resolves.toEqual({
+    await expect(createGame('My Game', project, 'csrf')).resolves.toEqual({
       game: { id: 'g', title: 'My Game', created_at: 'c', updated_at: 'u' },
     });
   });
@@ -58,7 +62,7 @@ describe('cloud api', () => {
     );
     vi.stubGlobal('fetch', fetchMock as any);
 
-    await expect(updateGame('g1', { yaml: 'huge' }, 'csrf')).rejects.toThrow(
+    await expect(updateGame('g1', { project: createEmptyProject() }, 'csrf')).rejects.toThrow(
       'Project is too large to save to the cloud. Reduce project size and try again.',
     );
   });

@@ -10,6 +10,7 @@ const inspectorPaneStore = vi.hoisted(() => ({
 
 const cloudPanelSpy = vi.hoisted(() => ({
   onLoadYaml: undefined as ((yaml: string, sourceLabel: string) => void) | undefined,
+  onLoadProject: undefined as ((project: any, sourceLabel: string) => void) | undefined,
   onStatus: undefined as ((message: string) => void) | undefined,
   onError: undefined as ((message: string) => void) | undefined,
   cachedUser: undefined as { id: string; email: string } | null | undefined,
@@ -33,10 +34,12 @@ vi.mock('../../src/editor/CloudAccountPanel', () => ({
   resolveCachedCloudAccountUser: cloudPanelSpy.resolveUser,
   CloudAccountPanel: (props: {
     onLoadYaml: (yaml: string, sourceLabel: string) => void;
+    onLoadProject?: (project: any, sourceLabel: string) => void;
     onStatus: (message: string) => void;
     onError: (message: string) => void;
   }) => {
     cloudPanelSpy.onLoadYaml = props.onLoadYaml;
+    cloudPanelSpy.onLoadProject = props.onLoadProject;
     cloudPanelSpy.onStatus = props.onStatus;
     cloudPanelSpy.onError = props.onError;
     return <div data-testid="mock-cloud-panel">Cloud body</div>;
@@ -52,6 +55,7 @@ describe('InspectorPane tabs', () => {
     inspectorPaneStore.dispatch.mockReset();
     delete (globalThis as { location?: { hostname: string } }).location;
     cloudPanelSpy.onLoadYaml = undefined;
+    cloudPanelSpy.onLoadProject = undefined;
     cloudPanelSpy.onStatus = undefined;
     cloudPanelSpy.onError = undefined;
     cloudPanelSpy.cachedUser = undefined;
@@ -104,6 +108,7 @@ describe('InspectorPane tabs', () => {
     expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(false);
 
     cloudPanelSpy.onLoadYaml?.('id: test', 'demo.yaml');
+    cloudPanelSpy.onLoadProject?.({ id: 'project-1' }, 'cloud:workspace');
     cloudPanelSpy.onStatus?.('Synced');
     cloudPanelSpy.onError?.('Denied');
 
@@ -113,11 +118,16 @@ describe('InspectorPane tabs', () => {
       sourceLabel: 'demo.yaml',
     });
     expect(inspectorPaneStore.dispatch).toHaveBeenNthCalledWith(2, {
+      type: 'load-project',
+      project: { id: 'project-1' },
+      sourceLabel: 'cloud:workspace',
+    });
+    expect(inspectorPaneStore.dispatch).toHaveBeenNthCalledWith(3, {
       type: 'set-status',
       message: 'Synced',
       expiresAt: 1_700_000_004_000,
     });
-    expect(inspectorPaneStore.dispatch).toHaveBeenNthCalledWith(3, {
+    expect(inspectorPaneStore.dispatch).toHaveBeenNthCalledWith(4, {
       type: 'set-error',
       error: 'Denied',
     });

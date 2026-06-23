@@ -6,17 +6,35 @@ import { createPrismaClient } from './db/prismaClient';
 const port = Number(process.env.PORT ?? 8787);
 const settings = loadSettingsFromEnv(process.env);
 
-const databaseUrl = process.env.DATABASE_URL;
-const prisma = createPrismaClient(databaseUrl);
-const repositories = prisma ? createPrismaRepositories(prisma) : undefined;
+async function ensureStructuredCloudGamesReady(prisma: ReturnType<typeof createPrismaClient>): Promise<void> {
+  if (!prisma) return;
+  const unmigratedCount = await (prisma as any).game.count({
+    where: { project: null },
+  });
+  if (unmigratedCount > 0) {
+    throw new Error(`cloud_game_project_migration_required:${unmigratedCount}`);
+  }
+}
 
-const app = createApp({ settings, ...(repositories ? { repositories } : {}) });
+async function bootstrap() {
+  const databaseUrl = process.env.DATABASE_URL;
+  const prisma = createPrismaClient(databaseUrl);
+  await ensureStructuredCloudGamesReady(prisma);
+  const repositories = prisma ? createPrismaRepositories(prisma) : undefined;
+  const app = createApp({ settings, ...(repositories ? { repositories } : {}) });
 
-app.listen(port, () => {
+  app.listen(port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`phaserforge api listening on http://localhost:${port}`);
+  });
+
+  process.on('SIGTERM', () => {
+    void prisma?.$disconnect();
+  });
+}
+
+void bootstrap().catch((error) => {
   // eslint-disable-next-line no-console
-  console.log(`phaserforge api listening on http://localhost:${port}`);
-});
-
-process.on('SIGTERM', () => {
-  void prisma?.$disconnect();
+  console.error(error);
+  process.exitCode = 1;
 });

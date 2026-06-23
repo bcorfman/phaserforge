@@ -6,6 +6,7 @@ import * as path from 'node:path';
 
 import { createApp } from '../../server/src/server/app';
 import { createMemoryRepositories } from '../../server/src/server/repositories/memory';
+import { createEmptyProject } from '../../src/model/emptyProject';
 
 function makeApp() {
   const repositories = createMemoryRepositories();
@@ -54,30 +55,18 @@ async function linkGithub(repositories: ReturnType<typeof createMemoryRepositori
 }
 
 async function addGame(repositories: ReturnType<typeof createMemoryRepositories>, userId: string) {
+  const project = createEmptyProject();
+  project.id = 'p1';
+  project.initialSceneId = 's1';
+  const initialScene = structuredClone(project.scenes[project.initialSceneId]);
+  delete project.scenes[project.initialSceneId];
+  project.scenes.s1 = { ...initialScene, id: 's1' };
+
   await repositories.games.create({
     id: 'g1',
     userId,
     title: 'Game One',
-    yaml: [
-      'id: p1',
-      'assets:',
-      '  images: {}',
-      '  spriteSheets: {}',
-      '  fonts: {}',
-      'audio:',
-      '  sounds: {}',
-      'inputMaps: {}',
-      'scenes:',
-      '  s1:',
-      '    id: s1',
-      '    entities: {}',
-      '    groups: {}',
-      '    attachments: {}',
-      '    behaviors: {}',
-      '    actions: {}',
-      '    conditions: {}',
-      'initialSceneId: s1',
-    ].join('\n'),
+    project,
     createdAt: '2026-06-04T00:00:00.000Z',
     updatedAt: '2026-06-04T00:00:00.000Z',
   } as any);

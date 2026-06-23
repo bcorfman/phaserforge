@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { createEmptyProject } from '../../model/emptyProject';
 
 export type ApiStubResponse = {
   status: number;
@@ -10,26 +11,12 @@ export type MockPublishInfo =
   | { ok: true; login: string; pagesBaseUrl: string }
   | { ok: false; error: string };
 
-const EMPTY_PROJECT_YAML = [
-  'id: p1',
-  'assets:',
-  '  images: {}',
-  '  spriteSheets: {}',
-  '  fonts: {}',
-  'audio:',
-  '  sounds: {}',
-  'inputMaps: {}',
-  'scenes:',
-  '  s1:',
-  '    id: s1',
-  '    entities: {}',
-  '    groups: {}',
-  '    attachments: {}',
-  '    behaviors: {}',
-  '    actions: {}',
-  '    conditions: {}',
-  'initialSceneId: s1',
-].join('\n');
+const EMPTY_PROJECT = createEmptyProject();
+EMPTY_PROJECT.id = 'p1';
+EMPTY_PROJECT.initialSceneId = 's1';
+const initialScene = structuredClone(EMPTY_PROJECT.scenes[EMPTY_PROJECT.initialSceneId]);
+delete EMPTY_PROJECT.scenes[EMPTY_PROJECT.initialSceneId];
+EMPTY_PROJECT.scenes.s1 = { ...initialScene, id: 's1' };
 
 export function getDefaultApiStubResponse(urlString: string, method: string): ApiStubResponse {
   const url = new URL(urlString);
@@ -50,7 +37,7 @@ export function getDefaultApiStubResponse(urlString: string, method: string): Ap
     return {
       status: 200,
       body: {
-        game: { id, title: 'E2E Stub Game', yaml: EMPTY_PROJECT_YAML, created_at: 'c', updated_at: 'u' },
+        game: { id, title: 'E2E Stub Game', project: EMPTY_PROJECT, created_at: 'c', updated_at: 'u' },
       },
     };
   }

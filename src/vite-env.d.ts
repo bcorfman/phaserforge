@@ -40,6 +40,8 @@ interface PhaserForgeTestBridge {
   redo(): void;
   resetScene(): void;
   select(selection: unknown): void;
+  pauseActiveProjectRecordPersistence(): void;
+  resumeActiveProjectRecordPersistence(): void;
 }
 
 interface Window {

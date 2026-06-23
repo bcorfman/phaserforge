@@ -1,6 +1,7 @@
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { createEmptyProject } from '../model/emptyProject';
 import type { ProjectSpec, StartupMode } from '../model/types';
+import { validateProjectSpec } from '../model/validation';
 import { appendProjectRevision, createProjectRevision, type ProjectRevisionRecord } from './projectTreeHistory';
 import { createSerializedAsyncQueue } from './serializedAsyncQueue';
 import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
@@ -11,6 +12,7 @@ const DB_VERSION = 1;
 const PROJECTS_STORE = 'projects';
 const WORKSPACE_STORE = 'workspaceState';
 const PREFERENCES_STORE = 'preferences';
+const ACTIVE_PROJECT_SNAPSHOT_KEY = 'latestActiveSnapshot';
 const LEGACY_MIGRATED_KEY = 'legacyMigrated';
 const WORKSPACE_KEY = 'workspace';
 const WORKSPACE_BACKUP_KEY = 'workspaceBackup';
@@ -45,8 +47,14 @@ export type WorkspaceStateRecord = {
 };
 
 export type WorkspaceBackupRecord = {
-  yaml: string;
+  project: ProjectSpec;
   source: 'cloud' | 'device';
+  savedAt: string;
+};
+
+type LatestActiveProjectSnapshotRecord = {
+  record: StoredProjectRecord;
+  syncMode: ProjectSyncMode;
   savedAt: string;
 };
 
@@ -71,6 +79,10 @@ type PersistenceSnapshot = {
 type LegacyStorageReader = Pick<Storage, 'getItem'>;
 const EMPTY_LEGACY_STORAGE_READER: LegacyStorageReader = { getItem: () => null };
 const workspaceMutationQueue = createSerializedAsyncQueue();
+const latestActiveSnapshotMutationQueue = createSerializedAsyncQueue();
+
+let activeProjectRecordPersistenceRelease: (() => void) | null = null;
+let activeProjectRecordPersistenceBarrier: Promise<void> | null = null;
 
 const defaultWorkspace = (): WorkspaceStateRecord => ({
   activeProjectId: null,
@@ -107,6 +119,10 @@ function txComplete(tx: IDBTransaction): Promise<void> {
     tx.onerror = () => reject(tx.error ?? new Error('indexeddb_tx_failed'));
     tx.onabort = () => reject(tx.error ?? new Error('indexeddb_tx_aborted'));
   });
+}
+
+function getActiveProjectRecordPersistenceBarrier(): Promise<void> | null {
+  return activeProjectRecordPersistenceBarrier;
 }
 
 function requestValue<T>(request: IDBRequest<T>): Promise<T> {
@@ -245,7 +261,36 @@ async function readWorkspaceBackup(db: IDBDatabase): Promise<WorkspaceBackupReco
   const tx = db.transaction(WORKSPACE_STORE, 'readonly');
   const backup = await requestValue(tx.objectStore(WORKSPACE_STORE).get(WORKSPACE_BACKUP_KEY));
   await txComplete(tx);
-  return (backup as WorkspaceBackupRecord | undefined) ?? null;
+  const record = (backup as WorkspaceBackupRecord | { yaml?: string; source?: WorkspaceBackupRecord['source']; savedAt?: string } | undefined) ?? null;
+  if (!record) return null;
+  if ('project' in record && record.project) {
+    validateProjectSpec(record.project);
+    return record as WorkspaceBackupRecord;
+  }
+  if (typeof record.yaml === 'string') {
+    const project = parseProjectYaml(record.yaml);
+    validateProjectSpec(project);
+    return {
+      project,
+      source: record.source === 'cloud' ? 'cloud' : 'device',
+      savedAt: typeof record.savedAt === 'string' ? record.savedAt : new Date().toISOString(),
+    };
+  }
+  return null;
+}
+
+async function readLatestActiveSnapshot(db: IDBDatabase): Promise<LatestActiveProjectSnapshotRecord | null> {
+  const tx = db.transaction(WORKSPACE_STORE, 'readonly');
+  const snapshot = await requestValue(tx.objectStore(WORKSPACE_STORE).get(ACTIVE_PROJECT_SNAPSHOT_KEY));
+  await txComplete(tx);
+  if (!snapshot || typeof snapshot !== 'object') return null;
+  const raw = snapshot as LatestActiveProjectSnapshotRecord;
+  return raw.record
+    ? {
+      ...raw,
+      record: hydrateStoredProjectRecord(raw.record),
+    }
+    : null;
 }
 
 async function readPreferences(db: IDBDatabase): Promise<PreferencesRecord | null> {
@@ -277,6 +322,7 @@ async function migrateLegacyStorage(db: IDBDatabase): Promise<void> {
 
 async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
   await workspaceMutationQueue.drain();
+  await latestActiveSnapshotMutationQueue.drain();
   const db = await openDb();
   if (!db) {
     appendPersistenceDebugEntry('project-persistence:load-snapshot', {
@@ -292,7 +338,38 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
     };
   }
   await migrateLegacyStorage(db);
-  const [localProjects, workspace, preferences] = await Promise.all([readAllProjects(db), readWorkspace(db), readPreferences(db)]);
+  const [storedProjects, storedWorkspace, preferences, latestActiveSnapshot] = await Promise.all([
+    readAllProjects(db),
+    readWorkspace(db),
+    readPreferences(db),
+    readLatestActiveSnapshot(db),
+  ]);
+  const localProjects = [...storedProjects];
+  let workspace = storedWorkspace;
+  if (latestActiveSnapshot) {
+    const existingIndex = localProjects.findIndex((record) => record.id === latestActiveSnapshot.record.id);
+    const currentActiveRecord = localProjects.find((record) => record.id === workspace.activeProjectId) ?? null;
+    const snapshotMs = Date.parse(latestActiveSnapshot.record.updatedAt || latestActiveSnapshot.savedAt);
+    const currentActiveMs = Date.parse(currentActiveRecord?.updatedAt ?? '');
+    const shouldPreferSnapshot =
+      !currentActiveRecord
+      || !workspace.activeProjectId
+      || latestActiveSnapshot.record.id === workspace.activeProjectId
+      || !Number.isFinite(currentActiveMs)
+      || (Number.isFinite(snapshotMs) && snapshotMs >= currentActiveMs);
+    if (shouldPreferSnapshot) {
+      if (existingIndex >= 0) {
+        localProjects.splice(existingIndex, 1, latestActiveSnapshot.record);
+      } else {
+        localProjects.unshift(latestActiveSnapshot.record);
+      }
+      workspace = {
+        ...workspace,
+        activeProjectId: latestActiveSnapshot.record.id,
+        syncMode: latestActiveSnapshot.syncMode,
+      };
+    }
+  }
   const activeProject = localProjects.find((record) => record.id === workspace.activeProjectId) ?? null;
   appendPersistenceDebugEntry('project-persistence:load-snapshot', {
     localProjectCount: localProjects.length,
@@ -311,7 +388,35 @@ async function upsertProjectRecord(record: StoredProjectRecord): Promise<void> {
   await txComplete(tx);
 }
 
+async function writeLatestActiveSnapshot(snapshot: LatestActiveProjectSnapshotRecord): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  const tx = db.transaction(WORKSPACE_STORE, 'readwrite');
+  tx.objectStore(WORKSPACE_STORE).put(snapshot, ACTIVE_PROJECT_SNAPSHOT_KEY);
+  await txComplete(tx);
+}
+
+async function clearLatestActiveSnapshot(): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  const tx = db.transaction(WORKSPACE_STORE, 'readwrite');
+  tx.objectStore(WORKSPACE_STORE).delete(ACTIVE_PROJECT_SNAPSHOT_KEY);
+  await txComplete(tx);
+}
+
+async function persistLatestActiveSnapshot(record: StoredProjectRecord, syncMode: ProjectSyncMode): Promise<void> {
+  const snapshot: LatestActiveProjectSnapshotRecord = {
+    record: hydrateStoredProjectRecord(record),
+    syncMode,
+    savedAt: new Date().toISOString(),
+  };
+  await latestActiveSnapshotMutationQueue.run(async () => {
+    await writeLatestActiveSnapshot(snapshot);
+  });
+}
+
 async function writeProjectRecordAndWorkspace(record: StoredProjectRecord, workspace: WorkspaceStateRecord): Promise<void> {
+  await getActiveProjectRecordPersistenceBarrier();
   const db = await openDb();
   if (!db) return;
   const tx = db.transaction([PROJECTS_STORE, WORKSPACE_STORE], 'readwrite');
@@ -369,6 +474,13 @@ async function getWorkspaceState(options?: { awaitPendingWrites?: boolean }): Pr
   return readWorkspace(db);
 }
 
+async function getLatestActiveSnapshotRecord(options?: { awaitPendingWrites?: boolean }): Promise<LatestActiveProjectSnapshotRecord | null> {
+  if (options?.awaitPendingWrites) await latestActiveSnapshotMutationQueue.drain();
+  const db = await openDb();
+  if (!db) return null;
+  return readLatestActiveSnapshot(db);
+}
+
 async function updateWorkspaceState(
   patch: Partial<WorkspaceStateRecord> | ((current: WorkspaceStateRecord) => WorkspaceStateRecord),
 ): Promise<WorkspaceStateRecord> {
@@ -421,6 +533,10 @@ export const projectPersistence = {
   async saveProjectRecord(record: StoredProjectRecord): Promise<StoredProjectRecord[]> {
     appendPersistenceDebugEntry('project-persistence:save-project-record-start', summarizeRecordForDebug(record));
     try {
+      const workspace = await getWorkspaceState({ awaitPendingWrites: true });
+      if (workspace.activeProjectId === record.id) {
+        await persistLatestActiveSnapshot(record, workspace.syncMode);
+      }
       await upsertProjectRecord(record);
       const snapshot = await this.load();
       appendPersistenceDebugEntry('project-persistence:save-project-record-success', {
@@ -443,6 +559,7 @@ export const projectPersistence = {
       syncMode,
     });
     try {
+      await persistLatestActiveSnapshot(record, syncMode);
       await workspaceMutationQueue.run(async () => {
         const currentWorkspace = await getWorkspaceState();
         await writeProjectRecordAndWorkspace(record, { ...currentWorkspace, activeProjectId: record.id, syncMode });
@@ -470,6 +587,12 @@ export const projectPersistence = {
       syncMode,
     });
     await updateWorkspaceState({ activeProjectId: projectId, syncMode });
+    if (!projectId) {
+      await clearLatestActiveSnapshot();
+      return;
+    }
+    const record = await getProjectRecord(projectId);
+    if (record) await persistLatestActiveSnapshot(record, syncMode);
   },
 
   async setSyncMode(projectId: string | null, syncMode: ProjectSyncMode): Promise<void> {
@@ -478,6 +601,14 @@ export const projectPersistence = {
       syncMode,
     });
     await updateWorkspaceState({ activeProjectId: projectId, syncMode });
+    if (!projectId) return;
+    const latestSnapshot = await getLatestActiveSnapshotRecord({ awaitPendingWrites: true });
+    if (latestSnapshot?.record.id === projectId) {
+      await persistLatestActiveSnapshot(latestSnapshot.record, syncMode);
+      return;
+    }
+    const record = await getProjectRecord(projectId);
+    if (record) await persistLatestActiveSnapshot(record, syncMode);
   },
 
   async savePreferences(preferences: PreferencesRecord): Promise<void> {
@@ -507,6 +638,16 @@ export const projectPersistence = {
   },
 
   async loadActiveProjectRecord(): Promise<StoredProjectRecord | null> {
+    const latestSnapshot = await getLatestActiveSnapshotRecord({ awaitPendingWrites: true });
+    if (latestSnapshot?.record) {
+      appendPersistenceDebugEntry('project-persistence:load-active-project-record', {
+        activeProjectId: latestSnapshot.record.id,
+        syncMode: latestSnapshot.syncMode,
+        record: summarizeRecordForDebug(latestSnapshot.record),
+        source: 'latest-active-snapshot',
+      });
+      return latestSnapshot.record;
+    }
     const workspace = await getWorkspaceState({ awaitPendingWrites: true });
     if (!workspace.activeProjectId) return null;
     const record = await getProjectRecord(workspace.activeProjectId);
@@ -518,12 +659,17 @@ export const projectPersistence = {
     return record;
   },
 
-  async saveWorkspaceBackup(yaml: string, source: WorkspaceBackupRecord['source']): Promise<void> {
+  async loadLatestActiveProjectSnapshotRecord(): Promise<StoredProjectRecord | null> {
+    const snapshot = await getLatestActiveSnapshotRecord({ awaitPendingWrites: true });
+    return snapshot?.record ?? null;
+  },
+
+  async saveWorkspaceBackup(project: ProjectSpec, source: WorkspaceBackupRecord['source']): Promise<void> {
     const db = await openDb();
     if (!db) return;
     const tx = db.transaction(WORKSPACE_STORE, 'readwrite');
     tx.objectStore(WORKSPACE_STORE).put({
-      yaml,
+      project: cloneProject(project),
       source,
       savedAt: new Date().toISOString(),
     } satisfies WorkspaceBackupRecord, WORKSPACE_BACKUP_KEY);
@@ -589,6 +735,7 @@ export const projectPersistence = {
     const record = buildStoredProjectRecord(nextProject, { id: nextProject.id, origin: 'local-only', syncStatus: 'local' });
     await upsertProjectRecord(record);
     await updateWorkspaceState({ activeProjectId: record.id, syncMode: 'online' });
+    await persistLatestActiveSnapshot(record, 'online');
     return record;
   },
 
@@ -603,6 +750,7 @@ export const projectPersistence = {
     });
     await upsertProjectRecord(next);
     await updateWorkspaceState({ activeProjectId: next.id, syncMode: 'online' });
+    await persistLatestActiveSnapshot(next, 'online');
     return next;
   },
 
@@ -618,3 +766,16 @@ export const projectPersistence = {
     return next;
   },
 };
+
+export function __pauseActiveProjectRecordPersistenceForTests(): void {
+  if (activeProjectRecordPersistenceBarrier) return;
+  activeProjectRecordPersistenceBarrier = new Promise<void>((resolve) => {
+    activeProjectRecordPersistenceRelease = resolve;
+  });
+}
+
+export function __resumeActiveProjectRecordPersistenceForTests(): void {
+  activeProjectRecordPersistenceRelease?.();
+  activeProjectRecordPersistenceRelease = null;
+  activeProjectRecordPersistenceBarrier = null;
+}

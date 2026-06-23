@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { serializeProjectToYaml } from '../../../../src/model/serialization';
+import type { ProjectSpec } from '../../../../src/model/types';
 import type { Repositories } from '../types';
 
 type Ok<T> = T & { ok: true };
@@ -60,25 +61,20 @@ async function routeExists(url: string): Promise<boolean> {
   }
 }
 
-function projectHasPathAssets(yamlText: string): boolean {
-  try {
-    const parsed = parseYaml(yamlText) as any;
-    const images = parsed?.assets?.images ?? {};
-    const spriteSheets = parsed?.assets?.spriteSheets ?? {};
-    const fonts = parsed?.assets?.fonts ?? {};
-    const sounds = parsed?.audio?.sounds ?? {};
-    const all = [images, spriteSheets, fonts, sounds];
-    for (const bucket of all) {
-      if (!bucket || typeof bucket !== 'object') continue;
-      for (const spec of Object.values(bucket as Record<string, any>)) {
-        const source = (spec as any)?.source;
-        if (source && typeof source === 'object' && (source as any).kind === 'path') return true;
-      }
+function projectHasPathAssets(project: ProjectSpec): boolean {
+  const images = project.assets?.images ?? {};
+  const spriteSheets = project.assets?.spriteSheets ?? {};
+  const fonts = project.assets?.fonts ?? {};
+  const sounds = project.audio?.sounds ?? {};
+  const all = [images, spriteSheets, fonts, sounds];
+  for (const bucket of all) {
+    if (!bucket || typeof bucket !== 'object') continue;
+    for (const spec of Object.values(bucket as Record<string, any>)) {
+      const source = (spec as any)?.source;
+      if (source && typeof source === 'object' && (source as any).kind === 'path') return true;
     }
-    return false;
-  } catch {
-    return true;
   }
+  return false;
 }
 
 async function readPublishableDistFiles(): Promise<Array<{ relPath: string; bytes: Uint8Array }>> {
@@ -488,7 +484,7 @@ export async function publishGameToGithubPages(
 
   const game = await repositories.games.findByIdForUser(input.gameId, userId);
   if (!game) return { ok: false, error: 'not_found' };
-  if (projectHasPathAssets(game.yaml)) return { ok: false, error: 'path_assets_unsupported' };
+  if (projectHasPathAssets(game.project)) return { ok: false, error: 'path_assets_unsupported' };
 
   const oauth = await repositories.oauth.findByUserIdProvider(userId, 'github');
   const accessToken = oauth?.accessToken ?? '';
@@ -512,7 +508,7 @@ export async function publishGameToGithubPages(
   if (!indexEntry) return { ok: false, error: 'dist_missing' };
 
   const playIndex = buildPlayIndexHtml(Buffer.from(indexEntry.bytes).toString('utf8'));
-  const yamlNormalized = stringifyYaml(parseYaml(game.yaml));
+  const yamlNormalized = serializeProjectToYaml(game.project);
   const files: Array<{ path: string; bytes: Uint8Array }> = [
     { path: PAGES_WORKFLOW_PATH, bytes: Buffer.from(buildPagesWorkflowYaml(), 'utf8') },
     { path: 'index.html', bytes: Buffer.from(playIndex, 'utf8') },
