@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PhaserGame } from './phaser/PhaserHost';
 import { EventBus, getActiveScene } from './phaser/EventBus';
 import { consumePendingRuntimeRequestedSceneId } from './phaser/pendingRuntimeRequest';
@@ -42,6 +42,7 @@ import './app/layout.css';
 
 function AppShell() {
   const { state, dispatch } = useEditorStore();
+  const cachedWorkspace = projectPersistence.readCachedWorkspaceStateRecord?.();
   const displayProject = state.revisionPreview?.project ?? state.project;
   const displaySceneId = state.revisionPreview?.currentSceneId ?? state.currentSceneId;
   const activeScene = displayProject.scenes[displaySceneId];
@@ -55,6 +56,8 @@ function AppShell() {
   const viewRestoreAttemptedRef = useRef(false);
   const lastViewProjectIdRef = useRef<string | null>(null);
   const layoutHydratedRef = useRef(false);
+  const sceneLoadDebugKeyRef = useRef<string | null>(null);
+  const viewRestoreDebugKeyRef = useRef<string | null>(null);
   const appStateRef = useRef<AppStateSnapshot>({
     project: state.project,
     currentSceneId: displaySceneId,
@@ -107,7 +110,12 @@ function AppShell() {
     };
   }, [displayProject, displaySceneId, state]);
 
-  useEffect(() => {
+  const [sidebarLayoutHydrated, setSidebarLayoutHydrated] = useState(() => (
+    Number.isFinite(cachedWorkspace?.leftPaneWidth) || Number.isFinite(cachedWorkspace?.rightPaneWidth)
+  ));
+  const bootReady = state.initialized && sidebarLayoutHydrated && sceneReady;
+
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (state.themeMode === 'system') {
       root.removeAttribute('data-theme');
@@ -116,7 +124,7 @@ function AppShell() {
     }
   }, [state.themeMode]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.style.setProperty('--ui-scale', String(state.uiScale));
   }, [state.uiScale]);
 
@@ -334,6 +342,18 @@ function AppShell() {
         return;
       }
 
+      const sceneLoadDebugKey = `${appStateRef.current.project.id}:${appStateRef.current.currentSceneId}`;
+      if (sceneLoadDebugKeyRef.current !== sceneLoadDebugKey) {
+        sceneLoadDebugKeyRef.current = sceneLoadDebugKey;
+        appendPersistenceDebugEntry('restore:scene-load-complete', {
+          projectId: appStateRef.current.project.id,
+          currentSceneId: appStateRef.current.currentSceneId,
+          zoom: payload.zoom,
+          worldWidth: payload.worldWidth ?? expectedWorld.width,
+          worldHeight: payload.worldHeight ?? expectedWorld.height,
+        });
+      }
+
       if (!shouldPersistViewState({
         projectId: appStateRef.current.project.id,
         initialized: appStateRef.current.initialized,
@@ -401,10 +421,22 @@ function AppShell() {
       }
 
       const projectId = appStateRef.current.project.id;
+      const viewRestoreDebugKey = `${projectId}:${appStateRef.current.currentSceneId}`;
       lastViewProjectIdRef.current = projectId;
       viewRestoreAttemptedRef.current = true;
       void projectPersistence.loadViewState(projectId).then((view) => {
-        if (cancelled || !view) return;
+        if (cancelled) return;
+        if (!view) {
+          if (viewRestoreDebugKeyRef.current !== viewRestoreDebugKey) {
+            viewRestoreDebugKeyRef.current = viewRestoreDebugKey;
+            appendPersistenceDebugEntry('restore:view-state-restored', {
+              projectId,
+              currentSceneId: appStateRef.current.currentSceneId,
+              outcome: 'missing',
+            });
+          }
+          return;
+        }
         logViewDebug('restore-read-storage', {
           projectId,
           storedView: view,
@@ -418,6 +450,15 @@ function AppShell() {
             currentView,
             storedView: view,
           });
+          if (viewRestoreDebugKeyRef.current !== viewRestoreDebugKey) {
+            viewRestoreDebugKeyRef.current = viewRestoreDebugKey;
+            appendPersistenceDebugEntry('restore:view-state-restored', {
+              projectId,
+              currentSceneId: appStateRef.current.currentSceneId,
+              outcome: 'already-applied',
+              storedView: view,
+            });
+          }
           return;
         }
         EventBus.emit('scene-restore-view-state', view);
@@ -430,11 +471,26 @@ function AppShell() {
           requestedView: view,
           restoredView,
         });
+        if (viewRestoreDebugKeyRef.current !== viewRestoreDebugKey) {
+          viewRestoreDebugKeyRef.current = viewRestoreDebugKey;
+          appendPersistenceDebugEntry('restore:view-state-restored', {
+            projectId,
+            currentSceneId: appStateRef.current.currentSceneId,
+            outcome: restoredView ? 'applied' : 'emitted-without-readback',
+            storedView: view,
+            restoredView,
+          });
+        }
         if (restoredView) {
           void projectPersistence.saveViewState(projectId, restoredView);
         }
-      }).catch(() => {
-        // ignore persistence errors
+      }).catch((error) => {
+        appendPersistenceDebugEntry('restore:view-state-restored', {
+          projectId,
+          currentSceneId: appStateRef.current.currentSceneId,
+          outcome: 'error',
+          error,
+        });
       });
 
       return true;
@@ -626,8 +682,16 @@ function AppShell() {
   const rightPaneDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [leftPaneMouseDragging, setLeftPaneMouseDragging] = useState(false);
   const [rightPaneMouseDragging, setRightPaneMouseDragging] = useState(false);
-  const [leftPaneWidth, setLeftPaneWidth] = useState(300);
-  const [rightPaneWidth, setRightPaneWidth] = useState(380);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(() => (
+    Number.isFinite(cachedWorkspace?.leftPaneWidth)
+      ? Math.max(240, Math.min(520, cachedWorkspace?.leftPaneWidth as number))
+      : 300
+  ));
+  const [rightPaneWidth, setRightPaneWidth] = useState(() => (
+    Number.isFinite(cachedWorkspace?.rightPaneWidth)
+      ? Math.max(340, Math.min(1040, cachedWorkspace?.rightPaneWidth as number))
+      : 380
+  ));
   const latestLeftPaneWidthRef = useRef(leftPaneWidth);
   const latestRightPaneWidthRef = useRef(rightPaneWidth);
 
@@ -660,6 +724,7 @@ function AppShell() {
       if (Number.isFinite(workspace.leftPaneWidth)) setLeftPaneWidth(nextLeftPaneWidth);
       if (Number.isFinite(workspace.rightPaneWidth)) setRightPaneWidth(nextRightPaneWidth);
       layoutHydratedRef.current = true;
+      setSidebarLayoutHydrated(true);
       appendPersistenceDebugEntry('layout:hydrate-sidebar-widths', {
         leftPaneWidth: nextLeftPaneWidth,
         rightPaneWidth: nextRightPaneWidth,
@@ -797,7 +862,19 @@ function AppShell() {
   }, []);
 
   return (
-    <div className="app-root" data-testid="app-root">
+    <div
+      className={`app-root${bootReady ? '' : ' app-root-booting'}`}
+      data-boot-ready={bootReady ? 'true' : 'false'}
+      data-testid="app-root"
+    >
+      {!bootReady && (
+        <div className="app-boot-splash" data-testid="app-boot-splash">
+          <div className="app-boot-splash-card">
+            <p className="eyebrow">PhaserForge</p>
+            <h2 className="section-title">Opening editor…</h2>
+          </div>
+        </div>
+      )}
       <Toolbar />
       <div
         ref={appBodyRef}

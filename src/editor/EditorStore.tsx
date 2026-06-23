@@ -473,6 +473,7 @@ function defaultState(): EditorState {
   const project = createEmptyProject();
   const currentSceneId = project.initialSceneId;
   const scene = project.scenes[currentSceneId];
+  const cachedPreferences = projectPersistence.readCachedPreferencesRecord?.();
   return {
     project,
     currentSceneId,
@@ -487,10 +488,10 @@ function defaultState(): EditorState {
     yamlText: '',
     mode: 'edit',
     hasSeenViewHint: false,
-    startupMode: 'new_empty_scene',
-    themeMode: 'system',
-    uiScale: DEFAULT_UI_SCALE,
-    showHitboxOverlay: true,
+    startupMode: cachedPreferences?.startupMode ?? 'new_empty_scene',
+    themeMode: cachedPreferences?.themeMode ?? 'system',
+    uiScale: cachedPreferences?.uiScale ?? DEFAULT_UI_SCALE,
+    showHitboxOverlay: cachedPreferences?.showHitboxOverlay ?? true,
     syncMode: 'online',
     registry: EMPTY_EDITOR_REGISTRY,
     initialized: false,
@@ -3532,12 +3533,14 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   });
 
   const dispatchProjectLoad = (project: ProjectSpec, sourceLabel: string) => {
-    appendPersistenceDebugEntry('editor-store:load-project-dispatch', summarizeProjectLoadForDebug({
+    const details = summarizeProjectLoadForDebug({
       sourceLabel,
       project,
       activeProjectId: activeProjectId ?? latestActiveProjectIdRef.current,
       currentProjectId: latestStateRef.current.project.id,
-    }));
+    });
+    appendPersistenceDebugEntry('editor-store:load-project-dispatch', details);
+    appendPersistenceDebugEntry('restore:project-dispatched', details);
     dispatch({ type: 'load-project', project, sourceLabel });
   };
 
@@ -3568,6 +3571,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         snapshot.workspace.syncMode,
       ));
       appendPersistenceDebugEntry('editor-store:initialize-project-hydrate', summarizeProjectLoadForDebug({
+        sourceLabel: 'initialize:active-record',
+        project,
+        activeProjectId: initialRecord.id,
+        currentProjectId: null,
+      }));
+      appendPersistenceDebugEntry('restore:project-dispatched', summarizeProjectLoadForDebug({
         sourceLabel: 'initialize:active-record',
         project,
         activeProjectId: initialRecord.id,

@@ -347,6 +347,59 @@ export async function getState<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_FORGE_TEST__?.getState()) as Promise<T>;
 }
 
+export async function enablePersistenceDebug(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem('phaserforge.debugPersistence.v1', '1');
+    } catch {
+      // ignore storage failures in tests
+    }
+  });
+}
+
+export async function readPersistenceDebugEntries(page: Page): Promise<Array<{
+  event: string;
+  details?: Record<string, unknown>;
+}>> {
+  return page.evaluate(() => window.__PHASER_FORGE_PERSISTENCE_DEBUG__?.read?.() ?? []);
+}
+
+export async function expectPersistenceDebugEvents(
+  page: Page,
+  events: string[],
+): Promise<void> {
+  await expect.poll(async () => {
+    const entries = await readPersistenceDebugEntries(page);
+    return events.every((event) => entries.some((entry) => entry.event === event));
+  }).toBe(true);
+}
+
+export async function expectProjectRestoreState(
+  page: Page,
+  expected: {
+    projectId: string;
+    title: string;
+    currentSceneId: string;
+    entityCount: number;
+    groupCount: number;
+  },
+): Promise<void> {
+  await expect.poll(async () => {
+    const state = await getState<{
+      project?: { id?: string; title?: string };
+      currentSceneId?: string;
+      scene?: { entities?: Record<string, unknown>; groups?: Record<string, unknown> };
+    } | null>(page);
+    return {
+      projectId: state?.project?.id ?? null,
+      title: state?.project?.title ?? null,
+      currentSceneId: state?.currentSceneId ?? null,
+      entityCount: Object.keys(state?.scene?.entities ?? {}).length,
+      groupCount: Object.keys(state?.scene?.groups ?? {}).length,
+    };
+  }, { timeout: SCENE_CONTENT_TIMEOUT_MS }).toEqual(expected);
+}
+
 export async function reloadRuntime(page: Page): Promise<void> {
   await page.evaluate(() => window.__PHASER_FORGE_TEST__?.reloadRuntime?.());
   await waitForSceneReady(page);
