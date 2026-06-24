@@ -66,6 +66,24 @@ describe('auth', () => {
     expect(res.headers['set-cookie']?.join(';') ?? '').toContain('pa_session=');
   });
 
+  it('issues a persistent session cookie using the configured session TTL', async () => {
+    const sessionTtlMs = 1000 * 60 * 60 * 24 * 30;
+    const { app } = makeApp({ sessionTtlMs });
+    const agent = request.agent(app);
+    const { csrf } = await getCsrf(agent);
+
+    const res = await agent
+      .post('/api/v1/auth/signup')
+      .set('x-csrf-token', csrf)
+      .send({ email: 'alice@example.com', password: 'password123' })
+      .expect(200);
+
+    const sessionCookie = ((res.headers['set-cookie'] ?? []) as string[]).find((value) => value.startsWith('pa_session='));
+    expect(sessionCookie).toBeTruthy();
+    expect(sessionCookie).toContain('Max-Age=2592000');
+    expect(sessionCookie).toContain('Expires=');
+  });
+
   it('emits SameSite=None; Secure cookies when configured', async () => {
     const { app } = makeApp({ cookieSameSite: 'none', cookieSecure: false });
     const csrfRes = await request(app).get('/api/v1/auth/csrf').expect(200);
