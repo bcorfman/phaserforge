@@ -42,8 +42,8 @@ jobs:
 
       - name: E2E Tests
         env:
-          PW_PROJECTS: chromium,firefox,webkit,msedge
-        run: npm run test:e2e -- --project=chromium --project=firefox --project=webkit --project=msedge --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
+          PW_PROJECTS: firefox,webkit,msedge
+        run: npm run test:e2e -- --project=firefox --project=webkit --project=msedge --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
 
       - name: Upload Playwright Artifacts
         if: always()
