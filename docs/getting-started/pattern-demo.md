@@ -160,6 +160,7 @@ Success check:
 ## Attach the Movement Patterns
 
 **NOTE:** The goal is to build the patterns one ship at a time in the same scene-start event flow. Take your time, and work ship-by-ship. Your progress is saved automatically, so you can return to the process later.
+
 **NOTE:** Hit `Play Mode` in the upper-right of the canvas to check each ship's actions as you build them. After you've viewed the action steps, click the same button again to return to `Edit Mode`.
 
 <img src="../assets/screenshots/playwright/actions-events-panel.png" alt="Actions and events panel"  style="display: block; margin: 0 auto; width: 408px; max-width: 100%; height: auto;" />
@@ -170,13 +171,17 @@ Success check:
 
 1. Select the ship titled `Wave` on the canvas or in the scene graph.
 2. On the Inspector tab in the right sidebar, open the `Actions/Events` panel.
+
    **NOTE:** If other open panels are cluttering the Inspector, you can close them with the chevron next to each panel name.
 3. Click `+ Add Action` in the panel's `OnSceneStart` handler.
+
    **NOTE:** The Action Library popup will appear.
 4. In the Action Library categories, click the `Loops` tab.
 5. Under Actions, choose `Intro then Repeat…`
+
    **NOTE:** The Action Library popup will close, and OnSceneStart will contain three actions: Intro, Repeat, and a nested Loop body.
 6. Click on the Intro action name in the Steps list. 
+
    **NOTE:** The Inspector will switch to show `Intro` step properties.
 7. Set the Intro step properties to the following:
    - `Type = Wave`
@@ -184,6 +189,7 @@ Success check:
    - The other defaults are fine.
 8. Click the Back arrow in the properties panel to return to the Actions list.
 9. Click on the `Loop Body` name in the Steps list.
+
    **NOTE:** The Inspector will switch to show `Loop Body` step properties.
 10. Set the `Loop Body` step properties to the following:
    - `Type = Wave`
@@ -197,12 +203,15 @@ Success check:
 ### Zigzag action
 
 1. Select the ship titled `Zigzag` on the canvas or in the scene graph.
+
    **NOTE:** Remember to collapse other panels besides `Actions/Events` in the Inspector if it is too cluttered.
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+
    **NOTE:** The Action Library popup will appear.
 3. In the Action Library categories, click the `Loops` tab.
 4. Under Actions, choose `Repeat With Children…`
 5. Leave `Children = 2`, set `Child Type = Zigzag Pattern` and click the `Create` button.
+
    **NOTE:** The Inspector will switch to show the `Repeat` action properties.
 6. Set the Loop properties to the following:
    - `Name = Loop`
@@ -210,6 +219,7 @@ Success check:
    - The other defaults are fine.
    - Click the Back arrow in the properties panel to return to the Actions list.
 7. Click on the second `Zigzag Pattern` in the Steps list.
+
    **NOTE:** The Inspector will switch to show `Zigzag` step properties.
 8. Set the second `Zigzag` step properties to the following:
    - `Width = -30`
@@ -217,8 +227,10 @@ Success check:
    - The other defaults are fine.
    - Click the Back arrow in the properties panel to return to the Actions list.
 9. Click the `...` next to the Loop in the Actions list. 
+
     **NOTE:** A popup menu will appear below. 
 10. Click `+ Add Action Above` in the popup menu.
+
     **NOTE:** The Action Library will popup above the Loop action.
 11. Click `Move By` in the Action library to add it to the Actions list. 
 12. Click the `Move By` action in the Actions list to set its properties: 
@@ -231,9 +243,11 @@ Success check:
 
 1. Select the ship titled `Figure-8` on the canvas.
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+
    **NOTE:** The Action Library popup will appear.
 3. In the Action Library categories, click the `Loops` tab.
 4. In the Actions list, click `Repeat with Children…`
+
    **NOTE:** The Actions Library will close, and a popup menu in the `OnSceneStart` menu will appear.
 5. Set `Children = 1` and `Child Type = Figure-8 Pattern` in the popup menu, then click the `Create` button.
 6. Set the `Repeat` step properties in the Inspector to the following:
@@ -248,31 +262,31 @@ Success check:
 3. Check the box labeled `Flip Y`.
 4. Click the Transform panel chevron again to close it.
 5. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+
    **NOTE:** The Action Library popup will appear.
 6. In the Action Library categories, click the `Loops` tab.
 7. In the Actions list, click `Repeat with Children…`
+
    **NOTE:** The Actions Library will close, and a popup menu in the `OnSceneStart` menu will appear.
 8. Set `Children = 1` and `Child Type = Orbit Pattern` in the popup menu, then click the `Create` button.
 9. Click the Back arrow in the properties panel to return to the Actions list.
-10. Click on the `Child` (Orbit Pattern) in the Actions list.
-11. Set the `Child` properties in the Inspector to:
-    - `Center = Home`
-    - The other defaults are fine.
-    - Click the Back arrow in the properties panel to return to the Actions list.
 
 ### Spiral action
 
 1. Select the ship titled `Spiral` on the canvas.
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+
    **NOTE:** The Action Library popup will appear.
 3. In the Action Library categories, click the `Loops` tab.
 4. In the Actions list, click `Repeat with Children…`
+
    **NOTE:** The Actions Library will close, and a popup menu in the `OnSceneStart` menu will appear.
 5. Set `Child Type = Spiral Pattern` in the popup menu, then click the `Create` button.
 6. Click the Back arrow in the properties panel to return to the Actions list.
 7. Click on `Child 2` in the Actions list.
 8. Set the `Child 2` properties to:
-    - `direction = inward`
+    - `Direction = Inward`
+    - `Flip Y = Checked`
     - The other defaults are fine.
     - Click the Back arrow in the properties panel to return to the Actions list.
 
@@ -280,9 +294,12 @@ Success check:
 
 1. Select the ship titled `Bounce` on the canvas.
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+
    **NOTE:** The Action Library popup will appear.
-3. Add a `Bounce Pattern` step and set:
-   - `velocityX = 100`
+3. In the Action Library categories, click the `Movement` tab.
+4. Add a `Bounce` step and set:
+   - `Name = BounceBox`
+   - `Velocity X = 100`
    - In the `Bounds` panel for the same ship:
       - Switch `Bounds` edit mode to `Center/Span`
       - Set `± X Span = 50`
@@ -297,8 +314,10 @@ Success check:
 
 1. Select the ship titled `Patrol` on the canvas.
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
+
    **NOTE:** The Action Library popup will appear.
-3. Add a `Patrol Pattern` step and set:
+3. In the Action Library categories, click the `Movement` tab.
+4. Add a `Patrol` step and set:
    - `Velocity X = 80`
    - In the `Bounds` panel for the same ship:
       - Switch `Bounds` edit mode to `Center/Span`
@@ -315,11 +334,21 @@ Success check:
 - Every ship shows a handler/action flow in the editor.
 - `Bounce` and `Patrol` have their bounds configured, not just the pattern action itself.
 
+## Add Music to the Demo
+
+1. Click on a blank part of the Canvas.
+   
+   **NOTE:** The Inspector for the canvas itself will appear in the right sidebar.
+
+2. In the Inspector, expand the Audio panel (if it's not already visible) by clicking the chevron next to its name.
+3. Click on the Music dropdown box and select a song from the Demo Pack, like "sb-indreams-chosic-com" or whichever one you like.
+4. Adjust the Volume setting if you like.
+
 ## Run the Demo in Play Mode
 
 Toggle into Play mode with `Tab` or the toolbar button, and let the scene run long enough to verify all seven motions.
 
-<img src="../assets/screenshots/playwright/toolbar-theme-and-scale.png" alt="Toolbar close-up" style="display: block; margin: 0 auto; width: 1633px; max-width: 100%; height: auto;" />
+<img src="../assets/screenshots/playwright/pattern-demo-toolbar-controls.png" alt="Toolbar buttons for Undo, Redo, Snap Off, and Play Mode" style="display: block; margin: 0 auto; width: 511px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 13. Toolbar region with Play/Edit toggle and status controls.</em></p>
 

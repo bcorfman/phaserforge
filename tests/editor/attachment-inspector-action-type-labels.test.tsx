@@ -52,4 +52,37 @@ describe('Attachment inspector action type labels', () => {
     expect(markup).toContain('<option value="WavePattern" selected="">Wave</option>');
     expect(markup).not.toContain('<option value="WavePattern" selected="">Wave Pattern</option>');
   });
+
+  it('defaults Orbit center mode to Home in the panel when unset', () => {
+    const scene = baseScene();
+    const project = baseProject();
+    const attachment: any = {
+      id: 'att-1',
+      target: { type: 'entity', entityId: 'e1' },
+      presetId: 'OrbitPattern',
+      enabled: true,
+      order: 0,
+      params: {},
+    };
+
+    const markup = renderToStaticMarkup(
+      renderAttachmentInspector(
+        attachment,
+        project,
+        scene,
+        {
+          arrange: [],
+          conditions: [],
+          actions: [
+            { type: 'OrbitPattern', displayName: 'Orbit Pattern', category: 'movement', implemented: true },
+          ],
+        } as any,
+        () => {},
+        () => {}
+      )
+    );
+
+    expect(markup).toContain('<option value="home" selected="">Home</option>');
+    expect(markup).not.toContain('<option value="current" selected="">Current</option>');
+  });
 });
