@@ -31,6 +31,13 @@ export function createGameConfig(container: string): Phaser.Types.Core.GameConfi
     };
 }
 
+export function configureGameAudioPersistence(game: Phaser.Game): void
+{
+    const soundManager = (game as any)?.sound;
+    if (!soundManager) return;
+    soundManager.pauseOnBlur = false;
+}
+
 export default function StartGame(container: string): Phaser.Game
 {
     const config = createGameConfig(container);
@@ -43,6 +50,7 @@ export default function StartGame(container: string): Phaser.Game
     }
 
     const game = new Phaser.Game(config);
+    configureGameAudioPersistence(game);
     (window as any).__phaserGame = game;
     return game;
 }
