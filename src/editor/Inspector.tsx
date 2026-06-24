@@ -2223,7 +2223,7 @@ function AttachmentInspector({
                 return;
               }
               if (nextType === 'OrbitPattern') {
-                onUpdate({ ...base, params: { radius: 50, velocity: 100, clockwise: true, centerMode: 'current' } });
+                onUpdate({ ...base, params: { radius: 50, velocity: 100, clockwise: true, centerMode: 'home' } });
                 return;
               }
 	              if (nextType === 'BouncePattern') {
@@ -3286,7 +3286,7 @@ function AttachmentInspector({
               <span>Center</span>
               <select
                 aria-label="Orbit Center Mode"
-                value={String(params.centerMode ?? 'current')}
+                value={String(params.centerMode ?? 'home')}
                 onChange={(e) => onUpdate({ ...attachment, params: { ...params, centerMode: e.target.value } })}
               >
                 <option value="current">Current</option>
