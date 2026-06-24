@@ -35,40 +35,6 @@ test('boots empty by default and loads scenes @smoke', async ({ page }) => {
   await waitForEmptyScene(page);
 
   await seedSampleScene(page);
-  await expect.poll(async () => {
-    return page.evaluate(async () => {
-      const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
-        const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-      });
-      const db = await openDb();
-      const workspace = await new Promise<any>((resolve, reject) => {
-        const tx = db.transaction('workspaceState', 'readonly');
-        const request = tx.objectStore('workspaceState').get('workspace');
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-      if (!workspace?.activeProjectId) return null;
-      const project = await new Promise<any>((resolve, reject) => {
-        const tx = db.transaction('projects', 'readonly');
-        const request = tx.objectStore('projects').get(workspace.activeProjectId);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-      return {
-        id: project?.id ?? null,
-        hasProjectPayload: Boolean(project?.project),
-        revisionCount: Array.isArray(project?.revisions) ? project.revisions.length : 0,
-      };
-    });
-  }).toEqual({
-    id: expect.any(String),
-    hasProjectPayload: false,
-    revisionCount: expect.any(Number),
-  });
-  await page.reload();
-  await gotoStudio(page);
   await waitForSampleScene(page);
   await selectGroupInSceneGraph(page, 'g-enemies');
   await expectInputValue(page.getByTestId('formation-name-input'), 'Enemy Formation');

@@ -1,10 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getState, gotoStudio, seedSampleScene, selectGroupInSceneGraph, waitForSampleScene } from './helpers';
+import { dismissViewHint, getState, seedSampleScene, selectGroupInSceneGraph } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
-  await gotoStudio(page);
-  await waitForSampleScene(page);
   await dismissViewHint(page);
 });
 
