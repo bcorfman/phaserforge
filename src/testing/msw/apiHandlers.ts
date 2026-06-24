@@ -41,6 +41,9 @@ export function getDefaultApiStubResponse(urlString: string, method: string): Ap
       },
     };
   }
+  if (normalizedMethod === 'POST' && pathname === '/api/v1/assets') {
+    return { status: 201, body: { asset: { kind: 'cloud', assetId: 'asset-stub', originalName: 'asset.bin', mimeType: 'application/octet-stream' } } };
+  }
   if (normalizedMethod === 'GET' && pathname === '/api/v1/publish/github-pages/info') {
     return { status: 400, body: { error: 'github_not_linked' } };
   }
@@ -98,6 +101,12 @@ export function createCloudAuthHandlers(options: {
     }),
     http.put(/.*\/api\/v1\/games\/[^/]+/, async () => {
       return HttpResponse.json({ updated_at: 'u' }, { status: 200 });
+    }),
+    http.post(/.*\/api\/v1\/assets/, async () => {
+      return HttpResponse.json({ asset: { kind: 'cloud', assetId: 'asset-storybook', originalName: 'asset.bin', mimeType: 'application/octet-stream' } }, { status: 201 });
+    }),
+    http.get(/.*\/api\/v1\/assets\/[^/]+\/content/, () => {
+      return new HttpResponse(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'application/octet-stream' } });
     }),
     http.get(/.*\/api\/v1\/publish\/github-pages\/info/, () => {
       return HttpResponse.json(publishInfo, { status: publishInfo.ok ? 200 : 400 });

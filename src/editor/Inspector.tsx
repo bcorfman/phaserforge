@@ -16,6 +16,7 @@ import { TriggerZoneInspector } from './TriggerZoneInspector';
 import { SceneInspectorPanel } from './SceneInspectorPanel';
 import { MultiEntityInspector } from './MultiEntityInspector';
 import { EventBus } from '../phaser/EventBus';
+import { assetSourceKey } from '../cloud/assetUrls';
 import {
   displayPixelsFromBaseAndScale,
   maintainAspectDisplayHeight,
@@ -75,7 +76,7 @@ export function Inspector() {
       const asset = candidate.asset;
       const key = asset.source.kind === 'asset'
         ? `asset:${asset.source.assetId}`
-        : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
+        : assetSourceKey(asset.source);
       if (seen.has(key)) continue;
       seen.add(key);
       const label = asset.source.kind === 'asset'
@@ -422,7 +423,7 @@ function EntityInspector({
   const keyForAsset = (asset: SpriteAssetSpec): string => {
     const base = asset.source.kind === 'asset'
       ? `asset:${asset.source.assetId}`
-      : `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
+      : assetSourceKey(asset.source);
     const grid = asset.imageType === 'spritesheet' && asset.grid
       ? `:${asset.grid.frameWidth}x${asset.grid.frameHeight}:${asset.grid.columns}x${asset.grid.rows}`
       : '';

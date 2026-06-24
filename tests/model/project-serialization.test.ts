@@ -240,4 +240,59 @@ describe('project YAML serialization', () => {
       originalName: 'enemy.png',
     });
   });
+
+  it('round-trips cloud and path asset sources for cloud save and publish flows', () => {
+    const project = {
+      id: 'project-1',
+      assets: {
+        images: {
+          hero: {
+            id: 'hero',
+            width: 16,
+            height: 16,
+            source: {
+              kind: 'cloud',
+              assetId: 'asset-img-1',
+              originalName: 'hero.png',
+              mimeType: 'image/png',
+            },
+          },
+        },
+        spriteSheets: {},
+        fonts: {
+          arcade: {
+            id: 'arcade',
+            name: 'Arcade',
+            source: {
+              kind: 'path',
+              path: 'assets/fonts/arcade.woff2',
+              originalName: 'arcade.woff2',
+              mimeType: 'font/woff2',
+            },
+          },
+        },
+      },
+      audio: {
+        sounds: {
+          theme: {
+            id: 'theme',
+            source: {
+              kind: 'cloud',
+              assetId: 'asset-audio-1',
+              originalName: 'theme.mp3',
+              mimeType: 'audio/mpeg',
+            },
+          },
+        },
+      },
+      inputMaps: {},
+      scenes: { 'scene-1': { ...sampleScene, backgroundLayers: [] } },
+      initialSceneId: 'scene-1',
+      patterns: {},
+    } as any;
+
+    const yaml = serializeProjectToYaml(project);
+    const parsed = parseProjectYaml(yaml);
+    expect(parsed).toEqual(project);
+  });
 });

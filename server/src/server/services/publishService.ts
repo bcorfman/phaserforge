@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { serializeProjectToYaml } from '../../../../src/model/serialization';
-import type { ProjectSpec } from '../../../../src/model/types';
+import type { AssetFileSource, ProjectSpec } from '../../../../src/model/types';
 import type { Repositories } from '../types';
 
 type Ok<T> = T & { ok: true };
@@ -17,7 +17,7 @@ type PublishError =
   | 'github_pages_build_failed'
   | 'repo_unavailable'
   | 'not_found'
-  | 'path_assets_unsupported'
+  | 'cloud_asset_missing'
   | 'dist_missing'
   | 'github_failed';
 
@@ -61,20 +61,116 @@ async function routeExists(url: string): Promise<boolean> {
   }
 }
 
-function projectHasPathAssets(project: ProjectSpec): boolean {
-  const images = project.assets?.images ?? {};
-  const spriteSheets = project.assets?.spriteSheets ?? {};
-  const fonts = project.assets?.fonts ?? {};
-  const sounds = project.audio?.sounds ?? {};
-  const all = [images, spriteSheets, fonts, sounds];
-  for (const bucket of all) {
-    if (!bucket || typeof bucket !== 'object') continue;
-    for (const spec of Object.values(bucket as Record<string, any>)) {
-      const source = (spec as any)?.source;
-      if (source && typeof source === 'object' && (source as any).kind === 'path') return true;
-    }
+function sanitizeFilename(name: string): string {
+  return name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+/, '').replace(/-+$/, '') || 'asset';
+}
+
+function extensionFromMimeType(mimeType: string | null | undefined): string {
+  switch (mimeType) {
+    case 'audio/mpeg':
+      return '.mp3';
+    case 'audio/ogg':
+      return '.ogg';
+    case 'audio/wav':
+      return '.wav';
+    case 'image/png':
+      return '.png';
+    case 'image/jpeg':
+      return '.jpg';
+    case 'image/webp':
+      return '.webp';
+    case 'font/woff2':
+      return '.woff2';
+    case 'font/woff':
+      return '.woff';
+    case 'font/otf':
+      return '.otf';
+    case 'font/ttf':
+      return '.ttf';
+    default:
+      return '';
   }
-  return false;
+}
+
+function decodeEmbeddedDataUrl(dataUrl: string): Uint8Array | null {
+  const match = /^data:[^;,]+(?:;base64)?,(.*)$/s.exec(dataUrl);
+  if (!match) return null;
+  try {
+    return new Uint8Array(Buffer.from(match[1] ?? '', 'base64'));
+  } catch {
+    return null;
+  }
+}
+
+async function materializeProjectForPublish(
+  repositories: Repositories,
+  userId: string,
+  project: ProjectSpec,
+): Promise<{ project: ProjectSpec; files: Array<{ path: string; bytes: Uint8Array }> } | null> {
+  const nextProject = structuredClone(project);
+  const files: Array<{ path: string; bytes: Uint8Array }> = [];
+  const usedPaths = new Set<string>();
+
+  const allocatePath = (source: AssetFileSource, fallbackBase: string): string => {
+    const preferred = sanitizeFilename(source.originalName?.trim() || `${fallbackBase}${extensionFromMimeType(source.mimeType)}`);
+    let relPath = `assets/cloud/${preferred}`;
+    let index = 2;
+    while (usedPaths.has(relPath)) {
+      const ext = path.extname(preferred);
+      const stem = ext ? preferred.slice(0, -ext.length) : preferred;
+      relPath = `assets/cloud/${stem}-${index}${ext}`;
+      index += 1;
+    }
+    usedPaths.add(relPath);
+    return relPath;
+  };
+
+  const materializeSource = async (source: AssetFileSource, fallbackBase: string): Promise<AssetFileSource | null> => {
+    if (source.kind === 'path') return source;
+    if (source.kind === 'embedded') {
+      const bytes = decodeEmbeddedDataUrl(source.dataUrl);
+      if (!bytes) return null;
+      const relPath = allocatePath(source, fallbackBase);
+      files.push({ path: relPath, bytes });
+      return { kind: 'path', path: relPath, ...(source.originalName ? { originalName: source.originalName } : {}), ...(source.mimeType ? { mimeType: source.mimeType } : {}) };
+    }
+    const asset = await repositories.assets.findByIdForUser(source.assetId, userId);
+    if (!asset) return null;
+    const relPath = allocatePath(
+      { kind: 'cloud', assetId: source.assetId, originalName: source.originalName ?? asset.originalName ?? undefined, mimeType: source.mimeType ?? asset.mimeType ?? undefined },
+      fallbackBase,
+    );
+    files.push({ path: relPath, bytes: asset.bytes });
+    return {
+      kind: 'path',
+      path: relPath,
+      ...(source.originalName ?? asset.originalName ? { originalName: source.originalName ?? asset.originalName ?? undefined } : {}),
+      ...(source.mimeType ?? asset.mimeType ? { mimeType: source.mimeType ?? asset.mimeType ?? undefined } : {}),
+    };
+  };
+
+  for (const [assetId, asset] of Object.entries(nextProject.assets.images ?? {})) {
+    const source = await materializeSource(asset.source, assetId);
+    if (!source) return null;
+    asset.source = source;
+  }
+  for (const [assetId, asset] of Object.entries(nextProject.assets.spriteSheets ?? {})) {
+    const source = await materializeSource(asset.source, assetId);
+    if (!source) return null;
+    asset.source = source;
+  }
+  for (const [assetId, asset] of Object.entries(nextProject.assets.fonts ?? {})) {
+    const source = await materializeSource(asset.source, assetId);
+    if (!source) return null;
+    asset.source = source;
+  }
+  for (const [assetId, asset] of Object.entries(nextProject.audio.sounds ?? {})) {
+    const source = await materializeSource(asset.source, assetId);
+    if (!source) return null;
+    asset.source = source;
+  }
+
+  return { project: nextProject, files };
 }
 
 async function readPublishableDistFiles(): Promise<Array<{ relPath: string; bytes: Uint8Array }>> {
@@ -484,7 +580,6 @@ export async function publishGameToGithubPages(
 
   const game = await repositories.games.findByIdForUser(input.gameId, userId);
   if (!game) return { ok: false, error: 'not_found' };
-  if (projectHasPathAssets(game.project)) return { ok: false, error: 'path_assets_unsupported' };
 
   const oauth = await repositories.oauth.findByUserIdProvider(userId, 'github');
   const accessToken = oauth?.accessToken ?? '';
@@ -508,7 +603,9 @@ export async function publishGameToGithubPages(
   if (!indexEntry) return { ok: false, error: 'dist_missing' };
 
   const playIndex = buildPlayIndexHtml(Buffer.from(indexEntry.bytes).toString('utf8'));
-  const yamlNormalized = serializeProjectToYaml(game.project);
+  const publishableProject = await materializeProjectForPublish(repositories, userId, game.project);
+  if (!publishableProject) return { ok: false, error: 'cloud_asset_missing' };
+  const yamlNormalized = serializeProjectToYaml(publishableProject.project);
   const files: Array<{ path: string; bytes: Uint8Array }> = [
     { path: PAGES_WORKFLOW_PATH, bytes: Buffer.from(buildPagesWorkflowYaml(), 'utf8') },
     { path: 'index.html', bytes: Buffer.from(playIndex, 'utf8') },
@@ -519,6 +616,7 @@ export async function publishGameToGithubPages(
     if (file.relPath === 'index.html') continue;
     files.push({ path: file.relPath, bytes: file.bytes });
   }
+  files.push(...publishableProject.files);
 
   const commit = await commitFiles({
     accessToken,

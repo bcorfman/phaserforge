@@ -6,6 +6,7 @@ import type { CreateAppOptions, Repositories } from './types';
 import { authRouter } from './routes/auth';
 import { gamesRouter } from './routes/games';
 import { publishRouter } from './routes/publish';
+import { assetsRouter } from './routes/assets';
 import { createMemoryRepositories } from './repositories/memory';
 import { requireCsrf } from '../security/csrf';
 
@@ -46,10 +47,11 @@ export function createApp(options: CreateAppOptions) {
   );
 
   app.use(corsAllowlistMiddleware(settings.corsAllowOrigins));
-  app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
 
   app.use(requireCsrf({ cookieName: settings.csrfCookieName, headerName: 'x-csrf-token' }));
+  app.use('/api/v1/assets', express.json({ limit: '50mb' }), assetsRouter(settings, repositories));
+  app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/v1/health', (_req, res) => res.json({ status: 'ok' }));
   app.use('/api/v1/auth', authRouter(settings, repositories));
