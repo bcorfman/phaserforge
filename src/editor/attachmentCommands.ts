@@ -220,7 +220,7 @@ export function createAttachment(
   } else if (presetId === 'FigureEightPattern') {
     baseDefaults.params = { width: 80, height: 60, velocity: 100 };
   } else if (presetId === 'OrbitPattern') {
-    baseDefaults.params = { radius: 50, velocity: 100, clockwise: true, centerMode: 'current' };
+    baseDefaults.params = { radius: 50, velocity: 100, clockwise: true, centerMode: 'home' };
   } else if (presetId === 'BouncePattern') {
     baseDefaults.params = { velocityX: 120, velocityY: 60, axis: 'both' };
     const targetBounds = computeTargetAabb(scene as any, target as any);
