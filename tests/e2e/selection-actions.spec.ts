@@ -5,17 +5,13 @@ import {
   dismissViewHint,
   expectSelection,
   getState,
-  gotoStudio,
   seedSampleScene,
   selectGroupInSceneGraph,
-  waitForSampleScene,
   worldToClient,
 } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
-  await gotoStudio(page);
-  await waitForSampleScene(page);
 });
 
 test('selection bar groups ungrouped entities and can add to an existing group @critical', async ({ page }) => {
