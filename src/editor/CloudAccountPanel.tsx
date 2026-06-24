@@ -593,6 +593,12 @@ export function CloudAccountPanel({
     }
   };
 
+  const handleAuthSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (busy) return;
+    void (authMode === 'signup' ? handleSignup() : handleLogin());
+  };
+
   const handleLogout = async () => {
     setBusy(true);
     try {
@@ -1024,114 +1030,113 @@ export function CloudAccountPanel({
           <div className="cloud-section-card" data-testid="cloud-account-section">
             <div className="cloud-section-title">ACCOUNT</div>
             <div className="cloud-auth">
-              <div className="cloud-auth-tabs" role="tablist" aria-label="Cloud account mode">
-                <button
-                  className={`button ${authMode === 'login' ? 'active' : ''}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={authMode === 'login'}
-                  aria-label="Log in"
-                  onClick={() => setAuthMode('login')}
-                >
-                  Log in
-                </button>
-                <button
-                  className={`button ${authMode === 'signup' ? 'active' : ''}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={authMode === 'signup'}
-                  aria-label="Create"
-                  onClick={() => setAuthMode('signup')}
-                >
-                  Create
-                </button>
-              </div>
-              <div className="cloud-help">
-                {authMode === 'login'
-                  ? 'Log in to access your cloud projects and publishing tools.'
-                  : 'Create your account with your invite code.'}
-              </div>
-              <label className="field">
-                <span>Email</span>
-                <input
-                  ref={emailInputRef}
-                  value={email}
-                  aria-label="Email"
-                  autoComplete="email"
-                  inputMode="email"
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </label>
-              <label className="field">
-                <span>Password</span>
-                <span className="cloud-password-row">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    aria-label="Password"
-                    autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+              <form className="cloud-auth-form" onSubmit={handleAuthSubmit}>
+                <div className="cloud-auth-tabs" role="tablist" aria-label="Cloud account mode">
                   <button
-                    className="cloud-password-toggle"
+                    className={`button ${authMode === 'login' ? 'active' : ''}`}
                     type="button"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    onClick={() => setShowPassword((v) => !v)}
+                    role="tab"
+                    aria-selected={authMode === 'login'}
+                    aria-label="Log in"
+                    onClick={() => setAuthMode('login')}
                   >
-                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M2.5 12C4.8 7.6 8.2 5.5 12 5.5C15.8 5.5 19.2 7.6 21.5 12C19.2 16.4 15.8 18.5 12 18.5C8.2 18.5 4.8 16.4 2.5 12Z"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        strokeLinejoin="round"
-                      />
-                      <circle cx="12" cy="12" r="3.25" stroke="currentColor" strokeWidth="1.7" />
-                    </svg>
+                    Log in
                   </button>
-                </span>
-              </label>
-              {authMode === 'signup' ? (
-                <>
-                  <label className="field">
-                    <span>Invite code</span>
+                  <button
+                    className={`button ${authMode === 'signup' ? 'active' : ''}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={authMode === 'signup'}
+                    aria-label="Create"
+                    onClick={() => setAuthMode('signup')}
+                  >
+                    Create
+                  </button>
+                </div>
+                <div className="cloud-help">
+                  {authMode === 'login'
+                    ? 'Log in to access your cloud projects and publishing tools.'
+                    : 'Create your account with your invite code.'}
+                </div>
+                <label className="field">
+                  <span>Email</span>
+                  <input
+                    ref={emailInputRef}
+                    type="email"
+                    name="email"
+                    value={email}
+                    aria-label="Email"
+                    autoComplete="email"
+                    inputMode="email"
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span>Password</span>
+                  <span className="cloud-password-row">
                     <input
-                      value={inviteToken}
-                      aria-label="Invite code"
-                      autoComplete="off"
-                      onChange={(e) => setInviteToken(e.target.value)}
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={password}
+                      aria-label="Password"
+                      autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+                      onChange={(e) => setPassword(e.target.value)}
                     />
-                  </label>
-                  <div className="cloud-help">Invite codes are emailed separately and are only required for first-time signup.</div>
-                </>
-              ) : null}
-              <div className="cloud-auth-actions">
-                <button
-                  className="button primary"
-                  type="button"
-                  data-testid="cloud-account-submit"
-                  disabled={busy}
-                  onClick={authMode === 'signup' ? handleSignup : handleLogin}
-                >
-                  {authMode === 'signup' ? 'Create account' : 'Log in'}
-                </button>
-              </div>
-              <div className="cloud-help">
+                    <button
+                      className="cloud-password-toggle"
+                      type="button"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowPassword((v) => !v)}
+                    >
+                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M2.5 12C4.8 7.6 8.2 5.5 12 5.5C15.8 5.5 19.2 7.6 21.5 12C19.2 16.4 15.8 18.5 12 18.5C8.2 18.5 4.8 16.4 2.5 12Z"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinejoin="round"
+                        />
+                        <circle cx="12" cy="12" r="3.25" stroke="currentColor" strokeWidth="1.7" />
+                      </svg>
+                    </button>
+                  </span>
+                </label>
                 {authMode === 'signup' ? (
                   <>
-                    Already have an account?{' '}
-                    <button className="button button-compact" type="button" disabled={busy} onClick={() => setAuthMode('login')}>
-                      Log in
-                    </button>
+                    <label className="field">
+                      <span>Invite code</span>
+                      <input
+                        value={inviteToken}
+                        aria-label="Invite code"
+                        autoComplete="off"
+                        onChange={(e) => setInviteToken(e.target.value)}
+                      />
+                    </label>
+                    <div className="cloud-help">Invite codes are emailed separately and are only required for first-time signup.</div>
                   </>
-                ) : (
-                  <>
-                    Need an account first?{' '}
-                    <button className="button button-compact" type="button" disabled={busy} onClick={() => setAuthMode('signup')}>
-                      Create account
-                    </button>
-                  </>
-                )}
-              </div>
+                ) : null}
+                <div className="cloud-auth-actions">
+                  <button className="button primary" type="submit" data-testid="cloud-account-submit" disabled={busy}>
+                    {authMode === 'signup' ? 'Create account' : 'Log in'}
+                  </button>
+                </div>
+                <div className="cloud-help">
+                  {authMode === 'signup' ? (
+                    <>
+                      Already have an account?{' '}
+                      <button className="button button-compact" type="button" disabled={busy} onClick={() => setAuthMode('login')}>
+                        Log in
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      Need an account first?{' '}
+                      <button className="button button-compact" type="button" disabled={busy} onClick={() => setAuthMode('signup')}>
+                        Create account
+                      </button>
+                    </>
+                  )}
+                </div>
+              </form>
             </div>
           </div>
 

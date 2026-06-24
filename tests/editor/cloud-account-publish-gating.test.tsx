@@ -3,6 +3,7 @@ import React from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { fireEvent } from '@testing-library/react';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import {
   clearPersistenceDebugEntries,
@@ -202,6 +203,55 @@ describe('CloudAccountPanel publish gating', () => {
         }),
         'csrf',
       );
+      expect(onError).not.toHaveBeenCalled();
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('renders login inputs as a real form and submits credentials through the login handler', async () => {
+    api.me.mockResolvedValueOnce({ user: null });
+    api.login.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const onStatus = vi.fn();
+    const onError = vi.fn();
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project: createEmptyProject() }}
+        dispatch={vi.fn() as any}
+        onLoadYaml={() => {}}
+        onStatus={onStatus}
+        onError={onError}
+      />,
+    );
+
+    try {
+      await flushEffects();
+
+      fireEvent.click(document.querySelector('[role="tab"][aria-label="Log in"]') as Element);
+
+      const form = document.querySelector('.cloud-auth-form') as HTMLFormElement | null;
+      const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement | null;
+      const passwordInput = document.querySelector('input[name="password"]') as HTMLInputElement | null;
+      const submitButton = document.querySelector('[data-testid="cloud-account-submit"]') as HTMLButtonElement | null;
+
+      expect(form).not.toBeNull();
+      expect(emailInput?.type).toBe('email');
+      expect(emailInput?.autocomplete).toBe('email');
+      expect(passwordInput?.autocomplete).toBe('current-password');
+      expect(submitButton?.type).toBe('submit');
+
+      fireEvent.change(emailInput as HTMLInputElement, { target: { value: 'dev@example.com' } });
+      fireEvent.change(passwordInput as HTMLInputElement, { target: { value: 'hunter2' } });
+
+      await act(async () => {
+        fireEvent.submit(form as HTMLFormElement);
+        await Promise.resolve();
+      });
+
+      expect(api.fetchCsrfToken).toHaveBeenCalled();
+      expect(api.login).toHaveBeenCalledWith('dev@example.com', 'hunter2', 'csrf');
+      expect(onStatus).toHaveBeenCalledWith('Signed in as dev@example.com');
       expect(onError).not.toHaveBeenCalled();
     } finally {
       view.cleanup();
