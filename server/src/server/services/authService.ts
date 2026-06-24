@@ -26,6 +26,7 @@ export function setSessionCookie(res: Response, settings: Settings, token: strin
     secure: cookiePolicy.secure,
     sameSite: cookiePolicy.sameSite,
     path: '/',
+    maxAge: settings.sessionTtlMs,
     ...(settings.cookieDomain ? { domain: settings.cookieDomain } : {}),
   });
 }
