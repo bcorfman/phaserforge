@@ -69,6 +69,7 @@ Open the GitHub Pages URL and confirm:
 - controls or motion behave the same way they did locally
 
 If the page exists but shows stale content, give GitHub Pages a short time to finish deployment and refresh again.
+
 If you're using Chrome, you may need to do a hard refresh to get the game to update: hold down the CTRL key and click the refresh button to the left of the address bar.
 
 ## Common Failure Modes
