@@ -267,12 +267,24 @@ export type SpriteAssetSource =
   | AssetFileSource;
 
 export type AssetFileSource =
-  {
-    kind: 'embedded';
-    dataUrl: string;
-    originalName?: string;
-    mimeType?: string;
-  };
+  | {
+      kind: 'embedded';
+      dataUrl: string;
+      originalName?: string;
+      mimeType?: string;
+    }
+  | {
+      kind: 'path';
+      path: string;
+      originalName?: string;
+      mimeType?: string;
+    }
+  | {
+      kind: 'cloud';
+      assetId: Id;
+      originalName?: string;
+      mimeType?: string;
+    };
 
 export interface SpriteSheetGridSpec {
   frameWidth: number;

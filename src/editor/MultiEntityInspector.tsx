@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EntitySpec, SceneSpec, SpriteAssetSpec } from '../model/types';
+import { assetSourceKey } from '../cloud/assetUrls';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { getCommonResolvedEntityValue, type CommonValue } from './commonEntityValues';
 
@@ -164,7 +165,7 @@ export function MultiEntityInspector({
       const asset = (e as any).asset as SpriteAssetSpec | undefined;
       if (!asset) return '__none__';
       if (asset.source.kind === 'asset') return `asset:${asset.source.assetId}`;
-      return `embedded:${asset.source.originalName ?? ''}:${asset.source.mimeType ?? ''}:${asset.source.dataUrl.length}`;
+      return assetSourceKey(asset.source);
     });
     const first = keys[0] ?? '__none__';
     return keys.every((k) => k === first) ? first : '__mixed__';

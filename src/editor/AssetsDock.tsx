@@ -7,6 +7,7 @@ import { ASSET_DRAG_MIME } from './dragAssets';
 import { fileToDataUrl } from './fileDataUrl';
 import { loadImageMetadataFromFile, type LoadedImageMetadata } from './imageMetadata';
 import { projectPersistence } from './projectPersistence';
+import { inlinePreviewUrlForAssetSource } from '../cloud/assetUrls';
 
 const DEMO_PACK_ASSETS = {
   ...import.meta.glob('../../res/images/*.png', {
@@ -480,7 +481,7 @@ export function AssetsDock({
           const audioBadges = assetKind === 'audio' ? usageBadgesForAudio(project, assetId) : [];
           const sheetBadge = assetKind === 'spritesheet' ? ['SHEET'] : [];
           const thumbnailSrc = (assetKind === 'image' || assetKind === 'spritesheet') && asset?.source
-            ? asset.source.dataUrl
+            ? inlinePreviewUrlForAssetSource(asset.source)
             : '';
 
           return (

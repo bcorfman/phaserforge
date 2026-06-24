@@ -67,6 +67,28 @@ describe('cloud api', () => {
     );
   });
 
+  it('uploadEmbeddedAsset posts the embedded payload with csrf', async () => {
+    vi.resetModules();
+    delete process.env.VITE_API_BASE_URL;
+    const { uploadEmbeddedAsset } = await import('../../src/cloud/api');
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe('/api/v1/assets');
+      expect(init?.method).toBe('POST');
+      expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
+      expect((init?.headers as any)['content-type']).toBe('application/json');
+      expect(init?.body).toBe(JSON.stringify({ dataUrl: 'data:audio/mpeg;base64,AAAA', originalName: 'theme.mp3', mimeType: 'audio/mpeg' }));
+      return new Response(JSON.stringify({ asset: { kind: 'cloud', assetId: 'asset-1', originalName: 'theme.mp3', mimeType: 'audio/mpeg' } }), { status: 201 });
+    });
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    await expect(uploadEmbeddedAsset({ dataUrl: 'data:audio/mpeg;base64,AAAA', originalName: 'theme.mp3', mimeType: 'audio/mpeg' }, 'csrf')).resolves.toEqual({
+      kind: 'cloud',
+      assetId: 'asset-1',
+      originalName: 'theme.mp3',
+      mimeType: 'audio/mpeg',
+    });
+  });
+
   it('checkGithubPagesTarget posts json body with credentials', async () => {
     vi.resetModules();
     delete process.env.VITE_API_BASE_URL;

@@ -25,7 +25,7 @@ function getApiBaseUrl(): string | undefined {
   return url ? url.replace(/\/+$/, '') : undefined;
 }
 
-function resolveApiUrl(path: string): string {
+export function resolveApiUrl(path: string): string {
   const base = getApiBaseUrl();
   return base ? new URL(path, `${base}/`).toString() : path;
 }
@@ -127,6 +127,18 @@ export async function updateGame(
     body: JSON.stringify(patch),
   });
   return json;
+}
+
+export async function uploadEmbeddedAsset(
+  source: { dataUrl: string; originalName?: string; mimeType?: string },
+  csrfToken: string,
+): Promise<{ kind: 'cloud'; assetId: string; originalName?: string; mimeType?: string }> {
+  const json = await api<{ asset: { kind: 'cloud'; assetId: string; originalName?: string; mimeType?: string } }>('/api/v1/assets', {
+    method: 'POST',
+    headers: { 'x-csrf-token': csrfToken },
+    body: JSON.stringify(source),
+  });
+  return json.asset;
 }
 
 export async function getGithubPagesPublishInfo(): Promise<{ ok: true; login: string; pagesBaseUrl: string } | { ok: false; error: string }> {
