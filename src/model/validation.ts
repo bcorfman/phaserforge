@@ -109,8 +109,14 @@ function validateAsset(asset: SpriteAssetSpec, entityId: string): void {
       throw new Error(`Entity ${entityId} asset reference requires an assetId`);
     }
   } else {
-    if (!asset.source.dataUrl.startsWith('data:')) {
+    if (asset.source.kind === 'embedded' && !asset.source.dataUrl.startsWith('data:')) {
       throw new Error(`Entity ${entityId} embedded asset must use a data URL`);
+    }
+    if (asset.source.kind === 'path' && !asset.source.path.trim()) {
+      throw new Error(`Entity ${entityId} path asset must include a path`);
+    }
+    if (asset.source.kind === 'cloud' && !asset.source.assetId) {
+      throw new Error(`Entity ${entityId} cloud asset must include an assetId`);
     }
   }
 

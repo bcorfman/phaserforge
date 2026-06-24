@@ -1,13 +1,14 @@
 import { type Dispatch, useEffect, useMemo, useRef, useState } from 'react';
-import { checkGithubPagesTarget, createGame, disconnectGithub, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame } from '../cloud/api';
+import { checkGithubPagesTarget, createGame, disconnectGithub, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame, uploadEmbeddedAsset } from '../cloud/api';
 import { canonicalizeProjectForComparison, projectsSemanticallyEqual } from '../model/projectCanonical';
 import { serializeProjectToYaml } from '../model/serialization';
-import type { ProjectSpec } from '../model/types';
+import type { AssetFileSource, ProjectSpec } from '../model/types';
 import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
 import type { EditorAction, EditorState } from './EditorStore';
 import { projectPersistence } from './projectPersistence';
 import { WorkspaceConflictModal } from './WorkspaceConflictModal';
 import { summarizeYamlWorkspace } from './workspaceSummary';
+import { prepareProjectForCloudSave } from '../cloud/projectCloudAssets';
 
 type CloudAccountUser = { id: string; email: string } | null;
 type CloudPublishInfo = { ok: true; login: string; pagesBaseUrl: string } | { ok: false; error: string };
@@ -210,6 +211,7 @@ export function CloudAccountPanel({
   const pendingAutosaveRef = useRef<null | { projectId: string; title: string; project: ProjectSpec; signature: string }>(null);
   const lastAutosavedSignatureRef = useRef<string>('');
   const autosaveRetryTimerRef = useRef<number | null>(null);
+  const uploadedAssetSourceCacheRef = useRef<Map<string, Extract<AssetFileSource, { kind: 'cloud' }>>>(new Map());
 
   const CLOUD_AUTOSAVE_DEBOUNCE_MS = 1000;
   const CLOUD_AUTOSAVE_RETRY_MS = 5000;
@@ -641,15 +643,23 @@ export function CloudAccountPanel({
     }
   };
 
+  const prepareProjectForRemoteSave = async (project: ProjectSpec, csrf: string): Promise<ProjectSpec> => {
+    return prepareProjectForCloudSave(
+      project,
+      (source) => uploadEmbeddedAsset(source, csrf),
+      uploadedAssetSourceCacheRef.current,
+    );
+  };
+
   const ensureCloudGameSaved = async (): Promise<string | null> => {
     if (!user) return null;
     const project = structuredClone(state.project);
     const title = publishTitleDraft.trim() || state.project.title?.trim() || 'Untitled';
     if (cloudGameId) {
-      await runWithCsrfRetry((csrf) => updateGame(cloudGameId, { title, project }, csrf));
+      await runWithCsrfRetry(async (csrf) => updateGame(cloudGameId, { title, project: await prepareProjectForRemoteSave(project, csrf) }, csrf));
       return cloudGameId;
     }
-    const created = await runWithCsrfRetry((csrf) => createGame(title, project, csrf));
+    const created = await runWithCsrfRetry(async (csrf) => createGame(title, await prepareProjectForRemoteSave(project, csrf), csrf));
     const id = created.game.id;
     setCloudGameId(id);
     await onCloudGameLinked?.(id);
@@ -726,9 +736,17 @@ export function CloudAccountPanel({
         ...pendingYamlSummary,
       });
       if (existingCloudGameId) {
-        await runWithCsrfRetry((csrf) => updateGame(existingCloudGameId, { title: pending.title, project: pending.project }, csrf));
+        await runWithCsrfRetry(async (csrf) => updateGame(
+          existingCloudGameId,
+          { title: pending.title, project: await prepareProjectForRemoteSave(pending.project, csrf) },
+          csrf,
+        ));
       } else {
-        const created = await runWithCsrfRetry((csrf) => createGame(pending.title, pending.project, csrf));
+        const created = await runWithCsrfRetry(async (csrf) => createGame(
+          pending.title,
+          await prepareProjectForRemoteSave(pending.project, csrf),
+          csrf,
+        ));
         const nextCloudGameId = created.game.id;
         cloudGameIdRef.current = nextCloudGameId;
         setCloudGameId(nextCloudGameId);

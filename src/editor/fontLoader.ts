@@ -1,8 +1,8 @@
 import type { AssetFileSource, FontAssetSpec } from '../model/types';
+import { resolveAssetSourceUrl } from '../cloud/assetUrls';
 
-function toFontFaceSourceUrl(source: AssetFileSource): string | null {
-  if (source.kind === 'embedded') return source.dataUrl;
-  return null;
+async function toFontFaceSourceUrl(source: AssetFileSource): Promise<string | null> {
+  return resolveAssetSourceUrl(source);
 }
 
 export async function loadProjectFonts(fonts: Record<string, FontAssetSpec> | undefined): Promise<void> {
@@ -14,7 +14,7 @@ export async function loadProjectFonts(fonts: Record<string, FontAssetSpec> | un
   for (const font of entries) {
     const family = (font.name ?? font.id ?? '').trim();
     if (!family) continue;
-    const url = toFontFaceSourceUrl(font.source);
+    const url = await toFontFaceSourceUrl(font.source);
     if (!url) continue;
     try {
       const face = new (globalThis as any).FontFace(family, `url(${url})`);
