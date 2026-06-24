@@ -2,6 +2,8 @@ import type { PrismaClient } from '@prisma/client';
 import { serializeProjectToYaml } from '../../../../src/model/serialization';
 
 import type {
+  AssetRepository,
+  CloudAssetRecord,
   CloudGame,
   CloudGameMeta,
   GameRepository,
@@ -306,5 +308,40 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
     },
   };
 
-  return { users, oauth, sessions, invites, games };
+  const assets: AssetRepository = {
+    async create(asset: CloudAssetRecord) {
+      const row = await prisma.cloudAsset.create({
+        data: {
+          id: asset.id,
+          userId: asset.userId,
+          bytes: Buffer.from(asset.bytes),
+          mimeType: asset.mimeType,
+          originalName: asset.originalName,
+          createdAt: new Date(asset.createdAt),
+        },
+      });
+      return {
+        id: row.id,
+        userId: row.userId,
+        bytes: new Uint8Array(row.bytes),
+        mimeType: row.mimeType ?? null,
+        originalName: row.originalName ?? null,
+        createdAt: toIso(row.createdAt),
+      };
+    },
+    async findByIdForUser(id: string, userId: string) {
+      const row = await prisma.cloudAsset.findFirst({ where: { id, userId } });
+      if (!row) return null;
+      return {
+        id: row.id,
+        userId: row.userId,
+        bytes: new Uint8Array(row.bytes),
+        mimeType: row.mimeType ?? null,
+        originalName: row.originalName ?? null,
+        createdAt: toIso(row.createdAt),
+      };
+    },
+  };
+
+  return { users, oauth, sessions, invites, games, assets };
 }

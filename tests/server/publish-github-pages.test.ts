@@ -341,4 +341,103 @@ describe('publish github pages', () => {
 
     expect(res.body.error).toBe('github_workflow_permission_required');
   });
+
+  it('publish materializes cloud assets into repo files and rewrites game.yaml paths', async () => {
+    const { app, repositories } = makeApp();
+    const agent = request.agent(app);
+    const { userId, csrf } = await signup(agent);
+    await linkGithub(repositories, userId);
+    await addGame(repositories, userId);
+
+    const upload = await agent
+      .post('/api/v1/assets')
+      .set('x-csrf-token', csrf)
+      .send({
+        dataUrl: 'data:audio/mpeg;base64,QUJDRA==',
+        originalName: 'theme.mp3',
+        mimeType: 'audio/mpeg',
+      })
+      .expect(201);
+
+    const assetId = upload.body.asset.assetId as string;
+    const game = await repositories.games.findByIdForUser('g1', userId);
+    if (!game) throw new Error('expected game');
+    game.project.audio.sounds.theme = {
+      id: 'theme',
+      source: {
+        kind: 'cloud',
+        assetId,
+        originalName: 'theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any;
+    game.project.scenes.s1.music = { assetId: 'theme', loop: true, volume: 0.8 };
+    await repositories.games.updateForUser('g1', userId, {
+      project: game.project,
+      updatedAt: '2026-06-04T01:00:00.000Z',
+    });
+
+    const blobBodies: Array<{ content: string; encoding: string }> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === 'https://api.github.com/repos/alice/zoof') {
+          if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
+        }
+        if (url === 'https://api.github.com/user/repos') {
+          return new Response(JSON.stringify({ name: 'zoof', full_name: 'alice/zoof', default_branch: 'main' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/pages') {
+          if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
+          return new Response(JSON.stringify({ html_url: 'https://alice.github.io/zoof' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/ref/heads/main') {
+          return new Response(JSON.stringify({ object: { sha: 'basecommit' } }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/commits/basecommit') {
+          return new Response(JSON.stringify({ sha: 'basecommit', tree: { sha: 'basetree' } }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/blobs') {
+          blobBodies.push(JSON.parse(String(init?.body)));
+          return new Response(JSON.stringify({ sha: `blob-${blobBodies.length}` }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/trees') {
+          return new Response(JSON.stringify({ sha: 'newtree' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/commits') {
+          return new Response(JSON.stringify({ sha: 'newcommit' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/refs/heads/main') {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        if (url.includes('https://api.github.com/repos/alice/zoof/actions/runs?')) {
+          return new Response(
+            JSON.stringify({
+              workflow_runs: [{ head_sha: 'newcommit', status: 'queued', conclusion: null }],
+            }),
+            { status: 200 },
+          );
+        }
+        throw new Error(`Unhandled fetch ${url}`);
+      }) as any,
+    );
+
+    await agent
+      .post('/api/v1/publish/github-pages')
+      .set('x-csrf-token', csrf)
+      .send({ gameId: 'g1', repo: 'zoof' })
+      .expect(200);
+
+    const decodedBlobs = blobBodies.map((blob) => Buffer.from(blob.content, 'base64'));
+    const audioBlob = decodedBlobs.find((bytes) => bytes.toString('utf8') === 'ABCD');
+    expect(audioBlob).toBeDefined();
+
+    const yamlBlob = decodedBlobs
+      .map((bytes) => bytes.toString('utf8'))
+      .find((content) => content.includes('game.yaml') || content.includes('initialSceneId'));
+    expect(yamlBlob).toContain('kind: path');
+    expect(yamlBlob).toContain('path: assets/cloud/theme.mp3');
+    expect(yamlBlob).not.toContain('kind: cloud');
+  });
 });

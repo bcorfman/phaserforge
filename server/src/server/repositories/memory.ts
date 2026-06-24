@@ -1,4 +1,6 @@
 import type {
+  AssetRepository,
+  CloudAssetRecord,
   CloudGame,
   CloudGameMeta,
   GameRepository,
@@ -253,6 +255,31 @@ class MemoryGameRepository implements GameRepository {
   }
 }
 
+class MemoryAssetRepository implements AssetRepository {
+  private byId = new Map<string, CloudAssetRecord>();
+
+  async create(asset: CloudAssetRecord): Promise<CloudAssetRecord> {
+    const stored = {
+      ...asset,
+      bytes: new Uint8Array(asset.bytes),
+    };
+    this.byId.set(asset.id, stored);
+    return {
+      ...stored,
+      bytes: new Uint8Array(stored.bytes),
+    };
+  }
+
+  async findByIdForUser(id: string, userId: string): Promise<CloudAssetRecord | null> {
+    const asset = this.byId.get(id);
+    if (!asset || asset.userId !== userId) return null;
+    return {
+      ...asset,
+      bytes: new Uint8Array(asset.bytes),
+    };
+  }
+}
+
 export function createMemoryRepositories(): Repositories {
   const users = new MemoryUserRepository();
   return {
@@ -261,5 +288,6 @@ export function createMemoryRepositories(): Repositories {
     sessions: new MemorySessionRepository(),
     invites: new MemoryInviteRepository(),
     games: new MemoryGameRepository(),
+    assets: new MemoryAssetRepository(),
   };
 }

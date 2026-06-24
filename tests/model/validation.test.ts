@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { validateSceneSpec } from '../../src/model/validation';
+import { createEmptyProject } from '../../src/model/emptyProject';
+import { validateProjectSpec, validateSceneSpec } from '../../src/model/validation';
 import { baseScene } from '../helpers';
 
 describe('model validation', () => {
@@ -168,5 +169,31 @@ describe('model validation', () => {
 
     (scene.attachments.r1 as any).children = ['missing'];
     expect(() => validateSceneSpec(scene)).toThrow(/unknown child/i);
+  });
+
+  it('A17 project validation allows cloud and path asset sources', () => {
+    const project = createEmptyProject();
+    project.assets.images.hero = {
+      id: 'hero',
+      width: 16,
+      height: 16,
+      source: {
+        kind: 'cloud',
+        assetId: 'asset-img-1',
+        originalName: 'hero.png',
+        mimeType: 'image/png',
+      },
+    } as any;
+    project.audio.sounds.theme = {
+      id: 'theme',
+      source: {
+        kind: 'path',
+        path: 'assets/audio/theme.mp3',
+        originalName: 'theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any;
+
+    expect(() => validateProjectSpec(project)).not.toThrow();
   });
 });

@@ -15,6 +15,7 @@ model User {
   oauthAccounts OAuthAccount[]
   sessions      Session[]
   games         Game[]
+  cloudAssets   CloudAsset[]
   usedInvites   Invite[]      @relation("InviteUsedBy")
 }
 
@@ -70,6 +71,19 @@ model Game {
   project   Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CloudAsset {
+  id           String   @id
+  userId       String
+  bytes        Bytes
+  mimeType     String?
+  originalName String?
+  createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

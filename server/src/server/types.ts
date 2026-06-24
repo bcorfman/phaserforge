@@ -18,6 +18,15 @@ export type CloudGame = CloudGameMeta & {
   project: ProjectSpec;
 };
 
+export type CloudAssetRecord = {
+  id: string;
+  userId: string;
+  bytes: Uint8Array;
+  mimeType: string | null;
+  originalName: string | null;
+  createdAt: string;
+};
+
 export type SessionRecord = {
   id: string;
   userId: string;
@@ -97,12 +106,18 @@ export type GameRepository = {
   deleteForUser(id: string, userId: string): Promise<boolean>;
 };
 
+export type AssetRepository = {
+  create(asset: CloudAssetRecord): Promise<CloudAssetRecord>;
+  findByIdForUser(id: string, userId: string): Promise<CloudAssetRecord | null>;
+};
+
 export type Repositories = {
   users: UserRepository;
   oauth: OAuthRepository;
   sessions: SessionRepository;
   invites: InviteRepository;
   games: GameRepository;
+  assets: AssetRepository;
 };
 
 export type CreateAppOptions = {

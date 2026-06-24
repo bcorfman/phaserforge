@@ -18,6 +18,7 @@ import type { InputActionMapSpec } from '../model/types';
 import { createTriggerCompileContext, executeTriggerScripts } from '../runtime/triggers/triggerScripts';
 import { executeCollisionScripts } from '../runtime/collisions/collisionScripts';
 import type { TriggerZoneSpec } from '../model/types';
+import { assetSourceKey, resolveAssetSourceUrl } from '../cloud/assetUrls';
 import type { ViewState } from '../util/viewStateStorage';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
@@ -967,7 +968,7 @@ export class GameScene extends Phaser.Scene {
 
   private getTextureKey(asset: SpriteAssetSpec): string {
     const resolved = this.resolveSpriteAssetSource(asset);
-    const sourceKey = resolved ? resolved.source.dataUrl : 'missing';
+    const sourceKey = resolved ? assetSourceKey(resolved.source) : 'missing';
     const suffix = resolved?.grid
       ? `:${resolved.grid.frameWidth}x${resolved.grid.frameHeight}`
       : '';
@@ -1359,12 +1360,14 @@ export class GameScene extends Phaser.Scene {
         for (const layer of backgroundLayers) {
           const asset = project.assets.images?.[layer.assetId];
           if (!asset) continue;
+          const url = await resolveAssetSourceUrl(asset.source);
+          if (!url) continue;
           const key = this.getBackgroundTextureKey(asset.id);
           if (this.textures.exists(key)) continue;
           if (!pendingBackgrounds.some((b) => b.key === key)) {
             pendingBackgrounds.push({
               key,
-              url: asset.source.dataUrl,
+              url,
             });
           }
         }
@@ -1378,6 +1381,8 @@ export class GameScene extends Phaser.Scene {
         for (const id of ids) {
           const asset = sounds[id];
           if (!asset) continue;
+          const url = await resolveAssetSourceUrl(asset.source);
+          if (!url) continue;
           const key = this.getAudioKey(asset.id);
           const cache = (this.cache as any).audio;
           const exists = typeof cache?.exists === 'function' ? cache.exists(key) : Boolean(cache?.get?.(key));
@@ -1385,7 +1390,7 @@ export class GameScene extends Phaser.Scene {
           if (!pendingAudio.some((a) => a.key === key)) {
             pendingAudio.push({
               key,
-              url: asset.source.dataUrl,
+              url,
             });
           }
         }
@@ -1398,13 +1403,15 @@ export class GameScene extends Phaser.Scene {
       const key = this.getTextureKey(asset);
       const resolved = this.resolveSpriteAssetSource(asset);
       if (!resolved) continue;
+      const url = await resolveAssetSourceUrl(resolved.source);
+      if (!url) continue;
       if (asset.imageType === 'spritesheet' && resolved.grid) {
-        this.load.spritesheet(key, resolved.source.dataUrl, {
+        this.load.spritesheet(key, url, {
           frameWidth: resolved.grid.frameWidth,
           frameHeight: resolved.grid.frameHeight,
         });
       } else {
-        this.load.image(key, resolved.source.dataUrl);
+        this.load.image(key, url);
       }
     }
 
