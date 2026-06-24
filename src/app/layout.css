@@ -1241,6 +1241,12 @@ html[data-theme='dark'] .phaser-frame {
   gap: 0.9rem;
 }
 
+.cloud-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
 .cloud-publish-status {
   display: flex;
   flex-direction: column;
