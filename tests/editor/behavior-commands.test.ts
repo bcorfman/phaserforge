@@ -46,6 +46,22 @@ describe('attachment commands', () => {
     }
   });
 
+  it('creates OrbitPattern attachments with Home as the default center mode', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-13T00:00:00.000Z'));
+    const { scene: next, attachmentId } = createAttachment(sampleScene, { type: 'entity', entityId: 'e1' }, 'OrbitPattern');
+    vi.useRealTimers();
+
+    const att = next.attachments[attachmentId];
+    expect(att.presetId).toBe('OrbitPattern');
+    expect(att.params).toMatchObject({
+      radius: 50,
+      velocity: 100,
+      clockwise: true,
+      centerMode: 'home',
+    });
+  });
+
   it('moves attachments up/down within their target list', () => {
     const movedUp = moveAttachmentWithinTarget(sampleScene, 'att-drop-right', 'up');
     const list = Object.values(movedUp.attachments)
