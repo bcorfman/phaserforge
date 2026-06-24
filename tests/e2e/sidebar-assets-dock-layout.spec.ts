@@ -1,9 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dismissViewHint, gotoStudio, openSceneScope, seedProject } from './helpers';
+import { dismissViewHint, openSceneScope, seedProject, waitForSceneReady } from './helpers';
 
 function bottom(box: { y: number; height: number }): number {
   return box.y + box.height;
+}
+
+async function paneWidth(page: Parameters<typeof seedProject>[0], testId: string): Promise<number> {
+  return (await page.getByTestId(testId).boundingBox())?.width ?? 0;
 }
 
 test.describe('Sidebar layout', () => {
@@ -67,10 +71,12 @@ test.describe('Sidebar layout', () => {
     const pane = page.getByTestId('entity-list-pane');
     // WebKit can report an unstyled full-width sidebar very briefly after boot; wait for stable layout bounds.
     await expect(pane).toBeVisible({ timeout: 10000 });
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(240);
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeLessThan(800);
+    await expect
+      .poll(async () => paneWidth(page, 'entity-list-pane'), { timeout: 20000 })
+      .toBeGreaterThan(240);
     const before = await pane.boundingBox();
     if (!before) throw new Error('Left pane bounding box unavailable');
+    expect(before.width).toBeLessThan(800);
 
     const splitBox = await splitter.boundingBox();
     if (!splitBox) throw new Error('Left pane splitter bounding box unavailable');
@@ -85,11 +91,13 @@ test.describe('Sidebar layout', () => {
     expect(after.width).toBeGreaterThan(before.width + 40);
 
     await page.reload();
-    await gotoStudio(page);
+    await waitForSceneReady(page);
     await dismissViewHint(page);
     await openSceneScope(page);
     await expect(pane).toBeVisible({ timeout: 10000 });
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(before.width + 40);
+    await expect
+      .poll(async () => paneWidth(page, 'entity-list-pane'), { timeout: 20000 })
+      .toBeGreaterThan(before.width + 40);
     const persisted = await pane.boundingBox();
     if (!persisted) throw new Error('Left pane bounding box unavailable after reload');
     expect(persisted.width).toBeGreaterThan(before.width + 40);
@@ -107,10 +115,12 @@ test.describe('Sidebar layout', () => {
     const pane = page.getByTestId('inspector-pane');
 
     await expect(pane).toBeVisible({ timeout: 10000 });
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(300);
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeLessThan(800);
+    await expect
+      .poll(async () => paneWidth(page, 'inspector-pane'), { timeout: 20000 })
+      .toBeGreaterThan(300);
     const before = await pane.boundingBox();
     if (!before) throw new Error('Inspector pane bounding box unavailable');
+    expect(before.width).toBeLessThan(800);
 
     const splitBox = await splitter.boundingBox();
     if (!splitBox) throw new Error('Right pane splitter bounding box unavailable');
@@ -125,11 +135,13 @@ test.describe('Sidebar layout', () => {
     expect(after.width).toBeGreaterThan(before.width + 220);
 
     await page.reload();
-    await gotoStudio(page);
+    await waitForSceneReady(page);
     await dismissViewHint(page);
     await openSceneScope(page);
     await expect(pane).toBeVisible({ timeout: 10000 });
-    await expect.poll(async () => (await pane.boundingBox())?.width ?? 0, { timeout: 20000 }).toBeGreaterThan(before.width + 220);
+    await expect
+      .poll(async () => paneWidth(page, 'inspector-pane'), { timeout: 20000 })
+      .toBeGreaterThan(before.width + 220);
     const persisted = await pane.boundingBox();
     if (!persisted) throw new Error('Inspector pane bounding box unavailable after reload');
     expect(persisted.width).toBeGreaterThan(before.width + 220);
