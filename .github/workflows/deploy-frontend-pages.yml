@@ -33,7 +33,7 @@ jobs:
       )
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Always deploy from trusted `main`, never from an arbitrary SHA.
           ref: main
