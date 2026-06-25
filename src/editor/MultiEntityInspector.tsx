@@ -37,6 +37,7 @@ function CommonNumberInput({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const skipBlurCommitRef = useRef(false);
 
   useEffect(() => {
     if (editing) return;
@@ -72,12 +73,22 @@ function CommonNumberInput({
         setEditing(true);
         setDraft(e.target.value);
       }}
-      onBlur={(e) => commit(e.currentTarget.value)}
+      onBlur={(e) => {
+        if (skipBlurCommitRef.current) {
+          skipBlurCommitRef.current = false;
+          return;
+        }
+        commit(e.currentTarget.value);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
+          skipBlurCommitRef.current = true;
+          commit((e.currentTarget as HTMLInputElement).value);
           (e.currentTarget as HTMLInputElement).blur();
         } else if (e.key === 'Escape') {
+          setEditing(false);
           setDraft(valueState.kind === 'same' ? String(valueState.value) : '');
+          skipBlurCommitRef.current = true;
           (e.currentTarget as HTMLInputElement).blur();
         }
       }}
