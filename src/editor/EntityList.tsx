@@ -717,7 +717,7 @@ export function EntityListView({
                           className="list-item-meta"
                           style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
                         >
-                          {formatProjectRevisionSummary(revision, revisions[index + 1])}
+                          {formatProjectRevisionSummary(revision, revisions[index + 1], revisions)}
                         </span>
                       </div>
                       <span className="list-item-meta">{formatProjectRevisionTimestamp(revision)}</span>
