@@ -368,6 +368,46 @@ describe('project tree + history helpers', () => {
     expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
   });
 
+  it('coalesces nearby autosaves even when the latest autosave is already stored as a delta', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.scenes[firstEdit.initialSceneId].entities.e2.name = 'Player Spawn';
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.scenes[secondEdit.initialSceneId].entities.e2.x += 24;
+    const thirdEdit = structuredClone(secondEdit);
+    thirdEdit.scenes[thirdEdit.initialSceneId].entities.e2.y += 12;
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-17T10:10:45.000Z',
+      reason: 'autosave',
+    });
+    const thirdRevision = createProjectRevision(thirdEdit, {
+      id: 'rev-third',
+      updatedAt: '2026-06-17T10:11:05.000Z',
+      reason: 'autosave',
+    });
+
+    const afterSecond = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+    const afterThird = appendProjectRevision(afterSecond, thirdRevision, 25);
+
+    expect(afterSecond[0]).toMatchObject({
+      id: 'rev-second',
+      kind: 'delta',
+      baseRevisionId: 'rev-base',
+    });
+    expect(afterThird.map((revision) => revision.id)).toEqual(['rev-third', 'rev-base']);
+  });
+
   it('splits autosaves when the user switches to an unrelated editing domain', () => {
     const baseProject = structuredClone(sampleProject);
     const audioEdit = structuredClone(sampleProject);
@@ -454,5 +494,52 @@ describe('project tree + history helpers', () => {
 
     expect(materializeProjectRevision(revisions, 'rev-base')).toEqual(baseProject);
     expect(materializeProjectRevision(revisions, 'rev-renamed')).toEqual(renamedProject);
+  });
+
+  it('formats concrete summaries for revisions stored behind multiple deltas', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.scenes[firstEdit.initialSceneId].entities.e2.name = 'Player Spawn';
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.scenes[secondEdit.initialSceneId].entities.e2.x += 24;
+    const thirdEdit = structuredClone(secondEdit);
+    thirdEdit.scenes[thirdEdit.initialSceneId].entities.e2.text = {
+      value: 'READY',
+      fontAssetId: undefined,
+      fontFamily: 'monospace',
+      fontSize: 16,
+      color: '#ffffff',
+      align: 'left',
+    };
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-17T10:12:45.000Z',
+    });
+    const thirdRevision = createProjectRevision(thirdEdit, {
+      id: 'rev-third',
+      updatedAt: '2026-06-17T10:15:05.000Z',
+    });
+
+    const revisions = appendProjectRevision(
+      appendProjectRevision([baseRevision], firstRevision, 25),
+      secondRevision,
+      25,
+    );
+    const chainedRevisions = appendProjectRevision(revisions, thirdRevision, 25);
+
+    expect(chainedRevisions[0]).toMatchObject({
+      id: 'rev-third',
+      kind: 'delta',
+    });
+    expect(formatProjectRevisionSummary(chainedRevisions[0], chainedRevisions[1], chainedRevisions)).toBe('Edited entity Player Spawn');
   });
 });

@@ -181,6 +181,82 @@ function materializeRevisionProjectWithBase(
   return null;
 }
 
+function materializeRevisionForAnalysis(
+  revision: ProjectRevisionRecord,
+  previousRevision?: ProjectRevisionRecord,
+  revisionHistory?: ProjectRevisionRecord[],
+): ProjectSpec | null {
+  if (revisionHistory?.some((entry) => entry.id === revision.id)) {
+    return materializeProjectRevision(revisionHistory, revision.id);
+  }
+  const previousProject = previousRevision
+    ? materializeRevisionProjectWithBase(previousRevision)
+      ?? (revisionHistory?.some((entry) => entry.id === previousRevision.id)
+        ? materializeProjectRevision(revisionHistory, previousRevision.id)
+        : null)
+    : undefined;
+  return materializeRevisionProjectWithBase(revision, previousProject ?? undefined);
+}
+
+function buildRevisionSnapshot(project: ProjectSpec, fallbackTitle: string): RevisionSnapshot {
+  const sceneLabelsById = new Map(
+    Object.keys(project.scenes ?? {}).map((sceneId) => [
+      sceneId,
+      project.sceneMeta?.[sceneId]?.name?.trim() || sceneId,
+    ]),
+  );
+  const sceneFingerprintsById = new Map(
+    Object.entries(project.scenes ?? {}).map(([sceneId, scene]) => [sceneId, JSON.stringify(scene)]),
+  );
+  const entitySceneById = new Map<string, string>();
+  Object.entries(project.scenes ?? {}).forEach(([sceneId, scene]) => {
+    Object.keys(scene.entities ?? {}).forEach((entityId) => {
+      entitySceneById.set(entityId, sceneId);
+    });
+  });
+  const soundLabelsById = new Map(
+    Object.keys(project.audio?.sounds ?? {}).map((assetId) => [assetId, formatAudioLabel(assetId, project)]),
+  );
+  const sceneMusicById = new Map<string, string>();
+  Object.entries(project.scenes ?? {}).forEach(([sceneId, scene]) => {
+    if (scene.music?.assetId) {
+      sceneMusicById.set(sceneId, scene.music.assetId);
+    }
+  });
+  return {
+    project,
+    title: project.title?.trim() || fallbackTitle,
+    sceneCount: Object.keys(project.scenes ?? {}).length,
+    entityCount: Object.values(project.scenes ?? {}).reduce(
+      (total, scene) => total + Object.keys(scene.entities ?? {}).length,
+      0,
+    ),
+    initialSceneId: project.initialSceneId,
+    initialSceneLabel: project.sceneMeta?.[project.initialSceneId]?.name?.trim() || project.initialSceneId,
+    scenesById: new Map(Object.entries(project.scenes ?? {})),
+    sceneLabelsById,
+    sceneFingerprintsById,
+    entitySceneById,
+    soundLabelsById,
+    sceneMusicById,
+  };
+}
+
+function buildFallbackRevisionSnapshot(revision: ProjectRevisionRecord): RevisionSnapshot {
+  return {
+    title: revision.title?.trim() || 'Untitled Project',
+    sceneCount: revision.sceneCount,
+    entityCount: revision.entityCount,
+    initialSceneLabel: revision.initialSceneLabel,
+    scenesById: new Map(),
+    sceneLabelsById: new Map(),
+    sceneFingerprintsById: new Map(),
+    entitySceneById: new Map(),
+    soundLabelsById: new Map(),
+    sceneMusicById: new Map(),
+  };
+}
+
 export function materializeProjectRevision(
   revisions: ProjectRevisionRecord[],
   revisionId: string,
@@ -206,123 +282,16 @@ export function materializeProjectRevision(
   return resolveRevision(revisionId);
 }
 
-function summarizeRevisionContent(revision: ProjectRevisionRecord, previousRevision?: ProjectRevisionRecord): RevisionSnapshot {
-  if (typeof revision.entityCount === 'number' && revision.initialSceneLabel) {
-    const title = revision.title?.trim() || 'Untitled Project';
-    const project = materializeRevisionProjectWithBase(revision, previousRevision ? materializeRevisionProjectWithBase(previousRevision) ?? undefined : undefined);
-    if (project) {
-      const sceneLabelsById = new Map(
-        Object.keys(project.scenes ?? {}).map((sceneId) => [
-          sceneId,
-          project.sceneMeta?.[sceneId]?.name?.trim() || sceneId,
-        ]),
-      );
-      const sceneFingerprintsById = new Map(
-        Object.entries(project.scenes ?? {}).map(([sceneId, scene]) => [sceneId, JSON.stringify(scene)]),
-      );
-      const entitySceneById = new Map<string, string>();
-      Object.entries(project.scenes ?? {}).forEach(([sceneId, scene]) => {
-        Object.keys(scene.entities ?? {}).forEach((entityId) => {
-          entitySceneById.set(entityId, sceneId);
-        });
-      });
-      const soundLabelsById = new Map(
-        Object.keys(project.audio?.sounds ?? {}).map((assetId) => [assetId, formatAudioLabel(assetId, project)]),
-      );
-      const sceneMusicById = new Map<string, string>();
-      Object.entries(project.scenes ?? {}).forEach(([sceneId, scene]) => {
-        if (scene.music?.assetId) {
-          sceneMusicById.set(sceneId, scene.music.assetId);
-        }
-      });
-      return {
-        project,
-        title: project.title?.trim() || title,
-        sceneCount: Object.keys(project.scenes ?? {}).length,
-        entityCount: Object.values(project.scenes ?? {}).reduce(
-          (total, scene) => total + Object.keys(scene.entities ?? {}).length,
-          0,
-        ),
-        initialSceneId: project.initialSceneId,
-        initialSceneLabel: project.sceneMeta?.[project.initialSceneId]?.name?.trim() || project.initialSceneId,
-        scenesById: new Map(Object.entries(project.scenes ?? {})),
-        sceneLabelsById,
-        sceneFingerprintsById,
-        entitySceneById,
-        soundLabelsById,
-        sceneMusicById,
-      };
-    }
-    return {
-      title,
-      sceneCount: revision.sceneCount,
-      entityCount: revision.entityCount,
-      initialSceneLabel: revision.initialSceneLabel,
-      scenesById: new Map(),
-      sceneLabelsById: new Map(),
-      sceneFingerprintsById: new Map(),
-      entitySceneById: new Map(),
-      soundLabelsById: new Map(),
-      sceneMusicById: new Map(),
-    };
-  }
-  const title = revision.title?.trim() || 'Untitled Project';
-  const project = materializeRevisionProjectWithBase(revision, previousRevision ? materializeRevisionProjectWithBase(previousRevision) ?? undefined : undefined);
+function summarizeRevisionContent(
+  revision: ProjectRevisionRecord,
+  previousRevision?: ProjectRevisionRecord,
+  revisionHistory?: ProjectRevisionRecord[],
+): RevisionSnapshot {
+  const project = materializeRevisionForAnalysis(revision, previousRevision, revisionHistory);
   if (project) {
-    const sceneLabelsById = new Map(
-      Object.keys(project.scenes ?? {}).map((sceneId) => [
-        sceneId,
-        project.sceneMeta?.[sceneId]?.name?.trim() || sceneId,
-      ]),
-    );
-    const sceneFingerprintsById = new Map(
-      Object.entries(project.scenes ?? {}).map(([sceneId, scene]) => [sceneId, JSON.stringify(scene)]),
-    );
-    const entitySceneById = new Map<string, string>();
-    Object.entries(project.scenes ?? {}).forEach(([sceneId, scene]) => {
-      Object.keys(scene.entities ?? {}).forEach((entityId) => {
-        entitySceneById.set(entityId, sceneId);
-      });
-    });
-    const soundLabelsById = new Map(
-      Object.keys(project.audio?.sounds ?? {}).map((assetId) => [assetId, formatAudioLabel(assetId, project)]),
-    );
-    const sceneMusicById = new Map<string, string>();
-    Object.entries(project.scenes ?? {}).forEach(([sceneId, scene]) => {
-      if (scene.music?.assetId) {
-        sceneMusicById.set(sceneId, scene.music.assetId);
-      }
-    });
-    return {
-      project,
-      title: project.title?.trim() || title,
-      sceneCount: Object.keys(project.scenes ?? {}).length,
-      entityCount: Object.values(project.scenes ?? {}).reduce(
-        (total, scene) => total + Object.keys(scene.entities ?? {}).length,
-        0,
-      ),
-      initialSceneId: project.initialSceneId,
-      initialSceneLabel: project.sceneMeta?.[project.initialSceneId]?.name?.trim() || project.initialSceneId,
-      scenesById: new Map(Object.entries(project.scenes ?? {})),
-      sceneLabelsById,
-      sceneFingerprintsById,
-      entitySceneById,
-      soundLabelsById,
-      sceneMusicById,
-    };
+    return buildRevisionSnapshot(project, revision.title?.trim() || 'Untitled Project');
   }
-  return {
-    title,
-    sceneCount: revision.sceneCount,
-    entityCount: revision.entityCount,
-    initialSceneLabel: revision.initialSceneLabel,
-    scenesById: new Map(),
-    sceneLabelsById: new Map(),
-    sceneFingerprintsById: new Map(),
-    entitySceneById: new Map(),
-    soundLabelsById: new Map(),
-    sceneMusicById: new Map(),
-  };
+  return buildFallbackRevisionSnapshot(revision);
 }
 
 function formatCountLabel(count: number, singular: string, plural: string): string {
@@ -651,8 +620,12 @@ export function formatProjectRevisionTimestamp(revision: ProjectRevisionRecord):
   return shortMonthDayTime(revision.updatedAt);
 }
 
-export function formatProjectRevisionSummary(revision: ProjectRevisionRecord, previousRevision?: ProjectRevisionRecord): string {
-  const current = summarizeRevisionContent(revision, previousRevision);
+export function formatProjectRevisionSummary(
+  revision: ProjectRevisionRecord,
+  previousRevision?: ProjectRevisionRecord,
+  revisionHistory?: ProjectRevisionRecord[],
+): string {
+  const current = summarizeRevisionContent(revision, previousRevision, revisionHistory);
   if (!previousRevision) {
     const sceneLabel = current.sceneCount === 1 ? '1 scene' : `${current.sceneCount} scenes`;
     const entityLabel = typeof current.entityCount === 'number'
@@ -661,7 +634,7 @@ export function formatProjectRevisionSummary(revision: ProjectRevisionRecord, pr
     return ['Initial snapshot', sceneLabel, entityLabel].filter(Boolean).join(' · ');
   }
 
-  const previous = summarizeRevisionContent(previousRevision);
+  const previous = summarizeRevisionContent(previousRevision, undefined, revisionHistory);
   const specificChanges = [
     current.title !== previous.title ? `Renamed to ${current.title}` : null,
     formatSceneRenameDiff(current, previous),
@@ -877,10 +850,11 @@ function isAllowedRevisionDomainBlend(domains: Set<string>): boolean {
 function buildRevisionChangeProfile(
   revision: ProjectRevisionRecord,
   previousRevision?: ProjectRevisionRecord,
+  revisionHistory?: ProjectRevisionRecord[],
 ): RevisionChangeProfile {
   if (!previousRevision) return { domains: new Set(), focusKeys: new Set() };
-  const current = summarizeRevisionContent(revision, previousRevision);
-  const previous = summarizeRevisionContent(previousRevision);
+  const current = summarizeRevisionContent(revision, previousRevision, revisionHistory);
+  const previous = summarizeRevisionContent(previousRevision, undefined, revisionHistory);
   const domains = new Set<string>();
   const focusKeys = new Set<string>();
 
@@ -1041,6 +1015,8 @@ function shouldCoalesceAutosaveRevision(
   previousBurstRevision: ProjectRevisionRecord | undefined,
   latestRevision: ProjectRevisionRecord | undefined,
   nextRevision: ProjectRevisionRecord,
+  burstHistory: ProjectRevisionRecord[],
+  nextHistory: ProjectRevisionRecord[],
 ): boolean {
   if (!latestRevision) return false;
   if (latestRevision.reason !== 'autosave' || nextRevision.reason !== 'autosave') return false;
@@ -1049,8 +1025,8 @@ function shouldCoalesceAutosaveRevision(
   const nextAt = parseRevisionTimestamp(nextRevision.updatedAt);
   if (latestAt == null || nextAt == null || nextAt - latestAt > 90_000) return false;
 
-  const burstProfile = buildRevisionChangeProfile(latestRevision, previousBurstRevision);
-  const nextProfile = buildRevisionChangeProfile(nextRevision, latestRevision);
+  const burstProfile = buildRevisionChangeProfile(latestRevision, previousBurstRevision, burstHistory);
+  const nextProfile = buildRevisionChangeProfile(nextRevision, latestRevision, nextHistory);
   if (burstProfile.domains.size === 0 || nextProfile.domains.size === 0) return false;
 
   const combinedDomains = new Set([...burstProfile.domains, ...nextProfile.domains]);
@@ -1087,8 +1063,26 @@ export function appendProjectRevision(
       project: undefined,
     }
     : nextRevision;
-  if (shouldCoalesceAutosaveRevision(withoutDuplicate[1], withoutDuplicate[0], compactRevision)) {
-    return [compactRevision, ...withoutDuplicate.slice(1)].slice(0, limit);
+  const previousBurstRevision = withoutDuplicate[1];
+  if (shouldCoalesceAutosaveRevision(
+    previousBurstRevision,
+    latestRevision,
+    nextRevision,
+    withoutDuplicate,
+    [nextRevision, ...withoutDuplicate],
+  )) {
+    if (!previousBurstRevision) {
+      return [nextRevision, ...withoutDuplicate.slice(1)].slice(0, limit);
+    }
+    const previousBurstProject = materializeProjectRevision(withoutDuplicate, previousBurstRevision.id);
+    const coalescedRevision: ProjectRevisionRecord = {
+      ...nextRevision,
+      kind: 'delta',
+      baseRevisionId: previousBurstRevision.id,
+      patch: diffProjectValue(nextProject, previousBurstProject),
+      project: undefined,
+    };
+    return [coalescedRevision, ...withoutDuplicate.slice(1)].slice(0, limit);
   }
   return [compactRevision, ...withoutDuplicate].slice(0, limit);
 }
