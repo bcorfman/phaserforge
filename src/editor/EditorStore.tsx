@@ -3836,9 +3836,23 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const restoreRevision = async (revisionId: string) => {
     const currentRecord = activeRecordRef.current;
     const revision = currentRecord?.revisions?.find((entry) => entry.id === revisionId);
-    if (!currentRecord || !revision) return;
+    if (!currentRecord || !revision) {
+      dispatch({
+        type: 'set-status',
+        message: 'Could not restore that revision.',
+        expiresAt: Date.now() + 4000,
+      });
+      return;
+    }
     const restoredProject = materializeProjectRevision(currentRecord.revisions ?? [], revisionId);
-    if (!restoredProject) return;
+    if (!restoredProject) {
+      dispatch({
+        type: 'set-status',
+        message: 'Could not restore that revision. Its history data is incomplete.',
+        expiresAt: Date.now() + 4000,
+      });
+      return;
+    }
     const protectedRecord = await projectPersistence.saveProjectRevision(currentRecord.id, state.project, 'protective');
     if (protectedRecord) {
       activeRecordRef.current = protectedRecord;
