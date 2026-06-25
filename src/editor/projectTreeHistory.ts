@@ -707,6 +707,7 @@ export function createProjectRevision(
 type RevisionChangeProfile = {
   domains: Set<string>;
   focusKeys: Set<string>;
+  clusterKeys: Set<string>;
 };
 
 const REVISION_MILESTONE_DOMAINS = new Set([
@@ -841,6 +842,50 @@ function addSceneAssetFocusKeys(focusKeys: Set<string>, sceneId: string, scene: 
   focusKeys.add(`scene:${sceneId}`);
 }
 
+function focusKeyToClusterKey(focusKey: string): string | null {
+  if (focusKey.startsWith('scene-entity:')) {
+    return focusKey.replace('scene-entity:', 'entity:');
+  }
+  if (focusKey.startsWith('scene-meta:')) {
+    return focusKey.replace('scene-meta:', 'scene:');
+  }
+  if (focusKey.startsWith('music:')) {
+    return focusKey.replace('music:', 'scene-music:');
+  }
+  if (
+    focusKey.startsWith('entity:')
+    || focusKey.startsWith('group:')
+    || focusKey.startsWith('trigger:')
+    || focusKey.startsWith('collision-rule:')
+    || focusKey.startsWith('attachment:')
+    || focusKey.startsWith('event-block:')
+    || focusKey.startsWith('behavior:')
+    || focusKey.startsWith('action:')
+    || focusKey.startsWith('condition:')
+    || focusKey.startsWith('scene:')
+    || focusKey.startsWith('counter:')
+    || focusKey.startsWith('pattern:')
+    || focusKey.startsWith('collection:')
+    || focusKey.startsWith('audio:')
+    || focusKey.startsWith('image:')
+    || focusKey.startsWith('spritesheet:')
+    || focusKey.startsWith('font:')
+    || focusKey.startsWith('input-map:')
+    || focusKey.startsWith('scene-input:')
+  ) {
+    return focusKey;
+  }
+  return null;
+}
+
+function buildClusterKeys(focusKeys: Set<string>): Set<string> {
+  return new Set(
+    [...focusKeys]
+      .map(focusKeyToClusterKey)
+      .filter((clusterKey): clusterKey is string => Boolean(clusterKey)),
+  );
+}
+
 function isAllowedRevisionDomainBlend(domains: Set<string>): boolean {
   return REVISION_ALLOWED_DOMAIN_GROUPS.some((allowedDomains) => (
     domains.size > 1 && [...domains].every((domain) => allowedDomains.has(domain))
@@ -852,7 +897,7 @@ function buildRevisionChangeProfile(
   previousRevision?: ProjectRevisionRecord,
   revisionHistory?: ProjectRevisionRecord[],
 ): RevisionChangeProfile {
-  if (!previousRevision) return { domains: new Set(), focusKeys: new Set() };
+  if (!previousRevision) return { domains: new Set(), focusKeys: new Set(), clusterKeys: new Set() };
   const current = summarizeRevisionContent(revision, previousRevision, revisionHistory);
   const previous = summarizeRevisionContent(previousRevision, undefined, revisionHistory);
   const domains = new Set<string>();
@@ -1003,7 +1048,11 @@ function buildRevisionChangeProfile(
     }
   }
 
-  return { domains, focusKeys };
+  return {
+    domains,
+    focusKeys,
+    clusterKeys: buildClusterKeys(focusKeys),
+  };
 }
 
 function parseRevisionTimestamp(updatedAt: string): number | null {
@@ -1029,15 +1078,24 @@ function shouldCoalesceAutosaveRevision(
   const nextProfile = buildRevisionChangeProfile(nextRevision, latestRevision, nextHistory);
   if (burstProfile.domains.size === 0 || nextProfile.domains.size === 0) return false;
 
-  const combinedDomains = new Set([...burstProfile.domains, ...nextProfile.domains]);
-  if (combinedDomains.size > 1 && [...combinedDomains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain))) {
+  if (
+    [...burstProfile.domains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain))
+    || [...nextProfile.domains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain))
+  ) {
     return false;
   }
 
+  const combinedDomains = new Set([...burstProfile.domains, ...nextProfile.domains]);
   const overlappingFocus = [...nextProfile.focusKeys].some((key) => burstProfile.focusKeys.has(key));
   if (overlappingFocus) return true;
 
-  if (combinedDomains.size === 1) return true;
+  const overlappingClusters = [...nextProfile.clusterKeys].some((key) => burstProfile.clusterKeys.has(key));
+  if (overlappingClusters) return true;
+
+  if (combinedDomains.size === 1) {
+    if (burstProfile.clusterKeys.size > 0 || nextProfile.clusterKeys.size > 0) return false;
+    return true;
+  }
 
   if (isAllowedRevisionDomainBlend(combinedDomains)) return true;
 
