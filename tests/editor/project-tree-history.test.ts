@@ -449,6 +449,60 @@ describe('project tree + history helpers', () => {
     expect(revisions.map((revision) => revision.id)).toEqual(['rev-publish', 'rev-audio', 'rev-base']);
   });
 
+  it('splits nearby autosaves when the dominant object cluster changes within the same domain', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.scenes[firstEdit.initialSceneId].entities.e2.name = 'Player Spawn';
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.scenes[secondEdit.initialSceneId].entities.e3.name = 'Boss Gate';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-17T10:10:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-first', 'rev-base']);
+  });
+
+  it('splits nearby autosaves for milestone-only edits even when they stay in the same milestone domain', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.title = 'History Demo';
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.title = 'History Demo 2';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-17T10:10:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-17T10:10:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-17T10:10:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-first', 'rev-base']);
+  });
+
   it('stores later revisions as deltas against the previous checkpoint instead of full snapshots', () => {
     const baseProject = structuredClone(sampleProject);
     const newerProject = structuredClone(sampleProject);
