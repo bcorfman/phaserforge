@@ -554,6 +554,46 @@ describe('projectPersistence steady-state storage', () => {
     expect(materializeProjectRevision(revisions, storedNewestRevision.id)).toEqual(newerProject);
   });
 
+  it('repairs broken revision chains on load by rebuilding recoverable history from the stored project head', async () => {
+    const baseProject = createEmptyProject();
+    baseProject.id = 'project-1';
+    baseProject.title = 'Base Title';
+
+    const latestProject = structuredClone(baseProject);
+    latestProject.title = 'Recovered Title';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-22T12:00:00.000Z',
+    });
+    const brokenLatestRevision = {
+      ...createProjectRevision(latestProject, {
+        id: 'rev-latest',
+        updatedAt: '2026-06-22T12:00:05.000Z',
+      }),
+      kind: 'delta' as const,
+      baseRevisionId: 'rev-missing',
+      patch: [{ op: 'set' as const, path: ['title'], value: 'Recovered Title' }],
+      project: undefined,
+    };
+
+    await seedPersistenceRecords({
+      projectRecord: buildStoredProjectRecord(latestProject, {
+        id: latestProject.id,
+        updatedAt: '2026-06-22T12:00:05.000Z',
+        revisions: [brokenLatestRevision, baseRevision],
+      }),
+    });
+
+    const snapshot = await projectPersistence.load();
+    const record = snapshot.localProjects[0];
+
+    expect(record?.title).toBe('Recovered Title');
+    expect(record?.project.title).toBe('Recovered Title');
+    expect(record?.revisions?.map((revision) => revision.id)).toEqual(['rev-latest', 'rev-base']);
+    expect(materializeProjectRevision(record?.revisions ?? [], 'rev-latest')?.title).toBe('Recovered Title');
+  });
+
   it('persists the latest active snapshot as a lightweight marker instead of a full record copy', async () => {
     const project = createEmptyProject();
     project.id = 'project-1';
