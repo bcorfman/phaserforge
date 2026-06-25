@@ -273,26 +273,85 @@ export function buildStoredProjectRecord(
   };
 }
 
+function normalizeStoredProjectRevisions(
+  project: ProjectSpec,
+  revisions: ProjectRevisionRecord[] | undefined,
+): ProjectRevisionRecord[] {
+  if (!Array.isArray(revisions) || revisions.length === 0) {
+    return [createProjectRevision(project)];
+  }
+
+  const originalRevisions = revisions.filter(Boolean);
+  if (originalRevisions.length === 0) return [createProjectRevision(project)];
+
+  const recoverableOldestToNewest = [...originalRevisions]
+    .reverse()
+    .map((revision) => ({
+      revision,
+      project: materializeProjectRevision(originalRevisions, revision.id),
+    }))
+    .filter((entry): entry is { revision: ProjectRevisionRecord; project: ProjectSpec } => Boolean(entry.project));
+
+  const latestRevision = originalRevisions[0];
+  const latestMaterialized = materializeProjectRevision(originalRevisions, latestRevision.id);
+  const latestMatchesStoredProject = latestMaterialized && projectsSemanticallyEqual(latestMaterialized, project);
+
+  if (!latestMatchesStoredProject) {
+    const lastRecoverable = recoverableOldestToNewest[recoverableOldestToNewest.length - 1];
+    if (lastRecoverable?.revision.id === latestRevision.id) {
+      recoverableOldestToNewest.pop();
+    }
+    recoverableOldestToNewest.push({
+      revision: latestRevision,
+      project: cloneProject(project),
+    });
+  }
+
+  if (recoverableOldestToNewest.length === 0) {
+    return [createProjectRevision(project)];
+  }
+
+  let rebuilt: ProjectRevisionRecord[] = [];
+  for (const entry of recoverableOldestToNewest) {
+    rebuilt = appendProjectRevision(rebuilt, createProjectRevision(entry.project, {
+      id: entry.revision.id,
+      updatedAt: entry.revision.updatedAt,
+      reason: entry.revision.reason,
+    }), originalRevisions.length);
+  }
+  return rebuilt;
+}
+
 function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectRecord {
-  if (record.project) return record;
+  if (record.project) {
+    return {
+      ...record,
+      revisions: normalizeStoredProjectRevisions(record.project, record.revisions),
+    };
+  }
   if (Array.isArray(record.revisions) && record.revisions.length > 0) {
     const latestProject = materializeProjectRevision(record.revisions, record.revisions[0].id);
     if (latestProject) {
       return {
         ...record,
         project: latestProject,
+        revisions: normalizeStoredProjectRevisions(latestProject, record.revisions),
       };
     }
   }
   if (record.yaml) {
+    const project = parseProjectYaml(record.yaml);
     return {
       ...record,
-      project: parseProjectYaml(record.yaml),
+      project,
+      revisions: normalizeStoredProjectRevisions(project, record.revisions),
     };
   }
+  const project = createEmptyProject();
   return {
     ...record,
-    project: createEmptyProject(),
+    project,
+    revisions: normalizeStoredProjectRevisions(project, record.revisions),
   };
 }
 
