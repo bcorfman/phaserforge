@@ -256,8 +256,6 @@ export function EntityListView({
   const [menuOpen, setMenuOpen] = useState<OverflowMenuState | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRootRef = useRef<HTMLDivElement | null>(null);
-  const [spritesAddMenu, setSpritesAddMenu] = useState<{ sceneId: string; x: number; y: number } | null>(null);
-  const spritesAddMenuRootRef = useRef<HTMLDivElement | null>(null);
   const [spriteFromAssetPicker, setSpriteFromAssetPicker] = useState<{ sceneId: string; x: number; y: number } | null>(null);
   const spriteFromAssetPickerRootRef = useRef<HTMLDivElement | null>(null);
   const [duplicateDialog, setDuplicateDialog] = useState<{
@@ -329,18 +327,6 @@ export function EntityListView({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [menuOpen]);
-
-  useEffect(() => {
-    if (!spritesAddMenu) return;
-    const handlePointerDown = (event: PointerEvent) => {
-      const root = spritesAddMenuRootRef.current;
-      if (!root) return;
-      if (event.target instanceof Node && root.contains(event.target)) return;
-      setSpritesAddMenu(null);
-    };
-    window.addEventListener('pointerdown', handlePointerDown);
-    return () => window.removeEventListener('pointerdown', handlePointerDown);
-  }, [spritesAddMenu]);
 
   useEffect(() => {
     if (!spriteFromAssetPicker) return;
@@ -510,7 +496,7 @@ export function EntityListView({
       if (normalizedSidebarScope !== 'projectTree') return;
       if (mode !== 'edit') return;
       if (editingKind != null) return;
-      if (menuOpen || spritesAddMenu || duplicateDialog) return;
+      if (menuOpen || duplicateDialog) return;
       if (event.defaultPrevented) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
 
@@ -603,7 +589,7 @@ export function EntityListView({
     // when the keyboard focus is inside the entity list.
     window.addEventListener('keydown', handleWindowKeyDown, true);
     return () => window.removeEventListener('keydown', handleWindowKeyDown, true);
-  }, [normalizedSidebarScope, mode, editingKind, menuOpen, spritesAddMenu, duplicateDialog, project, currentSceneId, selection, dispatch]);
+  }, [normalizedSidebarScope, mode, editingKind, menuOpen, duplicateDialog, project, currentSceneId, selection, dispatch]);
 
   useEffect(() => {
     const handleFocusSelectedSceneGraphRow = () => {
@@ -1028,19 +1014,15 @@ export function EntityListView({
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (spritesAddMenu?.sceneId === sceneId) {
-                              setSpritesAddMenu(null);
-                              return;
-                            }
                             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            setSpritesAddMenu({
+                            setSpriteFromAssetPicker({
                               sceneId,
                               x: Math.min(rect.left, window.innerWidth - 240),
                               y: rect.bottom + 6,
                             });
                           }}
                         >
-                          + Add ▾
+                          + Add
                         </button>
                       </div>
 
@@ -1526,32 +1508,6 @@ export function EntityListView({
           </div>
         </div>
       )}
-
-      {spritesAddMenu ? (
-        <div
-          ref={spritesAddMenuRootRef}
-          className="scene-graph-menu"
-          style={{ position: 'fixed', left: spritesAddMenu.x, top: spritesAddMenu.y, zIndex: 51, minWidth: 220 }}
-          data-testid="sprites-add-menu"
-          role="menu"
-        >
-          <div className="scene-graph-menu-hint">+ Add</div>
-          <button
-            type="button"
-            className="scene-graph-menu-item"
-            data-testid="sprites-add-menu-from-asset"
-            onClick={() => {
-              const targetSceneId = spritesAddMenu.sceneId;
-              const nextPicker = spritesAddMenu;
-              setSpritesAddMenu(null);
-              ensureCurrentScene(targetSceneId);
-              setSpriteFromAssetPicker(nextPicker);
-            }}
-	          >
-	            Sprite (from Asset)
-	          </button>
-	        </div>
-	      ) : null}
 
       {spriteFromAssetPicker ? (
         <div
