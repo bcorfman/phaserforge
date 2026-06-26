@@ -23,6 +23,13 @@ export type ProjectRevisionRecord = {
   patch?: ProjectRevisionPatchOperation[];
 };
 
+export type ProjectHistoryWindowDays = 7 | 14 | 30;
+
+export const DEFAULT_PROJECT_HISTORY_WINDOW_DAYS: ProjectHistoryWindowDays = 7;
+
+const PROJECT_HISTORY_RETENTION_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export type ProjectTreeRow =
   | { kind: 'project'; id: string; label: string; sceneCount: number }
   | { kind: 'scene'; id: string; label: string; isCurrent: boolean };
@@ -62,6 +69,27 @@ function shortMonthDayTime(updatedAt: string): string {
     hour: 'numeric',
     minute: '2-digit',
   }).format(date);
+}
+
+function revisionAgeMs(updatedAt: string, nowMs: number): number {
+  const revisionTimeMs = new Date(updatedAt).valueOf();
+  if (Number.isNaN(revisionTimeMs)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, nowMs - revisionTimeMs);
+}
+
+function isRevisionWithinWindow(
+  revision: ProjectRevisionRecord,
+  windowDays: number,
+  nowMs: number,
+): boolean {
+  return revisionAgeMs(revision.updatedAt, nowMs) <= windowDays * DAY_MS;
+}
+
+function isRevisionOlderThanRetentionWindow(
+  revision: ProjectRevisionRecord,
+  nowMs: number,
+): boolean {
+  return revisionAgeMs(revision.updatedAt, nowMs) > PROJECT_HISTORY_RETENTION_DAYS * DAY_MS;
 }
 
 type RevisionSnapshot = {
@@ -674,6 +702,138 @@ export function buildCopyRevisionDefaultName(projectTitle: string | undefined, r
 export function buildRestoreRevisionStatus(revision: ProjectRevisionRecord): { message: string } {
   return {
     message: `Restored revision from ${shortMonthDay(revision.updatedAt)} as the new current project.`,
+  };
+}
+
+export function rebuildProjectRevisions(
+  revisions: ProjectRevisionRecord[] | undefined,
+  fallbackProject?: ProjectSpec,
+): ProjectRevisionRecord[] {
+  const originalRevisions = Array.isArray(revisions) ? revisions.filter(Boolean) : [];
+  if (originalRevisions.length === 0) {
+    return fallbackProject ? [createProjectRevision(fallbackProject)] : [];
+  }
+  return rebuildProjectRevisionSubset(originalRevisions, originalRevisions, fallbackProject);
+}
+
+function rebuildProjectRevisionSubset(
+  sourceRevisions: ProjectRevisionRecord[],
+  selectedRevisions: ProjectRevisionRecord[],
+  fallbackProject?: ProjectSpec,
+): ProjectRevisionRecord[] {
+  if (selectedRevisions.length === 0) {
+    return fallbackProject ? [createProjectRevision(fallbackProject)] : [];
+  }
+
+  const recoverableOldestToNewest = [...selectedRevisions]
+    .reverse()
+    .map((revision) => ({
+      revision,
+      project: materializeProjectRevision(sourceRevisions, revision.id),
+    }))
+    .filter((entry): entry is { revision: ProjectRevisionRecord; project: ProjectSpec } => Boolean(entry.project));
+
+  if (recoverableOldestToNewest.length === 0) {
+    return fallbackProject ? [createProjectRevision(fallbackProject)] : [];
+  }
+
+  let rebuilt: ProjectRevisionRecord[] = [];
+  for (const entry of recoverableOldestToNewest) {
+    rebuilt = appendProjectRevision(rebuilt, createProjectRevision(entry.project, {
+      id: entry.revision.id,
+      updatedAt: entry.revision.updatedAt,
+      reason: entry.revision.reason,
+    }), selectedRevisions.length);
+  }
+  return rebuilt;
+}
+
+export function buildProjectHistoryViewModel({
+  revisions,
+  archivedRevisions,
+  windowDays = DEFAULT_PROJECT_HISTORY_WINDOW_DAYS,
+  nowMs = Date.now(),
+}: {
+  revisions: ProjectRevisionRecord[] | undefined;
+  archivedRevisions?: ProjectRevisionRecord[] | undefined;
+  windowDays?: ProjectHistoryWindowDays;
+  nowMs?: number;
+}): {
+  visibleRevisions: ProjectRevisionRecord[];
+  staleRevisions: ProjectRevisionRecord[];
+  archivedRevisions: ProjectRevisionRecord[];
+} {
+  const activeRevisions = Array.isArray(revisions) ? revisions.filter(Boolean) : [];
+  const visibleRevisions = activeRevisions.filter((revision) => (
+    isRevisionWithinWindow(revision, windowDays, nowMs)
+    && !isRevisionOlderThanRetentionWindow(revision, nowMs)
+  ));
+  const staleRevisions = activeRevisions.filter((revision) => isRevisionOlderThanRetentionWindow(revision, nowMs));
+  return {
+    visibleRevisions,
+    staleRevisions,
+    archivedRevisions: Array.isArray(archivedRevisions) ? archivedRevisions.filter(Boolean) : [],
+  };
+}
+
+function withGuaranteedHeadRevision(
+  revisions: ProjectRevisionRecord[],
+  currentProject: ProjectSpec,
+): ProjectRevisionRecord[] {
+  return revisions.length > 0 ? revisions : [createProjectRevision(currentProject)];
+}
+
+export function archiveProjectHistoryRevisions({
+  activeRevisions,
+  archivedRevisions,
+  revisionIds,
+  currentProject,
+}: {
+  activeRevisions: ProjectRevisionRecord[] | undefined;
+  archivedRevisions?: ProjectRevisionRecord[] | undefined;
+  revisionIds: string[];
+  currentProject: ProjectSpec;
+}): {
+  revisions: ProjectRevisionRecord[];
+  archivedRevisions: ProjectRevisionRecord[];
+} {
+  const revisionIdSet = new Set(revisionIds);
+  const active = Array.isArray(activeRevisions) ? activeRevisions.filter(Boolean) : [];
+  const archived = Array.isArray(archivedRevisions) ? archivedRevisions.filter(Boolean) : [];
+  const archivedSubset = active.filter((revision) => revisionIdSet.has(revision.id));
+  const keptActive = active.filter((revision) => !revisionIdSet.has(revision.id));
+
+  return {
+    revisions: withGuaranteedHeadRevision(rebuildProjectRevisionSubset(active, keptActive), currentProject),
+    archivedRevisions: [
+      ...rebuildProjectRevisionSubset(active, archivedSubset),
+      ...archived.filter((revision) => !revisionIdSet.has(revision.id)),
+    ],
+  };
+}
+
+export function deleteProjectHistoryRevisions({
+  activeRevisions,
+  archivedRevisions,
+  revisionIds,
+  currentProject,
+}: {
+  activeRevisions: ProjectRevisionRecord[] | undefined;
+  archivedRevisions?: ProjectRevisionRecord[] | undefined;
+  revisionIds: string[];
+  currentProject: ProjectSpec;
+}): {
+  revisions: ProjectRevisionRecord[];
+  archivedRevisions: ProjectRevisionRecord[];
+} {
+  const revisionIdSet = new Set(revisionIds);
+  const sourceActive = (Array.isArray(activeRevisions) ? activeRevisions : []).filter(Boolean);
+  const keptActive = sourceActive.filter((revision) => !revisionIdSet.has(revision.id));
+  const keptArchived = (Array.isArray(archivedRevisions) ? archivedRevisions : []).filter((revision) => !revisionIdSet.has(revision.id));
+
+  return {
+    revisions: withGuaranteedHeadRevision(rebuildProjectRevisionSubset(sourceActive, keptActive), currentProject),
+    archivedRevisions: rebuildProjectRevisions(keptArchived),
   };
 }
 

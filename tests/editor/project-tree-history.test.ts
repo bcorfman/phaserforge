@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { sampleProject } from '../../src/model/sampleProject';
 import {
+  archiveProjectHistoryRevisions,
   appendProjectRevision,
   buildCopyRevisionDefaultName,
+  buildProjectHistoryViewModel,
   buildProjectTreeRows,
   buildRestoreRevisionStatus,
   createProjectRevision,
+  DEFAULT_PROJECT_HISTORY_WINDOW_DAYS,
+  deleteProjectHistoryRevisions,
   formatProjectRevisionTimestamp,
   formatProjectRevisionSummary,
   materializeProjectRevision,
@@ -188,6 +192,97 @@ describe('project tree + history helpers', () => {
     expect(buildRestoreRevisionStatus(revision)).toEqual({
       message: 'Restored revision from Jun 17 as the new current project.',
     });
+  });
+
+  it('defaults History filtering to the past 7 days while flagging older-than-30-day revisions for retention', () => {
+    const nowMs = new Date('2026-06-25T12:00:00.000Z').valueOf();
+    const threeDaysAgo = createProjectRevision(sampleProject, {
+      id: 'rev-3d',
+      updatedAt: '2026-06-22T12:00:00.000Z',
+    });
+    const tenDaysAgoProject = structuredClone(sampleProject);
+    tenDaysAgoProject.title = 'Ten Day Build';
+    const tenDaysAgo = createProjectRevision(tenDaysAgoProject, {
+      id: 'rev-10d',
+      updatedAt: '2026-06-15T12:00:00.000Z',
+    });
+    const thirtyFiveDaysAgoProject = structuredClone(sampleProject);
+    thirtyFiveDaysAgoProject.title = 'Archived Candidate';
+    const thirtyFiveDaysAgo = createProjectRevision(thirtyFiveDaysAgoProject, {
+      id: 'rev-35d',
+      updatedAt: '2026-05-21T12:00:00.000Z',
+    });
+
+    const view = buildProjectHistoryViewModel({
+      revisions: [threeDaysAgo, tenDaysAgo, thirtyFiveDaysAgo],
+      archivedRevisions: [],
+      nowMs,
+      windowDays: DEFAULT_PROJECT_HISTORY_WINDOW_DAYS,
+    });
+
+    expect(view.visibleRevisions.map((revision) => revision.id)).toEqual(['rev-3d']);
+    expect(view.staleRevisions.map((revision) => revision.id)).toEqual(['rev-35d']);
+  });
+
+  it('archives old revisions into hidden storage while rebuilding the remaining active chain', () => {
+    const baseProject = structuredClone(sampleProject);
+    const olderProject = structuredClone(sampleProject);
+    olderProject.title = 'Thirty Five Days Ago';
+    const recentProject = structuredClone(olderProject);
+    recentProject.title = 'Current Project';
+
+    const oldestRevision = createProjectRevision(baseProject, {
+      id: 'rev-oldest',
+      updatedAt: '2026-05-18T12:00:00.000Z',
+    });
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-05-21T12:00:00.000Z',
+    });
+    const recentRevision = createProjectRevision(recentProject, {
+      id: 'rev-recent',
+      updatedAt: '2026-06-23T12:00:00.000Z',
+    });
+    const activeRevisions = appendProjectRevision(
+      appendProjectRevision([oldestRevision], olderRevision, 25),
+      recentRevision,
+      25,
+    );
+
+    const archived = archiveProjectHistoryRevisions({
+      activeRevisions,
+      archivedRevisions: [],
+      revisionIds: ['rev-older', 'rev-oldest'],
+      currentProject: recentProject,
+    });
+
+    expect(archived.revisions.map((revision) => revision.id)).toEqual(['rev-recent']);
+    expect(materializeProjectRevision(archived.revisions, 'rev-recent')?.title).toBe('Current Project');
+    expect(archived.archivedRevisions.map((revision) => revision.id)).toEqual(['rev-older', 'rev-oldest']);
+    expect(materializeProjectRevision(archived.archivedRevisions, 'rev-older')?.title).toBe('Thirty Five Days Ago');
+  });
+
+  it('deletes selected revisions from both active and archived history storage', () => {
+    const recentRevision = createProjectRevision(sampleProject, {
+      id: 'rev-recent',
+      updatedAt: '2026-06-23T12:00:00.000Z',
+    });
+    const oldProject = structuredClone(sampleProject);
+    oldProject.title = 'Remove Me';
+    const oldRevision = createProjectRevision(oldProject, {
+      id: 'rev-old',
+      updatedAt: '2026-05-21T12:00:00.000Z',
+    });
+
+    const deleted = deleteProjectHistoryRevisions({
+      activeRevisions: [recentRevision, oldRevision],
+      archivedRevisions: [oldRevision],
+      revisionIds: ['rev-old'],
+      currentProject: sampleProject,
+    });
+
+    expect(deleted.revisions.map((revision) => revision.id)).toEqual(['rev-recent']);
+    expect(deleted.archivedRevisions).toEqual([]);
   });
 
   it('prepends revisions and keeps the newest items within the limit', () => {
