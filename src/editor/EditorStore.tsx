@@ -462,6 +462,8 @@ const EditorContext = createContext<{
       createProject: () => Promise<void>;
       duplicateCurrentProject: () => Promise<void>;
       copyRevisionToNewProject: (revisionId: string, name: string) => Promise<void>;
+      archiveHistoryRevisions: (revisionIds: string[]) => Promise<void>;
+      deleteHistoryRevisions: (revisionIds: string[]) => Promise<void>;
       openProject: (projectId: string) => Promise<void>;
       restoreRevision: (revisionId: string) => Promise<void>;
     refreshCloudProjects: () => Promise<void>;
@@ -3833,6 +3835,30 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
   };
 
+  const archiveHistoryRevisions = async (revisionIds: string[]) => {
+    const currentRecord = activeRecordRef.current;
+    if (!currentRecord || revisionIds.length === 0) return;
+    const nextRecord = await projectPersistence.updateProjectHistoryRetention(currentRecord.id, {
+      archiveRevisionIds: revisionIds,
+    });
+    if (!nextRecord) return;
+    activeRecordRef.current = nextRecord;
+    setActiveProjectRevisions(nextRecord.revisions ?? []);
+    setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
+  };
+
+  const deleteHistoryRevisions = async (revisionIds: string[]) => {
+    const currentRecord = activeRecordRef.current;
+    if (!currentRecord || revisionIds.length === 0) return;
+    const nextRecord = await projectPersistence.updateProjectHistoryRetention(currentRecord.id, {
+      deleteRevisionIds: revisionIds,
+    });
+    if (!nextRecord) return;
+    activeRecordRef.current = nextRecord;
+    setActiveProjectRevisions(nextRecord.revisions ?? []);
+    setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
+  };
+
   const restoreRevision = async (revisionId: string) => {
     const currentRecord = activeRecordRef.current;
     const revision = currentRecord?.revisions?.find((entry) => entry.id === revisionId);
@@ -3896,6 +3922,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       createProject,
       duplicateCurrentProject,
       copyRevisionToNewProject,
+      archiveHistoryRevisions,
+      deleteHistoryRevisions,
       openProject,
       restoreRevision,
       refreshCloudProjects,

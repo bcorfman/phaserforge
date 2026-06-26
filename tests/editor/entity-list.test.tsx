@@ -151,14 +151,14 @@ describe('EntityList', () => {
   it('renders richer revision metadata in project revisions mode', () => {
     const olderRevision = createProjectRevision(sampleProject, {
       id: 'rev-1',
-      updatedAt: '2026-06-17T10:11:00.000Z',
+      updatedAt: '2026-06-22T10:11:00.000Z',
       reason: 'autosave',
     });
     const renamedProject = structuredClone(sampleProject);
     renamedProject.title = 'History Demo';
     const revision = createProjectRevision(renamedProject, {
       id: 'rev-2',
-      updatedAt: '2026-06-17T10:12:00.000Z',
+      updatedAt: '2026-06-23T10:12:00.000Z',
       reason: 'autosave',
     });
 
