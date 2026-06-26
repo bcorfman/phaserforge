@@ -1,18 +1,19 @@
 import { test, expect } from '@playwright/test';
-import { enablePersistenceDebug, expectPersistenceDebugEvents, expectProjectRestoreState, gotoStudio, waitForEmptyScene } from './helpers';
+import { enablePersistenceDebug, gotoStudio } from './helpers';
 import { sampleProject } from '../../src/model/sampleProject';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 
-test('Cloud login shows conflict picker when cloud and device diverge @smoke', async ({ page }) => {
+test('Signed-in linked online projects stay local at startup and autosave to cloud without a conflict modal @smoke', async ({ page }) => {
   test.setTimeout(120000);
   const cloudProject = createEmptyProject();
   await enablePersistenceDebug(page);
   const deviceRecord = buildStoredProjectRecord(sampleProject, {
     id: sampleProject.id,
     updatedAt: new Date(Date.now() - 60_000).toISOString(),
-    origin: 'local-only',
-    syncStatus: 'local',
+    origin: 'cloud-cache',
+    syncStatus: 'cloud',
+    cloudProjectId: 'g1',
   });
 
   await page.addInitScript(async ({ record }) => {
@@ -48,9 +49,6 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
     await route.fulfill({ status: 200, body: JSON.stringify({ csrfToken: 'csrf' }), contentType: 'application/json' });
   });
   await page.route('**/api/v1/auth/me', async (route) => {
-    await route.fulfill({ status: 401, body: JSON.stringify({ error: 'not_logged_in' }), contentType: 'application/json' });
-  });
-  await page.route('**/api/v1/auth/login', async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ user: { id: 'u1', email: 'a@b.c' } }), contentType: 'application/json' });
   });
   await page.route('**/api/v1/games', async (route) => {
@@ -61,6 +59,14 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
     });
   });
   await page.route('**/api/v1/games/g1', async (route) => {
+    if (route.request().method() === 'PUT') {
+      await route.fulfill({
+        status: 200,
+        body: JSON.stringify({ game: { id: 'g1', title: 'Workspace', created_at: '2026-05-28T10:00:00.000Z', updated_at: '2026-05-28T10:15:00.000Z', project: sampleProject } }),
+        contentType: 'application/json',
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       body: JSON.stringify({ game: { id: 'g1', title: 'Workspace', created_at: '2026-05-28T10:00:00.000Z', updated_at: '2026-05-28T10:14:00.000Z', project: cloudProject } }),
@@ -76,54 +82,20 @@ test('Cloud login shows conflict picker when cloud and device diverge @smoke', a
     return;
   }
 
-  await cloudTab.click();
-  await expect(page.getByTestId('cloud-panel')).toBeVisible();
+  await expect(page.getByTestId('workspace-conflict-modal')).toHaveCount(0);
+  await expect(cloudTab).toHaveAttribute('aria-selected', 'false');
 
-  await page.getByLabel('Email').fill('a@b.c');
-  await page.locator('input[autocomplete="current-password"]').fill('pw');
-  await page.getByRole('button', { name: 'Log in' }).click();
-
-  await expect(page.getByTestId('workspace-conflict-modal')).toBeVisible();
-  await expect(page.getByTestId('workspace-conflict-cloud-card')).toContainText('Cloud');
-  await expect(page.getByTestId('workspace-conflict-device-card')).toContainText('This device');
-
-  const dl1 = page.waitForEvent('download');
-  const dl2 = page.waitForEvent('download');
-  await page.getByTestId('workspace-conflict-export-both').click();
-  await Promise.all([dl1, dl2]);
-
-  await page.getByTestId('workspace-conflict-use-cloud').click();
-  await waitForEmptyScene(page);
-  await expectProjectRestoreState(page, {
-    projectId: cloudProject.id,
-    title: cloudProject.title ?? 'Untitled Project',
-    currentSceneId: cloudProject.initialSceneId,
-    entityCount: 0,
-    groupCount: 0,
-  });
-  await expectPersistenceDebugEvents(page, [
-    'cloud:workspace-conflict-detected',
-    'cloud:workspace-conflict-choice-applied',
-    'restore:project-dispatched',
-    'restore:inspector-entity-list-stable',
-  ]);
-
-  const backup = await page.evaluate(async () => {
-    const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
-      const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const entries = window.__PHASER_FORGE_TEST__?.persistenceDebugEntries ?? [];
+      return entries.filter((entry: { event?: string }) => entry.event === 'cloud:autosave-flush-start').length;
     });
-    const db = await openDb();
-    const saved = await new Promise<any>((resolve, reject) => {
-      const tx = db.transaction('workspaceState', 'readonly');
-      const request = tx.objectStore('workspaceState').get('workspaceBackup');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+  }).toBeGreaterThan(0);
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const entries = window.__PHASER_FORGE_TEST__?.persistenceDebugEntries ?? [];
+      return entries.filter((entry: { event?: string }) => entry.event === 'cloud:workspace-conflict-detected').length;
     });
-    return saved ?? null;
-  });
-  expect(backup?.source).toBe('device');
-  expect(backup?.project?.id).toBe(sampleProject.id);
-  expect(Object.keys(backup?.project?.scenes ?? {})).not.toHaveLength(0);
+  }).toBe(0);
 });
