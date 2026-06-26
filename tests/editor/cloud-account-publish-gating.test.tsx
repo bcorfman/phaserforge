@@ -55,6 +55,7 @@ import { CloudAccountPanel, __resetCloudAccountPanelAuthCacheForTests } from '..
 
 function baseState(): any {
   return {
+    syncMode: 'online',
     project: { assets: { images: {}, spriteSheets: {}, fonts: {} }, audio: { sounds: {} } },
   };
 }
@@ -471,7 +472,7 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
-  it('checks conflict against the active mapped cloud project before falling back to the latest cloud game', async () => {
+  it('shows a workspace conflict for a linked project only when sync mode is offline', async () => {
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
 
     const deviceProject = createEmptyProject();
@@ -504,29 +505,13 @@ describe('CloudAccountPanel publish gating', () => {
           },
         };
       }
-      if (id === 'g2') {
-        return {
-          game: {
-            id: 'g2',
-            title: 'Latest Unrelated Game',
-            created_at: 'c',
-            updated_at: 'u2',
-            project: createEmptyProject(),
-          },
-        };
-      }
       throw new Error(`unexpected game id ${id}`);
-    });
-    api.listGames.mockResolvedValueOnce({
-      games: [
-        { id: 'g2', title: 'Latest Unrelated Game', created_at: 'c', updated_at: '2026-06-21T13:00:00.000Z' },
-      ],
     });
     const onLoadProject = vi.fn();
 
     const view = renderIntoDom(
       <CloudAccountPanel
-        state={{ project: deviceProject }}
+        state={{ project: deviceProject, syncMode: 'offline' }}
         activeCloudGameId="g1"
         dispatch={vi.fn() as any}
         onLoadYaml={() => {}}
@@ -541,12 +526,73 @@ describe('CloudAccountPanel publish gating', () => {
       await flushEffects();
 
       expect(api.getGame).toHaveBeenCalledWith('g1');
-      expect(api.getGame).not.toHaveBeenCalledWith('g2');
       expect(document.querySelector('[data-testid="workspace-conflict-modal"]')).toBeTruthy();
       expect(document.querySelector('[data-testid="workspace-conflict-cloud-card"]')?.textContent).toContain('Current Cloud Project');
       (document.querySelector('[data-testid="workspace-conflict-use-cloud"]') as HTMLButtonElement | null)?.click();
       expect(persistence.saveWorkspaceBackup).toHaveBeenCalledWith(deviceProject, 'device');
       expect(onLoadProject).toHaveBeenCalledWith(currentCloudProject, 'cloud:workspace');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('does not raise a startup conflict for an unlinked local project just because cloud games exist', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const deviceProject = createEmptyProject();
+    deviceProject.id = 'project-1';
+    deviceProject.title = 'Device Project';
+
+    const onStatus = vi.fn();
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project: deviceProject, syncMode: 'online' }}
+        dispatch={vi.fn() as any}
+        onLoadYaml={() => {}}
+        onStatus={onStatus}
+        onError={vi.fn()}
+      />
+    );
+
+    try {
+      await flushEffects();
+      await flushEffects();
+
+      expect(api.getGame).not.toHaveBeenCalled();
+      expect(api.listGames).not.toHaveBeenCalled();
+      expect(document.querySelector('[data-testid="workspace-conflict-modal"]')).toBeNull();
+      expect(onStatus).not.toHaveBeenCalledWith(expect.stringContaining('Workspace conflict detected'));
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('does not raise a startup conflict for a linked online project and lets autosave reconcile it', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const deviceProject = createEmptyProject();
+    deviceProject.id = 'project-1';
+    deviceProject.title = 'Device Project';
+
+    const onStatus = vi.fn();
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project: deviceProject, syncMode: 'online' }}
+        activeCloudGameId="g1"
+        dispatch={vi.fn() as any}
+        onLoadYaml={() => {}}
+        onStatus={onStatus}
+        onError={vi.fn()}
+      />
+    );
+
+    try {
+      await flushEffects();
+      await flushEffects();
+
+      expect(api.getGame).not.toHaveBeenCalled();
+      expect(document.querySelector('[data-testid="workspace-conflict-modal"]')).toBeNull();
+      expect(onStatus).not.toHaveBeenCalledWith(expect.stringContaining('Workspace conflict detected'));
     } finally {
       view.cleanup();
     }

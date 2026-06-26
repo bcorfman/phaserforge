@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 const inspectorPaneStore = vi.hoisted(() => ({
   state: { id: 'state' },
@@ -11,6 +11,7 @@ const inspectorPaneStore = vi.hoisted(() => ({
 const cloudPanelSpy = vi.hoisted(() => ({
   onLoadYaml: undefined as ((yaml: string, sourceLabel: string) => void) | undefined,
   onLoadProject: undefined as ((project: any, sourceLabel: string) => void) | undefined,
+  onWorkspaceConflictChange: undefined as ((hasConflict: boolean) => void) | undefined,
   onStatus: undefined as ((message: string) => void) | undefined,
   onError: undefined as ((message: string) => void) | undefined,
   cachedUser: undefined as { id: string; email: string } | null | undefined,
@@ -35,11 +36,13 @@ vi.mock('../../src/editor/CloudAccountPanel', () => ({
   CloudAccountPanel: (props: {
     onLoadYaml: (yaml: string, sourceLabel: string) => void;
     onLoadProject?: (project: any, sourceLabel: string) => void;
+    onWorkspaceConflictChange?: (hasConflict: boolean) => void;
     onStatus: (message: string) => void;
     onError: (message: string) => void;
   }) => {
     cloudPanelSpy.onLoadYaml = props.onLoadYaml;
     cloudPanelSpy.onLoadProject = props.onLoadProject;
+    cloudPanelSpy.onWorkspaceConflictChange = props.onWorkspaceConflictChange;
     cloudPanelSpy.onStatus = props.onStatus;
     cloudPanelSpy.onError = props.onError;
     return <div data-testid="mock-cloud-panel">Cloud body</div>;
@@ -56,6 +59,7 @@ describe('InspectorPane tabs', () => {
     delete (globalThis as { location?: { hostname: string } }).location;
     cloudPanelSpy.onLoadYaml = undefined;
     cloudPanelSpy.onLoadProject = undefined;
+    cloudPanelSpy.onWorkspaceConflictChange = undefined;
     cloudPanelSpy.onStatus = undefined;
     cloudPanelSpy.onError = undefined;
     cloudPanelSpy.cachedUser = undefined;
@@ -190,5 +194,22 @@ describe('InspectorPane tabs', () => {
     expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(false);
     expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(true);
     expect(window.sessionStorage.getItem('phaserforge.cloud.return_to_cloud_after_auth')).toBeNull();
+  });
+
+  it('switches to Cloud when the hidden cloud panel detects a workspace conflict', () => {
+    (globalThis as { location?: { hostname: string } }).location = { hostname: 'phaserforge.app' };
+    cloudPanelSpy.cachedUser = { id: 'u1', email: 'alice@example.com' };
+
+    render(<InspectorPane />);
+
+    expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(false);
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(true);
+
+    act(() => {
+      cloudPanelSpy.onWorkspaceConflictChange?.(true);
+    });
+
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(false);
+    expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(true);
   });
 });
