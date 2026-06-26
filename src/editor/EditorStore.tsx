@@ -458,10 +458,8 @@ function createFontAssetSpec(assetId: Id, source: AssetFileSource, originalName:
 }
 
 function createAudioAssetSpec(assetId: Id, source: AssetFileSource, originalName: string | undefined) {
-  const name = assetDisplayNameFromOriginalName(originalName, assetId);
   return {
     id: assetId,
-    ...(name ? { name } : {}),
     source,
   };
 }
