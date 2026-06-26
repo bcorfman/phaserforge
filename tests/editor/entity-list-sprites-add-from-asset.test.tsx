@@ -32,8 +32,8 @@ function renderEntityList(props: Partial<React.ComponentProps<typeof EntityListV
   };
 }
 
-describe('EntityList Sprites + Add menu', () => {
-  it('opens a Sprite (from Asset) picker instead of navigating to Project', async () => {
+describe('EntityList Sprites + Add', () => {
+  it('opens a Sprite (from Asset) picker directly instead of navigating to Project', async () => {
     const project = {
       ...sampleProject,
       assets: {
@@ -56,19 +56,10 @@ describe('EntityList Sprites + Add menu', () => {
 
     const addButton = container.querySelector(`[data-testid="sprites-add-${sampleProject.initialSceneId}"]`) as HTMLButtonElement | null;
     expect(addButton).not.toBeNull();
+    expect(addButton?.textContent).toBe('+ Add');
 
     await React.act(async () => {
       addButton!.click();
-    });
-
-    const menu = container.querySelector('[data-testid="sprites-add-menu"]');
-    expect(menu).not.toBeNull();
-
-    const fromAsset = container.querySelector('[data-testid="sprites-add-menu-from-asset"]') as HTMLButtonElement | null;
-    expect(fromAsset).not.toBeNull();
-
-    await React.act(async () => {
-      fromAsset!.click();
     });
 
     expect(container.querySelector('[data-testid="sprites-add-menu"]')).toBeNull();
@@ -124,7 +115,7 @@ describe('EntityList Sprites + Add menu', () => {
       spritesAdd!.click();
     });
 
-    expect(container.querySelector('[data-testid="sprites-add-menu-create-text"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sprites-add-menu"]')).toBeNull();
 
     const textAdd = container.querySelector(`[data-testid="texts-add-${sampleProject.initialSceneId}"]`) as HTMLButtonElement | null;
     expect(textAdd).not.toBeNull();
