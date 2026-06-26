@@ -12,6 +12,6 @@ describe('input maps panel spacing', () => {
 
     expect(component).toContain('className="panel-section input-maps-panel-section"');
     expect(css).toMatch(/\.panel-section\.input-maps-panel-section\s*\{/);
-    expect(css).toMatch(/margin-top:\s*0\.2rem/);
+    expect(css).toMatch(/margin-top:\s*0\.85rem/);
   });
 });
