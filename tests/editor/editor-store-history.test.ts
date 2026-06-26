@@ -158,4 +158,38 @@ describe('EditorStore history', () => {
     expect(sceneOf(undone).entities.e2.x).toBe(x2);
     expect(sceneOf(undone).entities.e2.y).toBe(y2);
   });
+
+  it('records demo pack import as a single undo step', () => {
+    const state0 = seededState();
+
+    const imported = reducer(state0, {
+      type: 'import-demo-pack-assets',
+      entries: [
+        {
+          kind: 'image',
+          assetId: 'enemy-a',
+          path: 'assets/demo-pack/images/enemy_A.png',
+          originalName: 'enemy_A.png',
+          mimeType: 'image/png',
+          width: 64,
+          height: 64,
+        },
+        {
+          kind: 'audio',
+          assetId: 'theme',
+          path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+          originalName: 'Simulacra-chosic.com_.mp3',
+          mimeType: 'audio/mpeg',
+        },
+      ],
+    } as any);
+
+    expect(imported.history.past).toHaveLength(1);
+    expect(imported.project.assets.images['enemy-a']).toBeDefined();
+    expect(imported.project.audio.sounds.theme).toBeDefined();
+
+    const undone = reducer(imported, { type: 'history-undo' } as any);
+    expect(undone.project.assets.images['enemy-a']).toBeUndefined();
+    expect(undone.project.audio.sounds.theme).toBeUndefined();
+  });
 });
