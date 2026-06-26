@@ -57,7 +57,7 @@ test('assets menu entrypoint opens a formation draft seeded with that asset @cri
   await dismissViewHint(page);
   await openSceneScope(page);
 
-  await page.getByTestId('assets-dock-device-file-input').setInputFiles('res/images/enemy_A.png');
+  await page.getByTestId('assets-dock-device-file-input').setInputFiles('assets/demo-pack/images/enemy_A.png');
   await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
 
   await page.getByTestId('assets-dock-menu-image-enemy-a').click();

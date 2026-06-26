@@ -47,6 +47,7 @@ import { measureTextEntityPixels, resolveTextEntityDefaults, resolveTextFontFami
 import { allocDuplicateName } from './duplicateNaming';
 import { type ProjectSyncMode, type StoredProjectRecord, buildStoredProjectRecord, projectPersistence } from './projectPersistence';
 import type { ProjectLibraryEntry } from './projectLibrary';
+import type { DemoPackAssetManifestEntry } from './demoPackAssets';
 import { getGame, listGames, me } from '../cloud/api';
 import {
   appendProjectRevision,
@@ -281,6 +282,7 @@ export type EditorAction =
   | { type: 'add-background-layer-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; defaults?: { layout?: BackgroundLayerSpec['layout'] } }
   | { type: 'add-image-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string; width?: number; height?: number } }
   | { type: 'ensure-image-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string; width?: number; height?: number } }
+  | { type: 'import-demo-pack-assets'; entries: DemoPackAssetManifestEntry[] }
   | { type: 'add-spritesheet-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string }; grid: { frameWidth: number; frameHeight: number; columns: number; rows: number } }
   | { type: 'add-font-asset-from-file'; file: { dataUrl: string; originalName?: string; mimeType?: string } }
   | { type: 'ensure-font-asset-from-file'; assetId: Id; file: { dataUrl: string; originalName?: string; mimeType?: string } }
@@ -422,6 +424,98 @@ function assetIdBaseFromOriginalName(name: string | undefined, fallbackBase: str
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+/, '')
     .replace(/-+$/, '') || 'background';
+}
+
+function assetDisplayNameFromOriginalName(name: string | undefined, fallbackName: string): string | undefined {
+  const rawName = (name ?? fallbackName).replace(/\.[a-z0-9]+$/i, '').trim();
+  return rawName || undefined;
+}
+
+function createImageAssetSpec(
+  assetId: Id,
+  source: AssetFileSource,
+  originalName: string | undefined,
+  width?: number,
+  height?: number,
+) {
+  const name = assetDisplayNameFromOriginalName(originalName, assetId);
+  return {
+    id: assetId,
+    ...(name ? { name } : {}),
+    ...(typeof width === 'number' && Number.isFinite(width) && width > 0 ? { width } : {}),
+    ...(typeof height === 'number' && Number.isFinite(height) && height > 0 ? { height } : {}),
+    source,
+  };
+}
+
+function createFontAssetSpec(assetId: Id, source: AssetFileSource, originalName: string | undefined) {
+  const name = assetDisplayNameFromOriginalName(originalName, assetId);
+  return {
+    id: assetId,
+    ...(name ? { name } : {}),
+    source,
+  };
+}
+
+function createAudioAssetSpec(assetId: Id, source: AssetFileSource, originalName: string | undefined) {
+  return {
+    id: assetId,
+    source,
+  };
+}
+
+function importDemoPackAssets(state: EditorState, entries: DemoPackAssetManifestEntry[]): EditorState {
+  let changed = false;
+  const images = { ...(state.project.assets.images ?? {}) };
+  const fonts = { ...(state.project.assets.fonts ?? {}) };
+  const sounds = { ...(state.project.audio?.sounds ?? {}) };
+
+  for (const entry of entries) {
+    const source = {
+      kind: 'path' as const,
+      path: entry.path,
+      originalName: entry.originalName,
+      mimeType: entry.mimeType,
+    };
+
+    if (entry.kind === 'image') {
+      if (images[entry.assetId]) continue;
+      images[entry.assetId] = createImageAssetSpec(entry.assetId, source, entry.originalName, entry.width, entry.height);
+      changed = true;
+      continue;
+    }
+
+    if (entry.kind === 'font') {
+      if (fonts[entry.assetId]) continue;
+      fonts[entry.assetId] = createFontAssetSpec(entry.assetId, source, entry.originalName);
+      changed = true;
+      continue;
+    }
+
+    if (sounds[entry.assetId]) continue;
+    sounds[entry.assetId] = createAudioAssetSpec(entry.assetId, source, entry.originalName);
+    changed = true;
+  }
+
+  if (!changed) return state;
+
+  return {
+    ...state,
+    project: {
+      ...state.project,
+      assets: {
+        ...state.project.assets,
+        images,
+        fonts,
+      },
+      audio: {
+        ...state.project.audio,
+        sounds,
+      },
+    },
+    dirty: true,
+    error: undefined,
+  };
 }
 
 function removeGroupKeepMembers(
@@ -765,6 +859,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'load-project':
     case 'add-background-layer-from-file':
     case 'add-image-asset-from-file':
+    case 'import-demo-pack-assets':
     case 'add-spritesheet-asset-from-file':
     case 'add-font-asset-from-file':
     case 'ensure-font-asset-from-file':
@@ -809,6 +904,7 @@ function getHistoryScope(action: EditorAction): HistoryScope {
     case 'clear-scene':
     case 'add-background-layer-from-file':
     case 'add-image-asset-from-file':
+    case 'import-demo-pack-assets':
     case 'add-spritesheet-asset-from-file':
     case 'add-font-asset-from-file':
     case 'ensure-font-asset-from-file':
@@ -1543,21 +1639,19 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const sounds = state.project.audio?.sounds ?? {};
       const base = assetIdBaseFromOriginalName(action.file.originalName, 'sound');
       const assetId = allocUniqueId(sounds, base);
+      const source: AssetFileSource = {
+        kind: 'embedded',
+        dataUrl: action.file.dataUrl,
+        ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+        ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+      };
       const nextProject: ProjectSpec = {
         ...state.project,
         audio: {
           ...state.project.audio,
           sounds: {
             ...sounds,
-            [assetId]: {
-              id: assetId,
-              source: {
-                kind: 'embedded',
-                dataUrl: action.file.dataUrl,
-                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
-                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
-              },
-            },
+            [assetId]: createAudioAssetSpec(assetId, source, action.file.originalName),
           },
         },
       };
@@ -1573,21 +1667,19 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       if (!assetId) return state;
       const sounds = state.project.audio?.sounds ?? {};
       if (sounds[assetId]) return state;
+      const source: AssetFileSource = {
+        kind: 'embedded',
+        dataUrl: action.file.dataUrl,
+        ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+        ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+      };
       const nextProject: ProjectSpec = {
         ...state.project,
         audio: {
           ...state.project.audio,
           sounds: {
             ...sounds,
-            [assetId]: {
-              id: assetId,
-              source: {
-                kind: 'embedded',
-                dataUrl: action.file.dataUrl,
-                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
-                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
-              },
-            },
+            [assetId]: createAudioAssetSpec(assetId, source, action.file.originalName),
           },
         },
       };
@@ -1848,27 +1940,19 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const images = state.project.assets.images ?? {};
       const base = assetIdBaseFromOriginalName(action.file.originalName, 'image');
       const assetId = allocUniqueId(images, base);
-      const rawName = (action.file.originalName ?? '').replace(/\.[a-z0-9]+$/i, '').trim();
-      const width = action.file.width;
-      const height = action.file.height;
+      const source: AssetFileSource = {
+        kind: 'embedded',
+        dataUrl: action.file.dataUrl,
+        ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+        ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+      };
       const nextProject: ProjectSpec = {
         ...state.project,
         assets: {
           ...state.project.assets,
           images: {
             ...images,
-            [assetId]: {
-              id: assetId,
-              ...(rawName ? { name: rawName } : {}),
-              ...(typeof width === 'number' && Number.isFinite(width) && width > 0 ? { width } : {}),
-              ...(typeof height === 'number' && Number.isFinite(height) && height > 0 ? { height } : {}),
-              source: {
-                kind: 'embedded',
-                dataUrl: action.file.dataUrl,
-                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
-                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
-              },
-            },
+            [assetId]: createImageAssetSpec(assetId, source, action.file.originalName, action.file.width, action.file.height),
           },
         },
       };
@@ -1879,32 +1963,26 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       if (!assetId) return state;
       const images = state.project.assets.images ?? {};
       if (images[assetId]) return state;
-      const rawName = (action.file.originalName ?? assetId).replace(/\.[a-z0-9]+$/i, '').trim();
-      const width = action.file.width;
-      const height = action.file.height;
+      const source: AssetFileSource = {
+        kind: 'embedded',
+        dataUrl: action.file.dataUrl,
+        ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+        ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+      };
       const nextProject: ProjectSpec = {
         ...state.project,
         assets: {
           ...state.project.assets,
           images: {
             ...images,
-            [assetId]: {
-              id: assetId,
-              ...(rawName ? { name: rawName } : {}),
-              ...(typeof width === 'number' && Number.isFinite(width) && width > 0 ? { width } : {}),
-              ...(typeof height === 'number' && Number.isFinite(height) && height > 0 ? { height } : {}),
-              source: {
-                kind: 'embedded',
-                dataUrl: action.file.dataUrl,
-                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
-                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
-              },
-            },
+            [assetId]: createImageAssetSpec(assetId, source, action.file.originalName ?? assetId, action.file.width, action.file.height),
           },
         },
       };
       return { ...state, project: nextProject, dirty: true, error: undefined };
     }
+    case 'import-demo-pack-assets':
+      return importDemoPackAssets(state, action.entries);
     case 'add-spritesheet-asset-from-file': {
       const spriteSheets = state.project.assets.spriteSheets ?? {};
       const base = assetIdBaseFromOriginalName(action.file.originalName, 'spritesheet');
@@ -1941,23 +2019,19 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const fonts = state.project.assets.fonts ?? {};
       const base = assetIdBaseFromOriginalName(action.file.originalName, 'font');
       const assetId = allocUniqueId(fonts, base);
-      const rawName = (action.file.originalName ?? '').replace(/\.[a-z0-9]+$/i, '').trim();
+      const source: AssetFileSource = {
+        kind: 'embedded',
+        dataUrl: action.file.dataUrl,
+        ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+        ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+      };
       const nextProject: ProjectSpec = {
         ...state.project,
         assets: {
           ...state.project.assets,
           fonts: {
             ...fonts,
-            [assetId]: {
-              id: assetId,
-              ...(rawName ? { name: rawName } : {}),
-              source: {
-                kind: 'embedded',
-                dataUrl: action.file.dataUrl,
-                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
-                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
-              },
-            },
+            [assetId]: createFontAssetSpec(assetId, source, action.file.originalName),
           },
         },
       };
@@ -1968,23 +2042,19 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       if (!assetId) return state;
       const fonts = state.project.assets.fonts ?? {};
       if (fonts[assetId]) return state;
-      const rawName = (action.file.originalName ?? assetId).replace(/\.[a-z0-9]+$/i, '').trim();
+      const source: AssetFileSource = {
+        kind: 'embedded',
+        dataUrl: action.file.dataUrl,
+        ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
+        ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
+      };
       const nextProject: ProjectSpec = {
         ...state.project,
         assets: {
           ...state.project.assets,
           fonts: {
             ...fonts,
-            [assetId]: {
-              id: assetId,
-              ...(rawName ? { name: rawName } : {}),
-              source: {
-                kind: 'embedded',
-                dataUrl: action.file.dataUrl,
-                ...(action.file.originalName ? { originalName: action.file.originalName } : {}),
-                ...(action.file.mimeType ? { mimeType: action.file.mimeType } : {}),
-              },
-            },
+            [assetId]: createFontAssetSpec(assetId, source, action.file.originalName ?? assetId),
           },
         },
       };

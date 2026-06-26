@@ -25,7 +25,7 @@ test.describe('Assets dock', () => {
 
     await expect(page.getByTestId('assets-dock-show-thumbnails')).toBeVisible();
 
-    await page.getByTestId('assets-dock-device-file-input').setInputFiles('res/images/enemy_A.png');
+    await page.getByTestId('assets-dock-device-file-input').setInputFiles('assets/demo-pack/images/enemy_A.png');
 
     await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
 
@@ -74,7 +74,7 @@ test.describe('Assets dock', () => {
     await dismissViewHint(page);
     await openSceneScope(page);
 
-    await page.getByTestId('assets-dock-device-file-input').setInputFiles('res/images/enemy_A.png');
+    await page.getByTestId('assets-dock-device-file-input').setInputFiles('assets/demo-pack/images/enemy_A.png');
     await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
 
     await page.getByTestId('fit-view-button').click();
@@ -123,7 +123,7 @@ test.describe('Assets dock', () => {
     await dismissViewHint(page);
     await openSceneScope(page);
 
-    await page.getByTestId('assets-dock-device-file-input').setInputFiles('res/images/enemy_A.png');
+    await page.getByTestId('assets-dock-device-file-input').setInputFiles('assets/demo-pack/images/enemy_A.png');
     await expect(page.getByTestId('assets-dock-item-image-enemy-a')).toBeVisible();
     // Ensure the image exists in state before dragging (some engines render the list row before state settles).
     await expect.poll(async () => {
@@ -156,7 +156,7 @@ test.describe('Assets dock', () => {
     // Fit view so the sprite is guaranteed to be visible/hit-testable in all engines.
     await page.getByTestId('fit-view-button').click();
 
-    await page.getByTestId('assets-dock-device-file-input').setInputFiles('res/images/meteor_large.png');
+    await page.getByTestId('assets-dock-device-file-input').setInputFiles('assets/demo-pack/images/meteor_large.png');
     await expect(page.getByTestId('assets-dock-item-image-meteor-large')).toBeVisible();
     // Wait for the imported image asset to be present in state (WebKit can render the list item before metadata/state lands).
     await expect.poll(async () => {

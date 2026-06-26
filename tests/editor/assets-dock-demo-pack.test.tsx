@@ -4,16 +4,6 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/editor/imageMetadata', () => ({
-  loadImageMetadataFromFile: vi.fn(async (_file: File, dataUrl: string) => ({
-    src: dataUrl,
-    name: 'demo',
-    mimeType: 'image/png',
-    width: 16,
-    height: 16,
-  })),
-}));
-
 import { AssetsDock } from '../../src/editor/AssetsDock';
 
 function renderIntoDom(element: React.ReactElement) {
@@ -46,30 +36,9 @@ describe('AssetsDock demo pack import', () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = undefined;
   });
 
-  it('imports supported demo pack images and audio without a missing helper error', async () => {
+  it('imports supported demo pack assets as one path-backed batch', async () => {
     const dispatch = vi.fn();
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const url = String(input);
-      const blob = url.endsWith('.mp3')
-        ? new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/mpeg' })
-        : url.endsWith('.ogg')
-          ? new Blob([new Uint8Array([4, 5, 6])], { type: 'audio/ogg' })
-          : url.endsWith('.wav')
-            ? new Blob([new Uint8Array([7, 8, 9])], { type: 'audio/wav' })
-            : url.endsWith('.woff2')
-              ? new Blob([new Uint8Array([10, 11, 12])], { type: 'font/woff2' })
-              : url.endsWith('.woff')
-                ? new Blob([new Uint8Array([13, 14, 15])], { type: 'font/woff' })
-                : url.endsWith('.ttf')
-                  ? new Blob([new Uint8Array([16, 17, 18])], { type: 'font/ttf' })
-                  : url.endsWith('.otf')
-                    ? new Blob([new Uint8Array([19, 20, 21])], { type: 'font/otf' })
-                    : new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' });
-      return {
-        ok: true,
-        blob: async () => blob,
-      } as Response;
-    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     const view = renderIntoDom(
       <AssetsDock
@@ -95,27 +64,27 @@ describe('AssetsDock demo pack import', () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
 
-      expect(fetchSpy).toHaveBeenCalled();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(dispatch).toHaveBeenCalledTimes(1);
       expect(dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'ensure-image-asset-from-file',
-          file: expect.objectContaining({
-            dataUrl: expect.stringContaining('data:image/png;base64,'),
-            mimeType: 'image/png',
-            width: 16,
-            height: 16,
-          }),
+          type: 'import-demo-pack-assets',
+          entries: expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'image',
+              path: 'assets/demo-pack/images/enemy_A.png',
+              mimeType: 'image/png',
+              width: 64,
+              height: 64,
+            }),
+            expect.objectContaining({
+              kind: 'audio',
+              path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+              mimeType: 'audio/mpeg',
+            }),
+          ]),
         }),
       );
-      expect(dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'ensure-audio-asset-from-file',
-          file: expect.objectContaining({
-            dataUrl: expect.stringMatching(/^data:audio\/(mpeg|ogg|wav);base64,/),
-          }),
-        }),
-      );
-      expect(document.body.textContent).not.toContain('readUrlAsDataUrl is not defined');
       expect(document.body.textContent).not.toContain('Failed to import demo pack');
     } finally {
       fetchSpy.mockRestore();
