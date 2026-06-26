@@ -2,93 +2,17 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import type { ProjectSpec } from '../model/types';
 import type { EditorAction, Selection } from './EditorStore';
 import { getAssetReferences, type AssetKind } from './assetReferences';
-import { assetIdBaseFromOriginalName, getDemoPackAssetKind } from './demoPackAssets';
+import { DEMO_PACK_ASSET_MANIFEST } from './demoPackAssets';
 import { ASSET_DRAG_MIME } from './dragAssets';
 import { fileToDataUrl } from './fileDataUrl';
 import { loadImageMetadataFromFile, type LoadedImageMetadata } from './imageMetadata';
 import { projectPersistence } from './projectPersistence';
 import { inlinePreviewUrlForAssetSource } from '../cloud/assetUrls';
 
-const DEMO_PACK_ASSETS = {
-  ...import.meta.glob('../../res/images/*.png', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/images/*.jpg', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/images/*.jpeg', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/images/*.webp', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/audio/*.mp3', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/audio/*.ogg', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/audio/*.wav', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/fonts/*.ttf', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/fonts/*.otf', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/fonts/*.woff', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-  ...import.meta.glob('../../res/fonts/*.woff2', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-} as Record<string, string>;
-
-const DEMO_PACK_FONT_EXTENSIONS = /\.(ttf|otf|woff|woff2)$/i;
-
-const DEMO_PACK_IMAGE_EXTENSIONS = /\.(png|jpg|jpeg|webp)$/i;
-
-const DEMO_PACK_AUDIO_EXTENSIONS = /\.(mp3|ogg|wav)$/i;
-
 const DEVICE_FONT_EXTENSIONS = /\.(ttf|otf|woff|woff2)$/i;
 
 function isFontFilename(name: string): boolean {
   return DEVICE_FONT_EXTENSIONS.test(name);
-}
-
-function isDemoPackImageFilename(path: string): boolean {
-  return DEMO_PACK_IMAGE_EXTENSIONS.test(path);
-}
-
-function isDemoPackAudioFilename(path: string): boolean {
-  return DEMO_PACK_AUDIO_EXTENSIONS.test(path);
-}
-
-function isDemoPackFontFilename(path: string): boolean {
-  return DEMO_PACK_FONT_EXTENSIONS.test(path);
 }
 
 async function readAsDataUrl(file: File): Promise<string> {
@@ -124,14 +48,6 @@ function usageBadgesForAudio(project: ProjectSpec, assetId: string): Array<'MUS'
     ...(hasMusic ? ['MUS' as const] : []),
     ...(hasAmb ? ['AMB' as const] : []),
   ];
-}
-
-async function readUrlAsDataUrl(url: string): Promise<{ dataUrl: string; mimeType?: string }> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to load asset (${res.status})`);
-  const blob = await res.blob();
-  const file = new File([blob], url.split('/').pop() ?? 'asset', { type: blob.type || undefined });
-  return { dataUrl: await readAsDataUrl(file), ...(blob.type ? { mimeType: blob.type } : {}) };
 }
 
 export function AssetsDock({
@@ -255,40 +171,7 @@ export function AssetsDock({
     if (demoPackImporting) return;
     setDemoPackImporting(true);
     try {
-      const urls = Object.entries(DEMO_PACK_ASSETS)
-        .map(([path, url]) => ({ path, url }))
-        .sort((a, b) => a.path.localeCompare(b.path));
-      for (const { path, url } of urls) {
-        const kind = getDemoPackAssetKind(path);
-        if (!kind) continue;
-        const filename = path.split('/').pop() ?? 'image.png';
-        const { dataUrl, mimeType } = await readUrlAsDataUrl(url);
-        if (kind === 'image' && isDemoPackImageFilename(path)) {
-          const assetId = assetIdBaseFromOriginalName(filename, 'image');
-          const meta = toLoadedImage(await loadImageMetadataFromFile(new File([], filename), dataUrl));
-          dispatch({
-            type: 'ensure-image-asset-from-file',
-            assetId,
-            file: { dataUrl, originalName: filename, mimeType, width: meta.width, height: meta.height },
-          } as any);
-          continue;
-        }
-        if (kind === 'audio' && isDemoPackAudioFilename(path)) {
-          dispatch({
-            type: 'ensure-audio-asset-from-file',
-            assetId: assetIdBaseFromOriginalName(filename, 'sound'),
-            file: { dataUrl, originalName: filename, mimeType },
-          } as any);
-          continue;
-        }
-        if (kind === 'font' && isDemoPackFontFilename(path)) {
-          dispatch({
-            type: 'ensure-font-asset-from-file',
-            assetId: assetIdBaseFromOriginalName(filename, 'font'),
-            file: { dataUrl, originalName: filename, mimeType },
-          } as any);
-        }
-      }
+      dispatch({ type: 'import-demo-pack-assets', entries: DEMO_PACK_ASSET_MANIFEST } as any);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Failed to import demo pack');
     } finally {

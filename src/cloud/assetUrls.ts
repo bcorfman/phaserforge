@@ -1,4 +1,5 @@
 import type { AssetFileSource } from '../model/types';
+import { resolveProjectAssetPathToUrl } from '../assets/projectAssetPaths';
 import { resolveApiUrl } from './api';
 
 const cloudAssetUrlCache = new Map<string, Promise<string | null>>();
@@ -20,13 +21,13 @@ export function assetSourceKey(source: AssetFileSource): string {
 
 export function inlinePreviewUrlForAssetSource(source: AssetFileSource): string {
   if (source.kind === 'embedded') return source.dataUrl;
-  if (source.kind === 'path') return source.path;
+  if (source.kind === 'path') return resolveProjectAssetPathToUrl(source.path);
   return '';
 }
 
 export async function resolveAssetSourceUrl(source: AssetFileSource): Promise<string | null> {
   if (source.kind === 'embedded') return source.dataUrl;
-  if (source.kind === 'path') return source.path;
+  if (source.kind === 'path') return resolveProjectAssetPathToUrl(source.path);
 
   let pending = cloudAssetUrlCache.get(source.assetId);
   if (!pending) {

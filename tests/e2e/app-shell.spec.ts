@@ -141,7 +141,7 @@ test('imports embedded sprites into the scene @critical', async ({ page }) => {
   await gotoStudio(page);
   await openSceneScope(page);
 
-  const { assetId: imageAssetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  const { assetId: imageAssetId } = await importImageAssetFromFile(page, 'assets/demo-pack/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', imageAssetId);
 
   await expect.poll(async () => {
@@ -167,7 +167,7 @@ test('imports embedded sprites into the scene @critical', async ({ page }) => {
 test('removes an imported sprite from the scene graph @critical', async ({ page }) => {
   await gotoStudio(page);
   await openSceneScope(page);
-  const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  const { assetId } = await importImageAssetFromFile(page, 'assets/demo-pack/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', assetId);
 
   const entityId = await page.evaluate(() => {
