@@ -159,6 +159,63 @@ describe('EditorStore assets actions', () => {
     });
   });
 
+  it('imports demo pack assets as path-backed library entries and is idempotent', () => {
+    const state = initState();
+    const action = {
+      type: 'import-demo-pack-assets',
+      entries: [
+        {
+          kind: 'image',
+          assetId: 'enemy-a',
+          path: 'assets/demo-pack/images/enemy_A.png',
+          originalName: 'enemy_A.png',
+          mimeType: 'image/png',
+          width: 64,
+          height: 64,
+        },
+        {
+          kind: 'audio',
+          assetId: 'theme',
+          path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+          originalName: 'Simulacra-chosic.com_.mp3',
+          mimeType: 'audio/mpeg',
+        },
+        {
+          kind: 'font',
+          assetId: 'arcade',
+          path: 'assets/demo-pack/fonts/Arcade.woff2',
+          originalName: 'Arcade.woff2',
+          mimeType: 'font/woff2',
+        },
+      ],
+    } as any;
+
+    const imported = reducer(state, action);
+
+    expect(imported.project.assets.images['enemy-a']).toMatchObject({
+      id: 'enemy-a',
+      width: 64,
+      height: 64,
+      source: {
+        kind: 'path',
+        path: 'assets/demo-pack/images/enemy_A.png',
+        originalName: 'enemy_A.png',
+        mimeType: 'image/png',
+      },
+    });
+    expect(imported.project.audio.sounds.theme.source).toMatchObject({
+      kind: 'path',
+      path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+    });
+    expect(imported.project.assets.fonts.arcade.source).toMatchObject({
+      kind: 'path',
+      path: 'assets/demo-pack/fonts/Arcade.woff2',
+    });
+
+    const reimported = reducer(imported, action);
+    expect(reimported).toBe(imported);
+  });
+
   it('reassigns an entity sprite asset without creating a new entity', () => {
     const state = initState();
     const withPlayer = reducer(state, {

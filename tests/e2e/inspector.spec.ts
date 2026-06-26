@@ -303,7 +303,7 @@ test('creates a formation from imported sprites and arranges it into a grid @cri
 
 test('assigns a MoveUntil action to an imported sprite @critical', async ({ page }) => {
   await resetScene(page);
-  const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  const { assetId } = await importImageAssetFromFile(page, 'assets/demo-pack/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', assetId);
   await openSceneScope(page);
   await expect.poll(async () => {
@@ -334,8 +334,8 @@ test('assigns a MoveUntil action to an imported sprite @critical', async ({ page
 
 test('reassigns a sprite asset from another sprite via the inspector @critical', async ({ page }) => {
   await resetScene(page);
-  const { assetId: assetA } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
-  const { assetId: assetB } = await importImageAssetFromFile(page, 'res/images/enemy_B.png');
+  const { assetId: assetA } = await importImageAssetFromFile(page, 'assets/demo-pack/images/enemy_A.png');
+  const { assetId: assetB } = await importImageAssetFromFile(page, 'assets/demo-pack/images/enemy_B.png');
   await dragAssetToCanvas(page, 'image', assetA, { targetPosition: { x: 200, y: 160 } });
   await dragAssetToCanvas(page, 'image', assetB, { targetPosition: { x: 320, y: 160 } });
 
@@ -461,7 +461,7 @@ test('preview uses edited move velocity and bounce behavior @critical', async ({
 
 test('preview bounce reaches configured bounds edge before reversing @critical', async ({ page }) => {
   await resetScene(page);
-  const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  const { assetId } = await importImageAssetFromFile(page, 'assets/demo-pack/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', assetId);
   await openSceneScope(page);
   let entityId: string | null = null;
@@ -525,7 +525,7 @@ test('preview bounce reaches configured bounds edge before reversing @critical',
 
 test('preview applies wrap behavior for an imported sprite move action @critical', async ({ page }) => {
   await resetScene(page);
-  const { assetId } = await importImageAssetFromFile(page, 'res/images/enemy_A.png');
+  const { assetId } = await importImageAssetFromFile(page, 'assets/demo-pack/images/enemy_A.png');
   await dragAssetToCanvas(page, 'image', assetId);
   await openSceneScope(page);
   let entityId: string | null = null;
