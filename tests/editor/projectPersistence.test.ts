@@ -554,6 +554,50 @@ describe('projectPersistence steady-state storage', () => {
     expect(materializeProjectRevision(revisions, storedNewestRevision.id)).toEqual(newerProject);
   });
 
+  it('persists archived revisions separately from visible history revisions', async () => {
+    const baseProject = createEmptyProject();
+    baseProject.title = 'Base';
+    const oldProject = structuredClone(baseProject);
+    oldProject.title = 'Old Candidate';
+    const currentProject = structuredClone(oldProject);
+    currentProject.title = 'Current';
+
+    const oldestRevision = createProjectRevision(baseProject, {
+      id: 'rev-oldest',
+      updatedAt: '2026-05-18T12:00:00.000Z',
+    });
+    const oldRevision = createProjectRevision(oldProject, {
+      id: 'rev-old',
+      updatedAt: '2026-05-21T12:00:00.000Z',
+    });
+    const currentRevision = createProjectRevision(currentProject, {
+      id: 'rev-current',
+      updatedAt: '2026-06-24T12:00:00.000Z',
+    });
+    const seededRevisions = appendProjectRevision(
+      appendProjectRevision([oldestRevision], oldRevision, 25),
+      currentRevision,
+      25,
+    );
+    const seededRecord = buildStoredProjectRecord(currentProject, {
+      id: 'project-with-archive',
+      revisions: seededRevisions,
+    });
+
+    await projectPersistence.saveProjectRecord(seededRecord);
+    const updated = await projectPersistence.updateProjectHistoryRetention('project-with-archive', {
+      archiveRevisionIds: ['rev-old', 'rev-oldest'],
+    });
+
+    expect(updated?.revisions?.map((revision) => revision.id)).toEqual(['rev-current']);
+    expect(updated?.archivedRevisions?.map((revision) => revision.id)).toEqual(['rev-old', 'rev-oldest']);
+
+    const loaded = await projectPersistence.loadProjectById('project-with-archive');
+    expect(loaded?.revisions?.map((revision) => revision.id)).toEqual(['rev-current']);
+    expect(loaded?.archivedRevisions?.map((revision) => revision.id)).toEqual(['rev-old', 'rev-oldest']);
+    expect(materializeProjectRevision(loaded?.archivedRevisions ?? [], 'rev-old')?.title).toBe('Old Candidate');
+  });
+
   it('repairs broken revision chains on load by rebuilding recoverable history from the stored project head', async () => {
     const baseProject = createEmptyProject();
     baseProject.id = 'project-1';

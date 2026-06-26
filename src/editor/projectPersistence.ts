@@ -3,7 +3,15 @@ import { createEmptyProject } from '../model/emptyProject';
 import { projectsSemanticallyEqual } from '../model/projectCanonical';
 import type { ProjectSpec, StartupMode } from '../model/types';
 import { validateProjectSpec } from '../model/validation';
-import { appendProjectRevision, createProjectRevision, materializeProjectRevision, type ProjectRevisionRecord } from './projectTreeHistory';
+import {
+  appendProjectRevision,
+  archiveProjectHistoryRevisions,
+  createProjectRevision,
+  deleteProjectHistoryRevisions,
+  materializeProjectRevision,
+  rebuildProjectRevisions,
+  type ProjectRevisionRecord,
+} from './projectTreeHistory';
 import { createSerializedAsyncQueue } from './serializedAsyncQueue';
 import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
 import type { ViewState } from '../util/viewStateStorage';
@@ -38,6 +46,7 @@ export type StoredProjectRecord = {
   syncStatus: StoredProjectSyncStatus;
   cloudProjectId?: string;
   revisions?: ProjectRevisionRecord[];
+  archivedRevisions?: ProjectRevisionRecord[];
 };
 
 export type WorkspaceStateRecord = {
@@ -256,6 +265,7 @@ export function buildStoredProjectRecord(
     syncStatus?: StoredProjectSyncStatus;
     cloudProjectId?: string;
     revisions?: ProjectRevisionRecord[];
+    archivedRevisions?: ProjectRevisionRecord[];
   }
 ): StoredProjectRecord {
   return {
@@ -270,56 +280,40 @@ export function buildStoredProjectRecord(
     syncStatus: options?.syncStatus ?? 'local',
     cloudProjectId: options?.cloudProjectId,
     revisions: options?.revisions ?? [createProjectRevision(project)],
+    archivedRevisions: options?.archivedRevisions ?? [],
   };
 }
 
 function normalizeStoredProjectRevisions(
   project: ProjectSpec,
   revisions: ProjectRevisionRecord[] | undefined,
+  options?: { fallbackToCurrentProject?: boolean; enforceLatestMatchesProject?: boolean },
 ): ProjectRevisionRecord[] {
+  const fallbackToCurrentProject = options?.fallbackToCurrentProject ?? true;
+  const enforceLatestMatchesProject = options?.enforceLatestMatchesProject ?? true;
   if (!Array.isArray(revisions) || revisions.length === 0) {
-    return [createProjectRevision(project)];
+    return fallbackToCurrentProject ? [createProjectRevision(project)] : [];
   }
 
   const originalRevisions = revisions.filter(Boolean);
-  if (originalRevisions.length === 0) return [createProjectRevision(project)];
+  if (originalRevisions.length === 0) return fallbackToCurrentProject ? [createProjectRevision(project)] : [];
 
-  const recoverableOldestToNewest = [...originalRevisions]
-    .reverse()
-    .map((revision) => ({
-      revision,
-      project: materializeProjectRevision(originalRevisions, revision.id),
-    }))
-    .filter((entry): entry is { revision: ProjectRevisionRecord; project: ProjectSpec } => Boolean(entry.project));
-
-  const latestRevision = originalRevisions[0];
-  const latestMaterialized = materializeProjectRevision(originalRevisions, latestRevision.id);
-  const latestMatchesStoredProject = latestMaterialized && projectsSemanticallyEqual(latestMaterialized, project);
-
-  if (!latestMatchesStoredProject) {
-    const lastRecoverable = recoverableOldestToNewest[recoverableOldestToNewest.length - 1];
-    if (lastRecoverable?.revision.id === latestRevision.id) {
-      recoverableOldestToNewest.pop();
+  let workingRevisions = originalRevisions;
+  if (enforceLatestMatchesProject) {
+    const latestRevision = originalRevisions[0];
+    const latestMaterialized = materializeProjectRevision(originalRevisions, latestRevision.id);
+    const latestMatchesStoredProject = latestMaterialized && projectsSemanticallyEqual(latestMaterialized, project);
+    if (!latestMatchesStoredProject) {
+      workingRevisions = [createProjectRevision(project, {
+        id: latestRevision.id,
+        updatedAt: latestRevision.updatedAt,
+        reason: latestRevision.reason,
+      }), ...originalRevisions.slice(1)];
     }
-    recoverableOldestToNewest.push({
-      revision: latestRevision,
-      project: cloneProject(project),
-    });
   }
 
-  if (recoverableOldestToNewest.length === 0) {
-    return [createProjectRevision(project)];
-  }
-
-  let rebuilt: ProjectRevisionRecord[] = [];
-  for (const entry of recoverableOldestToNewest) {
-    rebuilt = appendProjectRevision(rebuilt, createProjectRevision(entry.project, {
-      id: entry.revision.id,
-      updatedAt: entry.revision.updatedAt,
-      reason: entry.revision.reason,
-    }), originalRevisions.length);
-  }
-  return rebuilt;
+  const rebuilt = rebuildProjectRevisions(workingRevisions, fallbackToCurrentProject ? project : undefined);
+  return rebuilt.length === 0 && fallbackToCurrentProject ? [createProjectRevision(project)] : rebuilt;
 }
 
 function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectRecord {
@@ -327,6 +321,10 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
     return {
       ...record,
       revisions: normalizeStoredProjectRevisions(record.project, record.revisions),
+      archivedRevisions: normalizeStoredProjectRevisions(record.project, record.archivedRevisions, {
+        fallbackToCurrentProject: false,
+        enforceLatestMatchesProject: false,
+      }),
     };
   }
   if (Array.isArray(record.revisions) && record.revisions.length > 0) {
@@ -336,6 +334,10 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
         ...record,
         project: latestProject,
         revisions: normalizeStoredProjectRevisions(latestProject, record.revisions),
+        archivedRevisions: normalizeStoredProjectRevisions(latestProject, record.archivedRevisions, {
+          fallbackToCurrentProject: false,
+          enforceLatestMatchesProject: false,
+        }),
       };
     }
   }
@@ -345,6 +347,10 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
       ...record,
       project,
       revisions: normalizeStoredProjectRevisions(project, record.revisions),
+      archivedRevisions: normalizeStoredProjectRevisions(project, record.archivedRevisions, {
+        fallbackToCurrentProject: false,
+        enforceLatestMatchesProject: false,
+      }),
     };
   }
   const project = createEmptyProject();
@@ -352,6 +358,10 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
     ...record,
     project,
     revisions: normalizeStoredProjectRevisions(project, record.revisions),
+    archivedRevisions: normalizeStoredProjectRevisions(project, record.archivedRevisions, {
+      fallbackToCurrentProject: false,
+      enforceLatestMatchesProject: false,
+    }),
   };
 }
 
@@ -959,6 +969,51 @@ export const projectPersistence = {
       revisions: appendProjectRevision(existing.revisions, revision),
     } satisfies StoredProjectRecord;
     await upsertProjectRecord(next);
+    return next;
+  },
+
+  async updateProjectHistoryRetention(
+    projectId: string,
+    options: { archiveRevisionIds?: string[]; deleteRevisionIds?: string[] },
+  ): Promise<StoredProjectRecord | null> {
+    const existing = await getProjectRecord(projectId);
+    if (!existing) return null;
+
+    const archiveRevisionIds = options.archiveRevisionIds ?? [];
+    const deleteRevisionIds = options.deleteRevisionIds ?? [];
+    let nextHistory = {
+      revisions: existing.revisions ?? [],
+      archivedRevisions: existing.archivedRevisions ?? [],
+    };
+
+    if (archiveRevisionIds.length > 0) {
+      nextHistory = archiveProjectHistoryRevisions({
+        activeRevisions: nextHistory.revisions,
+        archivedRevisions: nextHistory.archivedRevisions,
+        revisionIds: archiveRevisionIds,
+        currentProject: existing.project,
+      });
+    }
+
+    if (deleteRevisionIds.length > 0) {
+      nextHistory = deleteProjectHistoryRevisions({
+        activeRevisions: nextHistory.revisions,
+        archivedRevisions: nextHistory.archivedRevisions,
+        revisionIds: deleteRevisionIds,
+        currentProject: existing.project,
+      });
+    }
+
+    const next = {
+      ...existing,
+      revisions: nextHistory.revisions,
+      archivedRevisions: nextHistory.archivedRevisions,
+    } satisfies StoredProjectRecord;
+    const workspace = await getWorkspaceState({ awaitPendingWrites: true });
+    await upsertProjectRecord(next);
+    if (workspace.activeProjectId === next.id) {
+      await persistLatestActiveSnapshot(next, workspace.syncMode);
+    }
     return next;
   },
 };

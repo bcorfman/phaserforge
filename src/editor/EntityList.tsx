@@ -13,11 +13,14 @@ import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { EventBus } from '../phaser/EventBus';
 import {
+  buildProjectHistoryViewModel,
   buildCopyRevisionDefaultName,
   buildProjectTreeRows,
+  DEFAULT_PROJECT_HISTORY_WINDOW_DAYS,
   formatProjectRevisionTimestamp,
   formatProjectRevisionSummary,
   materializeProjectRevision,
+  type ProjectHistoryWindowDays,
   type ProjectRevisionRecord,
   type SidebarScope,
 } from './projectTreeHistory';
@@ -179,6 +182,8 @@ export function EntityList() {
       onExportYaml={() => void exportYamlToDisk(serializeProjectToYaml(project), { suggestedName: `${project.title?.trim() || project.id}.yaml` })}
       onToggleSyncMode={() => void persistence.toggleSyncMode()}
       onCopyRevision={(revisionId, name) => void persistence.copyRevisionToNewProject(revisionId, name)}
+      onArchiveHistoryRevisions={(revisionIds) => void persistence.archiveHistoryRevisions(revisionIds)}
+      onDeleteHistoryRevisions={(revisionIds) => void persistence.deleteHistoryRevisions(revisionIds)}
       onRestoreRevision={(revisionId) => void persistence.restoreRevision(revisionId)}
     />
   );
@@ -203,6 +208,8 @@ export function EntityListView({
   onExportYaml = () => {},
   onToggleSyncMode = () => {},
   onCopyRevision = () => {},
+  onArchiveHistoryRevisions = () => {},
+  onDeleteHistoryRevisions = () => {},
   onRestoreRevision = () => {},
 }: {
   project: ProjectSpec;
@@ -223,6 +230,8 @@ export function EntityListView({
   onExportYaml?: () => void;
   onToggleSyncMode?: () => void;
   onCopyRevision?: (revisionId: string, name: string) => void;
+  onArchiveHistoryRevisions?: (revisionIds: string[]) => void;
+  onDeleteHistoryRevisions?: (revisionIds: string[]) => void;
   onRestoreRevision?: (revisionId: string) => void;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -263,6 +272,13 @@ export function EntityListView({
   const duplicateDialogRootRef = useRef<HTMLDivElement | null>(null);
   const [copyRevisionName, setCopyRevisionName] = useState('');
   const normalizedSidebarScope = sidebarScope === 'projectRevisions' ? 'projectRevisions' : 'projectTree';
+  const [historyWindowDays, setHistoryWindowDays] = useState<ProjectHistoryWindowDays>(DEFAULT_PROJECT_HISTORY_WINDOW_DAYS);
+  const [historyRetentionDialogOpen, setHistoryRetentionDialogOpen] = useState(false);
+  const previousSidebarScopeRef = useRef<'projectTree' | 'projectRevisions'>('projectTree');
+  const historyView = buildProjectHistoryViewModel({
+    revisions,
+    windowDays: historyWindowDays,
+  });
 
   useEffect(() => {
     setExpandedScenes((prev) => ({ ...prev, [currentSceneId]: true }));
@@ -278,6 +294,19 @@ export function EntityListView({
     if (!revision) return;
     setCopyRevisionName(buildCopyRevisionDefaultName(project.title, revision));
   }, [project.title, revisionDialogs.copyRevisionId, revisions]);
+
+  useEffect(() => {
+    const previousSidebarScope = previousSidebarScopeRef.current;
+    if (normalizedSidebarScope === 'projectRevisions' && previousSidebarScope !== 'projectRevisions') {
+      setHistoryWindowDays(DEFAULT_PROJECT_HISTORY_WINDOW_DAYS);
+      setHistoryRetentionDialogOpen(historyView.staleRevisions.length > 0);
+    }
+    if (normalizedSidebarScope !== 'projectRevisions') {
+      setHistoryWindowDays(DEFAULT_PROJECT_HISTORY_WINDOW_DAYS);
+      setHistoryRetentionDialogOpen(false);
+    }
+    previousSidebarScopeRef.current = normalizedSidebarScope;
+  }, [historyView.staleRevisions.length, normalizedSidebarScope]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -689,61 +718,139 @@ export function EntityListView({
               </button>
               <h3 className="panel-heading" id="project-revisions">PROJECT REVISIONS</h3>
             </div>
+            <div
+              className="project-picker-tabs"
+              role="tablist"
+              aria-label="History filters"
+              style={{ marginBottom: 12 }}
+            >
+              {([7, 14, 30] as ProjectHistoryWindowDays[]).map((windowDays) => (
+                <button
+                  key={windowDays}
+                  type="button"
+                  className={`button button-compact ${historyWindowDays === windowDays ? 'active' : ''}`}
+                  data-testid={`project-history-filter-${windowDays}`}
+                  role="tab"
+                  aria-selected={historyWindowDays === windowDays}
+                  onClick={() => setHistoryWindowDays(windowDays)}
+                >
+                  {windowDays === 7 ? 'Past 7 Days' : `Past ${windowDays}`}
+                </button>
+              ))}
+            </div>
             <div className="member-list" data-testid="project-revisions-pane">
-              {revisions.length === 0 ? (
+              {historyView.visibleRevisions.length === 0 ? (
                 <div className="muted">No saved revisions yet.</div>
               ) : (
-                revisions.map((revision, index) => (
-                  <div key={revision.id} className="behavior-block" data-testid={`project-revision-${revision.id}`}>
-                    <button
-                      className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
-                      type="button"
-                      onClick={() => {
-                        const previewProject = materializeProjectRevision(revisions, revision.id);
-                        if (!previewProject) return;
-                        dispatch({
-                          type: 'set-revision-preview',
-                          revisionId: revision.id,
-                          project: previewProject,
-                          currentSceneId: previewProject.initialSceneId,
-                        });
-                      }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'flex-start', gap: 2 }}>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-                          {revision.title}
-                        </span>
-                        <span
-                          className="list-item-meta"
-                          style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                historyView.visibleRevisions.map((revision) => {
+                  const revisionIndex = revisions.findIndex((entry) => entry.id === revision.id);
+                  const previousRevision = revisionIndex >= 0 ? revisions[revisionIndex + 1] : undefined;
+                  return (
+                    <div key={revision.id} className="behavior-block" data-testid={`project-revision-${revision.id}`}>
+                      <button
+                        className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
+                        type="button"
+                        onClick={() => {
+                          const previewProject = materializeProjectRevision(revisions, revision.id);
+                          if (!previewProject) return;
+                          dispatch({
+                            type: 'set-revision-preview',
+                            revisionId: revision.id,
+                            project: previewProject,
+                            currentSceneId: previewProject.initialSceneId,
+                          });
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'flex-start', gap: 2 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                            {revision.title}
+                          </span>
+                          <span
+                            className="list-item-meta"
+                            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                          >
+                            {formatProjectRevisionSummary(revision, previousRevision, revisions)}
+                          </span>
+                        </div>
+                        <span className="list-item-meta">{formatProjectRevisionTimestamp(revision)}</span>
+                      </button>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button
+                          className="button button-danger"
+                          data-testid={`project-revision-restore-${revision.id}`}
+                          type="button"
+                          onClick={() => dispatch({ type: 'open-restore-revision-dialog', revisionId: revision.id })}
                         >
-                          {formatProjectRevisionSummary(revision, revisions[index + 1], revisions)}
-                        </span>
+                          Restore...
+                        </button>
+                        <button
+                          className="button"
+                          data-testid={`project-revision-copy-${revision.id}`}
+                          type="button"
+                          onClick={() => dispatch({ type: 'open-copy-revision-dialog', revisionId: revision.id })}
+                        >
+                          Copy...
+                        </button>
                       </div>
-                      <span className="list-item-meta">{formatProjectRevisionTimestamp(revision)}</span>
-                    </button>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      <button
-                        className="button button-danger"
-                        data-testid={`project-revision-restore-${revision.id}`}
-                        type="button"
-                        onClick={() => dispatch({ type: 'open-restore-revision-dialog', revisionId: revision.id })}
-                      >
-                        Restore...
-                      </button>
-                      <button
-                        className="button"
-                        data-testid={`project-revision-copy-${revision.id}`}
-                        type="button"
-                        onClick={() => dispatch({ type: 'open-copy-revision-dialog', revisionId: revision.id })}
-                      >
-                        Copy...
-                      </button>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
+            {historyRetentionDialogOpen && historyView.staleRevisions.length > 0 ? (
+              <div
+                className="scene-graph-menu"
+                style={{ position: 'fixed', left: '50%', top: '20%', transform: 'translateX(-50%)', zIndex: 60, minWidth: 460 }}
+                data-testid="project-history-retention-dialog"
+                role="dialog"
+                aria-label="Project history retention dialog"
+              >
+                <div className="scene-graph-menu-hint">Older versions found</div>
+                <div style={{ padding: '0.75rem', display: 'grid', gap: 8 }}>
+                  <div>{historyView.staleRevisions.length} project versions are older than 30 days.</div>
+                  <div>Archive keeps them in storage but hides them until archived history is added to the UI.</div>
+                  <div>Delete permanently removes them from project history.</div>
+                  <div>Cancel keeps everything unchanged.</div>
+                </div>
+                <div style={{ padding: '0 0.75rem 0.75rem 0.75rem', display: 'grid', gap: 4 }}>
+                  {historyView.staleRevisions.map((revision) => (
+                    <div key={revision.id} className="list-item-meta">{revision.title} · {formatProjectRevisionTimestamp(revision)}</div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className="button"
+                    data-testid="project-history-retention-cancel"
+                    onClick={() => setHistoryRetentionDialogOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="button"
+                    data-testid="project-history-retention-archive"
+                    onClick={() => {
+                      setHistoryRetentionDialogOpen(false);
+                      onArchiveHistoryRevisions(historyView.staleRevisions.map((revision) => revision.id));
+                    }}
+                  >
+                    Archive
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-danger"
+                    data-testid="project-history-retention-delete"
+                    onClick={() => {
+                      setHistoryRetentionDialogOpen(false);
+                      onDeleteHistoryRevisions(historyView.staleRevisions.map((revision) => revision.id));
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </section>
         </div>
       ) : (
