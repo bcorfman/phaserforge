@@ -99,6 +99,7 @@ export function InspectorPane() {
     const cachedUser = getCachedCloudAccountUserSnapshot();
     return cachedUser ? 'inspector' : 'cloud';
   });
+  const [hasWorkspaceConflict, setHasWorkspaceConflict] = useState(false);
   const userSelectedTabRef = useRef(false);
   const stabilityDebugKeyRef = useRef<string | null>(null);
 
@@ -137,6 +138,12 @@ export function InspectorPane() {
   };
 
   useEffect(() => {
+    if (!cloudEnabled) return;
+    if (!hasWorkspaceConflict) return;
+    setTab('cloud');
+  }, [cloudEnabled, hasWorkspaceConflict]);
+
+  useEffect(() => {
     if (!state.initialized) return;
     const projectId = state.project?.id;
     const currentSceneId = state.currentSceneId;
@@ -164,6 +171,7 @@ export function InspectorPane() {
           state={state}
           activeCloudGameId={activeCloudGameId}
           dispatch={dispatch}
+          onWorkspaceConflictChange={setHasWorkspaceConflict}
           onLoadYaml={(yaml, sourceLabel) => {
             appendPersistenceDebugEntry('inspector-pane:on-load-yaml-dispatch', {
               sourceLabel,

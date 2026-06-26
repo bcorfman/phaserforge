@@ -1,5 +1,5 @@
 import { type Dispatch, useEffect, useMemo, useRef, useState } from 'react';
-import { checkGithubPagesTarget, createGame, disconnectGithub, fetchCsrfToken, getGame, getGithubPagesPublishInfo, listGames, login, logout, me, publishToGithubPages, signup, updateGame, uploadEmbeddedAsset } from '../cloud/api';
+import { checkGithubPagesTarget, createGame, disconnectGithub, fetchCsrfToken, getGame, getGithubPagesPublishInfo, login, logout, me, publishToGithubPages, signup, updateGame, uploadEmbeddedAsset } from '../cloud/api';
 import { canonicalizeProjectForComparison, projectsSemanticallyEqual } from '../model/projectCanonical';
 import { serializeProjectToYaml } from '../model/serialization';
 import type { AssetFileSource, ProjectSpec } from '../model/types';
@@ -157,15 +157,17 @@ export function CloudAccountPanel({
   onLoadYaml,
   onLoadProject,
   onCloudGameLinked,
+  onWorkspaceConflictChange,
   onStatus,
   onError,
 }: {
-  state: Pick<EditorState, 'project'>;
+  state: Pick<EditorState, 'project' | 'syncMode'>;
   activeCloudGameId?: string | null;
   dispatch: Dispatch<EditorAction>;
   onLoadYaml: (yaml: string, sourceLabel: string) => void;
   onLoadProject?: (project: ProjectSpec, sourceLabel: string) => void;
   onCloudGameLinked?: (gameId: string) => void | Promise<void>;
+  onWorkspaceConflictChange?: (hasConflict: boolean) => void;
   onStatus: (message: string) => void;
   onError: (message: string) => void;
 }) {
@@ -293,6 +295,10 @@ export function CloudAccountPanel({
   }, [cloudGameId]);
 
   useEffect(() => {
+    onWorkspaceConflictChange?.(workspaceConflict != null);
+  }, [onWorkspaceConflictChange, workspaceConflict]);
+
+  useEffect(() => {
     let cancelled = false;
     if (!user) return;
     if (!cloudGameLookupResolved) return;
@@ -330,47 +336,35 @@ export function CloudAccountPanel({
           savedAtMs: null as number | null,
         };
         const mappedCloudGameId = activeCloudGameId ?? cloudGameIdRef.current;
+        if (!mappedCloudGameId) {
+          appendPersistenceDebugEntry('cloud:conflict-check-skipped-unlinked-project', {
+            stateProjectId: state.project.id,
+          });
+          return;
+        }
+        if (state.syncMode === 'online') {
+          appendPersistenceDebugEntry('cloud:conflict-check-skipped-online-autosync', {
+            stateProjectId: state.project.id,
+            cloudGameId: mappedCloudGameId,
+          });
+          return;
+        }
         let cloudLabel = 'Cloud';
         let cloudUpdatedAt = '';
         let cloudProject: ProjectSpec | null = null;
 
-        if (mappedCloudGameId) {
-          const full = await getGame(mappedCloudGameId);
-          if (!full?.game?.project) return;
-          cloudProject = full.game.project;
-          cloudUpdatedAt = full.game.updated_at;
-          cloudLabel = `Cloud (current project: ${full.game.title})`;
-          appendPersistenceDebugEntry('restore:cloud-project-fetched', {
-            source: 'active-cloud-game',
-            cloudGameId: mappedCloudGameId,
-            updatedAt: full.game.updated_at,
-            title: full.game.title,
-            ...summarizeYamlForDebug(serializeProjectToYaml(full.game.project)),
-          });
-        } else {
-          const res = await listGames();
-          const candidates = res.games ?? [];
-          if (candidates.length === 0) return;
-          const latest = candidates.reduce((best, cur) => {
-            const bestMs = Date.parse(best.updated_at);
-            const curMs = Date.parse(cur.updated_at);
-            if (!Number.isFinite(bestMs)) return cur;
-            if (!Number.isFinite(curMs)) return best;
-            return curMs > bestMs ? cur : best;
-          });
-          const full = await getGame(latest.id);
-          if (!full?.game?.project) return;
-          cloudProject = full.game.project;
-          cloudUpdatedAt = latest.updated_at;
-          cloudLabel = `Cloud (last game: ${latest.title})`;
-          appendPersistenceDebugEntry('restore:cloud-project-fetched', {
-            source: 'latest-cloud-game',
-            cloudGameId: latest.id,
-            updatedAt: latest.updated_at,
-            title: latest.title,
-            ...summarizeYamlForDebug(serializeProjectToYaml(full.game.project)),
-          });
-        }
+        const full = await getGame(mappedCloudGameId);
+        if (!full?.game?.project) return;
+        cloudProject = full.game.project;
+        cloudUpdatedAt = full.game.updated_at;
+        cloudLabel = `Cloud (current project: ${full.game.title})`;
+        appendPersistenceDebugEntry('restore:cloud-project-fetched', {
+          source: 'active-cloud-game',
+          cloudGameId: mappedCloudGameId,
+          updatedAt: full.game.updated_at,
+          title: full.game.title,
+          ...summarizeYamlForDebug(serializeProjectToYaml(full.game.project)),
+        });
 
         if (!cloudProject) return;
         const isEquivalent = projectsSemanticallyEqual(device.project, cloudProject);
