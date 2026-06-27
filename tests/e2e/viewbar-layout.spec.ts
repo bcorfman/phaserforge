@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('viewport controls sit below the viewport heading copy @critical', async ({ page }) => {
+test('viewport controls sit below the viewport heading copy', async ({ page }) => {
   const zoomOutButton = page.getByTestId('zoom-out-button');
   const viewportHeading = page.locator('#viewport-heading');
 
