@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEMO_PACK_ASSET_MANIFEST } from '../../src/editor/demoPackAssets';
 
 const persistenceSpies = vi.hoisted(() => ({
   saveActiveProjectRecord: vi.fn(async () => []),
@@ -58,6 +59,18 @@ function RenameOnReadyHarness() {
   return null;
 }
 
+function ImportDemoPackOnReadyHarness() {
+  const { state, dispatch } = useEditorStore();
+
+  useEffect(() => {
+    if (!state.initialized) return;
+    if (Object.keys(state.project.assets.images).length > 0 || Object.keys(state.project.audio.sounds).length > 0) return;
+    dispatch({ type: 'import-demo-pack-assets', entries: DEMO_PACK_ASSET_MANIFEST } as any);
+  }, [dispatch, state.initialized, state.project.assets.images, state.project.audio.sounds]);
+
+  return null;
+}
+
 describe('EditorProvider persistence', () => {
   beforeEach(() => {
     persistenceSpies.saveActiveProjectRecord.mockClear();
@@ -80,6 +93,24 @@ describe('EditorProvider persistence', () => {
       expect(persistenceSpies.saveProjectRecordImmediately).toHaveBeenCalledWith(expect.objectContaining({
         id: 'project-1',
         title: 'Snapshot Rescue',
+      }));
+    });
+  });
+
+  it('persists the captured command summary into autosaved project revisions', async () => {
+    render(
+      <EditorProvider>
+        <ImportDemoPackOnReadyHarness />
+      </EditorProvider>
+    );
+
+    await waitFor(() => {
+      expect(persistenceSpies.saveProjectRecordImmediately).toHaveBeenCalledWith(expect.objectContaining({
+        revisions: expect.arrayContaining([
+          expect.objectContaining({
+            changeSummary: 'Imported Demo Pack',
+          }),
+        ]),
       }));
     });
   });
