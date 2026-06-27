@@ -29,6 +29,7 @@ import { createGroupIdFromName, createGroupSpec, getNextFormationName } from './
 import { removeSceneGraphItem } from './sceneGraphCommands';
 import {
   createAttachment,
+  getTargetLabel,
   makeAttachmentsParallel,
   moveAttachmentWithinTarget,
   moveParallelGroupWithinTarget,
@@ -997,6 +998,37 @@ function formatEntityLabel(scene: GameSceneSpec | undefined, entityId: Id): stri
   return entity?.name?.trim() || entityId;
 }
 
+function formatAttachmentLabel(scene: GameSceneSpec | undefined, attachmentId: Id): string {
+  const attachment = scene?.attachments?.[attachmentId];
+  return attachment?.name?.trim() || attachment?.presetId?.trim() || attachmentId;
+}
+
+function formatEventBlockLabel(scene: GameSceneSpec | undefined, eventBlockId: Id): string {
+  const eventBlock = scene?.eventBlocks?.[eventBlockId];
+  return eventBlock?.name?.trim() || eventBlockId;
+}
+
+function formatPatternLabel(project: ProjectSpec, patternId: Id): string {
+  return project.patterns?.[patternId]?.name?.trim() || patternId;
+}
+
+function formatLoopTemplateLabel(templateId: EditorAction extends { type: 'apply-loop-template'; templateId: infer T } ? T : never): string {
+  switch (templateId) {
+    case 'loops:intro_then_repeat':
+      return 'Intro then Repeat';
+    case 'loops:repeat_n_times':
+      return 'Repeat N Times';
+    case 'loops:repeat_until_condition':
+      return 'Repeat Until Condition';
+    case 'loops:repeat_with_cooldown':
+      return 'Repeat With Cooldown';
+    case 'loops:repeat_with_children':
+      return 'Repeat With Children';
+    default:
+      return String(templateId);
+  }
+}
+
 function createSemanticBurstToken(prefix: string): string {
   return `${prefix}:${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -1438,6 +1470,217 @@ function buildProjectHistoryEventDraftsForAction(
         }];
       }
       return undefined;
+    case 'create-text-entity': {
+      const createdEntityId = stateAfter.selection.kind === 'entity'
+        ? stateAfter.selection.id
+        : Object.keys(stateAfter.project.scenes[stateAfter.currentSceneId]?.entities ?? {}).find((entityId) => (
+          !stateBefore.project.scenes[stateBefore.currentSceneId]?.entities?.[entityId]
+        ));
+      if (!createdEntityId) return undefined;
+      return [{
+        kind: 'entity.created',
+        burstId: `entity.created:${stateAfter.currentSceneId}:${createdEntityId}:${actionBurstToken}`,
+        scope: { kind: 'entity', sceneId: stateAfter.currentSceneId, entityId: createdEntityId },
+        summary: 'Added text entity',
+      }];
+    }
+    case 'duplicate-entities': {
+      const scene = stateAfter.project.scenes[stateAfter.currentSceneId];
+      const duplicatedIds = Object.keys(scene?.entities ?? {}).filter((entityId) => (
+        !stateBefore.project.scenes[stateBefore.currentSceneId]?.entities?.[entityId]
+      ));
+      if (duplicatedIds.length === 0) return undefined;
+      if (duplicatedIds.length === 1) {
+        return [{
+          kind: 'entity.duplicated',
+          burstId: `entity.duplicated:${stateAfter.currentSceneId}:${duplicatedIds[0]}:${actionBurstToken}`,
+          scope: { kind: 'entity', sceneId: stateAfter.currentSceneId, entityId: duplicatedIds[0] },
+          summary: 'Duplicated entity',
+          details: [`Duplicated entity ${formatEntityLabel(scene, duplicatedIds[0])}`],
+        }];
+      }
+      return [{
+        kind: 'entity.duplicated',
+        burstId: `entity.duplicated:${stateAfter.currentSceneId}:${duplicatedIds.join(',')}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Duplicated ${duplicatedIds.length} entities`,
+        details: duplicatedIds.map((entityId) => `Duplicated entity ${formatEntityLabel(scene, entityId)}`),
+      }];
+    }
+    case 'import-entities': {
+      const scene = stateAfter.project.scenes[stateAfter.currentSceneId];
+      const importedIds = action.drafts
+        .map((draft) => draft.entity.id)
+        .filter((entityId, index, ids) => ids.indexOf(entityId) === index)
+        .filter((entityId) => Boolean(scene?.entities?.[entityId]));
+      if (importedIds.length === 0) return undefined;
+      if (importedIds.length === 1) {
+        return [{
+          kind: 'entity.imported',
+          burstId: `entity.imported:${stateAfter.currentSceneId}:${importedIds[0]}:${actionBurstToken}`,
+          scope: { kind: 'entity', sceneId: stateAfter.currentSceneId, entityId: importedIds[0] },
+          summary: 'Imported entity',
+          details: [`Imported entity ${formatEntityLabel(scene, importedIds[0])}`],
+        }];
+      }
+      return [{
+        kind: 'entity.imported',
+        burstId: `entity.imported:${stateAfter.currentSceneId}:${importedIds.join(',')}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Imported ${importedIds.length} entities`,
+        details: importedIds.map((entityId) => `Imported entity ${formatEntityLabel(scene, entityId)}`),
+      }];
+    }
+    case 'layout-entities': {
+      const scene = stateAfter.project.scenes[stateAfter.currentSceneId];
+      const laidOutIds = action.positions
+        .map((position) => position.id)
+        .filter((entityId, index, ids) => ids.indexOf(entityId) === index)
+        .filter((entityId) => Boolean(scene?.entities?.[entityId]));
+      if (laidOutIds.length === 0) return undefined;
+      if (laidOutIds.length === 1) {
+        return [{
+          kind: 'entity.layout.applied',
+          burstId: `entity.layout.applied:${stateAfter.currentSceneId}:${laidOutIds[0]}:${actionBurstToken}`,
+          scope: { kind: 'entity', sceneId: stateAfter.currentSceneId, entityId: laidOutIds[0] },
+          summary: 'Laid out entity',
+          details: [`Laid out entity ${formatEntityLabel(scene, laidOutIds[0])}`],
+        }];
+      }
+      return [{
+        kind: 'entity.layout.applied',
+        burstId: `entity.layout.applied:${stateAfter.currentSceneId}:${laidOutIds.join(',')}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Laid out ${laidOutIds.length} entities`,
+        details: laidOutIds.map((entityId) => `Laid out entity ${formatEntityLabel(scene, entityId)}`),
+      }];
+    }
+    case 'set-entities-asset': {
+      const scene = stateAfter.project.scenes[stateAfter.currentSceneId];
+      const entityIds = [...new Set(action.entityIds)].filter((entityId) => Boolean(scene?.entities?.[entityId]));
+      if (entityIds.length === 0) return undefined;
+      const assetLabel = action.asset?.source.kind === 'asset'
+        ? formatAssetLabel(action.asset.imageType === 'spritesheet' ? 'spritesheet' : 'image', action.asset.source.assetId, stateAfter.project)
+        : undefined;
+      if (entityIds.length === 1) {
+        return [{
+          kind: 'entity.asset.set',
+          burstId: `entity.asset.set:${stateAfter.currentSceneId}:${entityIds[0]}:${actionBurstToken}`,
+          scope: { kind: 'entity', sceneId: stateAfter.currentSceneId, entityId: entityIds[0] },
+          summary: action.asset ? 'Updated entity sprite' : 'Cleared entity sprite',
+          details: [action.asset
+            ? `Updated entity sprite ${formatEntityLabel(scene, entityIds[0])}${assetLabel ? ` -> ${assetLabel}` : ''}`
+            : `Cleared entity sprite ${formatEntityLabel(scene, entityIds[0])}`],
+        }];
+      }
+      return [{
+        kind: 'entity.asset.set',
+        burstId: `entity.asset.set:${stateAfter.currentSceneId}:${entityIds.join(',')}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: action.asset ? `Updated ${entityIds.length} entity sprites` : `Cleared ${entityIds.length} entity sprites`,
+        details: entityIds.map((entityId) => (
+          action.asset
+            ? `Updated entity sprite ${formatEntityLabel(scene, entityId)}${assetLabel ? ` -> ${assetLabel}` : ''}`
+            : `Cleared entity sprite ${formatEntityLabel(scene, entityId)}`
+        )),
+      }];
+    }
+    case 'rasterize-text-entity-to-sprite': {
+      const entity = stateAfter.project.scenes[stateAfter.currentSceneId]?.entities?.[action.entityId];
+      const assetId = entity?.asset?.source.kind === 'asset' ? entity.asset.source.assetId : undefined;
+      return [{
+        kind: 'entity.text.rasterized',
+        burstId: `entity.text.rasterized:${stateAfter.currentSceneId}:${action.entityId}:${actionBurstToken}`,
+        scope: { kind: 'entity', sceneId: stateAfter.currentSceneId, entityId: action.entityId },
+        summary: 'Rasterized text entity',
+        ...(assetId ? { details: [`Rasterized text entity ${formatEntityLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.entityId)} -> ${formatAssetLabel('image', assetId, stateAfter.project)}`] } : {}),
+      }];
+    }
+    case 'arrange-group-grid':
+      return [{
+        kind: 'group.arranged',
+        burstId: `group.arranged:${stateAfter.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Arranged group ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)} as grid`,
+      }];
+    case 'arrange-group':
+      return [{
+        kind: 'group.arranged',
+        burstId: `group.arranged:${stateAfter.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Arranged group ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`,
+      }];
+    case 'create-group-from-selection':
+    case 'group-selection': {
+      const createdGroupId = Object.keys(stateAfter.project.scenes[stateAfter.currentSceneId]?.groups ?? {})
+        .find((groupId) => !stateBefore.project.scenes[stateBefore.currentSceneId]?.groups?.[groupId]);
+      const groupLabel = createdGroupId
+        ? formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], createdGroupId)
+        : (action.name.trim() || 'group');
+      return [{
+        kind: 'group.created',
+        burstId: `group.created:${stateAfter.currentSceneId}:${createdGroupId ?? actionBurstToken}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Created group ${groupLabel}`,
+      }];
+    }
+    case 'add-entities-to-group':
+    case 'insert-entities-into-group':
+      return [{
+        kind: 'group.members.added',
+        burstId: `group.members.added:${stateAfter.currentSceneId}:${action.groupId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `${action.entityIds.length === 1 ? 'Added entity' : `Added ${action.entityIds.length} entities`} to ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.groupId)}`,
+      }];
+    case 'remove-entities-from-groups':
+      return [{
+        kind: 'group.members.removed',
+        burstId: `group.members.removed:${stateAfter.currentSceneId}:${action.entityIds.slice().sort().join(',')}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: action.entityIds.length === 1 ? 'Removed entity from groups' : `Removed ${action.entityIds.length} entities from groups`,
+      }];
+    case 'remove-entity-from-group':
+      return [{
+        kind: 'group.members.removed',
+        burstId: `group.members.removed:${stateBefore.currentSceneId}:${action.groupId}:${action.entityId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: `Removed entity from ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.groupId)}`,
+      }];
+    case 'dissolve-group':
+      return [{
+        kind: 'group.dissolved',
+        burstId: `group.dissolved:${stateBefore.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: `Dissolved group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`,
+      }];
+    case 'delete-group':
+      return [{
+        kind: 'group.deleted',
+        burstId: `group.deleted:${stateBefore.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: `Deleted group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`,
+      }];
+    case 'convert-group-layout-freeform':
+      return [{
+        kind: 'group.layout.changed',
+        burstId: `group.layout.changed:${stateBefore.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: `Set group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)} to freeform`,
+      }];
+    case 'convert-group-layout-grid':
+      return [{
+        kind: 'group.layout.changed',
+        burstId: `group.layout.changed:${stateBefore.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: `Set group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)} to grid`,
+      }];
+    case 'convert-group-layout-arrange':
+      return [{
+        kind: 'group.layout.changed',
+        burstId: `group.layout.changed:${stateBefore.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: `Set group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)} to arranged layout`,
+      }];
     case 'update-entity': {
       const sceneId = stateAfter.currentSceneId;
       const beforeScene = stateBefore.project.scenes[sceneId];
@@ -1540,6 +1783,139 @@ function buildProjectHistoryEventDraftsForAction(
         scope: { kind: 'scene', sceneId: action.sceneId },
         summary: `Deleted scene ${formatSceneLabel(stateBefore.project, action.sceneId)}`,
       }];
+    case 'create-group-from-arrange': {
+      const createdGroupId = Object.keys(stateAfter.project.scenes[stateAfter.currentSceneId]?.groups ?? {})
+        .find((groupId) => !stateBefore.project.scenes[stateBefore.currentSceneId]?.groups?.[groupId]);
+      if (!createdGroupId) return undefined;
+      return [{
+        kind: 'group.created',
+        burstId: `group.created:${stateAfter.currentSceneId}:${createdGroupId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Created group ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], createdGroupId)}`,
+      }];
+    }
+    case 'create-attachment': {
+      const afterScene = stateAfter.project.scenes[stateAfter.currentSceneId];
+      const createdAttachmentId = Object.keys(afterScene?.attachments ?? {}).find((attachmentId) => (
+        !stateBefore.project.scenes[stateBefore.currentSceneId]?.attachments?.[attachmentId]
+      ));
+      if (!createdAttachmentId) return undefined;
+      return [{
+        kind: 'attachment.created',
+        burstId: `attachment.created:${stateAfter.currentSceneId}:${createdAttachmentId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Added step ${formatAttachmentLabel(afterScene, createdAttachmentId)}`,
+      }];
+    }
+    case 'update-attachment':
+      return [{
+        kind: 'attachment.updated',
+        burstId: `attachment.updated:${stateAfter.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Updated step ${formatAttachmentLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`,
+      }];
+    case 'remove-attachment':
+      return [{
+        kind: 'attachment.removed',
+        burstId: `attachment.removed:${stateBefore.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: `Removed step ${formatAttachmentLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`,
+      }];
+    case 'move-attachment':
+    case 'reorder-attachments':
+      return [{
+        kind: 'attachment.reordered',
+        burstId: `attachment.reordered:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Reordered steps',
+      }];
+    case 'nest-attachments-under-repeat':
+      return [{
+        kind: 'attachment.nested',
+        burstId: `attachment.nested:${stateAfter.currentSceneId}:${action.repeatId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Nested ${action.attachmentIds.length} ${action.attachmentIds.length === 1 ? 'step' : 'steps'} under ${formatAttachmentLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.repeatId)}`,
+      }];
+    case 'make-attachments-parallel':
+      return [{
+        kind: 'attachment.parallelized',
+        burstId: `attachment.parallelized:${stateAfter.currentSceneId}:${action.ids.slice().sort().join(',')}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Grouped ${action.ids.length} steps in parallel`,
+      }];
+    case 'ungroup-parallel-attachments':
+      return [{
+        kind: 'attachment.parallel.ungrouped',
+        burstId: `attachment.parallel.ungrouped:${stateAfter.currentSceneId}:${action.groupId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Ungrouped parallel steps',
+      }];
+    case 'move-parallel-attachment-group':
+      return [{
+        kind: 'attachment.parallel.moved',
+        burstId: `attachment.parallel.moved:${stateAfter.currentSceneId}:${action.groupId}:${action.direction}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Moved parallel step group',
+      }];
+    case 'create-event-block': {
+      const afterScene = stateAfter.project.scenes[stateAfter.currentSceneId];
+      const createdEventBlockId = Object.keys(afterScene?.eventBlocks ?? {}).find((eventBlockId) => (
+        !stateBefore.project.scenes[stateBefore.currentSceneId]?.eventBlocks?.[eventBlockId]
+      ));
+      if (!createdEventBlockId) return undefined;
+      return [{
+        kind: 'event.block.created',
+        burstId: `event.block.created:${stateAfter.currentSceneId}:${createdEventBlockId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Added event ${formatEventBlockLabel(afterScene, createdEventBlockId)}`,
+      }];
+    }
+    case 'update-event-block':
+      return [{
+        kind: 'event.block.updated',
+        burstId: `event.block.updated:${stateAfter.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Updated event ${formatEventBlockLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`,
+      }];
+    case 'remove-event-block':
+      return [{
+        kind: 'event.block.removed',
+        burstId: `event.block.removed:${stateBefore.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: `Removed event ${formatEventBlockLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`,
+      }];
+    case 'create-pattern-from-attachments': {
+      const createdPatternId = Object.keys(stateAfter.project.patterns ?? {}).find((patternId) => !stateBefore.project.patterns?.[patternId]);
+      if (!createdPatternId) return undefined;
+      return [{
+        kind: 'pattern.created',
+        burstId: `pattern.created:${createdPatternId}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Created pattern ${formatPatternLabel(stateAfter.project, createdPatternId)}`,
+      }];
+    }
+    case 'apply-pattern':
+      return [{
+        kind: 'pattern.applied',
+        burstId: `pattern.applied:${stateAfter.currentSceneId}:${action.patternId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Applied pattern ${formatPatternLabel(stateBefore.project, action.patternId)} to ${getTargetLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.target)}`,
+      }];
+    case 'apply-loop-template': {
+      const afterScene = stateAfter.project.scenes[stateAfter.currentSceneId];
+      const createdAttachmentIds = Object.keys(afterScene?.attachments ?? {}).filter((attachmentId) => (
+        !stateBefore.project.scenes[stateBefore.currentSceneId]?.attachments?.[attachmentId]
+      ));
+      return [{
+        kind: 'loop.template.applied',
+        burstId: `loop.template.applied:${stateAfter.currentSceneId}:${action.templateId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Applied loop template ${formatLoopTemplateLabel(action.templateId)}`,
+        ...(createdAttachmentIds.length > 0
+          ? { details: createdAttachmentIds.map((attachmentId) => `Added step ${formatAttachmentLabel(afterScene, attachmentId)}`) }
+          : {}),
+      }];
+    }
     default:
       return undefined;
   }

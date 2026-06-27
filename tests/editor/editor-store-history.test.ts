@@ -258,6 +258,145 @@ describe('EditorStore history', () => {
     expect(latestSummary(removedFromGroup)).toBe('Removed entity from Front Line');
   });
 
+  it('captures semantic drafts for group lifecycle and layout actions', () => {
+    const base = seededState();
+    const ungroupedProject = structuredClone(sampleProject);
+    ungroupedProject.scenes[ungroupedProject.initialSceneId].groups = {};
+    ungroupedProject.scenes[ungroupedProject.initialSceneId].attachments = {};
+    const state0 = {
+      ...base,
+      project: ungroupedProject,
+      selection: { kind: 'entities', ids: ['e1', 'e2'] as string[] },
+      expandedGroups: {},
+    };
+
+    const created = reducer(state0, { type: 'create-group-from-selection', name: 'Front Line' } as any);
+    const createdGroupId = Object.keys(sceneOf(created).groups).find((id) => id !== 'g-enemies');
+    expect(created.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.created',
+        summary: 'Created group Front Line',
+      }),
+    ]);
+
+    const added = reducer(created, {
+      type: 'add-entities-to-group',
+      groupId: createdGroupId,
+      entityIds: ['e3', 'e4'],
+    } as any);
+    expect(added.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.members.added',
+        summary: 'Added 2 entities to Front Line',
+      }),
+    ]);
+
+    const removedOne = reducer(added, {
+      type: 'remove-entity-from-group',
+      groupId: createdGroupId,
+      entityId: 'e4',
+    } as any);
+    expect(removedOne.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.members.removed',
+        summary: 'Removed entity from Front Line',
+      }),
+    ]);
+
+    const removedMany = reducer(added, {
+      type: 'remove-entities-from-groups',
+      entityIds: ['e3', 'e4'],
+    } as any);
+    expect(removedMany.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.members.removed',
+        summary: 'Removed 2 entities from groups',
+      }),
+    ]);
+
+    const arrangedGrid = reducer(base, {
+      type: 'arrange-group-grid',
+      id: 'g-enemies',
+      layout: {
+        type: 'grid',
+        rows: 3,
+        cols: 5,
+        startX: 240,
+        startY: 160,
+        spacingX: 50,
+        spacingY: 42,
+      },
+    } as any);
+    expect(arrangedGrid.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.arranged',
+        summary: 'Arranged group Enemy Formation as grid',
+      }),
+    ]);
+
+    const arranged = reducer(base, {
+      type: 'arrange-group',
+      id: 'g-enemies',
+      arrangeKind: 'circle',
+      params: { radius: 90 },
+    } as any);
+    expect(arranged.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.arranged',
+        summary: 'Arranged group Enemy Formation',
+      }),
+    ]);
+
+    const convertedFreeform = reducer(base, { type: 'convert-group-layout-freeform', id: 'g-enemies' } as any);
+    expect(convertedFreeform.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.layout.changed',
+        summary: 'Set group Enemy Formation to freeform',
+      }),
+    ]);
+
+    const convertedGrid = reducer(base, {
+      type: 'convert-group-layout-grid',
+      id: 'g-enemies',
+      rows: 3,
+      cols: 5,
+    } as any);
+    expect(convertedGrid.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.layout.changed',
+        summary: 'Set group Enemy Formation to grid',
+      }),
+    ]);
+
+    const convertedArrange = reducer(base, {
+      type: 'convert-group-layout-arrange',
+      id: 'g-enemies',
+      arrangeKind: 'circle',
+    } as any);
+    expect(convertedArrange.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.layout.changed',
+        summary: 'Set group Enemy Formation to arranged layout',
+      }),
+    ]);
+
+    const dissolved = reducer(base, { type: 'dissolve-group', id: 'g-enemies' } as any);
+    expect(dissolved.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.dissolved',
+        summary: 'Dissolved group Enemy Formation',
+      }),
+    ]);
+
+    const deleted = reducer(base, { type: 'delete-group', id: 'g-enemies' } as any);
+    expect(deleted.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'group.deleted',
+        summary: 'Deleted group Enemy Formation',
+      }),
+    ]);
+  });
+
   it('captures semantic entity rename and movement drafts from project-changing actions', () => {
     const base = seededState();
     const scene = sceneOf(base);
@@ -712,6 +851,325 @@ describe('EditorStore history', () => {
       expect.objectContaining({
         kind: 'scene.ambience.set',
         summary: 'Updated scene ambience',
+      }),
+    ]);
+  });
+
+  it('captures semantic drafts for entity create, duplicate, import, layout, sprite, and rasterize actions', () => {
+    const base = seededState();
+
+    const createdText = reducer(base, {
+      type: 'create-text-entity',
+      at: { x: 320, y: 240 },
+    } as any);
+    const createdTextId = createdText.selection.kind === 'entity' ? createdText.selection.id : undefined;
+    expect(createdText.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.created',
+        summary: 'Added text entity',
+        scope: { kind: 'entity', sceneId: createdText.currentSceneId, entityId: createdTextId },
+      }),
+    ]);
+
+    const duplicated = reducer(base, {
+      type: 'duplicate-entities',
+      entityIds: ['e1'],
+    } as any);
+    const duplicatedId = duplicated.selection.kind === 'entity' ? duplicated.selection.id : undefined;
+    expect(duplicated.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.duplicated',
+        summary: 'Duplicated entity',
+        scope: { kind: 'entity', sceneId: duplicated.currentSceneId, entityId: duplicatedId },
+      }),
+    ]);
+
+    const imported = reducer(base, {
+      type: 'import-entities',
+      drafts: [
+        {
+          entity: {
+            ...structuredClone(sceneOf(base).entities.e1),
+            id: 'e-import-1',
+            name: 'Imported Hero',
+            x: 420,
+            y: 280,
+          },
+        },
+        {
+          entity: {
+            ...structuredClone(sceneOf(base).entities.e2),
+            id: 'e-import-2',
+            name: 'Imported Enemy',
+            x: 480,
+            y: 320,
+          },
+        },
+      ],
+    } as any);
+    expect(imported.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.imported',
+        summary: 'Imported 2 entities',
+        scope: { kind: 'scene', sceneId: imported.currentSceneId },
+        details: ['Imported entity Imported Hero', 'Imported entity Imported Enemy'],
+      }),
+    ]);
+
+    const laidOut = reducer(base, {
+      type: 'layout-entities',
+      positions: [
+        { id: 'e1', x: 111, y: 222 },
+        { id: 'e2', x: 333, y: 444 },
+      ],
+    } as any);
+    expect(laidOut.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.layout.applied',
+        summary: 'Laid out 2 entities',
+        scope: { kind: 'scene', sceneId: laidOut.currentSceneId },
+        details: ['Laid out entity e1', 'Laid out entity e2'],
+      }),
+    ]);
+
+    const withImage = reducer(base, {
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'hero.png',
+        mimeType: 'image/png',
+        width: 16,
+        height: 16,
+      },
+    } as any);
+    const spritesUpdated = reducer(withImage, {
+      type: 'set-entities-asset',
+      entityIds: ['e1', 'e2'],
+      asset: {
+        source: { kind: 'asset', assetId: 'hero' },
+        imageType: 'image',
+        frame: { kind: 'single' },
+      },
+    } as any);
+    expect(spritesUpdated.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.asset.set',
+        summary: 'Updated 2 entity sprites',
+        scope: { kind: 'scene', sceneId: spritesUpdated.currentSceneId },
+        details: ['Updated entity sprite e1 -> hero', 'Updated entity sprite e2 -> hero'],
+      }),
+    ]);
+
+    const originalDocument = (globalThis as any).document;
+    const canvasContext = {
+      clearRect: vi.fn(),
+      fillText: vi.fn(),
+      measureText: vi.fn(() => ({ width: 48 })),
+      textBaseline: 'top',
+      fillStyle: '#fff',
+      font: '14px system-ui',
+    };
+    const canvasStub = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => canvasContext),
+      toDataURL: vi.fn(() => 'data:image/png;base64,AAAA'),
+    };
+    (globalThis as any).document = {
+      createElement: vi.fn((tagName: string) => {
+        if (tagName === 'canvas') return canvasStub as any;
+        throw new Error(`Unexpected element requested in test: ${tagName}`);
+      }),
+    };
+
+    try {
+      const rasterized = reducer(createdText, {
+        type: 'rasterize-text-entity-to-sprite',
+        entityId: createdTextId,
+        assetId: 'title-card',
+      } as any);
+      expect(rasterized.lastProjectHistoryEventDrafts).toEqual([
+        expect.objectContaining({
+          kind: 'entity.text.rasterized',
+          summary: 'Rasterized text entity',
+          scope: { kind: 'entity', sceneId: rasterized.currentSceneId, entityId: createdTextId },
+        }),
+      ]);
+    } finally {
+      (globalThis as any).document = originalDocument;
+    }
+  });
+
+  it('captures semantic drafts for attachments, event blocks, loop templates, and patterns', () => {
+    const base = seededState();
+
+    const createdAttachment = reducer(base, {
+      type: 'create-attachment',
+      target: { type: 'group', groupId: 'g-enemies' },
+      presetId: 'Wait',
+      init: { name: 'Hold Position' },
+    } as any);
+    const createdAttachmentId = createdAttachment.selection.kind === 'attachment' ? createdAttachment.selection.id : undefined;
+    expect(createdAttachment.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'attachment.created',
+        summary: 'Added step Hold Position',
+      }),
+    ]);
+
+    const updatedAttachment = reducer(createdAttachment, {
+      type: 'update-attachment',
+      id: createdAttachmentId,
+      next: {
+        ...sceneOf(createdAttachment).attachments[createdAttachmentId!],
+        name: 'Hold Formation',
+      },
+    } as any);
+    expect(updatedAttachment.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'attachment.updated',
+        summary: 'Updated step Hold Formation',
+      }),
+    ]);
+
+    const nestedAttachment = reducer(createdAttachment, {
+      type: 'nest-attachments-under-repeat',
+      target: { type: 'group', groupId: 'g-enemies' },
+      repeatId: 'att-loop',
+      attachmentIds: [createdAttachmentId],
+    } as any);
+    expect(nestedAttachment.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'attachment.nested',
+        summary: 'Nested 1 step under Loop',
+      }),
+    ]);
+
+    const movedAttachment = reducer(base, {
+      type: 'move-attachment',
+      id: 'att-drop-right',
+      direction: 'up',
+    } as any);
+    expect(movedAttachment.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'attachment.reordered',
+        summary: 'Reordered steps',
+      }),
+    ]);
+
+    const parallelized = reducer(base, {
+      type: 'make-attachments-parallel',
+      target: { type: 'group', groupId: 'g-enemies' },
+      ids: ['att-drop-right', 'att-wait-right'],
+    } as any);
+    expect(parallelized.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'attachment.parallelized',
+        summary: 'Grouped 2 steps in parallel',
+      }),
+    ]);
+    const parallelTag = sceneOf(parallelized).attachments['att-drop-right'].tag as string;
+    const parallelGroupId = parallelTag.replace(/^pargrp:/, '').split(':')[0];
+
+    const ungroupedParallel = reducer(parallelized, {
+      type: 'ungroup-parallel-attachments',
+      target: { type: 'group', groupId: 'g-enemies' },
+      groupId: parallelGroupId,
+    } as any);
+    expect(ungroupedParallel.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'attachment.parallel.ungrouped',
+        summary: 'Ungrouped parallel steps',
+      }),
+    ]);
+
+    const removedAttachment = reducer(updatedAttachment, {
+      type: 'remove-attachment',
+      id: createdAttachmentId,
+    } as any);
+    expect(removedAttachment.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'attachment.removed',
+        summary: 'Removed step Hold Formation',
+      }),
+    ]);
+
+    const eventBlockCreated = reducer(base, {
+      type: 'create-event-block',
+      target: { type: 'group', groupId: 'g-enemies' },
+      name: 'On Spawn',
+      trigger: { type: 'start' },
+    } as any);
+    const eventBlockId = Object.keys(sceneOf(eventBlockCreated).eventBlocks ?? {})[0];
+    expect(eventBlockCreated.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'event.block.created',
+        summary: 'Added event On Spawn',
+      }),
+    ]);
+
+    const eventBlockUpdated = reducer(eventBlockCreated, {
+      type: 'update-event-block',
+      id: eventBlockId,
+      next: {
+        ...sceneOf(eventBlockCreated).eventBlocks[eventBlockId],
+        name: 'On Enter',
+      },
+    } as any);
+    expect(eventBlockUpdated.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'event.block.updated',
+        summary: 'Updated event On Enter',
+      }),
+    ]);
+
+    const eventBlockRemoved = reducer(eventBlockUpdated, {
+      type: 'remove-event-block',
+      id: eventBlockId,
+    } as any);
+    expect(eventBlockRemoved.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'event.block.removed',
+        summary: 'Removed event On Enter',
+      }),
+    ]);
+
+    const loopApplied = reducer(base, {
+      type: 'apply-loop-template',
+      templateId: 'loops:repeat_with_children',
+      target: { type: 'group', groupId: 'g-enemies' },
+      opts: { childCount: 2, childPresetId: 'Call' },
+    } as any);
+    expect(loopApplied.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'loop.template.applied',
+        summary: 'Applied loop template Repeat With Children',
+      }),
+    ]);
+
+    const patternCreated = reducer(base, {
+      type: 'create-pattern-from-attachments',
+      attachmentIds: ['att-drop-right'],
+      name: 'Drop Pattern',
+    } as any);
+    const patternId = Object.keys(patternCreated.project.patterns ?? {})[0];
+    expect(patternCreated.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'pattern.created',
+        summary: 'Created pattern Drop Pattern',
+      }),
+    ]);
+
+    const patternApplied = reducer(patternCreated, {
+      type: 'apply-pattern',
+      patternId,
+      target: { type: 'group', groupId: 'g-enemies' },
+      bindings: {},
+    } as any);
+    expect(patternApplied.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'pattern.applied',
+        summary: 'Applied pattern Drop Pattern to Enemy Formation',
       }),
     ]);
   });

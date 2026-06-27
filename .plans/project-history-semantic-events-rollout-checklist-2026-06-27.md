@@ -68,22 +68,48 @@ Related:
     - `scene.music.set`
     - `scene.ambience.set`
 
+- scene graph / grouping
+  - `group.created`
+  - `group.deleted`
+  - `group.dissolved`
+  - `group.members.added`
+  - `group.members.removed`
+  - `group.layout.changed`
+  - `group.arranged`
+
+- entity creation / import / layout / transforms
+  - `entity.created`
+  - `entity.duplicated`
+  - `entity.imported`
+  - `entity.layout.applied`
+  - `entity.asset.set`
+  - `entity.text.rasterized`
+
+- behavior graph / patterns
+  - `attachment.created`
+  - `attachment.updated`
+  - `attachment.removed`
+  - `attachment.reordered`
+  - `attachment.nested`
+  - `attachment.parallelized`
+  - `attachment.parallel.ungrouped`
+  - `attachment.parallel.moved`
+  - `event.block.created`
+  - `event.block.updated`
+  - `event.block.removed`
+  - `pattern.created`
+  - `pattern.applied`
+  - `loop.template.applied`
+
 ## Next recommended batch
 
-### Scene graph / grouping
+### Remaining editor/system actions
 
-- group created / deleted / dissolved / ungrouped
-- entity added to group / removed from group
-- group layout converted / arranged
-- duplicate/import/layout entities
-- set entity asset / rasterize text to sprite
-
-### Behavior graph / patterns
-
-- attachment add/update/remove/reorder
-- event block add/update/remove
-- pattern create/apply
-- loop template apply
+- reset / clear / delete-selection / remove-scene-graph-item semantic events
+- group update / ungroup / create-from-arrange + formation draft commit parity checks
+- bulk patch / movement-bounds / move-group events
+- demo-pack import + scene base-scene toggle coverage
+- counters / collections if they should participate in project-history UI narratives
 
 ## Follow-up architecture tasks
 
