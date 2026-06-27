@@ -1,3 +1,93 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:3d7b2cd8140000e08c2780fff76930d32f78f9704a23ace82efa444b678652e4
-size 7200
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="980" viewBox="0 0 1400 980">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .shell { fill: #111823; stroke: #273244; stroke-width: 1.5; }
+      .card { fill: #16202c; stroke: #314156; stroke-width: 1.2; }
+      .cardAlt { fill: #101721; stroke: #2a394d; stroke-width: 1.2; }
+      .blue { fill: #153357; stroke: #3976b6; stroke-width: 1.2; }
+      .green { fill: #153224; stroke: #2f7a53; stroke-width: 1.2; }
+      .amber { fill: #3b2a12; stroke: #8b6529; stroke-width: 1.2; }
+      .ink { font: 700 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #ecf2f8; }
+      .title { font: 800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #f3f7fb; }
+      .sub { font: 600 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #b7c6d8; }
+      .label { font: 750 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #d9e5f1; }
+      .body { font: 560 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #bfd0e2; }
+      .small { font: 520 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #96abc2; }
+      .mono { font: 650 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #ecf2f8; }
+      .divider { stroke: #2a394d; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1400" height="980" />
+
+  <text class="title" x="56" y="68">Project / Scene / Cloud / History UI Directions</text>
+  <text class="sub" x="56" y="100">Goal: separate project identity from deployment identity, clarify project-vs-scene hierarchy, and make autosave recovery feel safe.</text>
+
+  <rect class="blue" x="56" y="132" width="1288" height="86" rx="16" />
+  <text class="label" x="84" y="168">Problems Being Solved</text>
+  <text class="body" x="84" y="194">1. Project name should not double as deployment name. 2. Scene should feel nested under a project, not detached from it. 3. Autosave needs visible history and easy restore.</text>
+
+  <rect class="card" x="56" y="254" width="396" height="470" rx="18" />
+  <text class="label" x="84" y="294">Option A</text>
+  <text class="ink" x="84" y="326">Project Hub + Separate Release Settings</text>
+  <text class="body" x="84" y="362">Best if we want the smallest visual change.</text>
+  <text class="body" x="84" y="390">Project tab becomes the home for naming, scenes list, save status, and history entrypoints.</text>
+  <text class="body" x="84" y="418">Cloud becomes account + publish only. Deployment route lives there, renamed as release URL/slug.</text>
+  <text class="body" x="84" y="446">Scene tab stays mostly as-is, but project context is pinned above it.</text>
+  <rect class="green" x="84" y="484" width="150" height="36" rx="18" />
+  <text class="ink" x="159" y="507" text-anchor="middle">Low migration risk</text>
+  <rect class="amber" x="244" y="484" width="180" height="36" rx="18" />
+  <text class="ink" x="334" y="507" text-anchor="middle">Hierarchy still softer</text>
+  <line class="divider" x1="84" y1="544" x2="424" y2="544" />
+  <text class="small" x="84" y="578">File:</text>
+  <text class="mono" x="120" y="578">option-a-project-hub.svg</text>
+  <rect class="cardAlt" x="84" y="608" width="340" height="84" rx="14" />
+  <text class="small" x="102" y="638">Primary idea</text>
+  <text class="body" x="102" y="664">“Project” is the active document home.</text>
+  <text class="body" x="102" y="686">“Publish” is a separate release concern.</text>
+
+  <rect class="card" x="502" y="254" width="396" height="470" rx="18" />
+  <text class="label" x="530" y="294">Option B</text>
+  <text class="ink" x="530" y="326">Project Root In Scene Tree</text>
+  <text class="body" x="530" y="362">Best if we want the clearest mental model.</text>
+  <text class="body" x="530" y="390">Scene tab gets a project root node with scenes underneath, like a lightweight solution explorer.</text>
+  <text class="body" x="530" y="418">History becomes a first-class drawer beside the project root, with checkpoints and restore actions.</text>
+  <text class="body" x="530" y="446">Publish settings are explicitly renamed to release settings and kept out of the project name field.</text>
+  <rect class="green" x="530" y="484" width="168" height="36" rx="18" />
+  <text class="ink" x="614" y="507" text-anchor="middle">Strongest hierarchy</text>
+  <rect class="green" x="708" y="484" width="160" height="36" rx="18" />
+  <text class="ink" x="788" y="507" text-anchor="middle">Safest recovery UX</text>
+  <line class="divider" x1="530" y1="544" x2="870" y2="544" />
+  <text class="small" x="530" y="578">File:</text>
+  <text class="mono" x="566" y="578">option-b-project-root-scene-tree.svg</text>
+  <rect class="blue" x="530" y="608" width="340" height="84" rx="14" />
+  <text class="small" x="548" y="638">Recommended direction</text>
+  <text class="body" x="548" y="664">Most directly answers all three complaints</text>
+  <text class="body" x="548" y="686">without inventing a second parallel workflow.</text>
+
+  <rect class="card" x="948" y="254" width="396" height="470" rx="18" />
+  <text class="label" x="976" y="294">Option C</text>
+  <text class="ink" x="976" y="326">Version Center + Restore Timeline</text>
+  <text class="body" x="976" y="362">Best if recovery confidence is the top priority.</text>
+  <text class="body" x="976" y="390">Project name and version status move into a persistent top header with a visible “History” chip.</text>
+  <text class="body" x="976" y="418">Project tab becomes overview/history/releases. Scene authoring stays focused and lighter.</text>
+  <text class="body" x="976" y="446">Feels modern and safe, but is a bigger workflow shift.</text>
+  <rect class="green" x="976" y="484" width="172" height="36" rx="18" />
+  <text class="ink" x="1062" y="507" text-anchor="middle">Best recovery signal</text>
+  <rect class="amber" x="1158" y="484" width="156" height="36" rx="18" />
+  <text class="ink" x="1236" y="507" text-anchor="middle">Largest UX change</text>
+  <line class="divider" x1="976" y1="544" x2="1316" y2="544" />
+  <text class="small" x="976" y="578">File:</text>
+  <text class="mono" x="1012" y="578">option-c-version-center.svg</text>
+  <rect class="cardAlt" x="976" y="608" width="340" height="84" rx="14" />
+  <text class="small" x="994" y="638">Primary idea</text>
+  <text class="body" x="994" y="664">Make “you can always get back” visible</text>
+  <text class="body" x="994" y="686">in the shell, not hidden in menus.</text>
+
+  <rect class="cardAlt" x="56" y="760" width="1288" height="162" rx="18" />
+  <text class="label" x="84" y="800">Shared UI Rules Across All Options</text>
+  <text class="body" x="84" y="834">Project Name: editable human-facing working title used throughout the editor.</text>
+  <text class="body" x="84" y="862">Release URL / Deployment Slug: only shown in Publish / Release Settings, created later when the user actually publishes.</text>
+  <text class="body" x="84" y="890">History: visible autosave + named checkpoints with Preview, Restore, Restore as Copy, and “Before publish” snapshots.</text>
+</svg>

@@ -1,3 +1,52 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:14006b253d5781dc33149c14f040aa53f82d458f641fd6ade7c1d9d6dd8f0074
-size 3448
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980">
+  <defs>
+    <style>
+      .bg { fill: #efe7db; }
+      .shell { fill: #faf7f1; stroke: #d2c1a9; stroke-width: 2; }
+      .panel { fill: #fbf8f2; stroke: #d3c2aa; stroke-width: 2; }
+      .panelSoft { fill: #f3ece0; stroke: #d3c2aa; stroke-width: 2; }
+      .tabOn { fill: #d8eef0; stroke: #7db0b6; stroke-width: 2; }
+      .callout { fill: #fff2c7; stroke: #c89b2a; stroke-width: 2; }
+      .line { stroke: #c89b2a; stroke-width: 2.5; fill: none; }
+      .brand { font: 800 34px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #24303d; }
+      .title { font: 800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #26313f; }
+      .h { font: 760 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; letter-spacing: .12em; fill: #607082; }
+      .text { font: 620 17px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2e3947; }
+      .strong { font: 760 20px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2a3442; }
+      .small { font: 550 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #728294; }
+      .callText { font: 620 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+      .num { font: 800 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+      .mono { font: 620 16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #2d3845; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1680" height="980" />
+  <text class="title" x="48" y="56">Project Root Inline Rename</text>
+
+  <rect class="shell" x="42" y="84" width="1596" height="850" rx="28" />
+  <text class="h" x="72" y="122">BROWSER EDITOR</text>
+  <text class="brand" x="72" y="162">PhaserForge</text>
+  <rect class="tabOn" x="320" y="132" width="108" height="34" rx="17" />
+  <text class="text" x="374" y="154" text-anchor="middle">Online</text>
+
+  <rect class="panel" x="70" y="240" width="420" height="610" rx="24" />
+  <text class="h" x="98" y="286">PROJECT TREE</text>
+  <rect class="panelSoft" x="98" y="334" width="364" height="112" rx="20" />
+  <text class="strong" x="124" y="376">▾</text>
+  <rect x="154" y="350" width="260" height="42" rx="12" fill="#fffdfa" stroke="#7db0b6" stroke-width="3" />
+  <text class="mono" x="172" y="378">Pattern Demo Playground</text>
+  <text class="small" x="124" y="420">Enter saves • Esc cancels • same pattern as scene rename</text>
+
+  <rect class="panel" x="520" y="240" width="1090" height="610" rx="24" />
+  <rect class="panelSoft" x="548" y="268" width="1034" height="554" rx="20" />
+  <text class="small" x="1065" y="548" text-anchor="middle">rest of editor unchanged during project rename</text>
+
+  <rect class="callout" x="1410" y="116" width="204" height="164" rx="18" />
+  <circle cx="1438" cy="144" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1438" y="150" text-anchor="middle">1</text>
+  <text class="callText" x="1466" y="146">Project rename should feel</text>
+  <text class="callText" x="1466" y="168">identical to scene rename:</text>
+  <text class="callText" x="1466" y="190">same inline edit box, same</text>
+  <text class="callText" x="1466" y="212">Enter/Esc behavior.</text>
+  <path class="line" d="M1410 216 C1330 216, 1220 364, 418 372" />
+</svg>
