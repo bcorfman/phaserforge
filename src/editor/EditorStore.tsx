@@ -93,6 +93,7 @@ type SceneHistoryEntry = {
   scope: 'scene';
   kind: 'command' | 'canvas-interaction';
   timestampMs: number;
+  summary?: string;
   sceneId: Id;
   beforeScene: GameSceneSpec;
   afterScene: GameSceneSpec;
@@ -104,6 +105,7 @@ type ProjectHistoryEntry = {
   scope: 'project';
   kind: 'command';
   timestampMs: number;
+  summary?: string;
   beforeProject: ProjectSpec;
   afterProject: ProjectSpec;
   beforeCurrentSceneId: Id;
@@ -162,6 +164,7 @@ export interface EditorState {
   syncMode: ProjectSyncMode;
   registry: EditorRegistryConfig;
   initialized: boolean;
+  lastProjectChangeSummary?: string;
   pendingGroupRestore?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec> };
   formationDraft?: FormationDraftSpec;
 }
@@ -591,6 +594,7 @@ function defaultState(): EditorState {
     syncMode: 'online',
     registry: EMPTY_EDITOR_REGISTRY,
     initialized: false,
+    lastProjectChangeSummary: undefined,
     pendingGroupRestore: undefined,
     formationDraft: undefined,
   };
@@ -814,6 +818,7 @@ function isUndoableAction(action: EditorAction): boolean {
   switch (action.type) {
     case 'reset-project':
     case 'update-entity':
+    case 'patch-entities':
     case 'import-entities':
     case 'update-group':
     case 'create-attachment':
@@ -883,6 +888,12 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'update-background-layer':
     case 'move-background-layer':
     case 'remove-background-layer':
+    case 'add-collision-rule':
+    case 'update-collision-rule':
+    case 'remove-collision-rule':
+    case 'add-trigger-zone':
+    case 'update-trigger-zone':
+    case 'remove-trigger-zone':
       return true;
     default:
       return false;
@@ -959,6 +970,194 @@ function canMergeNudgeAction(action: EditorAction): boolean {
   return action.type === 'move-entity' || action.type === 'move-group' || action.type === 'move-entities';
 }
 
+function formatSceneLabel(project: ProjectSpec, sceneId: Id): string {
+  return project.sceneMeta?.[sceneId]?.name?.trim() || sceneId;
+}
+
+function formatGroupLabel(scene: GameSceneSpec | undefined, groupId: Id): string {
+  return scene?.groups?.[groupId]?.name?.trim() || groupId;
+}
+
+function formatTriggerLabel(scene: GameSceneSpec | undefined, triggerId: Id): string {
+  const trigger = scene?.triggers?.find((entry) => entry.id === triggerId);
+  return trigger?.name?.trim() || triggerId;
+}
+
+function formatAssetLabel(
+  assetKind: 'image' | 'spritesheet' | 'audio' | 'font',
+  assetId: Id,
+  project: ProjectSpec,
+): string {
+  if (assetKind === 'audio') {
+    const asset = project.audio?.sounds?.[assetId];
+    return asset?.name?.trim() || asset?.source?.originalName?.trim() || assetId;
+  }
+  if (assetKind === 'image') {
+    const asset = project.assets.images?.[assetId];
+    return asset?.name?.trim() || asset?.source?.originalName?.trim() || assetId;
+  }
+  if (assetKind === 'spritesheet') {
+    const asset = project.assets.spriteSheets?.[assetId];
+    return asset?.name?.trim() || asset?.source?.originalName?.trim() || assetId;
+  }
+  const asset = project.assets.fonts?.[assetId];
+  return asset?.name?.trim() || asset?.source?.originalName?.trim() || assetId;
+}
+
+function describeEditorAction(stateBefore: EditorState, stateAfter: EditorState, action: EditorAction): string | undefined {
+  switch (action.type) {
+    case 'import-demo-pack-assets':
+      return 'Imported Demo Pack';
+    case 'set-project-metadata':
+      if (stateBefore.project.title !== stateAfter.project.title) return `Renamed to ${stateAfter.project.title?.trim() || 'Untitled Project'}`;
+      if (stateBefore.project.publishTitle !== stateAfter.project.publishTitle) {
+        return stateAfter.project.publishTitle ? `Set publish title to ${stateAfter.project.publishTitle}` : 'Cleared publish title';
+      }
+      if (stateBefore.project.publishGithubPagesRepo !== stateAfter.project.publishGithubPagesRepo) {
+        return stateAfter.project.publishGithubPagesRepo ? `Set publish repo to ${stateAfter.project.publishGithubPagesRepo}` : 'Cleared publish repo';
+      }
+      return undefined;
+    case 'create-scene':
+      return `Added scene ${formatSceneLabel(stateAfter.project, stateAfter.currentSceneId)}`;
+    case 'duplicate-scene':
+      return `Duplicated scene ${formatSceneLabel(stateAfter.project, action.nextSceneId ?? stateAfter.currentSceneId)}`;
+    case 'delete-scene':
+      return `Removed scene ${formatSceneLabel(stateBefore.project, action.sceneId)}`;
+    case 'rename-scene':
+      return `Renamed scene to ${action.name.trim() || action.sceneId}`;
+    case 'toggle-base-scene':
+      return stateAfter.project.baseSceneId ? `Set base scene to ${formatSceneLabel(stateAfter.project, stateAfter.project.baseSceneId)}` : 'Cleared base scene';
+    case 'clear-scene':
+      return `Cleared scene ${formatSceneLabel(stateBefore.project, action.sceneId)}`;
+    case 'reset-scene':
+      return `Reset scene ${formatSceneLabel(stateAfter.project, stateAfter.currentSceneId)}`;
+    case 'reset-project':
+      return 'Reset project';
+    case 'move-entity':
+      return 'Moved entity';
+    case 'move-group':
+      return 'Moved group';
+    case 'move-entities':
+      return action.entityIds.length === 1 ? 'Moved entity' : `Moved ${action.entityIds.length} entities`;
+    case 'update-bounds':
+      return 'Updated movement bounds';
+    case 'update-entity':
+      return 'Updated entity';
+    case 'patch-entities':
+      return action.entityIds.length === 1 ? 'Updated entity' : `Updated ${action.entityIds.length} entities`;
+    case 'update-group':
+      return `Updated group ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`;
+    case 'duplicate-entities':
+      return action.entityIds.length === 1 ? 'Duplicated entity' : `Duplicated ${action.entityIds.length} entities`;
+    case 'import-entities':
+      return action.drafts.length === 1 ? 'Imported entity' : `Imported ${action.drafts.length} entities`;
+    case 'layout-entities':
+      return action.positions.length === 1 ? 'Laid out entity' : `Laid out ${action.positions.length} entities`;
+    case 'create-text-entity':
+      return 'Added text entity';
+    case 'set-entities-asset':
+      return action.entityIds.length === 1 ? 'Updated entity sprite' : `Updated ${action.entityIds.length} entity sprites`;
+    case 'arrange-group-grid':
+      return `Arranged group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)} as grid`;
+    case 'arrange-group':
+      return `Arranged group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`;
+    case 'create-group-from-arrange':
+      return `Created group ${action.name.trim() || 'formation'}`;
+    case 'create-group-from-selection':
+    case 'group-selection':
+      return `Created group ${action.name.trim() || 'group'}`;
+    case 'ungroup-group':
+      return `Ungrouped ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`;
+    case 'delete-group':
+      return `Deleted group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`;
+    case 'add-entities-to-group':
+    case 'insert-entities-into-group':
+      return `${action.entityIds.length === 1 ? 'Added entity' : `Added ${action.entityIds.length} entities`} to ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.groupId)}`;
+    case 'remove-entities-from-groups':
+      return action.entityIds.length === 1 ? 'Removed entity from groups' : `Removed ${action.entityIds.length} entities from groups`;
+    case 'remove-entity-from-group':
+      return `Removed entity from ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.groupId)}`;
+    case 'dissolve-group':
+      return `Dissolved group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`;
+    case 'convert-group-layout-freeform':
+      return `Set group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)} to freeform`;
+    case 'convert-group-layout-grid':
+      return `Set group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)} to grid`;
+    case 'convert-group-layout-arrange':
+      return `Set group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)} to arranged layout`;
+    case 'remove-scene-graph-item':
+      return action.item.kind === 'group'
+        ? `Removed group ${formatGroupLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.item.id)}`
+        : `Removed ${action.item.kind}`;
+    case 'add-image-asset-from-file':
+      return `Added image asset ${action.file.originalName?.trim() || 'image'}`;
+    case 'add-audio-asset-from-file':
+      return `Added audio ${action.file.originalName?.trim() || 'audio'}`;
+    case 'add-font-asset-from-file':
+      return `Added font ${action.file.originalName?.trim() || 'font'}`;
+    case 'add-spritesheet-asset-from-file':
+      return `Added sprite sheet ${action.file.originalName?.trim() || 'spritesheet'}`;
+    case 'set-asset-display-name':
+      return `Renamed ${action.assetKind} asset to ${action.name?.trim() || formatAssetLabel(action.assetKind, action.assetId, stateAfter.project)}`;
+    case 'remove-asset':
+      return `Removed ${action.assetKind} asset ${formatAssetLabel(action.assetKind, action.assetId, stateBefore.project)}`;
+    case 'remove-audio-asset':
+      return `Removed audio ${formatAssetLabel('audio', action.assetId, stateBefore.project)}`;
+    case 'set-scene-music':
+      return action.music?.assetId ? `Music -> ${formatAssetLabel('audio', action.music.assetId, stateAfter.project)}` : 'Removed music';
+    case 'set-scene-ambience':
+      return 'Updated scene ambience';
+    case 'create-input-map':
+      return 'Added input map';
+    case 'duplicate-input-map':
+      return `Duplicated input map ${action.sourceMapId}`;
+    case 'remove-input-map':
+      return `Removed input map ${action.mapId}`;
+    case 'set-project-default-input-map':
+      return action.mapId ? `Set default input map to ${action.mapId}` : 'Cleared default input map';
+    case 'set-scene-input':
+      return 'Updated scene input';
+    case 'set-scene-background-layers':
+      return 'Updated background layers';
+    case 'update-background-layer':
+      return 'Updated background layer';
+    case 'move-background-layer':
+      return 'Reordered background layers';
+    case 'remove-background-layer':
+      return 'Removed background layer';
+    case 'add-collision-rule':
+      return 'Added collision rule';
+    case 'update-collision-rule':
+      return 'Updated collision rule';
+    case 'remove-collision-rule':
+      return 'Removed collision rule';
+    case 'add-trigger-zone':
+      return (() => {
+        const trigger = stateAfter.project.scenes[stateAfter.currentSceneId]?.triggers?.at(-1);
+        return `Added trigger ${trigger?.name?.trim() || trigger?.id || 'trigger'}`;
+      })();
+    case 'update-trigger-zone':
+      return `Updated trigger ${formatTriggerLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`;
+    case 'remove-trigger-zone':
+      return `Removed trigger ${formatTriggerLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`;
+    case 'update-scene-world':
+      return 'Resized scene world';
+    default:
+      return undefined;
+  }
+}
+
+function withProjectChangeSummary(stateBefore: EditorState, stateAfter: EditorState, action: EditorAction): EditorState {
+  const projectChanged = stateBefore.project !== stateAfter.project
+    || stateBefore.currentSceneId !== stateAfter.currentSceneId
+    || stateBefore.dirty !== stateAfter.dirty;
+  if (!projectChanged) return stateAfter;
+  return {
+    ...stateAfter,
+    lastProjectChangeSummary: describeEditorAction(stateBefore, stateAfter, action),
+  };
+}
+
 function pushHistoryPast(past: HistoryEntry[], entry: HistoryEntry): HistoryEntry[] {
   const next = [...past, entry];
   if (next.length <= MAX_HISTORY) return next;
@@ -982,6 +1181,7 @@ function applyUndo(state: EditorState): EditorState {
       expandedGroups: entry.beforeExpandedGroups ?? defaultExpandedGroups(scene),
       dirty: entry.beforeDirty,
       error: undefined,
+      lastProjectChangeSummary: entry.summary ? `Undid ${entry.summary}` : undefined,
       history: { past: nextPast, future: nextFuture, pending: undefined },
     };
   }
@@ -1006,6 +1206,7 @@ function applyUndo(state: EditorState): EditorState {
     expandedGroups: nextExpandedGroups,
     dirty: entry.beforeDirty,
     error: undefined,
+    lastProjectChangeSummary: entry.summary ? `Undid ${entry.summary}` : undefined,
     history: { past: nextPast, future: nextFuture, pending: undefined },
   };
 }
@@ -1027,6 +1228,7 @@ function applyRedo(state: EditorState): EditorState {
       expandedGroups: entry.afterExpandedGroups ?? defaultExpandedGroups(scene),
       dirty: entry.afterDirty,
       error: undefined,
+      lastProjectChangeSummary: entry.summary ? `Redid ${entry.summary}` : undefined,
       history: { past: nextPast, future: nextFuture, pending: undefined },
     };
   }
@@ -1051,6 +1253,7 @@ function applyRedo(state: EditorState): EditorState {
     expandedGroups: nextExpandedGroups,
     dirty: entry.afterDirty,
     error: undefined,
+    lastProjectChangeSummary: entry.summary ? `Redid ${entry.summary}` : undefined,
     history: { past: nextPast, future: nextFuture, pending: undefined },
   };
 }
@@ -1059,6 +1262,7 @@ function recordHistoryForAction(stateBefore: EditorState, stateAfter: EditorStat
   if (!isUndoableAction(action)) return stateAfter;
   const scope = getHistoryScope(action);
   const timestampMs = Date.now();
+  const summary = describeEditorAction(stateBefore, stateAfter, action);
 
   if (scope === 'project') {
     const changed = stateBefore.project !== stateAfter.project
@@ -1076,6 +1280,7 @@ function recordHistoryForAction(stateBefore: EditorState, stateAfter: EditorStat
       scope: 'project',
       kind: 'command',
       timestampMs,
+      summary,
       beforeProject: stateBefore.project,
       afterProject: stateAfter.project,
       beforeCurrentSceneId: stateBefore.currentSceneId,
@@ -1118,6 +1323,7 @@ function recordHistoryForAction(stateBefore: EditorState, stateAfter: EditorStat
         const merged: HistoryEntry = {
           ...last,
           timestampMs,
+          summary: summary ?? last.summary,
           afterScene,
           afterSelection: stateAfter.selection,
           afterDirty: stateAfter.dirty,
@@ -1138,6 +1344,7 @@ function recordHistoryForAction(stateBefore: EditorState, stateAfter: EditorStat
     scope: 'scene',
     kind: 'command',
     timestampMs,
+    summary,
     sceneId,
     beforeScene,
     afterScene,
@@ -3475,7 +3682,7 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
   if (action.type === 'history-redo') return applyRedo(state);
 
   const stateBefore = state;
-  let stateAfter = applyAction(state, action);
+  let stateAfter = withProjectChangeSummary(stateBefore, applyAction(state, action), action);
 
   if (action.type === 'begin-canvas-interaction') {
     const sceneId = stateBefore.currentSceneId;
@@ -3522,6 +3729,7 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
       scope: 'scene',
       kind: 'canvas-interaction',
       timestampMs: Date.now(),
+      summary: stateBefore.lastProjectChangeSummary,
       sceneId: pending.sceneId,
       beforeScene: pending.beforeScene,
       afterScene,
@@ -3575,7 +3783,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     cloudProjectId: record.cloudProjectId,
   });
 
-  const buildActiveProjectRecordSnapshot = (project: ProjectSpec, syncMode: ProjectSyncMode, recordId?: string | null): StoredProjectRecord => {
+  const buildActiveProjectRecordSnapshot = (
+    project: ProjectSpec,
+    syncMode: ProjectSyncMode,
+    recordId?: string | null,
+    changeSummary?: string,
+  ): StoredProjectRecord => {
     const previous = activeRecordRef.current;
     const projectChanged = previous ? JSON.stringify(previous.project) !== JSON.stringify(project) : true;
     return buildStoredProjectRecord(project, {
@@ -3586,7 +3799,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         : (previous?.cloudProjectId ? 'cloud' : 'local'),
       cloudProjectId: previous?.cloudProjectId,
       revisions: previous && projectChanged
-        ? appendProjectRevision(previous.revisions, createProjectRevision(project, { reason: 'autosave' }))
+        ? appendProjectRevision(previous.revisions, createProjectRevision(project, { reason: 'autosave', changeSummary }))
         : (previous?.revisions ?? []),
     });
   };
@@ -3676,7 +3889,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
 
   useLayoutEffect(() => {
     if (!state.initialized) return;
-    const nextRecord = buildActiveProjectRecordSnapshot(state.project, state.syncMode, activeProjectId ?? state.project.id);
+    const nextRecord = buildActiveProjectRecordSnapshot(
+      state.project,
+      state.syncMode,
+      activeProjectId ?? state.project.id,
+      state.lastProjectChangeSummary,
+    );
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
     void projectPersistence.saveProjectRecordImmediately(nextRecord)
@@ -3717,6 +3935,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         currentState.project,
         currentState.syncMode,
         latestActiveProjectIdRef.current ?? currentState.project.id,
+        currentState.lastProjectChangeSummary,
       );
       activeRecordRef.current = nextRecord;
       void projectPersistence.saveProjectRecordImmediately(nextRecord)
