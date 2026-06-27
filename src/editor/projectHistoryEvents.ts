@@ -6,11 +6,30 @@ export type ProjectHistoryEventKind =
   | 'project.renamed'
   | 'publish.title.set'
   | 'publish.repo.set'
+  | 'project.default-input-map.set'
   | 'scene.world.resized'
   | 'scene.renamed'
   | 'scene.created'
   | 'scene.duplicated'
   | 'scene.deleted'
+  | 'scene.music.set'
+  | 'scene.ambience.set'
+  | 'scene.input.set'
+  | 'background.layers.set'
+  | 'background.layer.updated'
+  | 'background.layers.reordered'
+  | 'background.layer.removed'
+  | 'collision.rule.added'
+  | 'collision.rule.updated'
+  | 'collision.rule.removed'
+  | 'trigger.added'
+  | 'trigger.updated'
+  | 'trigger.removed'
+  | 'input.map.created'
+  | 'input.map.duplicated'
+  | 'input.map.removed'
+  | 'input.binding.added'
+  | 'input.binding.removed'
   | 'entity.renamed'
   | 'entity.moved';
 
@@ -84,4 +103,25 @@ export function buildRevisionEventDetailItems(
     if (event.details?.length) return event.details;
     return [event.summary];
   });
+}
+
+export function partitionHistoryEventsByRevisionIds(
+  historyEvents: ProjectHistoryEvent[] | undefined,
+  revisionIds: string[] | Set<string>,
+): {
+  matched: ProjectHistoryEvent[];
+  remaining: ProjectHistoryEvent[];
+} {
+  const events = historyEvents ?? [];
+  const revisionIdSet = revisionIds instanceof Set ? revisionIds : new Set(revisionIds);
+  const matched: ProjectHistoryEvent[] = [];
+  const remaining: ProjectHistoryEvent[] = [];
+  events.forEach((event) => {
+    if (event.revisionId && revisionIdSet.has(event.revisionId)) {
+      matched.push(event);
+      return;
+    }
+    remaining.push(event);
+  });
+  return { matched, remaining };
 }

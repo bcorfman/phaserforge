@@ -12,7 +12,7 @@ import {
   rebuildProjectRevisions,
   type ProjectRevisionRecord,
 } from './projectTreeHistory';
-import type { ProjectHistoryEvent } from './projectHistoryEvents';
+import { partitionHistoryEventsByRevisionIds, type ProjectHistoryEvent } from './projectHistoryEvents';
 import { createSerializedAsyncQueue } from './serializedAsyncQueue';
 import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
 import type { ViewState } from '../util/viewStateStorage';
@@ -1003,29 +1003,46 @@ export const projectPersistence = {
       revisions: existing.revisions ?? [],
       archivedRevisions: existing.archivedRevisions ?? [],
     };
+    let nextHistoryEvents = existing.historyEvents ?? [];
+    let nextArchivedHistoryEvents = existing.archivedHistoryEvents ?? [];
 
     if (archiveRevisionIds.length > 0) {
+      const archivedEventPartition = partitionHistoryEventsByRevisionIds(nextHistoryEvents, archiveRevisionIds);
       nextHistory = archiveProjectHistoryRevisions({
         activeRevisions: nextHistory.revisions,
         archivedRevisions: nextHistory.archivedRevisions,
         revisionIds: archiveRevisionIds,
         currentProject: existing.project,
       });
+      nextHistoryEvents = archivedEventPartition.remaining;
+      nextArchivedHistoryEvents = [
+        ...nextArchivedHistoryEvents,
+        ...archivedEventPartition.matched,
+      ];
     }
 
     if (deleteRevisionIds.length > 0) {
+      const activeDeletePartition = partitionHistoryEventsByRevisionIds(nextHistoryEvents, deleteRevisionIds);
+      const archivedDeletePartition = partitionHistoryEventsByRevisionIds(
+        nextArchivedHistoryEvents,
+        deleteRevisionIds,
+      );
       nextHistory = deleteProjectHistoryRevisions({
         activeRevisions: nextHistory.revisions,
         archivedRevisions: nextHistory.archivedRevisions,
         revisionIds: deleteRevisionIds,
         currentProject: existing.project,
       });
+      nextHistoryEvents = activeDeletePartition.remaining;
+      nextArchivedHistoryEvents = archivedDeletePartition.remaining;
     }
 
     const next = {
       ...existing,
       revisions: nextHistory.revisions,
       archivedRevisions: nextHistory.archivedRevisions,
+      historyEvents: nextHistoryEvents,
+      archivedHistoryEvents: nextArchivedHistoryEvents,
     } satisfies StoredProjectRecord;
     const workspace = await getWorkspaceState({ awaitPendingWrites: true });
     await upsertProjectRecord(next);
