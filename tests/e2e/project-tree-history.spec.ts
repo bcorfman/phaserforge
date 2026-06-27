@@ -122,13 +122,15 @@ test.describe('Project tree + history', () => {
 
     const revisionCards = page.locator('.behavior-block[data-testid^="project-revision-"]');
     await expect(revisionCards).toHaveCount(2);
-    await expect(page.getByTestId('project-revision-toggle-rev-newer')).toBeVisible();
+    await expect(page.getByTestId(/project-revision-toggle-/)).toHaveCount(0);
     await expect(page.getByTestId('project-revision-teaser-rev-newer')).toContainText('+1 more change');
-    await page.getByTestId('project-revision-toggle-rev-newer').click();
-    await expect(page.getByTestId('project-revision-details-rev-newer').locator('li')).toHaveCount(2);
-    await expect(page.getByTestId('project-revision-details-rev-newer')).toContainText('Renamed to Pattern Demo');
-    await expect(page.getByTestId('project-revision-details-rev-newer')).toContainText('Set publish title to Pattern Demo');
-    await expect(page.getByTestId('project-revision-toggle-rev-base')).toHaveCount(0);
+    await page.getByTestId('project-revision-teaser-rev-newer').click();
+    const detailList = page.getByTestId('project-revision-details-rev-newer');
+    await expect(detailList.locator('li')).toHaveCount(2);
+    await expect(detailList).toContainText('Renamed to Pattern Demo');
+    await expect(detailList).toContainText('Set publish title to Pattern Demo');
+    await detailList.click();
+    await expect(page.getByTestId('project-revision-details-rev-newer')).toHaveCount(0);
     await expect(page.getByTestId('project-revision-teaser-rev-base')).toHaveCount(0);
   });
 });
