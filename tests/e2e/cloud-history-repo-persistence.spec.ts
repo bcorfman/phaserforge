@@ -174,6 +174,8 @@ test('rename + publish repo + history + close/reopen persists latest head locall
   const revisionsPane = page.getByTestId('project-revisions-pane');
   await expect(revisionsPane).toBeVisible();
   await expect(revisionsPane).toContainText('Pattern Demo');
+  await expect(revisionsPane).toContainText('Renamed to Pattern Demo');
+  await expect(revisionsPane).toContainText('Set publish repo to zoof');
   await expect(revisionsPane).toContainText('Initial snapshot');
   await expect(page.locator('.behavior-block[data-testid^="project-revision-"]')).toHaveCount(2);
   await page.getByTestId('project-revisions-back-button').click();
@@ -228,6 +230,8 @@ test('rename + publish repo + history + close/reopen persists latest head locall
     await reopenedPage.getByTestId('project-tree-manage-button').click();
     await reopenedPage.getByTestId('project-manage-history').click();
     await expect(reopenedPage.getByTestId('project-revisions-pane')).toContainText('Pattern Demo');
+    await expect(reopenedPage.getByTestId('project-revisions-pane')).toContainText('Renamed to Pattern Demo');
+    await expect(reopenedPage.getByTestId('project-revisions-pane')).toContainText('Set publish repo to zoof');
     await expect(reopenedPage.getByTestId('project-revisions-pane')).toContainText('Initial snapshot');
     await expect(reopenedPage.locator('.behavior-block[data-testid^="project-revision-"]')).toHaveCount(2);
 

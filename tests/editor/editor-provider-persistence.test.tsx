@@ -71,6 +71,18 @@ function ImportDemoPackOnReadyHarness() {
   return null;
 }
 
+function RenameAndPublishOnReadyHarness() {
+  const { state, dispatch } = useEditorStore();
+
+  useEffect(() => {
+    if (!state.initialized) return;
+    if (state.project.title === 'Pattern Demo' && state.project.publishGithubPagesRepo === 'zoof') return;
+    dispatch({ type: 'set-project-metadata', title: 'Pattern Demo', publishGithubPagesRepo: 'zoof' } as any);
+  }, [dispatch, state.initialized, state.project.publishGithubPagesRepo, state.project.title]);
+
+  return null;
+}
+
 describe('EditorProvider persistence', () => {
   beforeEach(() => {
     persistenceSpies.saveActiveProjectRecord.mockClear();
@@ -113,5 +125,40 @@ describe('EditorProvider persistence', () => {
         ]),
       }));
     });
+  });
+
+  it('persists semantic history events alongside autosaved revisions for supported project actions', async () => {
+    render(
+      <EditorProvider>
+        <RenameAndPublishOnReadyHarness />
+      </EditorProvider>
+    );
+
+    await waitFor(() => {
+      expect(persistenceSpies.saveProjectRecordImmediately).toHaveBeenCalledWith(expect.objectContaining({
+        historyEvents: expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'project.renamed',
+            summary: 'Renamed to Pattern Demo',
+          }),
+          expect.objectContaining({
+            kind: 'publish.repo.set',
+            summary: 'Set publish repo to zoof',
+          }),
+        ]),
+      }));
+    });
+
+    const savedRecords = persistenceSpies.saveProjectRecordImmediately.mock.calls
+      .map(([record]) => record)
+      .filter((record: any) => Array.isArray(record?.historyEvents) && record.historyEvents.length >= 2);
+    const latestRecord = savedRecords.at(-1);
+    expect(latestRecord?.historyEvents?.map((event: any) => event.kind)).toEqual(
+      expect.arrayContaining(['project.renamed', 'publish.repo.set'])
+    );
+    expect(latestRecord?.historyEvents?.map((event: any) => event.kind)).not.toContain('publish.title.set');
+    expect(latestRecord?.revisions?.[0]?.historyEventIds).toEqual(
+      expect.arrayContaining(latestRecord.historyEvents.map((event: any) => event.id))
+    );
   });
 });

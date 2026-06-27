@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEMO_PACK_ASSET_MANIFEST } from '../../src/editor/demoPackAssets';
 import { sampleProject } from '../../src/model/sampleProject';
 import { createEmptyProject } from '../../src/model/emptyProject';
+import type { ProjectHistoryEvent } from '../../src/editor/projectHistoryEvents';
 import {
   archiveProjectHistoryRevisions,
   appendProjectRevision,
@@ -16,6 +17,7 @@ import {
   formatProjectRevisionTimestamp,
   formatProjectRevisionSummary,
   materializeProjectRevision,
+  rebuildProjectRevisions,
 } from '../../src/editor/projectTreeHistory';
 
 describe('project tree + history helpers', () => {
@@ -138,6 +140,78 @@ describe('project tree + history helpers', () => {
     });
 
     expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Imported Demo Pack');
+  });
+
+  it('prefers event-backed revision narratives over diff heuristics when history events exist', () => {
+    const olderProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.title = 'Pattern Demo';
+    newerProject.publishGithubPagesRepo = 'zoof';
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-26T22:21:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-26T22:22:00.000Z',
+      historyEventIds: ['event-rename', 'event-publish'],
+      historyBurstIds: ['project.renamed', 'publish.repo.set'],
+    });
+    const historyEvents: ProjectHistoryEvent[] = [
+      {
+        id: 'event-rename',
+        projectId: newerProject.id,
+        revisionId: 'rev-newer',
+        occurredAt: '2026-06-26T22:22:00.000Z',
+        reason: 'autosave',
+        kind: 'project.renamed',
+        burstId: 'project.renamed',
+        scope: { kind: 'project' },
+        summary: 'Renamed to Pattern Demo',
+      },
+      {
+        id: 'event-publish',
+        projectId: newerProject.id,
+        revisionId: 'rev-newer',
+        occurredAt: '2026-06-26T22:22:00.000Z',
+        reason: 'autosave',
+        kind: 'publish.repo.set',
+        burstId: 'publish.repo.set',
+        scope: { kind: 'project' },
+        summary: 'Set publish repo to zoof',
+      },
+    ];
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision, [newerRevision, olderRevision], historyEvents))
+      .toBe('Renamed to Pattern Demo · Set publish repo to zoof');
+    expect(buildProjectRevisionDetailItems(newerRevision, olderRevision, [newerRevision, olderRevision], historyEvents))
+      .toEqual(['Renamed to Pattern Demo', 'Set publish repo to zoof']);
+  });
+
+  it('preserves captured change summaries when rebuilding revisions from persisted history', () => {
+    const olderProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.scenes[newerProject.initialSceneId].world = {
+      width: 1280,
+      height: 720,
+    };
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-27T16:29:40.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-27T16:30:00.000Z',
+      reason: 'autosave',
+      changeSummary: 'Resized scene world',
+    });
+
+    const rebuilt = rebuildProjectRevisions([newerRevision, olderRevision], newerProject);
+
+    expect(rebuilt[0]?.changeSummary).toBe('Resized scene world');
+    expect(formatProjectRevisionSummary(rebuilt[0], rebuilt[1], rebuilt)).toBe('Resized scene world');
   });
 
   it('surfaces concrete entity edits before falling back to a scene-level summary', () => {
@@ -749,6 +823,65 @@ describe('project tree + history helpers', () => {
     expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
   });
 
+  it('coalesces nearby autosaves when revisions share a persisted history burst id', () => {
+    const baseRevision = createProjectRevision(sampleProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-27T16:29:00.000Z',
+    });
+    const firstRevision = createProjectRevision(sampleProject, {
+      id: 'rev-first',
+      updatedAt: '2026-06-27T16:29:20.000Z',
+      reason: 'autosave',
+      historyBurstIds: ['scene.world.resized:scene-1'],
+    });
+    const secondRevision = createProjectRevision(sampleProject, {
+      id: 'rev-second',
+      updatedAt: '2026-06-27T16:29:45.000Z',
+      reason: 'autosave',
+      historyBurstIds: ['scene.world.resized:scene-1'],
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
+  });
+
+  it('coalesces nearby autosaves for repeated scene world resizes in the same burst', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.scenes[firstEdit.initialSceneId].world = {
+      width: 1200,
+      height: 768,
+    };
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.scenes[secondEdit.initialSceneId].world = {
+      width: 1440,
+      height: 900,
+    };
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-27T16:29:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-27T16:29:20.000Z',
+      reason: 'autosave',
+      changeSummary: 'Resized scene world',
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-27T16:29:45.000Z',
+      reason: 'autosave',
+      changeSummary: 'Resized scene world',
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
+    expect(formatProjectRevisionSummary(revisions[0], revisions[1], revisions)).toBe('Resized scene world');
+  });
+
   it('coalesces nearby autosaves when publish metadata follows a project rename in the same burst', () => {
     const baseProject = structuredClone(sampleProject);
     const renamedProject = structuredClone(sampleProject);
@@ -764,16 +897,21 @@ describe('project tree + history helpers', () => {
       id: 'rev-rename',
       updatedAt: '2026-06-26T22:22:20.000Z',
       reason: 'autosave',
+      historyEventIds: ['event-rename'],
+      historyBurstIds: ['project.renamed'],
     });
     const publishRevision = createProjectRevision(publishProject, {
       id: 'rev-publish',
       updatedAt: '2026-06-26T22:22:45.000Z',
       reason: 'autosave',
+      historyEventIds: ['event-publish'],
+      historyBurstIds: ['publish.repo.set'],
     });
 
     const revisions = appendProjectRevision([renameRevision, baseRevision], publishRevision, 25);
 
     expect(revisions.map((revision) => revision.id)).toEqual(['rev-publish', 'rev-base']);
+    expect(revisions[0]?.historyEventIds).toEqual(['event-rename', 'event-publish']);
     expect(formatProjectRevisionSummary(revisions[0], revisions[1], revisions))
       .toBe('Renamed to Pattern Demo · Set publish repo to zoof');
   });

@@ -1,5 +1,6 @@
 import type { Id, ProjectSpec } from '../model/types';
 import { parseProjectYaml } from '../model/serialization';
+import { buildRevisionEventDetailItems, type ProjectHistoryEvent } from './projectHistoryEvents';
 
 export type SidebarScope = 'projectTree' | 'projectRevisions' | 'scene' | 'project';
 
@@ -18,6 +19,8 @@ export type ProjectRevisionRecord = {
   reason: 'autosave' | 'protective' | 'restore';
   kind: 'checkpoint' | 'delta';
   changeSummary?: string;
+  historyEventIds?: string[];
+  historyBurstIds?: string[];
   project?: ProjectSpec;
   yaml?: string;
   baseRevisionId?: string;
@@ -703,6 +706,7 @@ function buildProjectRevisionDetailItemsInternal(
   revision: ProjectRevisionRecord,
   previousRevision?: ProjectRevisionRecord,
   revisionHistory?: ProjectRevisionRecord[],
+  historyEvents?: ProjectHistoryEvent[],
 ): string[] {
   const current = summarizeRevisionContent(revision, previousRevision, revisionHistory);
   if (!previousRevision) {
@@ -712,6 +716,8 @@ function buildProjectRevisionDetailItemsInternal(
       : undefined;
     return [['Initial snapshot', sceneLabel, entityLabel].filter(Boolean).join(' · ')];
   }
+  const eventDetailItems = buildRevisionEventDetailItems(revision, historyEvents);
+  if (eventDetailItems.length > 0) return eventDetailItems;
   if (revision.changeSummary?.trim()) return [revision.changeSummary.trim()];
 
   const previous = summarizeRevisionContent(previousRevision, undefined, revisionHistory);
@@ -751,16 +757,18 @@ export function buildProjectRevisionDetailItems(
   revision: ProjectRevisionRecord,
   previousRevision?: ProjectRevisionRecord,
   revisionHistory?: ProjectRevisionRecord[],
+  historyEvents?: ProjectHistoryEvent[],
 ): string[] {
-  return buildProjectRevisionDetailItemsInternal(revision, previousRevision, revisionHistory);
+  return buildProjectRevisionDetailItemsInternal(revision, previousRevision, revisionHistory, historyEvents);
 }
 
 export function formatProjectRevisionSummary(
   revision: ProjectRevisionRecord,
   previousRevision?: ProjectRevisionRecord,
   revisionHistory?: ProjectRevisionRecord[],
+  historyEvents?: ProjectHistoryEvent[],
 ): string {
-  const detailItems = buildProjectRevisionDetailItemsInternal(revision, previousRevision, revisionHistory);
+  const detailItems = buildProjectRevisionDetailItemsInternal(revision, previousRevision, revisionHistory, historyEvents);
   return detailItems.slice(0, 2).join(' · ');
 }
 
@@ -813,6 +821,9 @@ function rebuildProjectRevisionSubset(
       id: entry.revision.id,
       updatedAt: entry.revision.updatedAt,
       reason: entry.revision.reason,
+      changeSummary: entry.revision.changeSummary,
+      historyEventIds: entry.revision.historyEventIds,
+      historyBurstIds: entry.revision.historyBurstIds,
     }), selectedRevisions.length);
   }
   return rebuilt;
@@ -914,6 +925,8 @@ export function createProjectRevision(
     updatedAt?: string;
     reason?: ProjectRevisionRecord['reason'];
     changeSummary?: string;
+    historyEventIds?: string[];
+    historyBurstIds?: string[];
     yaml?: string;
   }
 ): ProjectRevisionRecord {
@@ -931,6 +944,8 @@ export function createProjectRevision(
     reason: options?.reason ?? 'autosave',
     kind: 'checkpoint',
     changeSummary: options?.changeSummary?.trim() || undefined,
+    historyEventIds: options?.historyEventIds?.length ? [...options.historyEventIds] : undefined,
+    historyBurstIds: options?.historyBurstIds?.length ? [...options.historyBurstIds] : undefined,
     project: cloneProject(project),
     yaml: options?.yaml,
   };
@@ -1208,6 +1223,12 @@ function buildRevisionChangeProfile(
     const previousScene = previous.scenesById.get(sceneId);
     if (!previousScene) continue;
 
+    if (JSON.stringify(currentScene.world ?? undefined) !== JSON.stringify(previousScene.world ?? undefined)) {
+      domains.add('scene-world');
+      focusKeys.add(`scene:${sceneId}`);
+      focusKeys.add(`scene-world:${sceneId}`);
+    }
+
     const changedGroups = addRecordDiffFocus(domains, focusKeys, 'groups', `group:${sceneId}`, currentScene.groups, previousScene.groups);
     if (changedGroups.length > 0) focusKeys.add(`scene:${sceneId}`);
 
@@ -1316,6 +1337,11 @@ function shouldCoalesceAutosaveRevision(
   const nextAt = parseRevisionTimestamp(nextRevision.updatedAt);
   if (latestAt == null || nextAt == null || nextAt - latestAt > 90_000) return false;
 
+  const overlappingBurstIds = (latestRevision.historyBurstIds ?? []).some((burstId) => (
+    (nextRevision.historyBurstIds ?? []).includes(burstId)
+  ));
+  if (overlappingBurstIds) return true;
+
   const burstProfile = buildRevisionChangeProfile(latestRevision, previousBurstRevision, burstHistory);
   const nextProfile = buildRevisionChangeProfile(nextRevision, latestRevision, nextHistory);
   if (burstProfile.domains.size === 0 || nextProfile.domains.size === 0) return false;
@@ -1364,6 +1390,12 @@ export function appendProjectRevision(
     }
     : nextRevision;
   const previousBurstRevision = withoutDuplicate[1];
+  const mergedHistoryEventIds = latestRevision
+    ? Array.from(new Set([...(latestRevision.historyEventIds ?? []), ...(nextRevision.historyEventIds ?? [])]))
+    : [...(nextRevision.historyEventIds ?? [])];
+  const mergedHistoryBurstIds = latestRevision
+    ? Array.from(new Set([...(latestRevision.historyBurstIds ?? []), ...(nextRevision.historyBurstIds ?? [])]))
+    : [...(nextRevision.historyBurstIds ?? [])];
   if (shouldCoalesceAutosaveRevision(
     previousBurstRevision,
     latestRevision,
@@ -1372,7 +1404,11 @@ export function appendProjectRevision(
     [nextRevision, ...withoutDuplicate],
   )) {
     if (!previousBurstRevision) {
-      return [nextRevision, ...withoutDuplicate.slice(1)].slice(0, limit);
+      return [{
+        ...nextRevision,
+        historyEventIds: mergedHistoryEventIds.length > 0 ? mergedHistoryEventIds : undefined,
+        historyBurstIds: mergedHistoryBurstIds.length > 0 ? mergedHistoryBurstIds : undefined,
+      }, ...withoutDuplicate.slice(1)].slice(0, limit);
     }
     const previousBurstProject = materializeProjectRevision(withoutDuplicate, previousBurstRevision.id);
     const coalescedRevision: ProjectRevisionRecord = {
@@ -1380,6 +1416,8 @@ export function appendProjectRevision(
       kind: 'delta',
       baseRevisionId: previousBurstRevision.id,
       patch: diffProjectValue(nextProject, previousBurstProject),
+      historyEventIds: mergedHistoryEventIds.length > 0 ? mergedHistoryEventIds : undefined,
+      historyBurstIds: mergedHistoryBurstIds.length > 0 ? mergedHistoryBurstIds : undefined,
       project: undefined,
     };
     return [coalescedRevision, ...withoutDuplicate.slice(1)].slice(0, limit);
