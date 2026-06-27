@@ -13,6 +13,7 @@ import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { EventBus } from '../phaser/EventBus';
 import {
+  buildProjectRevisionDetailItems,
   buildProjectHistoryViewModel,
   buildCopyRevisionDefaultName,
   buildProjectTreeRows,
@@ -269,6 +270,7 @@ export function EntityListView({
   } | null>(null);
   const duplicateDialogRootRef = useRef<HTMLDivElement | null>(null);
   const [copyRevisionName, setCopyRevisionName] = useState('');
+  const [expandedRevisionId, setExpandedRevisionId] = useState<string | null>(null);
   const normalizedSidebarScope = sidebarScope === 'projectRevisions' ? 'projectRevisions' : 'projectTree';
   const [historyWindowDays, setHistoryWindowDays] = useState<ProjectHistoryWindowDays>(DEFAULT_PROJECT_HISTORY_WINDOW_DAYS);
   const [historyRetentionDialogOpen, setHistoryRetentionDialogOpen] = useState(false);
@@ -302,6 +304,7 @@ export function EntityListView({
     if (normalizedSidebarScope !== 'projectRevisions') {
       setHistoryWindowDays(DEFAULT_PROJECT_HISTORY_WINDOW_DAYS);
       setHistoryRetentionDialogOpen(false);
+      setExpandedRevisionId(null);
     }
     previousSidebarScopeRef.current = normalizedSidebarScope;
   }, [historyView.staleRevisions.length, normalizedSidebarScope]);
@@ -731,35 +734,92 @@ export function EntityListView({
                 historyView.visibleRevisions.map((revision) => {
                   const revisionIndex = revisions.findIndex((entry) => entry.id === revision.id);
                   const previousRevision = revisionIndex >= 0 ? revisions[revisionIndex + 1] : undefined;
+                  const detailItems = buildProjectRevisionDetailItems(revision, previousRevision, revisions);
+                  const canExpandDetails = detailItems.length > 1;
+                  const isExpanded = expandedRevisionId === revision.id;
+                  const hiddenDetailCount = Math.max(1, detailItems.length - 1);
                   return (
                     <div key={revision.id} className="behavior-block" data-testid={`project-revision-${revision.id}`}>
-                      <button
-                        className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
-                        type="button"
-                        onClick={() => {
-                          const previewProject = materializeProjectRevision(revisions, revision.id);
-                          if (!previewProject) return;
-                          dispatch({
-                            type: 'set-revision-preview',
-                            revisionId: revision.id,
-                            project: previewProject,
-                            currentSceneId: previewProject.initialSceneId,
-                          });
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'flex-start', gap: 2 }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-                            {revision.title}
-                          </span>
-                          <span
-                            className="list-item-meta"
-                            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                        {canExpandDetails ? (
+                          <button
+                            aria-expanded={isExpanded}
+                            aria-label={isExpanded ? 'Collapse revision details' : 'Expand revision details'}
+                            className="button button-compact"
+                            data-testid={`project-revision-toggle-${revision.id}`}
+                            type="button"
+                            onClick={() => setExpandedRevisionId((current) => current === revision.id ? null : revision.id)}
+                            style={{ minWidth: 38, paddingInline: 0, fontSize: 18, lineHeight: 1 }}
                           >
-                            {formatProjectRevisionSummary(revision, previousRevision, revisions)}
-                          </span>
+                            {isExpanded ? '▾' : '▸'}
+                          </button>
+                        ) : null}
+                        <button
+                          className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
+                          type="button"
+                          style={{ flex: 1 }}
+                          onClick={() => {
+                            const previewProject = materializeProjectRevision(revisions, revision.id);
+                            if (!previewProject) return;
+                            dispatch({
+                              type: 'set-revision-preview',
+                              revisionId: revision.id,
+                              project: previewProject,
+                              currentSceneId: previewProject.initialSceneId,
+                            });
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'flex-start', gap: 2 }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                              {revision.title}
+                            </span>
+                            <span
+                              className="list-item-meta"
+                              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                            >
+                              {formatProjectRevisionSummary(revision, previousRevision, revisions)}
+                            </span>
+                          </div>
+                          <span className="list-item-meta">{formatProjectRevisionTimestamp(revision)}</span>
+                        </button>
+                      </div>
+                      {canExpandDetails && !isExpanded ? (
+                        <div
+                          className="list-item-meta"
+                          data-testid={`project-revision-teaser-${revision.id}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            marginTop: 8,
+                            marginLeft: 46,
+                            padding: '3px 10px',
+                            borderRadius: 999,
+                            border: '1px solid var(--panel-border, #495869)',
+                            background: 'rgba(255,255,255,0.04)',
+                          }}
+                        >
+                          +{hiddenDetailCount} more change{hiddenDetailCount === 1 ? '' : 's'}
                         </div>
-                        <span className="list-item-meta">{formatProjectRevisionTimestamp(revision)}</span>
-                      </button>
+                      ) : null}
+                      {canExpandDetails && isExpanded ? (
+                        <div
+                          data-testid={`project-revision-details-${revision.id}`}
+                          style={{
+                            marginTop: 8,
+                            marginLeft: 46,
+                            padding: '10px 12px',
+                            borderRadius: 12,
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 6 }}>
+                            {detailItems.map((item) => (
+                              <li key={item} className="list-item-meta" style={{ whiteSpace: 'normal' }}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                         <button
                           className="button button-danger"
