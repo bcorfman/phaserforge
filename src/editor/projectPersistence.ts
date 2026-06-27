@@ -12,6 +12,7 @@ import {
   rebuildProjectRevisions,
   type ProjectRevisionRecord,
 } from './projectTreeHistory';
+import type { ProjectHistoryEvent } from './projectHistoryEvents';
 import { createSerializedAsyncQueue } from './serializedAsyncQueue';
 import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
 import type { ViewState } from '../util/viewStateStorage';
@@ -47,6 +48,8 @@ export type StoredProjectRecord = {
   cloudProjectId?: string;
   revisions?: ProjectRevisionRecord[];
   archivedRevisions?: ProjectRevisionRecord[];
+  historyEvents?: ProjectHistoryEvent[];
+  archivedHistoryEvents?: ProjectHistoryEvent[];
 };
 
 export type WorkspaceStateRecord = {
@@ -266,6 +269,8 @@ export function buildStoredProjectRecord(
     cloudProjectId?: string;
     revisions?: ProjectRevisionRecord[];
     archivedRevisions?: ProjectRevisionRecord[];
+    historyEvents?: ProjectHistoryEvent[];
+    archivedHistoryEvents?: ProjectHistoryEvent[];
   }
 ): StoredProjectRecord {
   return {
@@ -281,6 +286,8 @@ export function buildStoredProjectRecord(
     cloudProjectId: options?.cloudProjectId,
     revisions: options?.revisions ?? [createProjectRevision(project)],
     archivedRevisions: options?.archivedRevisions ?? [],
+    historyEvents: options?.historyEvents ?? [],
+    archivedHistoryEvents: options?.archivedHistoryEvents ?? [],
   };
 }
 
@@ -308,6 +315,9 @@ function normalizeStoredProjectRevisions(
         id: latestRevision.id,
         updatedAt: latestRevision.updatedAt,
         reason: latestRevision.reason,
+        changeSummary: latestRevision.changeSummary,
+        historyEventIds: latestRevision.historyEventIds,
+        historyBurstIds: latestRevision.historyBurstIds,
       }), ...originalRevisions.slice(1)];
     }
   }
@@ -325,6 +335,8 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
         fallbackToCurrentProject: false,
         enforceLatestMatchesProject: false,
       }),
+      historyEvents: record.historyEvents ?? [],
+      archivedHistoryEvents: record.archivedHistoryEvents ?? [],
     };
   }
   if (Array.isArray(record.revisions) && record.revisions.length > 0) {
@@ -338,6 +350,8 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
           fallbackToCurrentProject: false,
           enforceLatestMatchesProject: false,
         }),
+        historyEvents: record.historyEvents ?? [],
+        archivedHistoryEvents: record.archivedHistoryEvents ?? [],
       };
     }
   }
@@ -351,6 +365,8 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
         fallbackToCurrentProject: false,
         enforceLatestMatchesProject: false,
       }),
+      historyEvents: record.historyEvents ?? [],
+      archivedHistoryEvents: record.archivedHistoryEvents ?? [],
     };
   }
   const project = createEmptyProject();
@@ -362,6 +378,8 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
       fallbackToCurrentProject: false,
       enforceLatestMatchesProject: false,
     }),
+    historyEvents: record.historyEvents ?? [],
+    archivedHistoryEvents: record.archivedHistoryEvents ?? [],
   };
 }
 

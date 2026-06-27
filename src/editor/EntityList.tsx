@@ -25,6 +25,7 @@ import {
   type ProjectRevisionRecord,
   type SidebarScope,
 } from './projectTreeHistory';
+import type { ProjectHistoryEvent } from './projectHistoryEvents';
 import { projectPersistence } from './projectPersistence';
 import { appendPersistenceDebugEntry } from '../util/persistenceDebug';
 
@@ -165,6 +166,7 @@ export function EntityList() {
       revisionDialogs={revisionDialogs}
       previewRevisionId={revisionPreview?.revisionId}
       revisions={persistence.activeProjectRevisions}
+      historyEvents={persistence.activeProjectHistoryEvents}
       expandedGroups={expandedGroups}
       mode={mode}
       dispatch={dispatch}
@@ -200,6 +202,7 @@ export function EntityListView({
   revisionDialogs = {},
   previewRevisionId,
   revisions = [],
+  historyEvents = [],
   expandedGroups,
   mode,
   dispatch,
@@ -222,6 +225,7 @@ export function EntityListView({
   revisionDialogs?: { copyRevisionId?: string; restoreRevisionId?: string };
   previewRevisionId?: string;
   revisions?: ProjectRevisionRecord[];
+  historyEvents?: ProjectHistoryEvent[];
   expandedGroups: Record<string, boolean>;
   mode: 'edit' | 'play';
   dispatch: (action: any) => void;
@@ -734,7 +738,7 @@ export function EntityListView({
                 historyView.visibleRevisions.map((revision) => {
                   const revisionIndex = revisions.findIndex((entry) => entry.id === revision.id);
                   const previousRevision = revisionIndex >= 0 ? revisions[revisionIndex + 1] : undefined;
-                  const detailItems = buildProjectRevisionDetailItems(revision, previousRevision, revisions);
+                  const detailItems = buildProjectRevisionDetailItems(revision, previousRevision, revisions, historyEvents);
                   const canExpandDetails = detailItems.length > 1;
                   const isExpanded = expandedRevisionId === revision.id;
                   const hiddenDetailCount = Math.max(1, detailItems.length - 1);
@@ -765,7 +769,7 @@ export function EntityListView({
                               className="list-item-meta"
                               style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
                             >
-                              {formatProjectRevisionSummary(revision, previousRevision, revisions)}
+                              {formatProjectRevisionSummary(revision, previousRevision, revisions, historyEvents)}
                             </span>
                           </div>
                           <span

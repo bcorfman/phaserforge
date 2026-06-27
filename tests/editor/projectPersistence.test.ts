@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { serializeProjectToYaml } from '../../src/model/serialization';
+import type { ProjectHistoryEvent } from '../../src/editor/projectHistoryEvents';
 import {
   __pauseActiveProjectRecordPersistenceForTests,
   __resumeActiveProjectRecordPersistenceForTests,
@@ -505,6 +506,45 @@ describe('projectPersistence steady-state storage', () => {
       source: 'device',
       savedAt: expect.any(String),
     });
+  });
+
+  it('persists semantic history events alongside compact revision storage', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+
+    const historyEvents: ProjectHistoryEvent[] = [
+      {
+        id: 'history-event-rev-rename-0',
+        projectId: project.id,
+        revisionId: 'rev-rename',
+        occurredAt: '2026-06-27T16:30:00.000Z',
+        reason: 'autosave',
+        kind: 'project.renamed',
+        burstId: 'project.renamed',
+        scope: { kind: 'project' },
+        summary: 'Renamed to Pattern Demo',
+      },
+    ];
+    const revisions = [createProjectRevision(project, {
+      id: 'rev-rename',
+      updatedAt: '2026-06-27T16:30:00.000Z',
+      reason: 'autosave',
+      historyEventIds: ['history-event-rev-rename-0'],
+      historyBurstIds: ['project.renamed'],
+    })];
+
+    const record = buildStoredProjectRecord(project, {
+      id: project.id,
+      revisions,
+      historyEvents,
+    });
+    await projectPersistence.saveProjectRecord(record);
+
+    const loaded = await projectPersistence.loadProjectById(project.id);
+    expect(loaded?.historyEvents).toEqual(historyEvents);
+    expect(loaded?.revisions?.[0]?.historyEventIds).toEqual(['history-event-rev-rename-0']);
+    expect(loaded?.revisions?.[0]?.historyBurstIds).toEqual(['project.renamed']);
   });
 
   it('hydrates a legacy YAML workspace backup into structured project data', async () => {
