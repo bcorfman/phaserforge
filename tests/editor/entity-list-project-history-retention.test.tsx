@@ -116,4 +116,41 @@ describe('EntityList project history retention', () => {
     expect(timestamp.getAttribute('style') ?? '').toContain('white-space: nowrap');
     expect(timestamp.getAttribute('style') ?? '').toContain('text-align: right');
   });
+
+  it('removes teaser top spacing and shows a divider below revision actions', () => {
+    const previousProject = structuredClone(sampleProject);
+    previousProject.title = 'Renamed Demo';
+    const previous = createProjectRevision(previousProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-25T21:10:00.000Z',
+    });
+    const latestProject = structuredClone(sampleProject);
+    latestProject.title = 'Pattern Demo';
+    latestProject.publishTitle = 'Pattern Demo Live';
+    latestProject.publishGithubPagesRepo = 'acme/pattern-demo';
+    const latest = createProjectRevision(latestProject, {
+      id: 'rev-newest',
+      updatedAt: '2026-06-26T21:10:00.000Z',
+    });
+
+    render(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
+        selection={{ kind: 'none' }}
+        sidebarScope="projectRevisions"
+        revisions={[latest, previous]}
+        expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
+        dispatch={() => {}}
+      />
+    );
+
+    const teaser = screen.getByTestId('project-revision-teaser-rev-newest');
+    const divider = screen.getByTestId('project-revision-divider-rev-newest');
+
+    expect(teaser.getAttribute('style') ?? '').toContain('margin-top: 0');
+    expect(divider.className).toContain('scene-graph-menu-divider');
+  });
 });

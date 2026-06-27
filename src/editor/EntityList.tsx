@@ -786,7 +786,7 @@ export function EntityListView({
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            marginTop: 8,
+                            marginTop: 0,
                             marginLeft: 0,
                             padding: '3px 10px',
                             borderRadius: 999,
@@ -852,6 +852,11 @@ export function EntityListView({
                           Copy...
                         </button>
                       </div>
+                      <div
+                        className="scene-graph-menu-divider"
+                        data-testid={`project-revision-divider-${revision.id}`}
+                        style={{ margin: '0.6rem 0 0 0' }}
+                      />
                     </div>
                   );
                 })
