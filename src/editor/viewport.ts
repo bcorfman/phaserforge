@@ -101,6 +101,24 @@ export function getCenteredCameraScroll(
   };
 }
 
+export function isCameraAtFitView(
+  viewportWidth: number,
+  viewportHeight: number,
+  worldWidth: number,
+  worldHeight: number,
+  zoom: number,
+  scrollX: number,
+  scrollY: number,
+  originX = 0.5,
+  originY = 0.5,
+  epsilon = 1
+): boolean {
+  const fitZoom = getFitZoom(viewportWidth, viewportHeight, worldWidth, worldHeight);
+  if (Math.abs(zoom - fitZoom) > 0.01) return false;
+  const centered = getCenteredCameraScroll(viewportWidth, viewportHeight, worldWidth, worldHeight, fitZoom, originX, originY);
+  return Math.abs(scrollX - centered.scrollX) <= epsilon && Math.abs(scrollY - centered.scrollY) <= epsilon;
+}
+
 export function clampCameraScroll(
   scrollX: number,
   scrollY: number,

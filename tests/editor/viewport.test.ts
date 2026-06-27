@@ -4,11 +4,13 @@ import {
   clampCameraScroll,
   clampZoom,
   formatZoomPercent,
+  getCenteredCameraScroll,
   getFitZoom,
   getMaxZoom,
   getNextZoom,
   getResizedViewportScroll,
   getZoomedScroll,
+  isCameraAtFitView,
 } from '../../src/editor/viewport';
 
 describe('viewport helpers', () => {
@@ -99,5 +101,15 @@ describe('viewport helpers', () => {
   it('reports when the current zoom actually allows panning', () => {
     expect(canPanCamera(682, 768, 1024, 768, 0.57)).toBe(true);
     expect(canPanCamera(682, 768, 1024, 768, 0.77)).toBe(true);
+  });
+
+  it('recognizes when the camera is already on the centered fit view', () => {
+    const viewport = { width: 1280, height: 720 };
+    const world = { width: 1024, height: 768 };
+    const zoom = getFitZoom(viewport.width, viewport.height, world.width, world.height);
+    const scroll = getCenteredCameraScroll(viewport.width, viewport.height, world.width, world.height, zoom);
+
+    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom, scroll.scrollX, scroll.scrollY)).toBe(true);
+    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom + 0.2, scroll.scrollX, scroll.scrollY)).toBe(false);
   });
 });
