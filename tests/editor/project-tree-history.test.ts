@@ -690,7 +690,7 @@ describe('project tree + history helpers', () => {
     expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-first', 'rev-base']);
   });
 
-  it('splits nearby autosaves for milestone-only edits even when they stay in the same milestone domain', () => {
+  it('coalesces nearby autosaves for repeated project-title edits in the same burst', () => {
     const baseProject = structuredClone(sampleProject);
     const firstEdit = structuredClone(sampleProject);
     firstEdit.title = 'History Demo';
@@ -714,7 +714,36 @@ describe('project tree + history helpers', () => {
 
     const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
 
-    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-first', 'rev-base']);
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
+  });
+
+  it('coalesces nearby autosaves when publish metadata follows a project rename in the same burst', () => {
+    const baseProject = structuredClone(sampleProject);
+    const renamedProject = structuredClone(sampleProject);
+    renamedProject.title = 'Pattern Demo';
+    const publishProject = structuredClone(renamedProject);
+    publishProject.publishGithubPagesRepo = 'zoof';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-26T22:22:00.000Z',
+    });
+    const renameRevision = createProjectRevision(renamedProject, {
+      id: 'rev-rename',
+      updatedAt: '2026-06-26T22:22:20.000Z',
+      reason: 'autosave',
+    });
+    const publishRevision = createProjectRevision(publishProject, {
+      id: 'rev-publish',
+      updatedAt: '2026-06-26T22:22:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([renameRevision, baseRevision], publishRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-publish', 'rev-base']);
+    expect(formatProjectRevisionSummary(revisions[0], revisions[1], revisions))
+      .toBe('Renamed to Pattern Demo · Set publish repo to zoof');
   });
 
   it('stores later revisions as deltas against the previous checkpoint instead of full snapshots', () => {
