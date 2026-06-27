@@ -59,7 +59,14 @@ export interface SceneBridge {
 }
 
 function isBridgeEnabled(): boolean {
-  return typeof window !== 'undefined' && import.meta.env.DEV;
+  return shouldEnableTestBridge(import.meta.env, typeof window !== 'undefined');
+}
+
+export function shouldEnableTestBridge(
+  env: { DEV?: boolean; VITE_E2E_TEST_BRIDGE?: string },
+  hasWindow: boolean,
+): boolean {
+  return hasWindow && (Boolean(env.DEV) || env.VITE_E2E_TEST_BRIDGE === '1');
 }
 
 function clone<T>(value: T): T {

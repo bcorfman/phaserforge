@@ -27,8 +27,18 @@ describe('playwright.config project selection', () => {
     ]);
   });
 
-  it('uses port-based web server readiness checks', () => {
+  it('uses the stable preview server path by default', () => {
     expect(resolveE2EWebServerConfig({})).toEqual({
+      command:
+        'VITE_E2E_TEST_BRIDGE=1 npm run build-nolog && VITE_E2E_TEST_BRIDGE=1 npx vite preview --config vite/config.prod.mjs --host 127.0.0.1 --port 4173 --strictPort',
+      port: 4173,
+      reuseExistingServer: false,
+      timeout: 180000,
+    });
+  });
+
+  it('supports opting into a live dev server for debugging', () => {
+    expect(resolveE2EWebServerConfig({ PW_E2E_SERVER_MODE: 'dev' })).toEqual({
       command: 'npx vite --config vite/config.dev.mjs --host 127.0.0.1 --port 4173',
       port: 4173,
       reuseExistingServer: false,
