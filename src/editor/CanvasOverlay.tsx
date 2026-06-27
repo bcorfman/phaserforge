@@ -26,6 +26,8 @@ function getSelectedEntityIds(selection: Selection): string[] {
 export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean }) {
   const { state, dispatch } = useEditorStore();
   const scene = state.project.scenes[state.currentSceneId];
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const topRightRef = useRef<HTMLDivElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [menuPopupSize, setMenuPopupSize] = useState<Size | null>(null);
@@ -514,9 +516,33 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
     setGroupPromptOpen(false);
   };
 
+  useEffect(() => {
+    const overlay = overlayRef.current;
+    const controls = topRightRef.current;
+    if (!overlay || !controls) return;
+
+    const emitInsets = () => {
+      const overlayRect = overlay.getBoundingClientRect();
+      const controlsRect = controls.getBoundingClientRect();
+      const top = Math.max(0, controlsRect.bottom - overlayRect.top + 12);
+      EventBus.emit('scene-fit-insets-changed', { top, right: 0, bottom: 0, left: 0 });
+    };
+
+    emitInsets();
+    const observer = new ResizeObserver(() => emitInsets());
+    observer.observe(overlay);
+    observer.observe(controls);
+    window.addEventListener('resize', emitInsets);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', emitInsets);
+      EventBus.emit('scene-fit-insets-changed', { top: 0, right: 0, bottom: 0, left: 0 });
+    };
+  }, []);
+
   return (
-    <div className="canvas-overlay" data-testid="canvas-overlay">
-      <div className="canvas-overlay-top-right" data-testid="canvas-overlay-top-right">
+    <div ref={overlayRef} className="canvas-overlay" data-testid="canvas-overlay">
+      <div ref={topRightRef} className="canvas-overlay-top-right" data-testid="canvas-overlay-top-right">
         <button
           aria-label="Undo"
           className="button"
