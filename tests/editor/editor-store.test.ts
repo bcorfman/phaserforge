@@ -159,6 +159,21 @@ describe('EditorStore reducer', () => {
     expect(next.statusExpiresAt).toBeGreaterThan(now);
   });
 
+  it('formats create-project status messages for people instead of internal source labels', () => {
+    const now = 1_700_000_000_000;
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+
+    const state = initState();
+    const next = reducer(state, {
+      type: 'load-project',
+      project: sampleProject,
+      sourceLabel: 'create-project:Untitled Project',
+    } as any);
+
+    expect(next.statusMessage).toBe('Created project: Untitled Project');
+    expect(next.statusExpiresAt).toBeGreaterThan(now);
+  });
+
   it('does not set a success status message when YAML parsing fails', () => {
     const now = 1_700_000_000_000;
     vi.spyOn(Date, 'now').mockReturnValue(now);
