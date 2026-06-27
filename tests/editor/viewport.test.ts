@@ -25,6 +25,10 @@ describe('viewport helpers', () => {
     expect(getFitZoom(1200, 900, 2000, 1500)).toBeLessThan(1);
   });
 
+  it('reduces fit zoom when a top safe area is reserved for canvas controls', () => {
+    expect(getFitZoom(1024, 768, 1024, 768, { top: 80 })).toBeLessThan(getFitZoom(1024, 768, 1024, 768));
+  });
+
   it('steps zoom in and out predictably', () => {
     expect(getNextZoom(1, 'in')).toBe(1.2);
     expect(getNextZoom(1, 'out')).toBe(0.8);
@@ -106,10 +110,11 @@ describe('viewport helpers', () => {
   it('recognizes when the camera is already on the centered fit view', () => {
     const viewport = { width: 1280, height: 720 };
     const world = { width: 1024, height: 768 };
-    const zoom = getFitZoom(viewport.width, viewport.height, world.width, world.height);
-    const scroll = getCenteredCameraScroll(viewport.width, viewport.height, world.width, world.height, zoom);
+    const insets = { top: 84 };
+    const zoom = getFitZoom(viewport.width, viewport.height, world.width, world.height, insets);
+    const scroll = getCenteredCameraScroll(viewport.width, viewport.height, world.width, world.height, zoom, 0.5, 0.5, insets);
 
-    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom, scroll.scrollX, scroll.scrollY)).toBe(true);
-    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom + 0.2, scroll.scrollX, scroll.scrollY)).toBe(false);
+    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom, scroll.scrollX, scroll.scrollY, 0.5, 0.5, insets)).toBe(true);
+    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom + 0.2, scroll.scrollX, scroll.scrollY, 0.5, 0.5, insets)).toBe(false);
   });
 });

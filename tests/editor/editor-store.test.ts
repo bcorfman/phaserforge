@@ -159,7 +159,7 @@ describe('EditorStore reducer', () => {
     expect(next.statusExpiresAt).toBeGreaterThan(now);
   });
 
-  it('formats create-project status messages for people instead of internal source labels', () => {
+  it('does not show a load banner when creating a new project', () => {
     const now = 1_700_000_000_000;
     vi.spyOn(Date, 'now').mockReturnValue(now);
 
@@ -170,8 +170,8 @@ describe('EditorStore reducer', () => {
       sourceLabel: 'create-project:Untitled Project',
     } as any);
 
-    expect(next.statusMessage).toBe('Created project: Untitled Project');
-    expect(next.statusExpiresAt).toBeGreaterThan(now);
+    expect(next.statusMessage).toBeUndefined();
+    expect(next.statusExpiresAt).toBeUndefined();
   });
 
   it('does not set a success status message when YAML parsing fails', () => {
