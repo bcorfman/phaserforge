@@ -173,8 +173,9 @@ test('rename + publish repo + history + close/reopen persists latest head locall
   await page.getByTestId('project-manage-history').click();
   const revisionsPane = page.getByTestId('project-revisions-pane');
   await expect(revisionsPane).toBeVisible();
-  await expect(revisionsPane).toContainText('Renamed to Pattern Demo');
-  await expect(page.locator('.behavior-block[data-testid^="project-revision-"]')).toHaveCount(3);
+  await expect(revisionsPane).toContainText('Pattern Demo');
+  await expect(revisionsPane).toContainText('Initial snapshot');
+  await expect(page.locator('.behavior-block[data-testid^="project-revision-"]')).toHaveCount(2);
   await page.getByTestId('project-revisions-back-button').click();
   await expect(page.getByTestId('project-tree-root-button')).toContainText('Pattern Demo');
 
@@ -187,7 +188,7 @@ test('rename + publish repo + history + close/reopen persists latest head locall
     };
   }).toEqual({
     hasProjectPayload: false,
-    revisionCount: 3,
+    revisionCount: 2,
     revisionKinds: expect.arrayContaining(['delta']),
   });
 
@@ -226,8 +227,9 @@ test('rename + publish repo + history + close/reopen persists latest head locall
 
     await reopenedPage.getByTestId('project-tree-manage-button').click();
     await reopenedPage.getByTestId('project-manage-history').click();
-    await expect(reopenedPage.getByTestId('project-revisions-pane')).toContainText('Renamed to Pattern Demo');
-    await expect(reopenedPage.locator('.behavior-block[data-testid^="project-revision-"]')).toHaveCount(3);
+    await expect(reopenedPage.getByTestId('project-revisions-pane')).toContainText('Pattern Demo');
+    await expect(reopenedPage.getByTestId('project-revisions-pane')).toContainText('Initial snapshot');
+    await expect(reopenedPage.locator('.behavior-block[data-testid^="project-revision-"]')).toHaveCount(2);
 
     await expect.poll(async () => {
       const active = await readStoredActiveProject(reopenedPage);
@@ -237,7 +239,7 @@ test('rename + publish repo + history + close/reopen persists latest head locall
       };
     }).toEqual({
       hasProjectPayload: false,
-      revisionCount: 3,
+      revisionCount: 2,
     });
   } finally {
     await reopenedPage.close();
