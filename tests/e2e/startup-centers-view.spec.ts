@@ -51,7 +51,10 @@ test('startup centers the editor viewport @critical', async ({ page }) => {
     snapshot.viewportHeight,
     world.width,
     world.height,
-    expectedZoom
+    expectedZoom,
+    0.5,
+    0.5,
+    insets
   );
 
   expect(Math.abs(snapshot.zoom - expectedZoom)).toBeLessThanOrEqual(0.01);
