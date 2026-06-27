@@ -10,13 +10,16 @@ test('startup centers the editor viewport @critical', async ({ page }) => {
 
   const state = await getState<{ scene?: { world?: { width: number; height: number } } } | null>(page);
   const world = state?.scene?.world ?? { width: 1024, height: 768 };
-  const topInset = await page.evaluate(() => {
+  const insets = await page.evaluate(() => {
     const overlay = document.querySelector('[data-testid="canvas-overlay"]') as HTMLElement | null;
     const controls = document.querySelector('[data-testid="canvas-overlay-top-right"]') as HTMLElement | null;
-    if (!overlay || !controls) return 0;
+    if (!overlay || !controls) return { top: 0, right: 0 };
     const overlayRect = overlay.getBoundingClientRect();
     const controlsRect = controls.getBoundingClientRect();
-    return Math.max(0, controlsRect.bottom - overlayRect.top + 12);
+    return {
+      top: Math.max(0, controlsRect.bottom - overlayRect.top + 12),
+      right: Math.max(0, overlayRect.right - controlsRect.left + 12),
+    };
   });
 
   const snapshot = await getSceneSnapshot<{
@@ -30,7 +33,7 @@ test('startup centers the editor viewport @critical', async ({ page }) => {
   }>(page);
   expect(snapshot).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
-  const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height, { top: topInset });
+  const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height, insets);
   const expectedScroll = getCenteredCameraScroll(
     snapshot.viewportWidth,
     snapshot.viewportHeight,
@@ -39,7 +42,7 @@ test('startup centers the editor viewport @critical', async ({ page }) => {
     expectedZoom,
     0.5,
     0.5,
-    { top: topInset }
+    insets
   );
   const clampedExpectedScroll = clampCameraScroll(
     expectedScroll.scrollX,
