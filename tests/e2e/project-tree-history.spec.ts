@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, seedSampleScene } from './helpers';
+import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
+import { appendProjectRevision, createProjectRevision } from '../../src/editor/projectTreeHistory';
+import { sampleProject } from '../../src/model/sampleProject';
+import { dismissViewHint, gotoStudio, seedSampleScene, waitForSampleScene } from './helpers';
 
 test.describe('Project tree + history', () => {
   test('supports manage actions, restore, and copy flows @smoke', async ({ page }) => {
@@ -31,6 +34,8 @@ test.describe('Project tree + history', () => {
     const revisionCards = page.locator('.behavior-block[data-testid^="project-revision-"]');
     await expect(revisionCards.nth(1)).toBeVisible();
     await expect(revisionCards.first()).toContainText('Renamed to History Demo');
+    await expect(page.getByTestId(/project-revision-toggle-/)).toHaveCount(0);
+    await expect(page.getByTestId(/project-revision-teaser-/)).toHaveCount(0);
     await expect(revisionsPane).toContainText(/(Initial snapshot|entity added|entities added|scene added|scenes added|Minor edits)/);
     await expect(revisionsPane).not.toContainText('Autosave checkpoint');
     await expect(revisionsPane).not.toContainText('Start:');
@@ -53,5 +58,77 @@ test.describe('Project tree + history', () => {
     await page.getByTestId('copy-revision-name-input').fill('History Fork');
     await page.getByTestId('copy-revision-confirm-button').click();
     await expect(page.getByTestId('project-tree-root-button')).toContainText('History Fork');
+  });
+
+  test('expands multi-item revisions and skips disclosure UI for single-item rows @smoke', async ({ page }) => {
+    const baseProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.title = 'Pattern Demo';
+    newerProject.publishTitle = 'Pattern Demo';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-27T02:21:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-27T02:22:00.000Z',
+    });
+    const revisions = appendProjectRevision([baseRevision], newerRevision, 25);
+    const record = {
+      ...buildStoredProjectRecord(newerProject, {
+        id: newerProject.id,
+        updatedAt: '2026-06-27T02:22:00.000Z',
+        origin: 'local-only',
+        syncStatus: 'local',
+      }),
+      revisions,
+    };
+
+    await page.addInitScript(async ({ seededRecord }) => {
+      const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+        const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+        request.onerror = () => reject(request.error);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('workspaceState')) db.createObjectStore('workspaceState');
+          if (!db.objectStoreNames.contains('preferences')) db.createObjectStore('preferences');
+        };
+        request.onsuccess = () => resolve(request.result);
+      });
+
+      const db = await openDb();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(seededRecord);
+        tx.objectStore('workspaceState').put({
+          activeProjectId: seededRecord.id,
+          syncMode: 'offline',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    }, { seededRecord: record });
+
+    await gotoStudio(page, { forceNavigate: true });
+    await waitForSampleScene(page);
+    await dismissViewHint(page);
+
+    await expect(page.getByTestId('project-tree-root-button')).toContainText('Pattern Demo');
+    await page.getByTestId('project-tree-manage-button').click();
+    await page.getByTestId('project-manage-history').click();
+
+    const revisionCards = page.locator('.behavior-block[data-testid^="project-revision-"]');
+    await expect(revisionCards).toHaveCount(2);
+    await expect(page.getByTestId('project-revision-toggle-rev-newer')).toBeVisible();
+    await expect(page.getByTestId('project-revision-teaser-rev-newer')).toContainText('+1 more change');
+    await page.getByTestId('project-revision-toggle-rev-newer').click();
+    await expect(page.getByTestId('project-revision-details-rev-newer').locator('li')).toHaveCount(2);
+    await expect(page.getByTestId('project-revision-details-rev-newer')).toContainText('Renamed to Pattern Demo');
+    await expect(page.getByTestId('project-revision-details-rev-newer')).toContainText('Set publish title to Pattern Demo');
+    await expect(page.getByTestId('project-revision-toggle-rev-base')).toHaveCount(0);
+    await expect(page.getByTestId('project-revision-teaser-rev-base')).toHaveCount(0);
   });
 });

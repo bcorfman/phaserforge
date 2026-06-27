@@ -699,20 +699,20 @@ export function formatProjectRevisionTimestamp(revision: ProjectRevisionRecord):
   return shortMonthDayTime(revision.updatedAt);
 }
 
-export function formatProjectRevisionSummary(
+function buildProjectRevisionDetailItemsInternal(
   revision: ProjectRevisionRecord,
   previousRevision?: ProjectRevisionRecord,
   revisionHistory?: ProjectRevisionRecord[],
-): string {
+): string[] {
   const current = summarizeRevisionContent(revision, previousRevision, revisionHistory);
   if (!previousRevision) {
     const sceneLabel = current.sceneCount === 1 ? '1 scene' : `${current.sceneCount} scenes`;
     const entityLabel = typeof current.entityCount === 'number'
       ? `${current.entityCount} ${current.entityCount === 1 ? 'entity' : 'entities'}`
       : undefined;
-    return ['Initial snapshot', sceneLabel, entityLabel].filter(Boolean).join(' · ');
+    return [['Initial snapshot', sceneLabel, entityLabel].filter(Boolean).join(' · ')];
   }
-  if (revision.changeSummary?.trim()) return revision.changeSummary.trim();
+  if (revision.changeSummary?.trim()) return [revision.changeSummary.trim()];
 
   const previous = summarizeRevisionContent(previousRevision, undefined, revisionHistory);
   const specificChanges = [
@@ -731,20 +731,37 @@ export function formatProjectRevisionSummary(
     revision.reason === 'protective' ? 'Safety checkpoint' : null,
   ].filter((value): value is string => Boolean(value));
 
-  if (specificChanges.length > 0) return specificChanges.slice(0, 2).join(' · ');
+  if (specificChanges.length > 0) return specificChanges;
   const namedTriggerChange = formatNamedTriggerDiff(current, previous);
-  if (namedTriggerChange) return namedTriggerChange;
+  if (namedTriggerChange) return [namedTriggerChange];
   const sceneSystemChange = formatSceneSystemDiff(current, previous);
-  if (sceneSystemChange) return sceneSystemChange;
+  if (sceneSystemChange) return [sceneSystemChange];
   const broadSceneChange = formatSceneEditDiff(current, previous);
-  if (broadSceneChange) return broadSceneChange;
+  if (broadSceneChange) return [broadSceneChange];
   const projectSystemChange = formatProjectSystemDiff(current, previous);
-  if (projectSystemChange) return projectSystemChange;
+  if (projectSystemChange) return [projectSystemChange];
   const currentProject = materializeRevisionProjectWithBase(revision, previous.project);
   const previousProject = previous.project;
-  return currentProject && previousProject && JSON.stringify(currentProject) !== JSON.stringify(previousProject)
+  return [currentProject && previousProject && JSON.stringify(currentProject) !== JSON.stringify(previousProject)
     ? 'Updated project settings'
-    : 'Minor edits';
+    : 'Minor edits'];
+}
+
+export function buildProjectRevisionDetailItems(
+  revision: ProjectRevisionRecord,
+  previousRevision?: ProjectRevisionRecord,
+  revisionHistory?: ProjectRevisionRecord[],
+): string[] {
+  return buildProjectRevisionDetailItemsInternal(revision, previousRevision, revisionHistory);
+}
+
+export function formatProjectRevisionSummary(
+  revision: ProjectRevisionRecord,
+  previousRevision?: ProjectRevisionRecord,
+  revisionHistory?: ProjectRevisionRecord[],
+): string {
+  const detailItems = buildProjectRevisionDetailItemsInternal(revision, previousRevision, revisionHistory);
+  return detailItems.slice(0, 2).join(' · ');
 }
 
 export function buildCopyRevisionDefaultName(projectTitle: string | undefined, revision: ProjectRevisionRecord): string {

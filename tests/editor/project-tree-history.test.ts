@@ -5,6 +5,7 @@ import { createEmptyProject } from '../../src/model/emptyProject';
 import {
   archiveProjectHistoryRevisions,
   appendProjectRevision,
+  buildProjectRevisionDetailItems,
   buildCopyRevisionDefaultName,
   buildProjectHistoryViewModel,
   buildProjectTreeRows,
@@ -66,6 +67,37 @@ describe('project tree + history helpers', () => {
     });
 
     expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Renamed to Pattern Demo · 1 entity added');
+  });
+
+  it('returns a single detail item for initial snapshots', () => {
+    const revision = createProjectRevision(sampleProject, {
+      id: 'rev-1',
+      updatedAt: '2026-06-17T10:12:00.000Z',
+    });
+
+    expect(buildProjectRevisionDetailItems(revision)).toEqual(['Initial snapshot · 1 scene · 15 entities']);
+  });
+
+  it('returns the full detail list for multi-change revisions', () => {
+    const olderProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.title = 'Pattern Demo';
+    newerProject.publishTitle = 'Pattern Demo';
+    newerProject.publishGithubPagesRepo = 'zoof';
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-26T22:21:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-26T22:22:00.000Z',
+    });
+
+    expect(buildProjectRevisionDetailItems(newerRevision, olderRevision)).toEqual([
+      'Renamed to Pattern Demo',
+      'Set publish title to Pattern Demo',
+    ]);
   });
 
   it('prefers a captured revision change summary when one is available', () => {
