@@ -569,4 +569,150 @@ describe('EditorStore history', () => {
       }),
     ]);
   });
+
+  it('captures semantic drafts for asset library add, rename, and remove actions', () => {
+    const base = seededState();
+
+    const imageAdded = reducer(base, {
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'hero.png',
+        mimeType: 'image/png',
+        width: 16,
+        height: 16,
+      },
+    } as any);
+    expect(imageAdded.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'asset.image.added',
+        summary: 'Added image asset hero.png',
+      }),
+    ]);
+
+    const audioAdded = reducer(base, {
+      type: 'add-audio-asset-from-file',
+      file: {
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'music_theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any);
+    expect(audioAdded.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'asset.audio.added',
+        summary: 'Added audio music_theme.mp3',
+      }),
+    ]);
+
+    const renamedImage = reducer(imageAdded, {
+      type: 'set-asset-display-name',
+      assetKind: 'image',
+      assetId: 'hero',
+      name: 'Hero Sprite',
+    } as any);
+    expect(renamedImage.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'asset.renamed',
+        summary: 'Renamed image asset to Hero Sprite',
+      }),
+    ]);
+
+    const removedImage = reducer(renamedImage, {
+      type: 'remove-asset',
+      assetKind: 'image',
+      assetId: 'hero',
+    } as any);
+    expect(removedImage.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'asset.removed',
+        summary: 'Removed image asset Hero Sprite',
+      }),
+    ]);
+
+    const removedAudio = reducer(audioAdded, {
+      type: 'remove-audio-asset',
+      assetId: 'music-theme',
+    } as any);
+    expect(removedAudio.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'asset.removed',
+        summary: 'Removed audio music_theme.mp3',
+      }),
+    ]);
+  });
+
+  it('captures semantic drafts for asset assignment actions', () => {
+    const base = seededState();
+    const withImage = reducer(base, {
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'hero.png',
+        mimeType: 'image/png',
+        width: 16,
+        height: 16,
+      },
+    } as any);
+    const withAudio = reducer(withImage, {
+      type: 'add-audio-asset-from-file',
+      file: {
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'music_theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any);
+
+    const entitySpriteAssigned = reducer(withAudio, {
+      type: 'assign-asset-to-target',
+      assetKind: 'image',
+      assetId: 'hero',
+      target: { kind: 'entity-sprite', sceneId: 'scene-1', entityId: 'e1' },
+    } as any);
+    expect(entitySpriteAssigned.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.asset.set',
+        summary: 'Updated entity sprite to hero',
+      }),
+    ]);
+
+    const backgroundAssigned = reducer(withAudio, {
+      type: 'assign-asset-to-target',
+      assetKind: 'image',
+      assetId: 'hero',
+      target: { kind: 'background-layer', sceneId: 'scene-1' },
+    } as any);
+    expect(backgroundAssigned.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'background.layer.asset.set',
+        summary: 'Background layer -> hero',
+      }),
+    ]);
+
+    const sceneMusicAssigned = reducer(withAudio, {
+      type: 'assign-asset-to-target',
+      assetKind: 'audio',
+      assetId: 'music-theme',
+      target: { kind: 'scene-music', sceneId: 'scene-1' },
+    } as any);
+    expect(sceneMusicAssigned.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'scene.music.set',
+        summary: 'Music -> music_theme.mp3',
+      }),
+    ]);
+
+    const ambienceAssigned = reducer(withAudio, {
+      type: 'assign-asset-to-target',
+      assetKind: 'audio',
+      assetId: 'music-theme',
+      target: { kind: 'scene-ambience', sceneId: 'scene-1' },
+    } as any);
+    expect(ambienceAssigned.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'scene.ambience.set',
+        summary: 'Updated scene ambience',
+      }),
+    ]);
+  });
 });

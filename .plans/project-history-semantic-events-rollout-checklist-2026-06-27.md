@@ -55,17 +55,20 @@ Related:
   - `input.binding.added`
   - `input.binding.removed`
 
+- asset library + assignment
+  - `asset.image.added`
+  - `asset.audio.added`
+  - `asset.font.added`
+  - `asset.spritesheet.added`
+  - `asset.renamed`
+  - `asset.removed`
+  - `background.layer.asset.set`
+  - `entity.asset.set`
+  - asset-to-scene music / ambience assignment reuses:
+    - `scene.music.set`
+    - `scene.ambience.set`
+
 ## Next recommended batch
-
-### Asset library + assignment
-
-- image asset add/remove/rename
-- spritesheet asset add/remove/rename
-- font asset add/remove/rename
-- audio asset add/remove/rename
-- entity sprite assignment
-- scene music / ambience assignment through asset-target workflows
-- background-layer asset assignment
 
 ### Scene graph / grouping
 
