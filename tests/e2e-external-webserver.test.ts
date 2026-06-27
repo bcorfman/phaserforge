@@ -11,6 +11,8 @@ const {
 } = require('../scripts/e2e-external-webserver.cjs');
 
 const tempDirs: string[] = [];
+const EXPECTED_PREVIEW_TIMEOUT_MS = process.env.CI ? 240000 : 180000;
+const EXPECTED_DEV_TIMEOUT_MS = process.env.CI ? 180000 : 120000;
 
 afterEach(async () => {
   await Promise.all(
@@ -41,7 +43,7 @@ describe('managed external E2E web server', () => {
         'VITE_E2E_TEST_BRIDGE=1 npm run build-nolog && VITE_E2E_TEST_BRIDGE=1 npx vite preview --config vite/config.prod.mjs --host 127.0.0.1 --port 4173 --strictPort',
       host: '127.0.0.1',
       port: 4173,
-      timeoutMs: 180000,
+      timeoutMs: EXPECTED_PREVIEW_TIMEOUT_MS,
     });
   });
 
@@ -49,7 +51,7 @@ describe('managed external E2E web server', () => {
     expect(resolveManagedExternalWebServerOptions(['test', '--ui'], {})).toMatchObject({
       mode: 'dev',
       command: 'npx vite --config vite/config.dev.mjs --host 127.0.0.1 --port 4173',
-      timeoutMs: 120000,
+      timeoutMs: EXPECTED_DEV_TIMEOUT_MS,
     });
   });
 
