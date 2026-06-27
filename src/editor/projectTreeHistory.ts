@@ -672,6 +672,29 @@ function formatProjectSystemDiff(current: RevisionSnapshot, previous: RevisionSn
   return null;
 }
 
+function formatPublishMetadataDiff(current: RevisionSnapshot, previous: RevisionSnapshot): string | null {
+  if (!current.project || !previous.project) return null;
+  if (current.project.publishTitle !== previous.project.publishTitle) {
+    if (!previous.project.publishTitle && current.project.publishTitle) {
+      return `Set publish title to ${current.project.publishTitle}`;
+    }
+    if (previous.project.publishTitle && !current.project.publishTitle) {
+      return 'Cleared publish title';
+    }
+    return 'Updated publish title';
+  }
+  if (current.project.publishGithubPagesRepo !== previous.project.publishGithubPagesRepo) {
+    if (!previous.project.publishGithubPagesRepo && current.project.publishGithubPagesRepo) {
+      return `Set publish repo to ${current.project.publishGithubPagesRepo}`;
+    }
+    if (previous.project.publishGithubPagesRepo && !current.project.publishGithubPagesRepo) {
+      return 'Cleared publish repo';
+    }
+    return 'Updated publish repo';
+  }
+  return null;
+}
+
 export function formatProjectRevisionTimestamp(revision: ProjectRevisionRecord): string {
   return shortMonthDayTime(revision.updatedAt);
 }
@@ -703,6 +726,7 @@ export function formatProjectRevisionSummary(
     formatAssetLibraryDiff(current, previous),
     formatSceneMusicDiff(current, previous),
     formatEntityEditDiff(current, previous),
+    formatPublishMetadataDiff(current, previous),
     revision.reason === 'restore' ? 'Restored older version' : null,
     revision.reason === 'protective' ? 'Safety checkpoint' : null,
   ].filter((value): value is string => Boolean(value));
@@ -915,6 +939,10 @@ const REVISION_ALLOWED_DOMAIN_GROUPS = [
   new Set(['input-maps', 'scene-input']),
 ];
 
+const REVISION_ALLOWED_MILESTONE_DOMAIN_GROUPS = [
+  new Set(['project-title', 'publish']),
+];
+
 function addRecordDiffFocus(
   domains: Set<string>,
   focusKeys: Set<string>,
@@ -1079,6 +1107,12 @@ function buildClusterKeys(focusKeys: Set<string>): Set<string> {
 
 function isAllowedRevisionDomainBlend(domains: Set<string>): boolean {
   return REVISION_ALLOWED_DOMAIN_GROUPS.some((allowedDomains) => (
+    domains.size > 1 && [...domains].every((domain) => allowedDomains.has(domain))
+  ));
+}
+
+function isAllowedRevisionMilestoneBlend(domains: Set<string>): boolean {
+  return REVISION_ALLOWED_MILESTONE_DOMAIN_GROUPS.some((allowedDomains) => (
     domains.size > 1 && [...domains].every((domain) => allowedDomains.has(domain))
   ));
 }
@@ -1269,14 +1303,13 @@ function shouldCoalesceAutosaveRevision(
   const nextProfile = buildRevisionChangeProfile(nextRevision, latestRevision, nextHistory);
   if (burstProfile.domains.size === 0 || nextProfile.domains.size === 0) return false;
 
-  if (
-    [...burstProfile.domains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain))
-    || [...nextProfile.domains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain))
-  ) {
+  const combinedDomains = new Set([...burstProfile.domains, ...nextProfile.domains]);
+  const includesMilestoneDomain = [...combinedDomains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain));
+  const allowsMilestoneBlend = isAllowedRevisionMilestoneBlend(combinedDomains);
+
+  if (includesMilestoneDomain && combinedDomains.size > 1 && !allowsMilestoneBlend) {
     return false;
   }
-
-  const combinedDomains = new Set([...burstProfile.domains, ...nextProfile.domains]);
   const overlappingFocus = [...nextProfile.focusKeys].some((key) => burstProfile.focusKeys.has(key));
   if (overlappingFocus) return true;
 
@@ -1289,6 +1322,7 @@ function shouldCoalesceAutosaveRevision(
   }
 
   if (isAllowedRevisionDomainBlend(combinedDomains)) return true;
+  if (allowsMilestoneBlend) return true;
 
   return false;
 }
