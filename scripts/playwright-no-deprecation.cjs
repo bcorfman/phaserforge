@@ -10,7 +10,11 @@ if (!existingNodeOptions.includes(DISABLE_WARN)) {
   process.env.NODE_OPTIONS = `${existingNodeOptions} ${DISABLE_WARN}`.trim();
 }
 
-const { shouldUseManagedExternalWebServer, startManagedExternalWebServer } = require('./e2e-external-webserver.cjs');
+const {
+  shouldUseManagedExternalWebServer,
+  resolveManagedExternalWebServerOptions,
+  startManagedExternalWebServer,
+} = require('./e2e-external-webserver.cjs');
 
 function hasFlag(flag) {
   const argv = process.argv.slice(2);
@@ -35,7 +39,7 @@ if (!process.env.PW_WORKERS && !hasFlag('--workers') && !hasFlag('--project') &&
 async function main() {
   let managedServer;
   if (shouldUseManagedExternalWebServer(process.argv.slice(2), process.env)) {
-    managedServer = await startManagedExternalWebServer();
+    managedServer = await startManagedExternalWebServer(resolveManagedExternalWebServerOptions(process.argv.slice(2), process.env));
     process.env.PW_EXTERNAL_WEBSERVER = '1';
     const cleanup = () => managedServer?.cleanup();
     process.on('exit', cleanup);
@@ -47,11 +51,15 @@ async function main() {
       cleanup();
       process.exit(143);
     });
+    managedServer.onUnexpectedExit.catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
   }
 
   // Mirror `@playwright/test/cli.js` behavior.
   const { program } = require('playwright/lib/program');
-  program.parse(process.argv);
+  await program.parseAsync(process.argv);
 }
 
 main().catch((error) => {
