@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { serializeProjectToYaml } from '../../src/model/serialization';
+import type { ProjectHistoryEvent } from '../../src/editor/projectHistoryEvents';
 import {
   __pauseActiveProjectRecordPersistenceForTests,
   __resumeActiveProjectRecordPersistenceForTests,
@@ -507,6 +508,45 @@ describe('projectPersistence steady-state storage', () => {
     });
   });
 
+  it('persists semantic history events alongside compact revision storage', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+
+    const historyEvents: ProjectHistoryEvent[] = [
+      {
+        id: 'history-event-rev-rename-0',
+        projectId: project.id,
+        revisionId: 'rev-rename',
+        occurredAt: '2026-06-27T16:30:00.000Z',
+        reason: 'autosave',
+        kind: 'project.renamed',
+        burstId: 'project.renamed',
+        scope: { kind: 'project' },
+        summary: 'Renamed to Pattern Demo',
+      },
+    ];
+    const revisions = [createProjectRevision(project, {
+      id: 'rev-rename',
+      updatedAt: '2026-06-27T16:30:00.000Z',
+      reason: 'autosave',
+      historyEventIds: ['history-event-rev-rename-0'],
+      historyBurstIds: ['project.renamed'],
+    })];
+
+    const record = buildStoredProjectRecord(project, {
+      id: project.id,
+      revisions,
+      historyEvents,
+    });
+    await projectPersistence.saveProjectRecord(record);
+
+    const loaded = await projectPersistence.loadProjectById(project.id);
+    expect(loaded?.historyEvents).toEqual(historyEvents);
+    expect(loaded?.revisions?.[0]?.historyEventIds).toEqual(['history-event-rev-rename-0']);
+    expect(loaded?.revisions?.[0]?.historyBurstIds).toEqual(['project.renamed']);
+  });
+
   it('hydrates a legacy YAML workspace backup into structured project data', async () => {
     const project = createEmptyProject();
     project.id = 'legacy-backup-project';
@@ -596,6 +636,82 @@ describe('projectPersistence steady-state storage', () => {
     expect(loaded?.revisions?.map((revision) => revision.id)).toEqual(['rev-current']);
     expect(loaded?.archivedRevisions?.map((revision) => revision.id)).toEqual(['rev-old', 'rev-oldest']);
     expect(materializeProjectRevision(loaded?.archivedRevisions ?? [], 'rev-old')?.title).toBe('Old Candidate');
+  });
+
+  it('archives and deletes semantic history events alongside their linked revisions', async () => {
+    const baseProject = createEmptyProject();
+    baseProject.title = 'Base';
+    const renamedProject = structuredClone(baseProject);
+    renamedProject.title = 'Renamed';
+    const resizedProject = structuredClone(renamedProject);
+    resizedProject.scenes[resizedProject.initialSceneId].world = {
+      width: 1280,
+      height: 720,
+    };
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-20T12:00:00.000Z',
+    });
+    const renameRevision = createProjectRevision(renamedProject, {
+      id: 'rev-rename',
+      updatedAt: '2026-06-20T12:01:00.000Z',
+      historyEventIds: ['event-rename'],
+      historyBurstIds: ['project.renamed:burst-1'],
+    });
+    const resizeRevision = createProjectRevision(resizedProject, {
+      id: 'rev-resize',
+      updatedAt: '2026-06-20T12:02:00.000Z',
+      historyEventIds: ['event-resize'],
+      historyBurstIds: ['scene.world.resized:scene-1:burst-2'],
+    });
+    const seededRevisions = appendProjectRevision(
+      appendProjectRevision([baseRevision], renameRevision, 25),
+      resizeRevision,
+      25,
+    );
+    const seededRecord = buildStoredProjectRecord(resizedProject, {
+      id: 'project-with-events',
+      revisions: seededRevisions,
+      historyEvents: [
+        {
+          id: 'event-rename',
+          projectId: resizedProject.id,
+          revisionId: 'rev-rename',
+          occurredAt: '2026-06-20T12:01:00.000Z',
+          reason: 'autosave',
+          kind: 'project.renamed',
+          burstId: 'project.renamed:burst-1',
+          scope: { kind: 'project' },
+          summary: 'Renamed to Renamed',
+        },
+        {
+          id: 'event-resize',
+          projectId: resizedProject.id,
+          revisionId: 'rev-resize',
+          occurredAt: '2026-06-20T12:02:00.000Z',
+          reason: 'autosave',
+          kind: 'scene.world.resized',
+          burstId: 'scene.world.resized:scene-1:burst-2',
+          scope: { kind: 'scene', sceneId: resizedProject.initialSceneId },
+          summary: 'Resized scene world',
+        },
+      ],
+    });
+
+    await projectPersistence.saveProjectRecord(seededRecord);
+
+    const archived = await projectPersistence.updateProjectHistoryRetention('project-with-events', {
+      archiveRevisionIds: ['rev-rename'],
+    });
+    expect(archived?.historyEvents?.map((event) => event.id)).toEqual(['event-resize']);
+    expect(archived?.archivedHistoryEvents?.map((event) => event.id)).toEqual(['event-rename']);
+
+    const deleted = await projectPersistence.updateProjectHistoryRetention('project-with-events', {
+      deleteRevisionIds: ['rev-resize'],
+    });
+    expect(deleted?.historyEvents ?? []).toEqual([]);
+    expect(deleted?.archivedHistoryEvents?.map((event) => event.id)).toEqual(['event-rename']);
   });
 
   it('repairs broken revision chains on load by rebuilding recoverable history from the stored project head', async () => {
