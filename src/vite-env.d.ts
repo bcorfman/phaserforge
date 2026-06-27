@@ -1,5 +1,9 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_E2E_TEST_BRIDGE?: string;
+}
+
 type PhaserForgePoint = { x: number; y: number };
 type PhaserForgeRect = {
   minX: number;

@@ -27,6 +27,7 @@ dist-ssr
 .codegraph/
 playwright-report/
 test-results/
+.playwright-e2e-server/
 docs/.vitepress/.temp/
 docs/.vitepress/dist/
 storybook-static/
