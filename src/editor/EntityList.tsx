@@ -744,7 +744,8 @@ export function EntityListView({
                         <button
                           className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
                           type="button"
-                          style={{ flex: 1 }}
+                          data-testid={`project-revision-row-button-${revision.id}`}
+                          style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'start' }}
                           onClick={() => {
                             const previewProject = materializeProjectRevision(revisions, revision.id);
                             if (!previewProject) return;
@@ -767,7 +768,13 @@ export function EntityListView({
                               {formatProjectRevisionSummary(revision, previousRevision, revisions)}
                             </span>
                           </div>
-                          <span className="list-item-meta">{formatProjectRevisionTimestamp(revision)}</span>
+                          <span
+                            className="list-item-meta"
+                            data-testid={`project-revision-timestamp-${revision.id}`}
+                            style={{ whiteSpace: 'nowrap', textAlign: 'right' }}
+                          >
+                            {formatProjectRevisionTimestamp(revision)}
+                          </span>
                         </button>
                       </div>
                       {canExpandDetails && !isExpanded ? (
