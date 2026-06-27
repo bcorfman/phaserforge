@@ -846,6 +846,41 @@ describe('project tree + history helpers', () => {
     expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
   });
 
+  it('does not coalesce nearby autosaves when explicit burst ids differ', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstEdit = structuredClone(sampleProject);
+    firstEdit.scenes[firstEdit.initialSceneId].world = {
+      width: 1200,
+      height: 768,
+    };
+    const secondEdit = structuredClone(firstEdit);
+    secondEdit.scenes[secondEdit.initialSceneId].world = {
+      width: 1440,
+      height: 900,
+    };
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-27T16:29:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstEdit, {
+      id: 'rev-first',
+      updatedAt: '2026-06-27T16:29:20.000Z',
+      reason: 'autosave',
+      historyBurstIds: ['scene.world.resized:scene-1:burst-a'],
+    });
+    const secondRevision = createProjectRevision(secondEdit, {
+      id: 'rev-second',
+      updatedAt: '2026-06-27T16:29:45.000Z',
+      reason: 'autosave',
+      historyBurstIds: ['scene.world.resized:scene-1:burst-b'],
+    });
+
+    const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-first', 'rev-base']);
+  });
+
   it('coalesces nearby autosaves for repeated scene world resizes in the same burst', () => {
     const baseProject = structuredClone(sampleProject);
     const firstEdit = structuredClone(sampleProject);

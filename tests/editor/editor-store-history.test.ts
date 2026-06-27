@@ -93,6 +93,26 @@ describe('EditorStore history', () => {
     expect(sceneOf(undone).entities.e1.y).toBe(y0);
   });
 
+  it('reuses one semantic burst id during a resize interaction and allocates a new one for the next interaction', () => {
+    const state0 = seededState();
+
+    const state1 = reducer(state0, { type: 'begin-canvas-interaction', kind: 'bounds', id: 'scene-1', handle: 'right' } as any);
+    const state2 = reducer(state1, { type: 'update-scene-world', width: 960, height: 540 } as any);
+    const state3 = reducer(state2, { type: 'update-scene-world', width: 1280, height: 720 } as any);
+    const firstBurstId = state2.lastProjectHistoryEventDrafts?.[0]?.burstId;
+    const secondBurstId = state3.lastProjectHistoryEventDrafts?.[0]?.burstId;
+
+    expect(firstBurstId).toBeTruthy();
+    expect(secondBurstId).toBe(firstBurstId);
+
+    const state4 = reducer(state3, { type: 'end-canvas-interaction' } as any);
+    const state5 = reducer(state4, { type: 'begin-canvas-interaction', kind: 'bounds', id: 'scene-1', handle: 'right' } as any);
+    const state6 = reducer(state5, { type: 'update-scene-world', width: 1440, height: 900 } as any);
+
+    expect(state6.lastProjectHistoryEventDrafts?.[0]?.burstId).toBeTruthy();
+    expect(state6.lastProjectHistoryEventDrafts?.[0]?.burstId).not.toBe(firstBurstId);
+  });
+
   it('merges consecutive nudges within the merge window', () => {
     vi.spyOn(Date, 'now')
       .mockReturnValueOnce(1_700_000_000_000)
@@ -238,6 +258,47 @@ describe('EditorStore history', () => {
     expect(latestSummary(removedFromGroup)).toBe('Removed entity from Front Line');
   });
 
+  it('captures semantic entity rename and movement drafts from project-changing actions', () => {
+    const base = seededState();
+    const scene = sceneOf(base);
+
+    const renamed = reducer(base, {
+      type: 'update-entity',
+      id: 'e1',
+      next: {
+        ...scene.entities.e1,
+        name: 'Hero Spawn',
+      },
+    } as any);
+
+    expect(renamed.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.renamed',
+        scope: { kind: 'entity', sceneId: renamed.currentSceneId, entityId: 'e1' },
+        summary: 'Renamed entity to Hero Spawn',
+      }),
+    ]);
+
+    const moved = reducer(renamed, { type: 'move-entity', id: 'e1', dx: 12, dy: -8 } as any);
+    expect(moved.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.moved',
+        scope: { kind: 'entity', sceneId: moved.currentSceneId, entityId: 'e1' },
+        summary: 'Moved entity Hero Spawn',
+      }),
+    ]);
+
+    const movedMany = reducer(renamed, { type: 'move-entities', entityIds: ['e1', 'e2'], dx: 5, dy: 10 } as any);
+    expect(movedMany.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.moved',
+        scope: { kind: 'scene', sceneId: movedMany.currentSceneId },
+        summary: 'Moved 2 entities',
+        details: ['Moved entity Hero Spawn', 'Moved entity e2'],
+      }),
+    ]);
+  });
+
   it('describes bounds drags as one movement-bounds history event', () => {
     const state0 = seededState();
     const state1 = reducer(state0, { type: 'begin-canvas-interaction', kind: 'bounds', id: 'att-move-right', handle: 'right' } as any);
@@ -284,5 +345,228 @@ describe('EditorStore history', () => {
     expect(latestSummary(triggerUpdated)).toBe('Updated trigger Exit Gate');
     const triggerRemoved = reducer(triggerUpdated, { type: 'remove-trigger-zone', id: 'trigger-1' } as any);
     expect(latestSummary(triggerRemoved)).toBe('Removed trigger Exit Gate');
+  });
+
+  it('captures semantic drafts for scene audio, input, and background-layer actions', () => {
+    const base = seededState();
+    const withAudio = reducer(base, {
+      type: 'add-audio-asset-from-file',
+      file: {
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'music_theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any);
+
+    const withMusic = reducer(withAudio, {
+      type: 'set-scene-music',
+      music: { assetId: 'music-theme', loop: true, volume: 0.65, fadeMs: 250 },
+    } as any);
+    expect(withMusic.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'scene.music.set',
+        summary: 'Music -> music_theme.mp3',
+      }),
+    ]);
+
+    const withAmbience = reducer(withMusic, {
+      type: 'set-scene-ambience',
+      ambience: [{ assetId: 'music-theme', loop: true, volume: 0.35 }],
+    } as any);
+    expect(withAmbience.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'scene.ambience.set',
+        summary: 'Updated scene ambience',
+      }),
+    ]);
+
+    const withInput = reducer(withAmbience, {
+      type: 'set-scene-input',
+      input: { activeMapNone: true },
+    } as any);
+    expect(withInput.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'scene.input.set',
+        summary: 'Updated scene input',
+      }),
+    ]);
+
+    const withLayers = reducer(withInput, {
+      type: 'set-scene-background-layers',
+      layers: [{ assetId: 'bg-1', x: 0, y: 0, depth: -100, layout: 'cover' }],
+    } as any);
+    expect(withLayers.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'background.layers.set',
+        summary: 'Updated background layers',
+      }),
+    ]);
+
+    const updatedLayer = reducer(withLayers, {
+      type: 'update-background-layer',
+      index: 0,
+      patch: { depth: -222 },
+    } as any);
+    expect(updatedLayer.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'background.layer.updated',
+        summary: 'Updated background layer',
+      }),
+    ]);
+
+    const reorderedLayers = reducer(reducer(withInput, {
+      type: 'set-scene-background-layers',
+      layers: [
+        { assetId: 'bg-1', x: 0, y: 0, depth: -100, layout: 'cover' },
+        { assetId: 'bg-2', x: 0, y: 0, depth: -200, layout: 'cover' },
+      ],
+    } as any), {
+      type: 'move-background-layer',
+      fromIndex: 0,
+      toIndex: 1,
+    } as any);
+    expect(reorderedLayers.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'background.layers.reordered',
+        summary: 'Reordered background layers',
+      }),
+    ]);
+
+    const removedLayer = reducer(withLayers, { type: 'remove-background-layer', index: 0 } as any);
+    expect(removedLayer.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'background.layer.removed',
+        summary: 'Removed background layer',
+      }),
+    ]);
+  });
+
+  it('captures semantic drafts for collision, trigger, and input-map actions', () => {
+    const base = seededState();
+
+    const collisionAdded = reducer(base, { type: 'add-collision-rule' } as any);
+    expect(collisionAdded.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'collision.rule.added',
+        summary: 'Added collision rule',
+      }),
+    ]);
+    const collisionId = sceneOf(collisionAdded).collisionRules[0].id;
+
+    const collisionUpdated = reducer(collisionAdded, {
+      type: 'update-collision-rule',
+      id: collisionId,
+      patch: { interaction: 'overlap' },
+    } as any);
+    expect(collisionUpdated.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'collision.rule.updated',
+        summary: 'Updated collision rule',
+      }),
+    ]);
+
+    const collisionRemoved = reducer(collisionUpdated, { type: 'remove-collision-rule', id: collisionId } as any);
+    expect(collisionRemoved.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'collision.rule.removed',
+        summary: 'Removed collision rule',
+      }),
+    ]);
+
+    const triggerAdded = reducer(base, { type: 'add-trigger-zone' } as any);
+    expect(triggerAdded.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'trigger.added',
+        summary: 'Added trigger trigger-1',
+      }),
+    ]);
+
+    const triggerUpdated = reducer(triggerAdded, {
+      type: 'update-trigger-zone',
+      id: 'trigger-1',
+      patch: { name: 'Exit Gate' },
+    } as any);
+    expect(triggerUpdated.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'trigger.updated',
+        summary: 'Updated trigger Exit Gate',
+      }),
+    ]);
+
+    const triggerRemoved = reducer(triggerUpdated, { type: 'remove-trigger-zone', id: 'trigger-1' } as any);
+    expect(triggerRemoved.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'trigger.removed',
+        summary: 'Removed trigger Exit Gate',
+      }),
+    ]);
+
+    const inputMapCreated = reducer(base, { type: 'create-input-map', mapId: 'default_controls' } as any);
+    expect(inputMapCreated.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'input.map.created',
+        summary: 'Added input map default_controls',
+      }),
+    ]);
+
+    const inputBindingAdded = reducer(inputMapCreated, {
+      type: 'add-input-binding',
+      mapId: 'default_controls',
+      actionId: 'Jump',
+      binding: { device: 'keyboard', key: 'Space', event: 'held' },
+    } as any);
+    expect(inputBindingAdded.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'input.binding.added',
+        summary: 'Added input binding Jump on default_controls',
+      }),
+    ]);
+
+    const inputBindingRemoved = reducer(inputBindingAdded, {
+      type: 'remove-input-binding',
+      mapId: 'default_controls',
+      actionId: 'Jump',
+      index: 0,
+    } as any);
+    expect(inputBindingRemoved.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'input.binding.removed',
+        summary: 'Removed input binding Jump from default_controls',
+      }),
+    ]);
+
+    const inputMapDuplicated = reducer(inputMapCreated, {
+      type: 'duplicate-input-map',
+      sourceMapId: 'default_controls',
+      nextMapId: 'menu_controls',
+    } as any);
+    expect(inputMapDuplicated.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'input.map.duplicated',
+        summary: 'Duplicated input map default_controls',
+      }),
+    ]);
+
+    const defaultInputMapSet = reducer(inputMapCreated, {
+      type: 'set-project-default-input-map',
+      mapId: 'default_controls',
+    } as any);
+    expect(defaultInputMapSet.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'project.default-input-map.set',
+        summary: 'Set default input map to default_controls',
+      }),
+    ]);
+
+    const inputMapRemoved = reducer(defaultInputMapSet, {
+      type: 'remove-input-map',
+      mapId: 'default_controls',
+    } as any);
+    expect(inputMapRemoved.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'input.map.removed',
+        summary: 'Removed input map default_controls',
+      }),
+    ]);
   });
 });

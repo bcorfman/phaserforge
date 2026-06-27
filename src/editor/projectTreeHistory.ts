@@ -1323,6 +1323,11 @@ function parseRevisionTimestamp(updatedAt: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
+function historyBurstFamilyKey(burstId: string): string {
+  const lastColonIndex = burstId.lastIndexOf(':');
+  return lastColonIndex >= 0 ? burstId.slice(0, lastColonIndex) : burstId;
+}
+
 function shouldCoalesceAutosaveRevision(
   previousBurstRevision: ProjectRevisionRecord | undefined,
   latestRevision: ProjectRevisionRecord | undefined,
@@ -1341,6 +1346,12 @@ function shouldCoalesceAutosaveRevision(
     (nextRevision.historyBurstIds ?? []).includes(burstId)
   ));
   if (overlappingBurstIds) return true;
+  if ((latestRevision.historyBurstIds?.length ?? 0) > 0 && (nextRevision.historyBurstIds?.length ?? 0) > 0) {
+    const latestBurstFamilies = new Set((latestRevision.historyBurstIds ?? []).map(historyBurstFamilyKey));
+    const nextBurstFamilies = new Set((nextRevision.historyBurstIds ?? []).map(historyBurstFamilyKey));
+    const overlappingBurstFamilies = [...nextBurstFamilies].some((family) => latestBurstFamilies.has(family));
+    if (overlappingBurstFamilies) return false;
+  }
 
   const burstProfile = buildRevisionChangeProfile(latestRevision, previousBurstRevision, burstHistory);
   const nextProfile = buildRevisionChangeProfile(nextRevision, latestRevision, nextHistory);

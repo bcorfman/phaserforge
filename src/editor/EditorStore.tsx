@@ -131,6 +131,7 @@ type PendingHistory = {
   scope: 'scene';
   kind: 'canvas-interaction';
   sceneId: Id;
+  historyBurstToken: string;
   beforeScene: GameSceneSpec;
   beforeSelection: Selection;
   beforeExpandedGroups: Record<Id, boolean>;
@@ -991,6 +992,15 @@ function formatTriggerLabel(scene: GameSceneSpec | undefined, triggerId: Id): st
   return trigger?.name?.trim() || triggerId;
 }
 
+function formatEntityLabel(scene: GameSceneSpec | undefined, entityId: Id): string {
+  const entity = scene?.entities?.[entityId];
+  return entity?.name?.trim() || entityId;
+}
+
+function createSemanticBurstToken(prefix: string): string {
+  return `${prefix}:${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function formatAssetLabel(
   assetKind: 'image' | 'spritesheet' | 'audio' | 'font',
   assetId: Id,
@@ -1010,6 +1020,10 @@ function formatAssetLabel(
   }
   const asset = project.assets.fonts?.[assetId];
   return asset?.name?.trim() || asset?.source?.originalName?.trim() || assetId;
+}
+
+function formatInputMapLabel(project: ProjectSpec, mapId: Id): string {
+  return project.inputMaps?.[mapId] ? mapId : mapId;
 }
 
 function describeEditorAction(stateBefore: EditorState, stateAfter: EditorState, action: EditorAction): string | undefined {
@@ -1160,6 +1174,8 @@ function buildProjectHistoryEventDraftsForAction(
   stateAfter: EditorState,
   action: EditorAction,
 ): ProjectHistoryEventDraft[] | undefined {
+  const actionBurstToken = createSemanticBurstToken(action.type);
+  const interactionBurstToken = stateBefore.history.pending?.historyBurstToken;
   switch (action.type) {
     case 'set-project-metadata': {
       const drafts: ProjectHistoryEventDraft[] = [];
@@ -1172,7 +1188,7 @@ function buildProjectHistoryEventDraftsForAction(
       if (stateBefore.project.title !== stateAfter.project.title && stateAfter.project.title?.trim()) {
         drafts.push({
           kind: 'project.renamed',
-          burstId: 'project.renamed',
+          burstId: `project.renamed:${actionBurstToken}`,
           scope: { kind: 'project' },
           summary: `Renamed to ${stateAfter.project.title.trim()}`,
         });
@@ -1181,7 +1197,7 @@ function buildProjectHistoryEventDraftsForAction(
         const publishTitle = stateAfter.project.publishTitle?.trim();
         drafts.push({
           kind: 'publish.title.set',
-          burstId: 'publish.title.set',
+          burstId: `publish.title.set:${actionBurstToken}`,
           scope: { kind: 'project' },
           summary: publishTitle ? `Set publish title to ${publishTitle}` : 'Cleared publish title',
         });
@@ -1190,9 +1206,186 @@ function buildProjectHistoryEventDraftsForAction(
         const publishRepo = stateAfter.project.publishGithubPagesRepo?.trim();
         drafts.push({
           kind: 'publish.repo.set',
-          burstId: 'publish.repo.set',
+          burstId: `publish.repo.set:${actionBurstToken}`,
           scope: { kind: 'project' },
           summary: publishRepo ? `Set publish repo to ${publishRepo}` : 'Cleared publish repo',
+        });
+      }
+      return drafts.length > 0 ? drafts : undefined;
+    }
+    case 'set-scene-music':
+      return [{
+        kind: 'scene.music.set',
+        burstId: `scene.music.set:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: action.music?.assetId
+          ? `Music -> ${formatAssetLabel('audio', action.music.assetId, stateAfter.project)}`
+          : 'Removed music',
+      }];
+    case 'set-scene-ambience':
+      return [{
+        kind: 'scene.ambience.set',
+        burstId: `scene.ambience.set:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Updated scene ambience',
+      }];
+    case 'set-scene-input':
+      return [{
+        kind: 'scene.input.set',
+        burstId: `scene.input.set:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Updated scene input',
+      }];
+    case 'set-scene-background-layers':
+      return [{
+        kind: 'background.layers.set',
+        burstId: `background.layers.set:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Updated background layers',
+      }];
+    case 'update-background-layer':
+      return [{
+        kind: 'background.layer.updated',
+        burstId: `background.layer.updated:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Updated background layer',
+      }];
+    case 'move-background-layer':
+      return [{
+        kind: 'background.layers.reordered',
+        burstId: `background.layers.reordered:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Reordered background layers',
+      }];
+    case 'remove-background-layer':
+      return [{
+        kind: 'background.layer.removed',
+        burstId: `background.layer.removed:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Removed background layer',
+      }];
+    case 'add-collision-rule':
+      return [{
+        kind: 'collision.rule.added',
+        burstId: `collision.rule.added:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Added collision rule',
+      }];
+    case 'update-collision-rule':
+      return [{
+        kind: 'collision.rule.updated',
+        burstId: `collision.rule.updated:${stateAfter.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: 'Updated collision rule',
+      }];
+    case 'remove-collision-rule':
+      return [{
+        kind: 'collision.rule.removed',
+        burstId: `collision.rule.removed:${stateBefore.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: 'Removed collision rule',
+      }];
+    case 'add-trigger-zone': {
+      const trigger = stateAfter.project.scenes[stateAfter.currentSceneId]?.triggers?.at(-1);
+      return [{
+        kind: 'trigger.added',
+        burstId: `trigger.added:${stateAfter.currentSceneId}:${trigger?.id ?? actionBurstToken}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Added trigger ${trigger?.name?.trim() || trigger?.id || 'trigger'}`,
+      }];
+    }
+    case 'update-trigger-zone':
+      return [{
+        kind: 'trigger.updated',
+        burstId: `trigger.updated:${stateAfter.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Updated trigger ${formatTriggerLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`,
+      }];
+    case 'remove-trigger-zone':
+      return [{
+        kind: 'trigger.removed',
+        burstId: `trigger.removed:${stateBefore.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateBefore.currentSceneId },
+        summary: `Removed trigger ${formatTriggerLabel(stateBefore.project.scenes[stateBefore.currentSceneId], action.id)}`,
+      }];
+    case 'create-input-map': {
+      const createdMapId = Object.keys(stateAfter.project.inputMaps ?? {}).find((mapId) => !stateBefore.project.inputMaps?.[mapId]);
+      if (!createdMapId) return undefined;
+      return [{
+        kind: 'input.map.created',
+        burstId: `input.map.created:${createdMapId}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Added input map ${createdMapId}`,
+      }];
+    }
+    case 'duplicate-input-map':
+      return [{
+        kind: 'input.map.duplicated',
+        burstId: `input.map.duplicated:${action.sourceMapId}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Duplicated input map ${action.sourceMapId}`,
+      }];
+    case 'remove-input-map':
+      return [{
+        kind: 'input.map.removed',
+        burstId: `input.map.removed:${action.mapId}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Removed input map ${action.mapId}`,
+      }];
+    case 'add-input-binding':
+      return [{
+        kind: 'input.binding.added',
+        burstId: `input.binding.added:${action.mapId}:${action.actionId}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Added input binding ${action.actionId} on ${formatInputMapLabel(stateAfter.project, action.mapId)}`,
+      }];
+    case 'remove-input-binding':
+      return [{
+        kind: 'input.binding.removed',
+        burstId: `input.binding.removed:${action.mapId}:${action.actionId}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Removed input binding ${action.actionId} from ${formatInputMapLabel(stateBefore.project, action.mapId)}`,
+      }];
+    case 'set-project-default-input-map':
+      return [{
+        kind: 'project.default-input-map.set',
+        burstId: `project.default-input-map.set:${action.mapId ?? 'none'}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: action.mapId
+          ? `Set default input map to ${formatInputMapLabel(stateAfter.project, action.mapId)}`
+          : 'Cleared default input map',
+      }];
+    case 'update-entity': {
+      const sceneId = stateAfter.currentSceneId;
+      const beforeScene = stateBefore.project.scenes[sceneId];
+      const afterScene = stateAfter.project.scenes[sceneId];
+      const beforeEntity = beforeScene?.entities?.[action.id];
+      const afterEntity = afterScene?.entities?.[action.id];
+      if (!beforeEntity || !afterEntity) return undefined;
+      const drafts: ProjectHistoryEventDraft[] = [];
+      const beforeName = beforeEntity.name?.trim();
+      const afterName = afterEntity.name?.trim();
+      if (beforeName !== afterName && afterName) {
+        drafts.push({
+          kind: 'entity.renamed',
+          burstId: `entity.renamed:${sceneId}:${action.id}:${actionBurstToken}`,
+          scope: { kind: 'entity', sceneId, entityId: action.id },
+          summary: `Renamed entity to ${afterName}`,
+        });
+      }
+      if (beforeEntity.x !== afterEntity.x || beforeEntity.y !== afterEntity.y) {
+        drafts.push({
+          kind: 'entity.moved',
+          burstId: interactionBurstToken
+            ? `entity.moved:${sceneId}:${interactionBurstToken}`
+            : `entity.moved:${sceneId}:${action.id}:${actionBurstToken}`,
+          scope: { kind: 'entity', sceneId, entityId: action.id },
+          summary: `Moved entity ${formatEntityLabel(afterScene, action.id)}`,
+          details: [`Moved entity ${formatEntityLabel(afterScene, action.id)}`],
+          payload: {
+            from: { x: beforeEntity.x, y: beforeEntity.y },
+            to: { x: afterEntity.x, y: afterEntity.y },
+          },
         });
       }
       return drafts.length > 0 ? drafts : undefined;
@@ -1200,14 +1393,40 @@ function buildProjectHistoryEventDraftsForAction(
     case 'rename-scene':
       return [{
         kind: 'scene.renamed',
-        burstId: `scene.renamed:${action.sceneId}`,
+        burstId: `scene.renamed:${action.sceneId}:${actionBurstToken}`,
         scope: { kind: 'scene', sceneId: action.sceneId },
         summary: `Renamed scene to ${formatSceneLabel(stateAfter.project, action.sceneId)}`,
       }];
+    case 'move-entity':
+      return [{
+        kind: 'entity.moved',
+        burstId: interactionBurstToken
+          ? `entity.moved:${stateAfter.currentSceneId}:${interactionBurstToken}`
+          : `entity.moved:${stateAfter.currentSceneId}:${action.id}:${actionBurstToken}`,
+        scope: { kind: 'entity', sceneId: stateAfter.currentSceneId, entityId: action.id },
+        summary: `Moved entity ${formatEntityLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`,
+        details: [`Moved entity ${formatEntityLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`],
+      }];
+    case 'move-entities': {
+      const scene = stateAfter.project.scenes[stateAfter.currentSceneId];
+      const entityIds = [...new Set(action.entityIds)].filter((entityId) => Boolean(scene?.entities?.[entityId]));
+      if (entityIds.length === 0) return undefined;
+      return [{
+        kind: 'entity.moved',
+        burstId: interactionBurstToken
+          ? `entity.moved:${stateAfter.currentSceneId}:${interactionBurstToken}`
+          : `entity.moved:${stateAfter.currentSceneId}:${entityIds.join(',')}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: `Moved ${entityIds.length} ${entityIds.length === 1 ? 'entity' : 'entities'}`,
+        details: entityIds.map((entityId) => `Moved entity ${formatEntityLabel(scene, entityId)}`),
+      }];
+    }
     case 'update-scene-world':
       return [{
         kind: 'scene.world.resized',
-        burstId: `scene.world.resized:${stateAfter.currentSceneId}`,
+        burstId: interactionBurstToken
+          ? `scene.world.resized:${stateAfter.currentSceneId}:${interactionBurstToken}`
+          : undefined,
         scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
         summary: 'Resized scene world',
       }];
@@ -1216,7 +1435,7 @@ function buildProjectHistoryEventDraftsForAction(
       if (!createdSceneId) return undefined;
       return [{
         kind: 'scene.created',
-        burstId: `scene.created:${createdSceneId}`,
+        burstId: `scene.created:${createdSceneId}:${actionBurstToken}`,
         scope: { kind: 'scene', sceneId: createdSceneId },
         summary: `Created scene ${formatSceneLabel(stateAfter.project, createdSceneId)}`,
       }];
@@ -1226,7 +1445,7 @@ function buildProjectHistoryEventDraftsForAction(
       if (!duplicatedSceneId) return undefined;
       return [{
         kind: 'scene.duplicated',
-        burstId: `scene.duplicated:${duplicatedSceneId}`,
+        burstId: `scene.duplicated:${duplicatedSceneId}:${actionBurstToken}`,
         scope: { kind: 'scene', sceneId: duplicatedSceneId },
         summary: `Duplicated scene ${formatSceneLabel(stateAfter.project, duplicatedSceneId)}`,
       }];
@@ -1234,7 +1453,7 @@ function buildProjectHistoryEventDraftsForAction(
     case 'delete-scene':
       return [{
         kind: 'scene.deleted',
-        burstId: `scene.deleted:${action.sceneId}`,
+        burstId: `scene.deleted:${action.sceneId}:${actionBurstToken}`,
         scope: { kind: 'scene', sceneId: action.sceneId },
         summary: `Deleted scene ${formatSceneLabel(stateBefore.project, action.sceneId)}`,
       }];
@@ -3793,6 +4012,7 @@ export function reducer(state: EditorState, action: EditorAction): EditorState {
           scope: 'scene',
           kind: 'canvas-interaction',
           sceneId,
+          historyBurstToken: createSemanticBurstToken(`interaction:${action.kind}:${action.id}`),
           beforeScene,
           beforeSelection: stateBefore.selection,
           beforeExpandedGroups: stateBefore.expandedGroups,
