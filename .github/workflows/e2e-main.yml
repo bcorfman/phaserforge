@@ -42,7 +42,7 @@ jobs:
       - name: E2E Tests
         env:
           PW_PROJECTS: chromium
-        run: npm run test:e2e -- --project=chromium --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
+        run: node scripts/run-main-e2e-shard.cjs ${{ matrix.shard }} -- --fail-on-flaky-tests
 
       - name: Upload Playwright Artifacts
         if: always()

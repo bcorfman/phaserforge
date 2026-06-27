@@ -40,6 +40,7 @@ export function resolveE2EProjectNames(env: EnvLike): E2EProjectName[] {
 const projectNames = resolveE2EProjectNames(process.env);
 // Opt-in only: using a real Edge channel requires a locally-installed Edge build.
 const edgeChannel = process.env.PW_EDGE_CHANNEL;
+const fullyParallel = process.env.PW_FULLY_PARALLEL === '1';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -47,7 +48,7 @@ export default defineConfig({
   expect: {
     timeout: process.env.CI ? 30000 : 10000,
   },
-  fullyParallel: false,
+  fullyParallel,
   // When running all browsers locally, the combined resource load can cause an occasional
   // "browser has been closed" startup flake. Allow a small retry budget in that mode.
   retries: process.env.CI ? 2 : projectNames.length > 1 ? 1 : 0,

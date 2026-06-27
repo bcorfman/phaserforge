@@ -3,7 +3,7 @@ import { seedSampleScene } from './helpers';
 
 test.setTimeout(120000);
 
-test('Formation label sits flush to the chevron @critical', async ({ page }) => {
+test('Formation label sits flush to the chevron', async ({ page }) => {
   await seedSampleScene(page);
 
   const chevron = page.getByTestId('toggle-group-g-enemies');

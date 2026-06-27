@@ -291,8 +291,9 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 - Log out from the signed-in account surface.
 
 #### A64 — Resolve Cloud vs Device Workspace Conflict
-- When prompted, compare cloud vs device YAML summaries.
+- Only for ambiguous cloud recovery cases such as offline divergence, compare cloud vs device YAML summaries.
 - Export both snapshots, choose cloud, or keep device.
+- For linked online projects, startup keeps the device workspace active and older cloud versions are recovered through Manage/History instead of a startup conflict prompt.
 
 #### A65 — Connect / Switch / Disconnect GitHub
 - In the Cloud pane, connect GitHub, switch the linked GitHub account, or disconnect it from PhaserForge.
@@ -370,7 +371,8 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 - A63 sign in → A65 connect GitHub → A66 precheck and publish → verify the Pages URL.
 
 ### W17 — Workspace Conflict Recovery
-- A63 sign in → A64 compare cloud/device snapshots → keep the desired workspace → continue editing or publish.
+- A63 sign in → if an offline/ambiguous divergence is detected, A64 compare cloud/device snapshots → keep the desired workspace → continue editing or publish.
+- For normal linked online startup, continue editing immediately and use Manage/History to restore or copy an older cloud-backed revision when needed.
 
 ### W18 — Multi-scene Authoring
 - A29 create scene → A30 switch scene → use W1-W13 inside that scene → A31 duplicate/base/clear/delete scene as needed.
