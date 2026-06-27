@@ -17,6 +17,7 @@ export type ProjectRevisionRecord = {
   initialSceneLabel?: string;
   reason: 'autosave' | 'protective' | 'restore';
   kind: 'checkpoint' | 'delta';
+  changeSummary?: string;
   project?: ProjectSpec;
   yaml?: string;
   baseRevisionId?: string;
@@ -373,23 +374,50 @@ function formatEntityDiff(current: RevisionSnapshot, previous: RevisionSnapshot)
   return null;
 }
 
-function formatAudioLibraryDiff(current: RevisionSnapshot, previous: RevisionSnapshot): string | null {
-  const addedSoundIds = [...current.soundLabelsById.keys()].filter((assetId) => !previous.soundLabelsById.has(assetId));
-  const removedSoundIds = [...previous.soundLabelsById.keys()].filter((assetId) => !current.soundLabelsById.has(assetId));
-  if (addedSoundIds.length === 0 && removedSoundIds.length === 0) return null;
-  if (addedSoundIds.length === 1 && removedSoundIds.length === 0) {
-    return `Added audio ${current.soundLabelsById.get(addedSoundIds[0]) ?? addedSoundIds[0]}`;
+function formatNamedAssetLabel(
+  assetId: string,
+  assets: Record<string, { name?: string; source?: { originalName?: string } } | undefined> | undefined,
+): string {
+  const asset = assets?.[assetId];
+  return asset?.name?.trim() || asset?.source?.originalName?.trim() || assetId;
+}
+
+function formatAssetRecordDiff(
+  currentAssets: Record<string, { name?: string; source?: { originalName?: string } } | undefined> | undefined,
+  previousAssets: Record<string, { name?: string; source?: { originalName?: string } } | undefined> | undefined,
+  singularLabel: string,
+  pluralLabel: string,
+): string | null {
+  const currentIds = Object.keys(currentAssets ?? {});
+  const previousIds = Object.keys(previousAssets ?? {});
+  const addedAssetIds = currentIds.filter((assetId) => !previousAssets?.[assetId]);
+  const removedAssetIds = previousIds.filter((assetId) => !currentAssets?.[assetId]);
+  if (addedAssetIds.length === 0 && removedAssetIds.length === 0) return null;
+  if (addedAssetIds.length === 1 && removedAssetIds.length === 0) {
+    return `Added ${singularLabel} ${formatNamedAssetLabel(addedAssetIds[0], currentAssets)}`;
   }
-  if (removedSoundIds.length === 1 && addedSoundIds.length === 0) {
-    return `Removed audio ${previous.soundLabelsById.get(removedSoundIds[0]) ?? removedSoundIds[0]}`;
+  if (removedAssetIds.length === 1 && addedAssetIds.length === 0) {
+    return `Removed ${singularLabel} ${formatNamedAssetLabel(removedAssetIds[0], previousAssets)}`;
   }
-  if (addedSoundIds.length > 0 && removedSoundIds.length === 0) {
-    return formatCountLabel(addedSoundIds.length, 'audio asset added', 'audio assets added');
+  if (addedAssetIds.length > 0 && removedAssetIds.length === 0) {
+    return formatCountLabel(addedAssetIds.length, `${singularLabel} added`, `${pluralLabel} added`);
   }
-  if (removedSoundIds.length > 0 && addedSoundIds.length === 0) {
-    return formatCountLabel(removedSoundIds.length, 'audio asset removed', 'audio assets removed');
+  if (removedAssetIds.length > 0 && addedAssetIds.length === 0) {
+    return formatCountLabel(removedAssetIds.length, `${singularLabel} removed`, `${pluralLabel} removed`);
   }
-  return `Audio +${addedSoundIds.length}, -${removedSoundIds.length}`;
+  return `${pluralLabel[0].toUpperCase()}${pluralLabel.slice(1)} +${addedAssetIds.length}, -${removedAssetIds.length}`;
+}
+
+function formatAssetLibraryDiff(current: RevisionSnapshot, previous: RevisionSnapshot): string | null {
+  if (!current.project || !previous.project) return null;
+  const assetChanges = [
+    formatAssetRecordDiff(current.project.assets?.images, previous.project.assets?.images, 'image asset', 'image assets'),
+    formatAssetRecordDiff(current.project.assets?.spriteSheets, previous.project.assets?.spriteSheets, 'sprite sheet', 'sprite sheets'),
+    formatAssetRecordDiff(current.project.assets?.fonts, previous.project.assets?.fonts, 'font', 'fonts'),
+    formatAssetRecordDiff(current.project.audio?.sounds, previous.project.audio?.sounds, 'audio', 'audio assets'),
+  ].filter((value): value is string => Boolean(value));
+  if (assetChanges.length === 0) return null;
+  return assetChanges.slice(0, 2).join(' · ');
 }
 
 function formatSceneMusicDiff(current: RevisionSnapshot, previous: RevisionSnapshot): string | null {
@@ -644,6 +672,29 @@ function formatProjectSystemDiff(current: RevisionSnapshot, previous: RevisionSn
   return null;
 }
 
+function formatPublishMetadataDiff(current: RevisionSnapshot, previous: RevisionSnapshot): string | null {
+  if (!current.project || !previous.project) return null;
+  if (current.project.publishTitle !== previous.project.publishTitle) {
+    if (!previous.project.publishTitle && current.project.publishTitle) {
+      return `Set publish title to ${current.project.publishTitle}`;
+    }
+    if (previous.project.publishTitle && !current.project.publishTitle) {
+      return 'Cleared publish title';
+    }
+    return 'Updated publish title';
+  }
+  if (current.project.publishGithubPagesRepo !== previous.project.publishGithubPagesRepo) {
+    if (!previous.project.publishGithubPagesRepo && current.project.publishGithubPagesRepo) {
+      return `Set publish repo to ${current.project.publishGithubPagesRepo}`;
+    }
+    if (previous.project.publishGithubPagesRepo && !current.project.publishGithubPagesRepo) {
+      return 'Cleared publish repo';
+    }
+    return 'Updated publish repo';
+  }
+  return null;
+}
+
 export function formatProjectRevisionTimestamp(revision: ProjectRevisionRecord): string {
   return shortMonthDayTime(revision.updatedAt);
 }
@@ -661,6 +712,7 @@ export function formatProjectRevisionSummary(
       : undefined;
     return ['Initial snapshot', sceneLabel, entityLabel].filter(Boolean).join(' · ');
   }
+  if (revision.changeSummary?.trim()) return revision.changeSummary.trim();
 
   const previous = summarizeRevisionContent(previousRevision, undefined, revisionHistory);
   const specificChanges = [
@@ -671,9 +723,10 @@ export function formatProjectRevisionSummary(
       ? `Start scene -> ${current.initialSceneLabel ?? current.initialSceneId}`
       : null,
     formatEntityDiff(current, previous),
-    formatAudioLibraryDiff(current, previous),
+    formatAssetLibraryDiff(current, previous),
     formatSceneMusicDiff(current, previous),
     formatEntityEditDiff(current, previous),
+    formatPublishMetadataDiff(current, previous),
     revision.reason === 'restore' ? 'Restored older version' : null,
     revision.reason === 'protective' ? 'Safety checkpoint' : null,
   ].filter((value): value is string => Boolean(value));
@@ -843,6 +896,7 @@ export function createProjectRevision(
     id?: string;
     updatedAt?: string;
     reason?: ProjectRevisionRecord['reason'];
+    changeSummary?: string;
     yaml?: string;
   }
 ): ProjectRevisionRecord {
@@ -859,6 +913,7 @@ export function createProjectRevision(
     initialSceneLabel: project.sceneMeta?.[project.initialSceneId]?.name?.trim() || project.initialSceneId,
     reason: options?.reason ?? 'autosave',
     kind: 'checkpoint',
+    changeSummary: options?.changeSummary?.trim() || undefined,
     project: cloneProject(project),
     yaml: options?.yaml,
   };
@@ -882,6 +937,10 @@ const REVISION_ALLOWED_DOMAIN_GROUPS = [
   new Set(['attachments', 'event-blocks']),
   new Set(['actions', 'behaviors', 'conditions']),
   new Set(['input-maps', 'scene-input']),
+];
+
+const REVISION_ALLOWED_MILESTONE_DOMAIN_GROUPS = [
+  new Set(['project-title', 'publish']),
 ];
 
 function addRecordDiffFocus(
@@ -1048,6 +1107,12 @@ function buildClusterKeys(focusKeys: Set<string>): Set<string> {
 
 function isAllowedRevisionDomainBlend(domains: Set<string>): boolean {
   return REVISION_ALLOWED_DOMAIN_GROUPS.some((allowedDomains) => (
+    domains.size > 1 && [...domains].every((domain) => allowedDomains.has(domain))
+  ));
+}
+
+function isAllowedRevisionMilestoneBlend(domains: Set<string>): boolean {
+  return REVISION_ALLOWED_MILESTONE_DOMAIN_GROUPS.some((allowedDomains) => (
     domains.size > 1 && [...domains].every((domain) => allowedDomains.has(domain))
   ));
 }
@@ -1238,14 +1303,13 @@ function shouldCoalesceAutosaveRevision(
   const nextProfile = buildRevisionChangeProfile(nextRevision, latestRevision, nextHistory);
   if (burstProfile.domains.size === 0 || nextProfile.domains.size === 0) return false;
 
-  if (
-    [...burstProfile.domains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain))
-    || [...nextProfile.domains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain))
-  ) {
+  const combinedDomains = new Set([...burstProfile.domains, ...nextProfile.domains]);
+  const includesMilestoneDomain = [...combinedDomains].some((domain) => REVISION_MILESTONE_DOMAINS.has(domain));
+  const allowsMilestoneBlend = isAllowedRevisionMilestoneBlend(combinedDomains);
+
+  if (includesMilestoneDomain && combinedDomains.size > 1 && !allowsMilestoneBlend) {
     return false;
   }
-
-  const combinedDomains = new Set([...burstProfile.domains, ...nextProfile.domains]);
   const overlappingFocus = [...nextProfile.focusKeys].some((key) => burstProfile.focusKeys.has(key));
   if (overlappingFocus) return true;
 
@@ -1258,6 +1322,7 @@ function shouldCoalesceAutosaveRevision(
   }
 
   if (isAllowedRevisionDomainBlend(combinedDomains)) return true;
+  if (allowsMilestoneBlend) return true;
 
   return false;
 }
