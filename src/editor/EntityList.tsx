@@ -741,19 +741,6 @@ export function EntityListView({
                   return (
                     <div key={revision.id} className="behavior-block" data-testid={`project-revision-${revision.id}`}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-                        {canExpandDetails ? (
-                          <button
-                            aria-expanded={isExpanded}
-                            aria-label={isExpanded ? 'Collapse revision details' : 'Expand revision details'}
-                            className="button button-compact"
-                            data-testid={`project-revision-toggle-${revision.id}`}
-                            type="button"
-                            onClick={() => setExpandedRevisionId((current) => current === revision.id ? null : revision.id)}
-                            style={{ minWidth: 38, paddingInline: 0, fontSize: 18, lineHeight: 1 }}
-                          >
-                            {isExpanded ? '▾' : '▸'}
-                          </button>
-                        ) : null}
                         <button
                           className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
                           type="button"
@@ -787,15 +774,25 @@ export function EntityListView({
                         <div
                           className="list-item-meta"
                           data-testid={`project-revision-teaser-${revision.id}`}
+                          role="button"
+                          tabIndex={0}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             marginTop: 8,
-                            marginLeft: 46,
+                            marginLeft: 0,
                             padding: '3px 10px',
                             borderRadius: 999,
                             border: '1px solid var(--panel-border, #495869)',
                             background: 'rgba(255,255,255,0.04)',
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => setExpandedRevisionId(revision.id)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              setExpandedRevisionId(revision.id);
+                            }
                           }}
                         >
                           +{hiddenDetailCount} more change{hiddenDetailCount === 1 ? '' : 's'}
@@ -804,13 +801,23 @@ export function EntityListView({
                       {canExpandDetails && isExpanded ? (
                         <div
                           data-testid={`project-revision-details-${revision.id}`}
+                          role="button"
+                          tabIndex={0}
                           style={{
                             marginTop: 8,
-                            marginLeft: 46,
+                            marginLeft: 0,
                             padding: '10px 12px',
                             borderRadius: 12,
                             background: 'rgba(255,255,255,0.03)',
                             border: '1px solid rgba(255,255,255,0.06)',
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => setExpandedRevisionId(null)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              setExpandedRevisionId(null);
+                            }
                           }}
                         >
                           <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 6 }}>
