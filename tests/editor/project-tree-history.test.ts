@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { DEMO_PACK_ASSET_MANIFEST } from '../../src/editor/demoPackAssets';
 import { sampleProject } from '../../src/model/sampleProject';
+import { createEmptyProject } from '../../src/model/emptyProject';
 import {
   archiveProjectHistoryRevisions,
   appendProjectRevision,
@@ -66,6 +68,46 @@ describe('project tree + history helpers', () => {
     expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Renamed to Pattern Demo · 1 entity added');
   });
 
+  it('prefers a captured revision change summary when one is available', () => {
+    const olderProject = createEmptyProject();
+    const newerProject = createEmptyProject();
+    for (const entry of DEMO_PACK_ASSET_MANIFEST) {
+      const source = {
+        kind: 'path' as const,
+        path: entry.path,
+        originalName: entry.originalName,
+        mimeType: entry.mimeType,
+      };
+      if (entry.kind === 'image') {
+        newerProject.assets.images[entry.assetId] = {
+          id: entry.assetId,
+          source,
+          name: entry.originalName,
+          width: entry.width,
+          height: entry.height,
+        } as any;
+        continue;
+      }
+      newerProject.audio.sounds[entry.assetId] = {
+        id: entry.assetId,
+        source,
+        name: entry.originalName,
+      } as any;
+    }
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-26T21:09:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-26T21:10:00.000Z',
+      changeSummary: 'Imported Demo Pack',
+    });
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Imported Demo Pack');
+  });
+
   it('surfaces concrete entity edits before falling back to a scene-level summary', () => {
     const olderProject = structuredClone(sampleProject);
     const newerProject = structuredClone(sampleProject);
@@ -112,6 +154,83 @@ describe('project tree + history helpers', () => {
     });
 
     expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Added audio pattern-theme.mp3 · Music -> pattern-theme.mp3');
+  });
+
+  it('labels demo pack imports explicitly in revision summaries', () => {
+    const olderProject = createEmptyProject();
+    const newerProject = createEmptyProject();
+    for (const entry of DEMO_PACK_ASSET_MANIFEST) {
+      const source = {
+        kind: 'path' as const,
+        path: entry.path,
+        originalName: entry.originalName,
+        mimeType: entry.mimeType,
+      };
+      if (entry.kind === 'image') {
+        newerProject.assets.images[entry.assetId] = {
+          id: entry.assetId,
+          source,
+          name: entry.originalName,
+          width: entry.width,
+          height: entry.height,
+        } as any;
+        continue;
+      }
+      newerProject.audio.sounds[entry.assetId] = {
+        id: entry.assetId,
+        source,
+        name: entry.originalName,
+      } as any;
+    }
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-26T21:09:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-26T21:10:00.000Z',
+    });
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('26 image assets added · 3 audio assets added');
+  });
+
+  it('falls back to mixed asset labels for regular non-demo-pack imports', () => {
+    const olderProject = createEmptyProject();
+    const newerProject = createEmptyProject();
+    newerProject.assets.images.hero = {
+      id: 'hero',
+      name: 'hero.png',
+      source: {
+        kind: 'embedded',
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'hero.png',
+        mimeType: 'image/png',
+      },
+      width: 16,
+      height: 16,
+    } as any;
+    newerProject.audio.sounds.theme = {
+      id: 'theme',
+      name: 'theme.mp3',
+      source: {
+        kind: 'embedded',
+        dataUrl: 'data:audio/mp3;base64,AAAA',
+        originalName: 'theme.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any;
+
+    const olderRevision = createProjectRevision(olderProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-26T21:09:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-26T21:10:00.000Z',
+    });
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision)).toBe('Added image asset hero.png · Added audio theme.mp3');
   });
 
   it('surfaces named scene system changes like triggers before broad scene fallbacks', () => {
@@ -571,7 +690,7 @@ describe('project tree + history helpers', () => {
     expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-first', 'rev-base']);
   });
 
-  it('splits nearby autosaves for milestone-only edits even when they stay in the same milestone domain', () => {
+  it('coalesces nearby autosaves for repeated project-title edits in the same burst', () => {
     const baseProject = structuredClone(sampleProject);
     const firstEdit = structuredClone(sampleProject);
     firstEdit.title = 'History Demo';
@@ -595,7 +714,36 @@ describe('project tree + history helpers', () => {
 
     const revisions = appendProjectRevision([firstRevision, baseRevision], secondRevision, 25);
 
-    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-first', 'rev-base']);
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-second', 'rev-base']);
+  });
+
+  it('coalesces nearby autosaves when publish metadata follows a project rename in the same burst', () => {
+    const baseProject = structuredClone(sampleProject);
+    const renamedProject = structuredClone(sampleProject);
+    renamedProject.title = 'Pattern Demo';
+    const publishProject = structuredClone(renamedProject);
+    publishProject.publishGithubPagesRepo = 'zoof';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-26T22:22:00.000Z',
+    });
+    const renameRevision = createProjectRevision(renamedProject, {
+      id: 'rev-rename',
+      updatedAt: '2026-06-26T22:22:20.000Z',
+      reason: 'autosave',
+    });
+    const publishRevision = createProjectRevision(publishProject, {
+      id: 'rev-publish',
+      updatedAt: '2026-06-26T22:22:45.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision([renameRevision, baseRevision], publishRevision, 25);
+
+    expect(revisions.map((revision) => revision.id)).toEqual(['rev-publish', 'rev-base']);
+    expect(formatProjectRevisionSummary(revisions[0], revisions[1], revisions))
+      .toBe('Renamed to Pattern Demo · Set publish repo to zoof');
   });
 
   it('stores later revisions as deltas against the previous checkpoint instead of full snapshots', () => {

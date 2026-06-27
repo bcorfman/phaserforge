@@ -16,6 +16,10 @@ function sceneOf(state: any) {
   return state.project.scenes[state.currentSceneId];
 }
 
+function latestSummary(state: any) {
+  return state.history.past[state.history.past.length - 1]?.summary;
+}
+
 describe('EditorStore history', () => {
   it('undo/redo restores scene content and selection metadata', () => {
     const state0 = reducer(seededState(), { type: 'select', selection: { kind: 'entity', id: 'e1' } } as any);
@@ -185,11 +189,100 @@ describe('EditorStore history', () => {
     } as any);
 
     expect(imported.history.past).toHaveLength(1);
+    expect(imported.history.past[0]).toMatchObject({ summary: 'Imported Demo Pack' });
+    expect(imported.lastProjectChangeSummary).toBe('Imported Demo Pack');
     expect(imported.project.assets.images['enemy-a']).toBeDefined();
     expect(imported.project.audio.sounds.theme).toBeDefined();
 
     const undone = reducer(imported, { type: 'history-undo' } as any);
     expect(undone.project.assets.images['enemy-a']).toBeUndefined();
     expect(undone.project.audio.sounds.theme).toBeUndefined();
+    expect(undone.lastProjectChangeSummary).toBe('Undid Imported Demo Pack');
+  });
+
+  it('describes bulk entity and grouping commands precisely', () => {
+    const base = seededState();
+    const project = structuredClone(sampleProject);
+    project.scenes[project.initialSceneId].groups = {};
+    project.scenes[project.initialSceneId].attachments = {};
+    const state0 = {
+      ...base,
+      project,
+      selection: { kind: 'entities', ids: ['e1', 'e2'] },
+      expandedGroups: {},
+    };
+
+    const patched = reducer(state0, {
+      type: 'patch-entities',
+      entityIds: ['e1', 'e2'],
+      patch: { visible: false },
+    } as any);
+    expect(latestSummary(patched)).toBe('Updated 2 entities');
+
+    const grouped = reducer(patched, { type: 'create-group-from-selection', name: 'Front Line' } as any);
+    expect(latestSummary(grouped)).toBe('Created group Front Line');
+    const createdGroupId = Object.keys(sceneOf(grouped).groups)[0];
+
+    const addToGroup = reducer(grouped, {
+      type: 'add-entities-to-group',
+      groupId: createdGroupId,
+      entityIds: ['e3', 'e4'],
+    } as any);
+    expect(latestSummary(addToGroup)).toBe('Added 2 entities to Front Line');
+
+    const removedFromGroup = reducer(addToGroup, {
+      type: 'remove-entity-from-group',
+      groupId: createdGroupId,
+      entityId: 'e4',
+    } as any);
+    expect(latestSummary(removedFromGroup)).toBe('Removed entity from Front Line');
+  });
+
+  it('describes bounds drags as one movement-bounds history event', () => {
+    const state0 = seededState();
+    const state1 = reducer(state0, { type: 'begin-canvas-interaction', kind: 'bounds', id: 'att-move-right', handle: 'right' } as any);
+    const state2 = reducer(state1, {
+      type: 'update-bounds',
+      id: 'att-move-right',
+      bounds: { minX: 80, maxX: 960, minY: 60, maxY: 720 },
+    } as any);
+    const state3 = reducer(state2, { type: 'end-canvas-interaction' } as any);
+
+    expect(state3.history.past).toHaveLength(1);
+    expect(latestSummary(state3)).toBe('Updated movement bounds');
+  });
+
+  it('describes scene systems like input, layers, collisions, and triggers precisely', () => {
+    const inputUpdated = reducer(seededState(), {
+      type: 'set-scene-input',
+      input: { activeMapNone: true },
+    } as any);
+    expect(latestSummary(inputUpdated)).toBe('Updated scene input');
+
+    const withLayers = reducer(seededState(), {
+      type: 'set-scene-background-layers',
+      layers: [
+        { assetId: 'bg-1', x: 0, y: 0, depth: -100, layout: 'cover' },
+        { assetId: 'bg-2', x: 0, y: 0, depth: -200, layout: 'cover' },
+      ],
+    } as any);
+    expect(latestSummary(withLayers)).toBe('Updated background layers');
+    const reordered = reducer(withLayers, { type: 'move-background-layer', fromIndex: 0, toIndex: 1 } as any);
+    expect(latestSummary(reordered)).toBe('Reordered background layers');
+
+    const collisionAdded = reducer(seededState(), { type: 'add-collision-rule' } as any);
+    expect(latestSummary(collisionAdded)).toBe('Added collision rule');
+    const collisionId = sceneOf(collisionAdded).collisionRules[0].id;
+    const collisionUpdated = reducer(collisionAdded, { type: 'update-collision-rule', id: collisionId, patch: { interaction: 'overlap' } } as any);
+    expect(latestSummary(collisionUpdated)).toBe('Updated collision rule');
+    const collisionRemoved = reducer(collisionUpdated, { type: 'remove-collision-rule', id: collisionId } as any);
+    expect(latestSummary(collisionRemoved)).toBe('Removed collision rule');
+
+    const triggerAdded = reducer(seededState(), { type: 'add-trigger-zone' } as any);
+    expect(latestSummary(triggerAdded)).toBe('Added trigger trigger-1');
+    const triggerUpdated = reducer(triggerAdded, { type: 'update-trigger-zone', id: 'trigger-1', patch: { name: 'Exit Gate' } } as any);
+    expect(latestSummary(triggerUpdated)).toBe('Updated trigger Exit Gate');
+    const triggerRemoved = reducer(triggerUpdated, { type: 'remove-trigger-zone', id: 'trigger-1' } as any);
+    expect(latestSummary(triggerRemoved)).toBe('Removed trigger Exit Gate');
   });
 });
