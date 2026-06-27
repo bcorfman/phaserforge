@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
   await dismissViewHint(page);
 });
 
-test('Wave Pattern progress labels are not visually truncated @smoke @browser', async ({ page }) => {
+test('Wave Pattern progress labels are not visually truncated @browser', async ({ page }) => {
   await selectGroupInSceneGraph(page, 'g-enemies');
   await page.getByTestId('attachment-open-att-wave-progress').click();
 

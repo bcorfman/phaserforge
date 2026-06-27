@@ -39,6 +39,7 @@ jobs:
       - name: E2E Tests
         env:
           PW_PROJECTS: chromium
+          PW_FULLY_PARALLEL: '1'
         run: npm run test:e2e -- --project=chromium --grep "@smoke|@critical" --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
 
       - name: Upload Playwright Artifacts

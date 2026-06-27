@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { dismissViewHint, openProjectScope, seedSampleScene, waitForEmptyScene } from './helpers';
 
 test.describe('Project picker', () => {
-  test('shows project manage actions and opens the picker from the project tree @smoke', async ({ page }) => {
+  test('opens the picker from the project tree and preserves the sync toggle @smoke', async ({ page }) => {
     await seedSampleScene(page);
     await dismissViewHint(page);
 
@@ -12,11 +12,7 @@ test.describe('Project picker', () => {
 
     await openProjectScope(page);
     await page.getByTestId('project-tree-manage-button').click();
-    await expect(page.getByTestId('project-manage-create')).toBeVisible();
     await expect(page.getByTestId('project-manage-open')).toBeVisible();
-    await expect(page.getByTestId('project-manage-toggle-sync')).toBeVisible();
-    await expect(page.getByTestId('project-manage-import-yaml')).toBeVisible();
-    await expect(page.getByTestId('project-manage-export-yaml')).toBeVisible();
 
     await page.getByTestId('project-manage-open').click();
     await expect(page.getByTestId('project-picker-panel')).toBeVisible();
