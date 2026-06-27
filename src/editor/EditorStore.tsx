@@ -85,6 +85,22 @@ export function coerceUiScale(raw: string | null | undefined, fallback: number):
   return Math.max(0.75, Math.min(1.1, value));
 }
 
+function formatProjectLoadStatus(sourceLabel: string): string {
+  if (sourceLabel.startsWith('create-project:')) {
+    return `Created project: ${sourceLabel.slice('create-project:'.length)}`;
+  }
+  if (sourceLabel.startsWith('duplicate-project:')) {
+    return `Duplicated project: ${sourceLabel.slice('duplicate-project:'.length)}`;
+  }
+  if (sourceLabel.startsWith('copy-revision:')) {
+    return `Created project from revision: ${sourceLabel.slice('copy-revision:'.length)}`;
+  }
+  if (sourceLabel.startsWith('restore-revision:')) {
+    return `Restored revision: ${sourceLabel.slice('restore-revision:'.length)}`;
+  }
+  return `Loaded project: ${sourceLabel}`;
+}
+
 export type Selection =
   | { kind: 'none' }
   | { kind: 'entity'; id: Id }
@@ -2397,7 +2413,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           error: undefined,
           selection: { kind: 'none' },
           yamlText: serializeProjectToYaml(parsed),
-          statusMessage: `Loaded project: ${action.sourceLabel}`,
+          statusMessage: formatProjectLoadStatus(action.sourceLabel),
           statusExpiresAt: expiresAt,
         };
       } catch (err) {

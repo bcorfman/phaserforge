@@ -40,7 +40,8 @@ import {
   getMaxZoom,
   getNextZoom,
   getResizedViewportScroll,
-  getZoomedScroll
+  getZoomedScroll,
+  isCameraAtFitView
 } from '../editor/viewport';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { resolvePointerModifier } from './inputModifiers';
@@ -924,6 +925,24 @@ export class EditorScene extends Phaser.Scene {
     // Ignore no-op/float-jitter resize events (seen intermittently in headless browsers).
     if (Math.abs(prev.width - next.width) < 0.01 && Math.abs(prev.height - next.height) < 0.01) return;
     this.lastViewportSize = next;
+
+    const world = getSceneWorld(this.compiled.scene ?? EMPTY_SCENE_SPEC);
+    const shouldRefit = isCameraAtFitView(
+      prev.width,
+      prev.height,
+      world.width,
+      world.height,
+      this.currentZoom,
+      this.cameras.main.scrollX,
+      this.cameras.main.scrollY,
+      this.cameras.main.originX,
+      this.cameras.main.originY
+    );
+    if (shouldRefit) {
+      this.fitView();
+      this.lastViewportSize = next;
+      return;
+    }
 
     const resized = getResizedViewportScroll(
       this.cameras.main.scrollX,
