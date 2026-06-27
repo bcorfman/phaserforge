@@ -88,4 +88,32 @@ describe('EntityList project history retention', () => {
     expect(screen.getByTestId('project-history-filter-14').getAttribute('aria-selected')).toBe('true');
     expect(screen.getByText('Ten Day Build')).toBeTruthy();
   });
+
+  it('renders each revision timestamp in a dedicated non-wrapping end column', () => {
+    const revision = createProjectRevision(sampleProject, {
+      id: 'rev-layout',
+      updatedAt: '2026-06-26T21:10:00.000Z',
+    });
+
+    render(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
+        selection={{ kind: 'none' }}
+        sidebarScope="projectRevisions"
+        revisions={[revision]}
+        expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
+        dispatch={() => {}}
+      />
+    );
+
+    const rowButton = screen.getByTestId('project-revision-row-button-rev-layout');
+    const timestamp = screen.getByTestId('project-revision-timestamp-rev-layout');
+
+    expect(rowButton.getAttribute('style') ?? '').toContain('grid-template-columns: minmax(0, 1fr) auto');
+    expect(timestamp.getAttribute('style') ?? '').toContain('white-space: nowrap');
+    expect(timestamp.getAttribute('style') ?? '').toContain('text-align: right');
+  });
 });
