@@ -1,3 +1,121 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:e5e870f5f7cfabe946bfc9c944eeed368c8b3dfef7a29e3ff926899b6127d028
-size 7651
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="940" viewBox="0 0 1320 940">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .shell { fill: #111823; stroke: #253244; stroke-width: 1.5; }
+      .panel { fill: #16202c; stroke: #314156; stroke-width: 1.2; }
+      .panelAlt { fill: #101721; stroke: #2a394d; stroke-width: 1.2; }
+      .active { fill: #1d3c63; stroke: #4c83be; stroke-width: 1.2; }
+      .button { fill: #1a2532; stroke: #314156; stroke-width: 1; }
+      .primary { fill: #235fba; stroke: #5b93ea; stroke-width: 1; }
+      .good { fill: #153224; stroke: #2f7a53; stroke-width: 1; }
+      .amber { fill: #3b2a12; stroke: #8b6529; stroke-width: 1; }
+      .text { font: 700 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #edf4fb; }
+      .title { font: 800 24px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #f4f8fc; }
+      .label { font: 760 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #dae5f0; }
+      .body { font: 560 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #c2d0df; }
+      .small { font: 530 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #98acc3; }
+      .mono { font: 640 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #edf4fb; }
+      .line { stroke: #2a394d; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1320" height="940" />
+  <text class="title" x="44" y="56">Option B: Project Root In Scene Tree</text>
+  <text class="body" x="44" y="84">A stronger hierarchy: project at the top, scenes beneath it, history alongside it, and publishing renamed as a later release step.</text>
+
+  <rect class="shell" x="44" y="112" width="1230" height="782" rx="20" />
+
+  <rect class="panelAlt" x="64" y="138" width="86" height="728" rx="18" />
+  <rect class="active" x="76" y="170" width="62" height="94" rx="16" />
+  <text class="text" x="107" y="208" text-anchor="middle">Scene</text>
+  <text class="small" x="107" y="228" text-anchor="middle">project root</text>
+  <rect class="panel" x="76" y="282" width="62" height="94" rx="16" />
+  <text class="text" x="107" y="320" text-anchor="middle">Assets</text>
+  <rect class="panel" x="76" y="394" width="62" height="94" rx="16" />
+  <text class="text" x="107" y="432" text-anchor="middle">Cloud</text>
+
+  <rect class="panel" x="176" y="138" width="424" height="728" rx="20" />
+  <text class="label" x="206" y="180">Scene Tree</text>
+
+  <rect class="panelAlt" x="206" y="208" width="364" height="124" rx="16" />
+  <text class="small" x="228" y="238">Project Root</text>
+  <text class="text" x="228" y="266">▾ Project: Pattern Demo Playground</text>
+  <text class="body" x="252" y="294">Working title • Autosaved • 3 scenes</text>
+  <rect class="button" x="228" y="304" width="112" height="28" rx="8" />
+  <text class="text" x="284" y="323" text-anchor="middle">Rename</text>
+  <rect class="button" x="350" y="304" width="110" height="28" rx="8" />
+  <text class="text" x="405" y="323" text-anchor="middle">History</text>
+
+  <rect class="panelAlt" x="206" y="356" width="364" height="428" rx="16" />
+  <text class="text" x="228" y="392">▾ Scenes</text>
+  <rect class="panel" x="228" y="410" width="320" height="42" rx="10" />
+  <text class="text" x="246" y="436">Main Menu</text>
+  <rect class="panel" x="244" y="462" width="304" height="42" rx="10" />
+  <text class="text" x="262" y="488">Sprites</text>
+  <rect class="panel" x="244" y="514" width="304" height="42" rx="10" />
+  <text class="text" x="262" y="540">Text</text>
+  <rect class="panel" x="228" y="574" width="320" height="42" rx="10" />
+  <text class="text" x="246" y="600">Level 01</text>
+  <rect class="panel" x="228" y="626" width="320" height="42" rx="10" />
+  <text class="text" x="246" y="652">Boss Arena</text>
+  <rect class="button" x="228" y="716" width="118" height="36" rx="10" />
+  <text class="text" x="287" y="739" text-anchor="middle">+ Add Scene</text>
+  <rect class="button" x="356" y="716" width="146" height="36" rx="10" />
+  <text class="text" x="429" y="739" text-anchor="middle">Duplicate Scene</text>
+  <text class="small" x="228" y="776">Visual Studio-style cue: scenes belong to the project,</text>
+  <text class="small" x="228" y="794">not to a separate disconnected tab universe.</text>
+
+  <rect class="panel" x="626" y="138" width="360" height="728" rx="20" />
+  <text class="label" x="656" y="180">Project Details</text>
+
+  <rect class="panelAlt" x="656" y="208" width="300" height="140" rx="16" />
+  <text class="small" x="678" y="238">Project Name</text>
+  <rect class="panel" x="678" y="250" width="240" height="42" rx="10" />
+  <text class="mono" x="694" y="277">Pattern Demo Playground</text>
+  <text class="body" x="678" y="318">This is what the editor calls the game project while building it.</text>
+
+  <rect class="panelAlt" x="656" y="372" width="300" height="260" rx="16" />
+  <text class="label" x="678" y="404">Revisions &amp; Checkpoints</text>
+  <rect class="good" x="678" y="428" width="240" height="32" rx="16" />
+  <text class="text" x="798" y="449" text-anchor="middle">You can always restore from here</text>
+  <rect class="panel" x="678" y="478" width="240" height="46" rx="10" />
+  <text class="text" x="694" y="506">Autosave • 2 min ago</text>
+  <rect class="panel" x="678" y="534" width="240" height="46" rx="10" />
+  <text class="text" x="694" y="562">Named checkpoint • Good pacing</text>
+  <rect class="panel" x="678" y="590" width="240" height="46" rx="10" />
+  <text class="text" x="694" y="618">Before publish • yesterday</text>
+
+  <rect class="button" x="678" y="650" width="72" height="30" rx="8" />
+  <text class="text" x="714" y="670" text-anchor="middle">Preview</text>
+  <rect class="primary" x="760" y="650" width="72" height="30" rx="8" />
+  <text class="text" x="796" y="670" text-anchor="middle">Restore</text>
+  <rect class="button" x="842" y="650" width="76" height="30" rx="8" />
+  <text class="text" x="880" y="670" text-anchor="middle">As Copy</text>
+
+  <rect class="panelAlt" x="656" y="658" width="300" height="174" rx="16" />
+  <text class="small" x="678" y="688">Checkpoint policy shown in UI</text>
+  <text class="body" x="678" y="716">Autosave every idle burst</text>
+  <text class="body" x="678" y="742">Before publish</text>
+  <text class="body" x="678" y="768">Before import / restore / destructive actions</text>
+  <text class="body" x="678" y="794">Manual named checkpoints anytime</text>
+
+  <rect class="panel" x="1012" y="138" width="232" height="728" rx="20" />
+  <text class="label" x="1042" y="180">Publish</text>
+
+  <rect class="panelAlt" x="1042" y="208" width="172" height="164" rx="16" />
+  <text class="small" x="1060" y="238">Release URL / Slug</text>
+  <rect class="panel" x="1060" y="250" width="136" height="40" rx="10" />
+  <text class="mono" x="1076" y="276">pattern-demo</text>
+  <text class="body" x="1060" y="320">Can differ from project name.</text>
+  <text class="body" x="1060" y="342">Only needed for release.</text>
+
+  <rect class="primary" x="1060" y="396" width="136" height="38" rx="10" />
+  <text class="text" x="1128" y="421" text-anchor="middle">Publish</text>
+
+  <rect class="amber" x="1042" y="470" width="172" height="160" rx="16" />
+  <text class="label" x="1060" y="500">Why This Helps</text>
+  <text class="body" x="1060" y="528">The project is visibly the parent object.</text>
+  <text class="body" x="1060" y="554">Scenes, release settings, and restore history</text>
+  <text class="body" x="1060" y="580">all become subordinate project concerns.</text>
+</svg>

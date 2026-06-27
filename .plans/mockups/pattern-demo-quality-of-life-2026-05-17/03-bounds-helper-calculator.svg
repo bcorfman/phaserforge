@@ -1,3 +1,129 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:362e6939967a70287f1262c3f35d3820eeac8efac4897737ad6a202b89f2be7c
-size 6658
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1216"/>
+      <stop offset="1" stop-color="#070C0F"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#1A2329"/>
+      <stop offset="1" stop-color="#0E151A"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#152026"/>
+      <stop offset="1" stop-color="#0C1216"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feColorMatrix in="b" type="matrix" values="0 0 0 0 0   0 0 0 0 0.6   0 0 0 0 0.8   0 0 0 0.25 0" result="c"/>
+      <feMerge>
+        <feMergeNode in="c"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <style>
+      .ui { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .h1 { font-weight: 900; letter-spacing: 0.10em; font-size: 18px; fill: #A9B7BE; opacity: 0.9; }
+      .title { font-weight: 900; font-size: 18px; fill: #EAF2F6; }
+      .label { font-weight: 800; letter-spacing: 0.14em; font-size: 12px; fill: #8FA1AB; opacity: 0.9; }
+      .value { font-weight: 800; font-size: 14px; fill: #EAF2F6; opacity: 0.95; }
+      .hint { font-weight: 600; font-size: 12px; fill: #90A2AC; opacity: 0.75; }
+      .btn { font-weight: 900; font-size: 14px; fill: #EAF2F6; }
+      .accent { fill: #84E8FF; }
+      .good { fill: #65F2A3; }
+      .warn { fill: #FFCC66; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="760" fill="url(#bg)"/>
+
+  <!-- Inspector panel -->
+  <g filter="url(#soft)">
+    <rect x="28" y="28" width="520" height="704" rx="18" fill="url(#panel)" stroke="#2A353C" stroke-width="2"/>
+  </g>
+  <g class="ui">
+    <text x="54" y="62" class="h1">INSPECTOR → Bounds</text>
+    <text x="54" y="92" class="hint">New helper: edge-safe bounds calculator (for Bounce/Patrol/BoundsHit).</text>
+  </g>
+
+  <!-- Calculator card -->
+  <g filter="url(#soft)">
+    <rect x="48" y="120" width="480" height="456" rx="18" fill="url(#card)" stroke="#2C373F" stroke-width="2"/>
+  </g>
+  <g class="ui">
+    <text x="76" y="160" class="title">Bounds Helper (new)</text>
+
+    <text x="76" y="202" class="label">CENTER</text>
+    <rect x="76" y="214" width="120" height="40" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    <text x="92" y="240" class="value">cx 400</text>
+    <rect x="206" y="214" width="120" height="40" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    <text x="222" y="240" class="value">cy 200</text>
+
+    <text x="76" y="282" class="label">TRAVEL SPAN (CENTER-BASED)</text>
+    <rect x="76" y="294" width="120" height="40" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    <text x="92" y="320" class="value">±x 60</text>
+    <rect x="206" y="294" width="120" height="40" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    <text x="222" y="320" class="value">±y 40</text>
+
+    <text x="76" y="362" class="label">SPRITE SIZE</text>
+    <rect x="76" y="374" width="250" height="40" rx="12" fill="#0F171C" stroke="#3EE3FF" stroke-width="2"/>
+    <text x="92" y="400" class="value">Auto from selection</text>
+    <text x="290" y="400" class="hint">(rot-aware)</text>
+
+    <g filter="url(#soft)">
+      <rect x="76" y="436" width="250" height="44" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+      <text x="96" y="464" class="btn">Compute Bounds →</text>
+    </g>
+
+    <text x="76" y="520" class="label">RESULT (EDGE-BASED)</text>
+    <rect x="76" y="532" width="120" height="40" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    <text x="92" y="558" class="mono hint">minX</text>
+    <text x="136" y="558" class="value">315.25</text>
+    <rect x="206" y="532" width="120" height="40" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    <text x="222" y="558" class="mono hint">maxX</text>
+    <text x="266" y="558" class="value">484.75</text>
+    <rect x="336" y="532" width="120" height="40" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    <text x="352" y="558" class="mono hint">minY</text>
+    <text x="396" y="558" class="value">141.25</text>
+    <rect x="76" y="584" width="120" height="40" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    <text x="92" y="610" class="mono hint">maxY</text>
+    <text x="136" y="610" class="value">258.75</text>
+
+    <g filter="url(#soft)">
+      <rect x="206" y="584" width="250" height="40" rx="12" fill="#1E3B45" stroke="#3EE3FF" stroke-width="2"/>
+      <text x="230" y="610" class="btn">Apply to BoundsHit</text>
+    </g>
+  </g>
+
+  <!-- Canvas visual -->
+  <g filter="url(#soft)">
+    <rect x="576" y="28" width="596" height="704" rx="18" fill="#0B1115" stroke="#243038" stroke-width="2"/>
+  </g>
+  <g class="ui">
+    <text x="600" y="62" class="h1">CANVAS PREVIEW</text>
+    <text x="600" y="92" class="hint">Shows computed bounds overlay + edge-safe extents.</text>
+
+    <!-- Bounds box -->
+    <rect x="730" y="230" width="320" height="220" rx="14" fill="#0F171C" opacity="0.25" stroke="#3EE3FF" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="740" y="224" class="mono hint">BoundsHit (bounce)</text>
+
+    <!-- Sprite -->
+    <g filter="url(#soft)">
+      <rect x="870" y="320" width="80" height="60" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    </g>
+    <path d="M882 350 L904 336 L938 336 L954 350 L938 364 L904 364 Z" fill="#84E8FF" opacity="0.9"/>
+    <text x="910" y="405" text-anchor="middle" class="hint">selected sprite</text>
+
+    <!-- Travel arrows -->
+    <path d="M910 292 L910 252" stroke="#FFCC66" stroke-width="3" opacity="0.9"/>
+    <path d="M910 252 L902 262" stroke="#FFCC66" stroke-width="3" opacity="0.9"/>
+    <path d="M910 252 L918 262" stroke="#FFCC66" stroke-width="3" opacity="0.9"/>
+    <text x="918" y="270" class="mono hint">±y</text>
+
+    <path d="M840 350 L760 350" stroke="#FFCC66" stroke-width="3" opacity="0.9"/>
+    <path d="M760 350 L772 342" stroke="#FFCC66" stroke-width="3" opacity="0.9"/>
+    <path d="M760 350 L772 358" stroke="#FFCC66" stroke-width="3" opacity="0.9"/>
+    <text x="770" y="338" class="mono hint">±x</text>
+  </g>
+</svg>
+

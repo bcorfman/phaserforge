@@ -1,3 +1,122 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:89fac2e27c719f509c9ad6a2c906068ebb3b35b75fc85be684b38790e7e9a8d8
-size 7775
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1040" viewBox="0 0 1680 1040">
+  <defs>
+    <style>
+      .bg { fill: #efe7db; }
+      .shell { fill: #faf7f1; stroke: #d2c1a9; stroke-width: 2; }
+      .panel { fill: #fbf8f2; stroke: #d3c2aa; stroke-width: 2; }
+      .panelSoft { fill: #f3ece0; stroke: #d3c2aa; stroke-width: 2; }
+      .tabOn { fill: #d8eef0; stroke: #7db0b6; stroke-width: 2; }
+      .btn { fill: #fffdfa; stroke: #d3c2aa; stroke-width: 2; }
+      .btnBlue { fill: #3e6bbb; stroke: #6e94d4; stroke-width: 2; }
+      .btnGreen { fill: #d5efe0; stroke: #8abb9b; stroke-width: 2; }
+      .callout { fill: #fff2c7; stroke: #c89b2a; stroke-width: 2; }
+      .line { stroke: #c89b2a; stroke-width: 2.5; fill: none; }
+      .title { font: 800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #26313f; }
+      .brand { font: 800 34px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #24303d; }
+      .h { font: 760 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; letter-spacing: .12em; fill: #607082; }
+      .label { font: 650 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #667687; }
+      .text { font: 620 17px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2e3947; }
+      .strong { font: 760 20px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #2a3442; }
+      .small { font: 550 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #728294; }
+      .mono { font: 620 16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #2d3845; }
+      .callText { font: 620 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+      .num { font: 800 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #5a430b; }
+    </style>
+  </defs>
+  <rect class="bg" width="1680" height="1040" />
+  <text class="title" x="48" y="56">Option A: Project Home In Sidebar</text>
+
+  <rect class="shell" x="42" y="84" width="1310" height="900" rx="28" />
+  <text class="h" x="72" y="122">BROWSER EDITOR</text>
+  <text class="brand" x="72" y="162">PhaserForge</text>
+  <rect class="tabOn" x="320" y="132" width="108" height="34" rx="17" />
+  <text class="text" x="374" y="154" text-anchor="middle">Online</text>
+  <text class="small" x="72" y="202">Move entities on the canvas, tune formations in the inspector, and round-trip YAML without leaving the editor.</text>
+
+  <rect class="panel" x="70" y="240" width="280" height="700" rx="24" />
+  <rect class="btn" x="92" y="272" width="108" height="46" rx="18" />
+  <text class="text" x="146" y="301" text-anchor="middle">Scene</text>
+  <rect class="tabOn" x="210" y="272" width="108" height="46" rx="18" />
+  <text class="text" x="264" y="301" text-anchor="middle">Project</text>
+
+  <text class="h" x="92" y="360">PROJECT</text>
+  <text class="label" x="92" y="398">Project Name</text>
+  <rect class="btn" x="92" y="416" width="226" height="54" rx="18" />
+  <text class="mono" x="114" y="450">Pattern Demo Playground</text>
+  <rect class="btnGreen" x="92" y="488" width="114" height="34" rx="17" />
+  <text class="text" x="149" y="510" text-anchor="middle">Autosaved</text>
+  <text class="small" x="92" y="556">Scenes: 3</text>
+  <text class="small" x="92" y="580">Last checkpoint: 2 min ago</text>
+
+  <rect class="btn" x="92" y="616" width="226" height="52" rx="18" />
+  <text class="text" x="205" y="649" text-anchor="middle">Open History</text>
+  <rect class="btn" x="92" y="684" width="226" height="52" rx="18" />
+  <text class="text" x="205" y="717" text-anchor="middle">New Checkpoint</text>
+
+  <text class="h" x="92" y="788">SCENES</text>
+  <rect class="panelSoft" x="92" y="812" width="226" height="50" rx="18" />
+  <text class="text" x="114" y="844">Main Menu</text>
+  <rect class="btn" x="92" y="874" width="226" height="50" rx="18" />
+  <text class="text" x="114" y="906">Level 01</text>
+
+  <rect class="panel" x="372" y="240" width="564" height="700" rx="24" />
+  <rect class="panelSoft" x="398" y="266" width="512" height="432" rx="20" />
+  <text class="small" x="612" y="488" text-anchor="middle">Editor canvas</text>
+  <text class="small" x="612" y="514" text-anchor="middle">current scene stays centered here</text>
+
+  <rect class="panelSoft" x="398" y="724" width="512" height="188" rx="20" />
+  <text class="h" x="424" y="758">HISTORY</text>
+  <rect class="btn" x="424" y="778" width="460" height="42" rx="16" />
+  <text class="text" x="444" y="805">Autosave • Today 10:42 AM</text>
+  <rect class="btn" x="424" y="832" width="460" height="42" rx="16" />
+  <text class="text" x="444" y="859">Before publish • Yesterday 4:18 PM</text>
+
+  <rect class="panel" x="958" y="240" width="360" height="700" rx="24" />
+  <rect class="btn" x="982" y="272" width="98" height="46" rx="18" />
+  <text class="text" x="1031" y="301" text-anchor="middle">Inspector</text>
+  <rect class="tabOn" x="1090" y="272" width="90" height="46" rx="18" />
+  <text class="text" x="1135" y="301" text-anchor="middle">Cloud</text>
+
+  <text class="h" x="982" y="360">PUBLISH (GITHUB PAGES)</text>
+  <rect class="btnGreen" x="982" y="384" width="112" height="34" rx="17" />
+  <text class="text" x="1038" y="406" text-anchor="middle">Signed in</text>
+  <rect class="btnGreen" x="1104" y="384" width="140" height="34" rx="17" />
+  <text class="text" x="1174" y="406" text-anchor="middle">GitHub linked</text>
+
+  <text class="label" x="982" y="458">Project Name</text>
+  <rect class="btn" x="982" y="476" width="304" height="52" rx="18" />
+  <text class="mono" x="1004" y="510">Pattern Demo Playground</text>
+
+  <text class="label" x="982" y="570">Release URL / Slug</text>
+  <rect class="btn" x="982" y="588" width="304" height="52" rx="18" />
+  <text class="mono" x="1004" y="622">pattern-demo</text>
+
+  <rect class="btnBlue" x="982" y="666" width="304" height="54" rx="18" />
+  <text class="text" x="1134" y="700" text-anchor="middle" fill="#ffffff">Publish</text>
+
+  <rect class="callout" x="1394" y="164" width="240" height="116" rx="18" />
+  <circle cx="1422" cy="192" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1422" y="198" text-anchor="middle">1</text>
+  <text class="callText" x="1450" y="194">Project naming lives in</text>
+  <text class="callText" x="1450" y="216">`Project`, not in publish.</text>
+  <text class="callText" x="1450" y="238">That is the primary home.</text>
+  <path class="line" d="M1394 232 C1320 232, 1280 264, 1248 312" />
+
+  <rect class="callout" x="1394" y="402" width="240" height="140" rx="18" />
+  <circle cx="1422" cy="430" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1422" y="436" text-anchor="middle">2</text>
+  <text class="callText" x="1450" y="432">`Release URL / Slug` is a</text>
+  <text class="callText" x="1450" y="454">separate late-stage field.</text>
+  <text class="callText" x="1450" y="476">It can differ from the</text>
+  <text class="callText" x="1450" y="498">working project title.</text>
+  <path class="line" d="M1394 500 C1330 500, 1300 574, 1288 614" />
+
+  <rect class="callout" x="1394" y="668" width="240" height="150" rx="18" />
+  <circle cx="1422" cy="696" r="16" fill="#fff2c7" stroke="#c89b2a" stroke-width="2"/>
+  <text class="num" x="1422" y="702" text-anchor="middle">3</text>
+  <text class="callText" x="1450" y="698">History is visible in the</text>
+  <text class="callText" x="1450" y="720">Project view before users</text>
+  <text class="callText" x="1450" y="742">need YAML. Restore stays</text>
+  <text class="callText" x="1450" y="764">near project management.</text>
+  <path class="line" d="M1394 742 C1320 742, 1180 794, 884 798" />
+</svg>

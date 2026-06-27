@@ -1,3 +1,112 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:aae91da48fc89789e4adb2ac1872c862386a0f1fc1df55b6d13c81888ebd17bb
-size 7461
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="940" viewBox="0 0 1320 940">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .shell { fill: #111823; stroke: #253244; stroke-width: 1.5; }
+      .panel { fill: #16202c; stroke: #314156; stroke-width: 1.2; }
+      .panelAlt { fill: #101721; stroke: #2a394d; stroke-width: 1.2; }
+      .active { fill: #1d3c63; stroke: #4c83be; stroke-width: 1.2; }
+      .button { fill: #1a2532; stroke: #314156; stroke-width: 1; }
+      .primary { fill: #235fba; stroke: #5b93ea; stroke-width: 1; }
+      .good { fill: #153224; stroke: #2f7a53; stroke-width: 1; }
+      .amber { fill: #3b2a12; stroke: #8b6529; stroke-width: 1; }
+      .text { font: 700 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #edf4fb; }
+      .title { font: 800 24px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #f4f8fc; }
+      .label { font: 760 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #dae5f0; }
+      .body { font: 560 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #c2d0df; }
+      .small { font: 530 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; fill: #98acc3; }
+      .mono { font: 640 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #edf4fb; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1320" height="940" />
+  <text class="title" x="44" y="56">Option C: Version Center + Restore Timeline</text>
+  <text class="body" x="44" y="84">A bolder direction: project identity and recovery status become persistent shell-level affordances instead of being buried in tabs.</text>
+
+  <rect class="shell" x="44" y="112" width="1230" height="782" rx="20" />
+
+  <rect class="active" x="64" y="136" width="1190" height="86" rx="18" />
+  <text class="label" x="92" y="170">Current Project</text>
+  <text class="mono" x="92" y="198">Pattern Demo Playground</text>
+  <rect class="good" x="394" y="156" width="130" height="34" rx="17" />
+  <text class="text" x="459" y="178" text-anchor="middle">Autosaved</text>
+  <rect class="button" x="540" y="156" width="146" height="34" rx="17" />
+  <text class="text" x="613" y="178" text-anchor="middle">History: 18 versions</text>
+  <rect class="button" x="700" y="156" width="154" height="34" rx="17" />
+  <text class="text" x="777" y="178" text-anchor="middle">New checkpoint</text>
+  <text class="body" x="92" y="212">The user always sees that the project has a recoverable version trail.</text>
+
+  <rect class="panelAlt" x="64" y="246" width="176" height="620" rx="18" />
+  <rect class="panel" x="80" y="284" width="144" height="56" rx="14" />
+  <text class="text" x="152" y="318" text-anchor="middle">Overview</text>
+  <rect class="active" x="80" y="354" width="144" height="56" rx="14" />
+  <text class="text" x="152" y="388" text-anchor="middle">History</text>
+  <rect class="panel" x="80" y="424" width="144" height="56" rx="14" />
+  <text class="text" x="152" y="458" text-anchor="middle">Scenes</text>
+  <rect class="panel" x="80" y="494" width="144" height="56" rx="14" />
+  <text class="text" x="152" y="528" text-anchor="middle">Releases</text>
+  <text class="small" x="80" y="598">Project tab becomes a document center</text>
+  <text class="small" x="80" y="616">instead of a mixed picker.</text>
+
+  <rect class="panel" x="268" y="246" width="596" height="620" rx="20" />
+  <text class="label" x="300" y="286">Restore Timeline</text>
+  <text class="body" x="300" y="314">Newest first. All restore actions are project-level. YAML export is available, but no longer the recovery plan.</text>
+
+  <rect class="panelAlt" x="300" y="340" width="532" height="96" rx="16" />
+  <text class="text" x="324" y="374">Today 10:42 AM • Autosave checkpoint</text>
+  <text class="body" x="324" y="400">Idle burst save after 11 changes • Scenes 3 • Entities 42</text>
+  <rect class="button" x="598" y="360" width="70" height="30" rx="8" />
+  <text class="text" x="633" y="380" text-anchor="middle">Preview</text>
+  <rect class="primary" x="678" y="360" width="70" height="30" rx="8" />
+  <text class="text" x="713" y="380" text-anchor="middle">Restore</text>
+  <rect class="button" x="758" y="360" width="56" height="30" rx="8" />
+  <text class="text" x="786" y="380" text-anchor="middle">Copy</text>
+
+  <rect class="panelAlt" x="300" y="452" width="532" height="96" rx="16" />
+  <text class="text" x="324" y="486">Yesterday 4:18 PM • Before publish</text>
+  <text class="body" x="324" y="512">Automatic protected checkpoint created before release</text>
+  <rect class="button" x="598" y="472" width="70" height="30" rx="8" />
+  <text class="text" x="633" y="492" text-anchor="middle">Preview</text>
+  <rect class="primary" x="678" y="472" width="70" height="30" rx="8" />
+  <text class="text" x="713" y="492" text-anchor="middle">Restore</text>
+  <rect class="button" x="758" y="472" width="56" height="30" rx="8" />
+  <text class="text" x="786" y="492" text-anchor="middle">Copy</text>
+
+  <rect class="panelAlt" x="300" y="564" width="532" height="96" rx="16" />
+  <text class="text" x="324" y="598">Jun 17 • Named version: “Good enemy pacing”</text>
+  <text class="body" x="324" y="624">Explicit milestone saved by user</text>
+  <rect class="button" x="598" y="584" width="70" height="30" rx="8" />
+  <text class="text" x="633" y="604" text-anchor="middle">Preview</text>
+  <rect class="primary" x="678" y="584" width="70" height="30" rx="8" />
+  <text class="text" x="713" y="604" text-anchor="middle">Restore</text>
+  <rect class="button" x="758" y="584" width="56" height="30" rx="8" />
+  <text class="text" x="786" y="604" text-anchor="middle">Copy</text>
+
+  <rect class="amber" x="300" y="688" width="532" height="146" rx="16" />
+  <text class="label" x="324" y="722">Why This Feels Safer</text>
+  <text class="body" x="324" y="752">The shell continuously communicates “editing is reversible.”</text>
+  <text class="body" x="324" y="778">This is strongest for new users who are nervous about autosave.</text>
+  <text class="body" x="324" y="804">Tradeoff: it changes the global shell more than the other options.</text>
+
+  <rect class="panel" x="892" y="246" width="362" height="620" rx="20" />
+  <text class="label" x="924" y="286">Releases</text>
+
+  <rect class="panelAlt" x="924" y="320" width="298" height="188" rx="16" />
+  <text class="small" x="946" y="350">Project Name</text>
+  <rect class="panel" x="946" y="362" width="244" height="40" rx="10" />
+  <text class="mono" x="962" y="388">Pattern Demo Playground</text>
+  <text class="small" x="946" y="436">Release URL / Deployment Slug</text>
+  <rect class="panel" x="946" y="448" width="244" height="40" rx="10" />
+  <text class="mono" x="962" y="474">pattern-demo</text>
+  <text class="body" x="946" y="508">Deliberately separate fields.</text>
+
+  <rect class="primary" x="946" y="536" width="244" height="40" rx="10" />
+  <text class="text" x="1068" y="562" text-anchor="middle">Publish Release</text>
+
+  <rect class="panelAlt" x="924" y="604" width="298" height="180" rx="16" />
+  <text class="label" x="946" y="636">Hierarchy View</text>
+  <text class="body" x="946" y="666">Project</text>
+  <text class="body" x="980" y="694">Scenes</text>
+  <text class="body" x="1014" y="722">Entities / logic / assets</text>
+  <text class="body" x="946" y="758">Release is downstream from the project, not part of its identity.</text>
+</svg>
