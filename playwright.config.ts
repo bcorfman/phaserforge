@@ -3,15 +3,20 @@ import { defineConfig, devices } from '@playwright/test';
 type E2EProjectName = 'chromium' | 'firefox' | 'webkit' | 'msedge';
 type EnvLike = Record<string, string | undefined>;
 
+const E2E_PREVIEW_COMMAND =
+  'VITE_E2E_TEST_BRIDGE=1 npm run build-nolog && VITE_E2E_TEST_BRIDGE=1 npx vite preview --config vite/config.prod.mjs --host 127.0.0.1 --port 4173 --strictPort';
+const E2E_DEV_COMMAND = 'npx vite --config vite/config.dev.mjs --host 127.0.0.1 --port 4173';
+
 export function resolveE2EWebServerConfig(env: EnvLike): { command: string; port: number; reuseExistingServer: boolean; timeout: number } | undefined {
   if (env.PW_EXTERNAL_WEBSERVER === '1') return undefined;
+  const useDevServer = env.PW_E2E_SERVER_MODE === 'dev';
   return {
-    command: 'npx vite --config vite/config.dev.mjs --host 127.0.0.1 --port 4173',
+    command: useDevServer ? E2E_DEV_COMMAND : E2E_PREVIEW_COMMAND,
     port: 4173,
-    // Reusing an existing dev server across runs can leave Playwright attached to a stale/bad state,
-    // which shows up as intermittent "app never boots" timeouts. Prefer a fresh server per run.
+    // Reusing an existing shared server across runs can leave Playwright attached to a stale/bad state.
+    // Prefer a fresh server per run so readiness and lifecycle stay observable.
     reuseExistingServer: false,
-    timeout: env.CI ? 180000 : 120000,
+    timeout: useDevServer ? (env.CI ? 180000 : 120000) : env.CI ? 240000 : 180000,
   };
 }
 
