@@ -194,4 +194,90 @@ describe('MultiEntityInspector', () => {
       patch: { scaleY: 0.75 },
     });
   });
+
+  it('keeps a focused scale field stable across a parent rerender during sequential edits', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    function Harness() {
+      const [tick, setTick] = React.useState(0);
+      const [scene, setScene] = React.useState<any>({
+        id: 'scene-1',
+        entities: {
+          a: { id: 'a', x: 10, y: 10, width: 10, height: 10, scaleX: 1, scaleY: 1, visible: true },
+          b: { id: 'b', x: 20, y: 20, width: 10, height: 10, scaleX: 1, scaleY: 1, visible: true },
+        },
+        groups: {},
+        attachments: {},
+        behaviors: {},
+        actions: {},
+        conditions: {},
+      });
+
+      return (
+        <>
+          <button type="button" data-testid="rerender" onClick={() => setTick((value) => value + 1)}>
+            rerender {tick}
+          </button>
+          <MultiEntityInspector
+            entityIds={['a', 'b']}
+            scene={scene}
+            disabled={false}
+            assetOptions={[]}
+            dispatch={(action) => {
+              if (action.type !== 'patch-entities') return;
+              setScene((prev: any) => ({
+                ...prev,
+                entities: Object.fromEntries(
+                  Object.entries(prev.entities).map(([id, entity]) => [
+                    id,
+                    action.entityIds.includes(id)
+                      ? { ...(entity as Record<string, unknown>), ...action.patch }
+                      : entity,
+                  ])
+                ),
+              }));
+            }}
+          />
+        </>
+      );
+    }
+
+    await React.act(async () => {
+      root.render(<Harness />);
+    });
+
+    const setInputValue = (input: HTMLInputElement, value: string) => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+      input.dispatchEvent(new window.Event('change', { bubbles: true }));
+    };
+
+    const scaleX = container.querySelector('[data-testid="entity-scale-x-input"]') as HTMLInputElement | null;
+    const scaleY = container.querySelector('[data-testid="entity-scale-y-input"]') as HTMLInputElement | null;
+    const rerenderButton = container.querySelector('[data-testid="rerender"]') as HTMLButtonElement | null;
+    expect(scaleX).not.toBeNull();
+    expect(scaleY).not.toBeNull();
+    expect(rerenderButton).not.toBeNull();
+
+    await React.act(async () => {
+      scaleX!.focus();
+      setInputValue(scaleX!, '1.25');
+      scaleX!.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+      scaleY!.focus();
+      rerenderButton!.click();
+      setInputValue(scaleY!, '0.75');
+      scaleY!.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+
+    const scaleXAfter = container.querySelector('[data-testid="entity-scale-x-input"]') as HTMLInputElement | null;
+    const scaleYAfter = container.querySelector('[data-testid="entity-scale-y-input"]') as HTMLInputElement | null;
+    expect(scaleXAfter?.value).toBe('1.25');
+    expect(scaleYAfter?.value).toBe('0.75');
+  });
 });

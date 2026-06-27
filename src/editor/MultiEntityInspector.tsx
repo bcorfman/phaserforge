@@ -36,13 +36,14 @@ function CommonNumberInput({
   'aria-label'?: string;
 }) {
   const [editing, setEditing] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState('');
   const skipBlurCommitRef = useRef(false);
 
   useEffect(() => {
-    if (editing) return;
+    if (editing || focused) return;
     setDraft(valueState.kind === 'same' ? String(valueState.value) : '');
-  }, [editing, valueState]);
+  }, [editing, focused, valueState]);
 
   const commit = (rawValue: string = draft) => {
     setEditing(false);
@@ -69,11 +70,15 @@ function CommonNumberInput({
       step={step as any}
       value={draft}
       placeholder={valueState.kind === 'mixed' ? (placeholder ?? 'Mixed') : undefined}
+      onFocus={() => {
+        setFocused(true);
+      }}
       onChange={(e) => {
         setEditing(true);
         setDraft(e.target.value);
       }}
       onBlur={(e) => {
+        setFocused(false);
         if (skipBlurCommitRef.current) {
           skipBlurCommitRef.current = false;
           return;
