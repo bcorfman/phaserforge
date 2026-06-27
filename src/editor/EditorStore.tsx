@@ -1213,6 +1213,55 @@ function buildProjectHistoryEventDraftsForAction(
       }
       return drafts.length > 0 ? drafts : undefined;
     }
+    case 'add-image-asset-from-file':
+      return [{
+        kind: 'asset.image.added',
+        burstId: `asset.image.added:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Added image asset ${action.file.originalName?.trim() || 'image'}`,
+      }];
+    case 'add-audio-asset-from-file':
+      return [{
+        kind: 'asset.audio.added',
+        burstId: `asset.audio.added:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Added audio ${action.file.originalName?.trim() || 'audio'}`,
+      }];
+    case 'add-font-asset-from-file':
+      return [{
+        kind: 'asset.font.added',
+        burstId: `asset.font.added:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Added font ${action.file.originalName?.trim() || 'font'}`,
+      }];
+    case 'add-spritesheet-asset-from-file':
+      return [{
+        kind: 'asset.spritesheet.added',
+        burstId: `asset.spritesheet.added:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Added sprite sheet ${action.file.originalName?.trim() || 'spritesheet'}`,
+      }];
+    case 'set-asset-display-name':
+      return [{
+        kind: 'asset.renamed',
+        burstId: `asset.renamed:${action.assetKind}:${action.assetId}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Renamed ${action.assetKind} asset to ${action.name?.trim() || formatAssetLabel(action.assetKind, action.assetId, stateAfter.project)}`,
+      }];
+    case 'remove-asset':
+      return [{
+        kind: 'asset.removed',
+        burstId: `asset.removed:${action.assetKind}:${action.assetId}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Removed ${action.assetKind} asset ${formatAssetLabel(action.assetKind, action.assetId, stateBefore.project)}`,
+      }];
+    case 'remove-audio-asset':
+      return [{
+        kind: 'asset.removed',
+        burstId: `asset.removed:audio:${action.assetId}:${actionBurstToken}`,
+        scope: { kind: 'project' },
+        summary: `Removed audio ${formatAssetLabel('audio', action.assetId, stateBefore.project)}`,
+      }];
     case 'set-scene-music':
       return [{
         kind: 'scene.music.set',
@@ -1355,6 +1404,40 @@ function buildProjectHistoryEventDraftsForAction(
           ? `Set default input map to ${formatInputMapLabel(stateAfter.project, action.mapId)}`
           : 'Cleared default input map',
       }];
+    case 'assign-asset-to-target':
+      if (action.target.kind === 'background-layer' && action.assetKind === 'image') {
+        return [{
+          kind: 'background.layer.asset.set',
+          burstId: `background.layer.asset.set:${action.target.sceneId}:${action.assetId}:${actionBurstToken}`,
+          scope: { kind: 'scene', sceneId: action.target.sceneId },
+          summary: `Background layer -> ${formatAssetLabel('image', action.assetId, stateAfter.project)}`,
+        }];
+      }
+      if (action.target.kind === 'scene-music' && action.assetKind === 'audio') {
+        return [{
+          kind: 'scene.music.set',
+          burstId: `scene.music.set:${action.target.sceneId}:${action.assetId}:${actionBurstToken}`,
+          scope: { kind: 'scene', sceneId: action.target.sceneId },
+          summary: `Music -> ${formatAssetLabel('audio', action.assetId, stateAfter.project)}`,
+        }];
+      }
+      if (action.target.kind === 'scene-ambience' && action.assetKind === 'audio') {
+        return [{
+          kind: 'scene.ambience.set',
+          burstId: `scene.ambience.set:${action.target.sceneId}:${action.assetId}:${actionBurstToken}`,
+          scope: { kind: 'scene', sceneId: action.target.sceneId },
+          summary: 'Updated scene ambience',
+        }];
+      }
+      if (action.target.kind === 'entity-sprite' && (action.assetKind === 'image' || action.assetKind === 'spritesheet')) {
+        return [{
+          kind: 'entity.asset.set',
+          burstId: `entity.asset.set:${action.target.sceneId}:${action.target.entityId}:${action.assetId}:${actionBurstToken}`,
+          scope: { kind: 'entity', sceneId: action.target.sceneId, entityId: action.target.entityId },
+          summary: `Updated entity sprite to ${formatAssetLabel(action.assetKind, action.assetId, stateAfter.project)}`,
+        }];
+      }
+      return undefined;
     case 'update-entity': {
       const sceneId = stateAfter.currentSceneId;
       const beforeScene = stateBefore.project.scenes[sceneId];

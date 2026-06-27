@@ -7,6 +7,12 @@ export type ProjectHistoryEventKind =
   | 'publish.title.set'
   | 'publish.repo.set'
   | 'project.default-input-map.set'
+  | 'asset.image.added'
+  | 'asset.audio.added'
+  | 'asset.font.added'
+  | 'asset.spritesheet.added'
+  | 'asset.renamed'
+  | 'asset.removed'
   | 'scene.world.resized'
   | 'scene.renamed'
   | 'scene.created'
@@ -16,6 +22,7 @@ export type ProjectHistoryEventKind =
   | 'scene.ambience.set'
   | 'scene.input.set'
   | 'background.layers.set'
+  | 'background.layer.asset.set'
   | 'background.layer.updated'
   | 'background.layers.reordered'
   | 'background.layer.removed'
@@ -30,6 +37,7 @@ export type ProjectHistoryEventKind =
   | 'input.map.removed'
   | 'input.binding.added'
   | 'input.binding.removed'
+  | 'entity.asset.set'
   | 'entity.renamed'
   | 'entity.moved';
 
