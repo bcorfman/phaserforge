@@ -6,6 +6,8 @@ import { enablePersistenceDebug, expectPersistenceDebugEvents, expectProjectRest
 
 test('cloud-backed active project reload restores the latest IndexedDB head and history without legacy localStorage project state @regression', async ({ page }) => {
   await enablePersistenceDebug(page);
+  const staleUpdatedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const latestUpdatedAt = new Date(Date.now() - 60 * 1000).toISOString();
   const latestProject = structuredClone(sampleProject);
   latestProject.title = 'Pattern Demo';
   latestProject.publishTitle = 'Pattern Demo';
@@ -27,18 +29,18 @@ test('cloud-backed active project reload restores the latest IndexedDB head and 
 
   const staleRevision = createProjectRevision(sampleProject, {
     id: 'rev-stale',
-    updatedAt: '2026-06-20T20:00:00.000Z',
+    updatedAt: staleUpdatedAt,
     reason: 'autosave',
   });
   const latestRevision = createProjectRevision(latestProject, {
     id: 'rev-latest',
-    updatedAt: '2026-06-20T20:05:00.000Z',
+    updatedAt: latestUpdatedAt,
     reason: 'autosave',
   });
   const latestRecord = {
     ...buildStoredProjectRecord(latestProject, {
       id: 'cloud:g1',
-      updatedAt: '2026-06-20T20:05:00.000Z',
+      updatedAt: latestUpdatedAt,
       origin: 'cloud-cache',
       syncStatus: 'cloud',
       cloudProjectId: 'g1',
@@ -86,7 +88,7 @@ test('cloud-backed active project reload restores the latest IndexedDB head and 
   await page.route('**/api/v1/games', async (route) => {
     await route.fulfill({
       status: 200,
-      body: JSON.stringify({ games: [{ id: 'g1', title: 'Pattern Demo', created_at: '2026-06-20T20:00:00.000Z', updated_at: '2026-06-20T20:05:00.000Z' }] }),
+      body: JSON.stringify({ games: [{ id: 'g1', title: 'Pattern Demo', created_at: staleUpdatedAt, updated_at: latestUpdatedAt }] }),
       contentType: 'application/json',
     });
   });
