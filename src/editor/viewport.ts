@@ -8,6 +8,24 @@ export const ABS_MAX_ZOOM = 24;
 export const ZOOM_STEP = 0.2;
 const FIT_PADDING = 48;
 
+export type ViewportInsets = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
+
+const ZERO_INSETS: ViewportInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+function normalizeInsets(insets?: Partial<ViewportInsets>): ViewportInsets {
+  return {
+    top: Math.max(0, insets?.top ?? 0),
+    right: Math.max(0, insets?.right ?? 0),
+    bottom: Math.max(0, insets?.bottom ?? 0),
+    left: Math.max(0, insets?.left ?? 0),
+  };
+}
+
 export function getMaxZoom(
   viewportWidth: number,
   viewportHeight: number,
@@ -27,9 +45,16 @@ export function clampZoom(zoom: number, maxZoom = BASE_MAX_ZOOM): number {
   return Math.min(maxZoom, Math.max(MIN_ZOOM, Number(zoom.toFixed(2))));
 }
 
-export function getFitZoom(viewportWidth: number, viewportHeight: number, worldWidth = SCENE_WIDTH, worldHeight = SCENE_HEIGHT): number {
-  const width = Math.max(1, viewportWidth - FIT_PADDING * 2);
-  const height = Math.max(1, viewportHeight - FIT_PADDING * 2);
+export function getFitZoom(
+  viewportWidth: number,
+  viewportHeight: number,
+  worldWidth = SCENE_WIDTH,
+  worldHeight = SCENE_HEIGHT,
+  insets: Partial<ViewportInsets> = ZERO_INSETS
+): number {
+  const safeInsets = normalizeInsets(insets);
+  const width = Math.max(1, viewportWidth - safeInsets.left - safeInsets.right - FIT_PADDING * 2);
+  const height = Math.max(1, viewportHeight - safeInsets.top - safeInsets.bottom - FIT_PADDING * 2);
   const zoom = Math.min(width / Math.max(1, worldWidth), height / Math.max(1, worldHeight));
   return clampZoom(zoom, getMaxZoom(viewportWidth, viewportHeight, worldWidth, worldHeight));
 }
@@ -90,14 +115,18 @@ export function getCenteredCameraScroll(
   worldHeight: number,
   zoom: number,
   originX = 0.5,
-  originY = 0.5
+  originY = 0.5,
+  insets: Partial<ViewportInsets> = ZERO_INSETS
 ): { scrollX: number; scrollY: number } {
   const safeZoom = Math.max(0.0001, zoom);
+  const safeInsets = normalizeInsets(insets);
+  const focusX = safeInsets.left + (viewportWidth - safeInsets.left - safeInsets.right) / 2;
+  const focusY = safeInsets.top + (viewportHeight - safeInsets.top - safeInsets.bottom) / 2;
   const offsetX = viewportWidth * originX * (1 - 1 / safeZoom);
   const offsetY = viewportHeight * originY * (1 - 1 / safeZoom);
   return {
-    scrollX: worldWidth / 2 - offsetX - viewportWidth / (2 * safeZoom),
-    scrollY: worldHeight / 2 - offsetY - viewportHeight / (2 * safeZoom),
+    scrollX: worldWidth / 2 - offsetX - focusX / safeZoom,
+    scrollY: worldHeight / 2 - offsetY - focusY / safeZoom,
   };
 }
 
@@ -111,12 +140,24 @@ export function isCameraAtFitView(
   scrollY: number,
   originX = 0.5,
   originY = 0.5,
+  insets: Partial<ViewportInsets> = ZERO_INSETS,
   epsilon = 1
 ): boolean {
-  const fitZoom = getFitZoom(viewportWidth, viewportHeight, worldWidth, worldHeight);
+  const fitZoom = getFitZoom(viewportWidth, viewportHeight, worldWidth, worldHeight, insets);
   if (Math.abs(zoom - fitZoom) > 0.01) return false;
-  const centered = getCenteredCameraScroll(viewportWidth, viewportHeight, worldWidth, worldHeight, fitZoom, originX, originY);
-  return Math.abs(scrollX - centered.scrollX) <= epsilon && Math.abs(scrollY - centered.scrollY) <= epsilon;
+  const centered = getCenteredCameraScroll(viewportWidth, viewportHeight, worldWidth, worldHeight, fitZoom, originX, originY, insets);
+  const clamped = clampCameraScroll(
+    centered.scrollX,
+    centered.scrollY,
+    viewportWidth,
+    viewportHeight,
+    worldWidth,
+    worldHeight,
+    fitZoom,
+    originX,
+    originY
+  );
+  return Math.abs(scrollX - clamped.scrollX) <= epsilon && Math.abs(scrollY - clamped.scrollY) <= epsilon;
 }
 
 export function clampCameraScroll(

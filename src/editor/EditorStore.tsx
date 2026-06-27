@@ -85,9 +85,9 @@ export function coerceUiScale(raw: string | null | undefined, fallback: number):
   return Math.max(0.75, Math.min(1.1, value));
 }
 
-function formatProjectLoadStatus(sourceLabel: string): string {
+function formatProjectLoadStatus(sourceLabel: string): string | undefined {
   if (sourceLabel.startsWith('create-project:')) {
-    return `Created project: ${sourceLabel.slice('create-project:'.length)}`;
+    return undefined;
   }
   if (sourceLabel.startsWith('duplicate-project:')) {
     return `Duplicated project: ${sourceLabel.slice('duplicate-project:'.length)}`;
@@ -2368,6 +2368,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
         const currentSceneId = parsed.initialSceneId;
         const expiresAt = Date.now() + 4000;
+        const statusMessage = formatProjectLoadStatus(action.sourceLabel);
         return {
           ...state,
           project: parsed,
@@ -2400,6 +2401,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
         const currentSceneId = parsed.initialSceneId;
         const expiresAt = Date.now() + 4000;
+        const statusMessage = formatProjectLoadStatus(action.sourceLabel);
         return {
           ...state,
           project: parsed,
@@ -2413,8 +2415,8 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           error: undefined,
           selection: { kind: 'none' },
           yamlText: serializeProjectToYaml(parsed),
-          statusMessage: formatProjectLoadStatus(action.sourceLabel),
-          statusExpiresAt: expiresAt,
+          statusMessage,
+          statusExpiresAt: statusMessage ? expiresAt : undefined,
         };
       } catch (err) {
         return {

@@ -41,7 +41,8 @@ import {
   getNextZoom,
   getResizedViewportScroll,
   getZoomedScroll,
-  isCameraAtFitView
+  isCameraAtFitView,
+  type ViewportInsets
 } from '../editor/viewport';
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { resolvePointerModifier } from './inputModifiers';
@@ -114,6 +115,7 @@ export class EditorScene extends Phaser.Scene {
   private currentZoom = 1;
   private hasInitializedView = false;
   private pendingViewState?: ViewState;
+  private fitViewInsets: ViewportInsets = { top: 0, right: 0, bottom: 0, left: 0 };
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private lastViewportSize = { width: 0, height: 0 };
   private isSpacePanning = false;
@@ -340,6 +342,7 @@ export class EditorScene extends Phaser.Scene {
     EventBus.on('scene-zoom-in', this.zoomIn, this);
     EventBus.on('scene-zoom-out', this.zoomOut, this);
     EventBus.on('scene-fit-view', this.fitView, this);
+    EventBus.on('scene-fit-insets-changed', this.handleFitInsetsChanged, this);
     EventBus.on('scene-reset-zoom', this.resetZoom, this);
     EventBus.on('scene-restore-view-state', this.restoreViewState, this);
 
@@ -387,6 +390,7 @@ export class EditorScene extends Phaser.Scene {
     EventBus.off('scene-zoom-in', this.zoomIn, this);
     EventBus.off('scene-zoom-out', this.zoomOut, this);
     EventBus.off('scene-fit-view', this.fitView, this);
+    EventBus.off('scene-fit-insets-changed', this.handleFitInsetsChanged, this);
     EventBus.off('scene-reset-zoom', this.resetZoom, this);
     EventBus.off('scene-restore-view-state', this.restoreViewState, this);
 
@@ -936,7 +940,8 @@ export class EditorScene extends Phaser.Scene {
       this.cameras.main.scrollX,
       this.cameras.main.scrollY,
       this.cameras.main.originX,
-      this.cameras.main.originY
+      this.cameras.main.originY,
+      this.fitViewInsets
     );
     if (shouldRefit) {
       this.fitView();
@@ -957,6 +962,32 @@ export class EditorScene extends Phaser.Scene {
     );
     this.applyScroll(resized.scrollX, resized.scrollY);
     this.emitViewState();
+  }
+
+  private handleFitInsetsChanged(insets: Partial<ViewportInsets>): void {
+    const nextInsets: ViewportInsets = {
+      top: Math.max(0, insets.top ?? 0),
+      right: Math.max(0, insets.right ?? 0),
+      bottom: Math.max(0, insets.bottom ?? 0),
+      left: Math.max(0, insets.left ?? 0),
+    };
+    const world = this.compiled ? getSceneWorld(this.compiled.scene ?? EMPTY_SCENE_SPEC) : undefined;
+    const shouldRefit = world
+      ? isCameraAtFitView(
+          this.scale.width,
+          this.scale.height,
+          world.width,
+          world.height,
+          this.currentZoom,
+          this.cameras.main.scrollX,
+          this.cameras.main.scrollY,
+          this.cameras.main.originX,
+          this.cameras.main.originY,
+          this.fitViewInsets
+        )
+      : !this.hasInitializedView;
+    this.fitViewInsets = nextInsets;
+    if (shouldRefit) this.fitView();
   }
 
   private buildBackgroundLayers(
@@ -2015,7 +2046,7 @@ export class EditorScene extends Phaser.Scene {
 
   private fitView(): void {
     const world = getSceneWorld(this.getSceneSpec());
-    const zoom = getFitZoom(this.scale.width, this.scale.height, world.width, world.height);
+    const zoom = getFitZoom(this.scale.width, this.scale.height, world.width, world.height, this.fitViewInsets);
     this.applyZoom(zoom);
   }
 
@@ -2031,7 +2062,8 @@ export class EditorScene extends Phaser.Scene {
       world.height,
       this.currentZoom,
       this.cameras.main.originX,
-      this.cameras.main.originY
+      this.cameras.main.originY,
+      this.fitViewInsets
     );
     this.applyScroll(centered.scrollX, centered.scrollY);
     this.emitViewState();
