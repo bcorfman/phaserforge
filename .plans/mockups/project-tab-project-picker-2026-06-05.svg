@@ -1,3 +1,169 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:8e4223633ec75268ed585c5f851e1d41f2aad1ce768c8067824ab37c9e8df689
-size 10890
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="1080" viewBox="0 0 820 1080">
+  <defs>
+    <style>
+      .bg { fill: #0f141a; }
+      .shell { fill: #131a22; stroke: #24303a; stroke-width: 1; }
+      .panel { fill: #171f28; stroke: #2a3946; stroke-width: 1; }
+      .panelAlt { fill: #10171f; stroke: #2a3946; stroke-width: 1; }
+      .divider { stroke: #2a3946; stroke-width: 1; }
+      .title { font: 750 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #eaf0f6; }
+      .section { font: 800 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #cfe1f0; letter-spacing: 0.02em; }
+      .label { font: 650 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #b9c8d6; }
+      .hint { font: 520 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #95a7b8; }
+      .mono { font: 650 12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New"; fill: #d7e2ee; }
+      .inputBg { fill: #0f141a; stroke: #2a3946; stroke-width: 1; }
+      .button { fill: #1a2632; stroke: #2a3946; stroke-width: 1; }
+      .buttonPrimary { fill: #2f6feb; stroke: #4a86ff; stroke-width: 1; }
+      .buttonWarn { fill: #3a2a12; stroke: #7a5f27; stroke-width: 1; }
+      .buttonDanger { fill: #2a1820; stroke: #4b2a35; stroke-width: 1; }
+      .buttonText { font: 800 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #eaf0f6; }
+      .badge { fill: #0f141a; stroke: #2a3946; stroke-width: 1; }
+      .badgeOk { fill: #10261a; stroke: #235c3f; stroke-width: 1; }
+      .badgeWarn { fill: #2a2316; stroke: #6b5a2b; stroke-width: 1; }
+      .badgeCloud { fill: #14263c; stroke: #365f95; stroke-width: 1; }
+      .badgeUnsynced { fill: #2c1e14; stroke: #80522a; stroke-width: 1; }
+      .badgeText { font: 800 11px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #d7e2ee; }
+      .tabActive { fill: #203042; stroke: #45617a; stroke-width: 1; }
+      .tabIdle { fill: #141d26; stroke: #2a3946; stroke-width: 1; }
+      .rowActive { fill: #1b2733; stroke: #3a5062; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="820" height="1080" />
+
+  <rect class="shell" x="42" y="28" width="736" height="1020" rx="18" />
+  <text class="title" x="76" y="58">PhaserForge</text>
+  <rect class="badgeOk" x="190" y="40" width="104" height="28" rx="14" />
+  <text class="badgeText" x="242" y="58" text-anchor="middle">Online</text>
+  <text class="hint" x="76" y="88">Main-shell sync toggle replaces the current Unsaved badge; Project tab mockup shown below.</text>
+  <line class="divider" x1="66" y1="100" x2="754" y2="100" />
+  <text class="title" x="76" y="124">Project Tab</text>
+
+  <rect class="panel" x="66" y="132" width="688" height="600" rx="16" />
+  <text class="section" x="90" y="164">PROJECTS</text>
+
+  <rect class="tabActive" x="90" y="182" width="84" height="28" rx="14" />
+  <text class="badgeText" x="132" y="200" text-anchor="middle">Recent</text>
+  <rect class="tabIdle" x="184" y="182" width="92" height="28" rx="14" />
+  <text class="badgeText" x="230" y="200" text-anchor="middle">Cloud</text>
+  <rect class="tabIdle" x="286" y="182" width="98" height="28" rx="14" />
+  <text class="badgeText" x="335" y="200" text-anchor="middle">Local</text>
+  <rect class="tabIdle" x="394" y="182" width="104" height="28" rx="14" />
+  <text class="badgeText" x="446" y="200" text-anchor="middle">Templates</text>
+
+  <rect class="inputBg" x="90" y="226" width="330" height="38" rx="10" />
+  <text class="hint" x="106" y="250">Search projects, tags, repo names…</text>
+
+  <rect class="buttonPrimary" x="438" y="226" width="116" height="38" rx="10" />
+  <text class="buttonText" x="496" y="250" text-anchor="middle">New Project</text>
+  <rect class="button" x="564" y="226" width="82" height="38" rx="10" />
+  <text class="buttonText" x="605" y="250" text-anchor="middle">Import…</text>
+  <rect class="button" x="656" y="226" width="74" height="38" rx="10" />
+  <text class="buttonText" x="693" y="250" text-anchor="middle">Refresh</text>
+
+  <rect class="panelAlt" x="90" y="286" width="260" height="382" rx="14" />
+  <text class="label" x="108" y="316">Sources</text>
+
+  <rect class="badgeCloud" x="108" y="336" width="224" height="42" rx="12" />
+  <text class="buttonText" x="124" y="362">Cloud Projects</text>
+  <text class="hint" x="233" y="362">12 available</text>
+
+  <rect class="badge" x="108" y="388" width="224" height="42" rx="12" />
+  <text class="buttonText" x="124" y="414">Local Projects</text>
+  <text class="hint" x="232" y="414">3 local only</text>
+
+  <rect class="badgeWarn" x="108" y="440" width="224" height="42" rx="12" />
+  <text class="buttonText" x="124" y="466">Cloud Sync Issues</text>
+  <text class="hint" x="258" y="466">2 need retry</text>
+
+  <line class="divider" x1="108" y1="502" x2="332" y2="502" />
+
+  <text class="label" x="108" y="532">Filters</text>
+  <rect class="badgeOk" x="108" y="548" width="92" height="26" rx="13" />
+  <text class="badgeText" x="154" y="566" text-anchor="middle">Last opened</text>
+  <rect class="badge" x="208" y="548" width="64" height="26" rx="13" />
+  <text class="badgeText" x="240" y="566" text-anchor="middle">Owned</text>
+  <rect class="badge" x="280" y="548" width="52" height="26" rx="13" />
+  <text class="badgeText" x="306" y="566" text-anchor="middle">Demo</text>
+
+  <text class="hint" x="108" y="606">Anonymous mode:</text>
+  <text class="hint" x="108" y="624">show only Local Projects + Import</text>
+  <text class="hint" x="108" y="654">Signed-in mode:</text>
+  <text class="hint" x="108" y="672">merge Cloud + Local into one recent list</text>
+
+  <rect class="panelAlt" x="370" y="286" width="360" height="430" rx="14" />
+  <text class="label" x="388" y="316">Recent Projects</text>
+
+  <rect class="rowActive" x="388" y="332" width="324" height="86" rx="12" />
+  <text class="buttonText" x="406" y="358">Laser Gates Iteration</text>
+  <text class="hint" x="406" y="377">Last edited: Jun 5, 2026 10:12 AM</text>
+  <text class="hint" x="406" y="394">Scenes: 4</text>
+  <rect class="badgeCloud" x="590" y="344" width="52" height="22" rx="11" />
+  <text class="badgeText" x="616" y="359" text-anchor="middle">Cloud</text>
+  <rect class="badgeOk" x="650" y="344" width="62" height="22" rx="11" />
+  <text class="badgeText" x="681" y="359" text-anchor="middle">Current</text>
+  <rect class="button" x="590" y="384" width="56" height="22" rx="8" />
+  <text class="badgeText" x="618" y="399" text-anchor="middle">Open</text>
+  <rect class="button" x="652" y="384" width="60" height="22" rx="8" />
+  <text class="badgeText" x="682" y="399" text-anchor="middle">Manage</text>
+
+  <rect class="panel" x="516" y="426" width="196" height="118" rx="12" />
+  <text class="label" x="534" y="450">Manage: Laser Gates Iteration</text>
+  <rect class="button" x="534" y="464" width="160" height="24" rx="8" />
+  <text class="badgeText" x="614" y="480" text-anchor="middle">History</text>
+  <rect class="button" x="534" y="492" width="160" height="24" rx="8" />
+  <text class="badgeText" x="614" y="508" text-anchor="middle">Rename</text>
+  <rect class="button" x="534" y="520" width="76" height="24" rx="8" />
+  <text class="badgeText" x="572" y="536" text-anchor="middle">Duplicate</text>
+  <rect class="button" x="618" y="520" width="76" height="24" rx="8" />
+  <text class="badgeText" x="656" y="536" text-anchor="middle">Export YAML</text>
+
+  <rect class="panel" x="388" y="556" width="324" height="70" rx="12" />
+  <text class="buttonText" x="406" y="580">Pattern Sandbox</text>
+  <text class="hint" x="406" y="599">Last edited: Jun 4, 2026 4:41 PM</text>
+  <text class="hint" x="406" y="616">Scenes: 1 • GitHub Pages: published</text>
+  <rect class="badgeCloud" x="590" y="568" width="52" height="22" rx="11" />
+  <text class="badgeText" x="616" y="583" text-anchor="middle">Cloud</text>
+  <rect class="button" x="652" y="568" width="60" height="22" rx="8" />
+  <text class="badgeText" x="682" y="583" text-anchor="middle">Open</text>
+
+  <rect class="panel" x="388" y="636" width="324" height="70" rx="12" />
+  <text class="buttonText" x="406" y="660">Local Debug Copy</text>
+  <text class="hint" x="406" y="679">Last edited: Jun 4, 2026 1:03 PM</text>
+  <text class="hint" x="406" y="696">No login • saved locally for offline use</text>
+  <rect class="badge" x="590" y="648" width="52" height="22" rx="11" />
+  <text class="badgeText" x="616" y="663" text-anchor="middle">Local</text>
+  <rect class="button" x="652" y="648" width="60" height="22" rx="8" />
+  <text class="badgeText" x="682" y="663" text-anchor="middle">Open</text>
+
+  <rect class="panelAlt" x="90" y="748" width="688" height="150" rx="16" />
+  <text class="section" x="114" y="780">ACTIVE PROJECT SUMMARY</text>
+  <text class="label" x="114" y="814">Current</text>
+  <text class="mono" x="174" y="814">Laser Gates Iteration</text>
+  <text class="hint" x="114" y="834">Cloud project with a local copy for offline use. Last sync 24s ago. No pending conflicts.</text>
+
+  <rect class="buttonPrimary" x="114" y="852" width="110" height="34" rx="10" />
+  <text class="buttonText" x="169" y="874" text-anchor="middle">Open</text>
+  <rect class="button" x="234" y="852" width="110" height="34" rx="10" />
+  <text class="buttonText" x="289" y="874" text-anchor="middle">Duplicate</text>
+  <rect class="button" x="354" y="852" width="110" height="34" rx="10" />
+  <text class="buttonText" x="409" y="874" text-anchor="middle">Export YAML</text>
+  <rect class="buttonWarn" x="474" y="852" width="138" height="34" rx="10" />
+  <text class="buttonText" x="543" y="874" text-anchor="middle">Work Offline</text>
+  <rect class="buttonDanger" x="622" y="852" width="132" height="34" rx="10" />
+  <text class="buttonText" x="688" y="874" text-anchor="middle">Archive…</text>
+
+  <rect class="panel" x="66" y="920" width="688" height="120" rx="16" />
+  <text class="section" x="90" y="952">STARTUP &amp; RESET</text>
+  <text class="hint" x="90" y="974">Existing controls move below the picker and apply to the currently open project/workspace.</text>
+
+  <text class="label" x="90" y="1000">Startup mode</text>
+  <rect class="inputBg" x="180" y="980" width="220" height="38" rx="10" />
+  <text class="mono" x="196" y="1004">Reload Last Project</text>
+
+  <rect class="buttonDanger" x="566" y="980" width="164" height="38" rx="10" />
+  <text class="buttonText" x="648" y="1004" text-anchor="middle">Reset Now → Empty</text>
+
+  <text class="hint" x="90" y="1032">Design intent: the Project tab becomes the place to open/switch/manage projects without mixing</text>
+  <text class="hint" x="90" y="1048">project selection into the Cloud tab. Cloud remains account/publish; Project owns the active document.</text>
+</svg>
