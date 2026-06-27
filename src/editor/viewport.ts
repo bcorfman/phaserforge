@@ -155,7 +155,8 @@ export function isCameraAtFitView(
     worldHeight,
     fitZoom,
     originX,
-    originY
+    originY,
+    insets
   );
   return Math.abs(scrollX - clamped.scrollX) <= epsilon && Math.abs(scrollY - clamped.scrollY) <= epsilon;
 }
@@ -169,17 +170,23 @@ export function clampCameraScroll(
   worldHeight: number,
   zoom: number,
   originX = 0.5,
-  originY = 0.5
+  originY = 0.5,
+  insets: Partial<ViewportInsets> = ZERO_INSETS
 ): { scrollX: number; scrollY: number } {
   const safeZoom = Math.max(0.0001, zoom);
-  const visibleWidth = viewportWidth / safeZoom;
-  const visibleHeight = viewportHeight / safeZoom;
+  const safeInsets = normalizeInsets(insets);
+  const usableWidth = Math.max(1, viewportWidth - safeInsets.left - safeInsets.right) / safeZoom;
+  const usableHeight = Math.max(1, viewportHeight - safeInsets.top - safeInsets.bottom) / safeZoom;
   const offsetX = viewportWidth * originX * (1 - 1 / safeZoom);
   const offsetY = viewportHeight * originY * (1 - 1 / safeZoom);
-  const minScrollX = Math.min(0, worldWidth - visibleWidth) - offsetX;
-  const maxScrollX = Math.max(0, worldWidth - visibleWidth) - offsetX;
-  const minScrollY = Math.min(0, worldHeight - visibleHeight) - offsetY;
-  const maxScrollY = Math.max(0, worldHeight - visibleHeight) - offsetY;
+  const alignLeftScrollX = -offsetX - safeInsets.left / safeZoom;
+  const alignTopScrollY = -offsetY - safeInsets.top / safeZoom;
+  const alignRightScrollX = worldWidth - usableWidth - offsetX - safeInsets.left / safeZoom;
+  const alignBottomScrollY = worldHeight - usableHeight - offsetY - safeInsets.top / safeZoom;
+  const minScrollX = Math.min(alignLeftScrollX, alignRightScrollX);
+  const maxScrollX = Math.max(alignLeftScrollX, alignRightScrollX);
+  const minScrollY = Math.min(alignTopScrollY, alignBottomScrollY);
+  const maxScrollY = Math.max(alignTopScrollY, alignBottomScrollY);
 
   return {
     scrollX: Math.min(maxScrollX, Math.max(minScrollX, scrollX)),

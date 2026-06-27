@@ -67,15 +67,18 @@ test.describe('Project picker', () => {
       0.5,
       insets
     );
-    const clampedExpectedScroll = clampCameraScroll(
-      expectedScroll.scrollX,
-      expectedScroll.scrollY,
-      snapshot.viewportWidth,
+  const clampedExpectedScroll = clampCameraScroll(
+    expectedScroll.scrollX,
+    expectedScroll.scrollY,
+    snapshot.viewportWidth,
       snapshot.viewportHeight,
-      world.width,
-      world.height,
-      expectedZoom
-    );
+    world.width,
+    world.height,
+    expectedZoom,
+    0.5,
+    0.5,
+    insets
+  );
 
     expect(Math.abs(snapshot.zoom - expectedZoom)).toBeLessThanOrEqual(0.01);
     expect(Math.abs(snapshot.scrollX - clampedExpectedScroll.scrollX)).toBeLessThanOrEqual(1);

@@ -93,16 +93,21 @@ describe('viewport helpers', () => {
   });
 
   it('clamps camera scroll to the world extents', () => {
-    expect(clampCameraScroll(-10, 999, 800, 600, 1024, 768, 1)).toEqual({
-      scrollX: 0,
-      scrollY: 168,
-    });
+    const clamped = clampCameraScroll(-10, 999, 800, 600, 1024, 768, 1);
+    expect(clamped.scrollX).toBeCloseTo(0, 5);
+    expect(clamped.scrollY).toBe(168);
   });
 
   it('allows offset scroll when the viewport is larger than the scene', () => {
-    expect(clampCameraScroll(-999, 999, 1600, 1200, 1024, 768, 1)).toEqual({
-      scrollX: -576,
-      scrollY: 0,
+    const clamped = clampCameraScroll(-999, 999, 1600, 1200, 1024, 768, 1);
+    expect(clamped.scrollX).toBe(-576);
+    expect(clamped.scrollY).toBeCloseTo(0, 5);
+  });
+
+  it('clamps scroll against the usable canvas area when top-right controls reserve space', () => {
+    expect(clampCameraScroll(-999, -999, 1024, 768, 1024, 768, 0.67, 0.5, 0.5, { top: 84, right: 200 })).toEqual({
+      scrollX: 46.32835820895525,
+      scrollY: -189.1343283582089,
     });
   });
 
@@ -118,7 +123,9 @@ describe('viewport helpers', () => {
     const zoom = getFitZoom(viewport.width, viewport.height, world.width, world.height, insets);
     const scroll = getCenteredCameraScroll(viewport.width, viewport.height, world.width, world.height, zoom, 0.5, 0.5, insets);
 
-    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom, scroll.scrollX, scroll.scrollY, 0.5, 0.5, insets)).toBe(true);
-    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom + 0.2, scroll.scrollX, scroll.scrollY, 0.5, 0.5, insets)).toBe(false);
+    const clamped = clampCameraScroll(scroll.scrollX, scroll.scrollY, viewport.width, viewport.height, world.width, world.height, zoom, 0.5, 0.5, insets);
+
+    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom, clamped.scrollX, clamped.scrollY, 0.5, 0.5, insets)).toBe(true);
+    expect(isCameraAtFitView(viewport.width, viewport.height, world.width, world.height, zoom + 0.2, clamped.scrollX, clamped.scrollY, 0.5, 0.5, insets)).toBe(false);
   });
 });

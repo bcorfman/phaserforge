@@ -2192,7 +2192,8 @@ export class EditorScene extends Phaser.Scene {
       world.height,
       this.currentZoom,
       this.cameras.main.originX,
-      this.cameras.main.originY
+      this.cameras.main.originY,
+      this.fitViewInsets
     );
     this.cameras.main.setScroll(clamped.scrollX, clamped.scrollY);
   }
