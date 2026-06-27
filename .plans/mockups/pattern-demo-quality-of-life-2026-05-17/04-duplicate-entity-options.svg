@@ -1,3 +1,150 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:431707e650fe866d137829482e54bcfba156aaeebd139d985a83618e4bf4b674
-size 7623
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1216"/>
+      <stop offset="1" stop-color="#070C0F"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#1A2329"/>
+      <stop offset="1" stop-color="#0E151A"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#152026"/>
+      <stop offset="1" stop-color="#0C1216"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feColorMatrix in="b" type="matrix" values="0 0 0 0 0   0 0 0 0 0.6   0 0 0 0 0.8   0 0 0 0.25 0" result="c"/>
+      <feMerge>
+        <feMergeNode in="c"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <style>
+      .ui { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .h1 { font-weight: 900; letter-spacing: 0.10em; font-size: 18px; fill: #A9B7BE; opacity: 0.9; }
+      .title { font-weight: 900; font-size: 18px; fill: #EAF2F6; }
+      .label { font-weight: 800; letter-spacing: 0.14em; font-size: 12px; fill: #8FA1AB; opacity: 0.9; }
+      .value { font-weight: 800; font-size: 14px; fill: #EAF2F6; opacity: 0.95; }
+      .hint { font-weight: 600; font-size: 12px; fill: #90A2AC; opacity: 0.75; }
+      .btn { font-weight: 900; font-size: 14px; fill: #EAF2F6; }
+      .accent { fill: #84E8FF; }
+      .good { fill: #65F2A3; }
+      .warn { fill: #FFCC66; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="760" fill="url(#bg)"/>
+
+  <!-- Left sidebar: Entity List -->
+  <g filter="url(#soft)">
+    <rect x="28" y="28" width="360" height="704" rx="18" fill="url(#panel)" stroke="#2A353C" stroke-width="2"/>
+  </g>
+  <g class="ui">
+    <text x="54" y="62" class="h1">ENTITY LIST</text>
+    <text x="54" y="92" class="hint">Recommendation: Alt+Drag duplicates with behaviors; “Duplicate…” offers options.</text>
+
+    <!-- Entity rows -->
+    <g filter="url(#soft)">
+      <rect x="48" y="128" width="320" height="48" rx="14" fill="#0F171C" stroke="#3EE3FF" stroke-width="2"/>
+    </g>
+    <text x="72" y="158" class="value">e-wave</text>
+    <text x="152" y="158" class="hint">Wave</text>
+    <rect x="324" y="140" width="34" height="24" rx="10" fill="#101A20" stroke="#2E3B43" stroke-width="2"/>
+    <text x="341" y="158" text-anchor="middle" class="btn">⋯</text>
+
+    <g filter="url(#soft)">
+      <rect x="48" y="182" width="320" height="48" rx="14" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    </g>
+    <text x="72" y="212" class="value">e-zigzag</text>
+    <text x="170" y="212" class="hint">Zigzag</text>
+
+    <g filter="url(#soft)">
+      <rect x="48" y="236" width="320" height="48" rx="14" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    </g>
+    <text x="72" y="266" class="value">e-figure8</text>
+    <text x="184" y="266" class="hint">Figure-8</text>
+
+    <!-- Overflow menu for selected row -->
+    <g filter="url(#soft)">
+      <rect x="116" y="170" width="252" height="192" rx="14" fill="url(#card)" stroke="#3EE3FF" stroke-width="2"/>
+    </g>
+    <text x="138" y="200" class="label">ENTITY</text>
+    <text x="138" y="230" class="value">Rename…</text>
+    <text x="138" y="258" class="value">Delete…</text>
+    <rect x="136" y="270" width="212" height="1" fill="#22323A" opacity="0.9"/>
+    <text x="138" y="296" class="value">Duplicate</text>
+    <text x="138" y="324" class="value"><tspan class="accent">Duplicate…</tspan></text>
+    <text x="138" y="352" class="hint">…opens options (rare)</text>
+  </g>
+
+  <!-- Canvas -->
+  <g filter="url(#soft)">
+    <rect x="408" y="28" width="764" height="704" rx="18" fill="#0B1115" stroke="#243038" stroke-width="2"/>
+  </g>
+  <g class="ui">
+    <text x="432" y="62" class="h1">CANVAS</text>
+
+    <!-- Alt+Drag note -->
+    <g filter="url(#soft)">
+      <rect x="432" y="84" width="520" height="44" rx="14" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    </g>
+    <text x="454" y="112" class="hint"><tspan class="accent">Alt+Drag</tspan> = Duplicate and place (includes behaviors)</text>
+
+    <!-- A source sprite and its duplicate -->
+    <g filter="url(#soft)">
+      <rect x="560" y="260" width="80" height="60" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    </g>
+    <path d="M572 290 L594 276 L628 276 L644 290 L628 304 L594 304 Z" fill="#84E8FF" opacity="0.9"/>
+    <text x="600" y="338" text-anchor="middle" class="mono hint">source</text>
+
+    <g filter="url(#soft)">
+      <rect x="720" y="312" width="80" height="60" rx="12" fill="#0F171C" stroke="#3EE3FF" stroke-width="2" opacity="0.95"/>
+    </g>
+    <path d="M732 342 L754 328 L788 328 L804 342 L788 356 L754 356 Z" fill="#84E8FF" opacity="0.9"/>
+    <text x="760" y="390" text-anchor="middle" class="mono hint">copy</text>
+    <path d="M660 292 C700 300 706 310 720 324" stroke="#FFCC66" stroke-width="3" opacity="0.9"/>
+    <path d="M720 324 L710 322" stroke="#FFCC66" stroke-width="3" opacity="0.9"/>
+    <path d="M720 324 L716 332" stroke="#FFCC66" stroke-width="3" opacity="0.9"/>
+  </g>
+
+  <!-- Duplicate options dialog (opened from menu item “Duplicate…”) -->
+  <g filter="url(#soft)">
+    <rect x="560" y="440" width="560" height="260" rx="18" fill="url(#card)" stroke="#3EE3FF" stroke-width="2"/>
+  </g>
+  <g class="ui">
+    <text x="590" y="478" class="title">Duplicate Entity…</text>
+    <text x="590" y="504" class="hint">Defaults match Alt+Drag: duplicate visuals + behaviors.</text>
+
+    <text x="590" y="538" class="label">INCLUDE</text>
+
+    <!-- Checkbox 1 -->
+    <rect x="590" y="552" width="18" height="18" rx="4" fill="#1E3B45" stroke="#3EE3FF" stroke-width="2"/>
+    <path d="M594 561 L598 566 L606 556" stroke="#65F2A3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="620" y="566" class="value">Copy behaviors (attachments)</text>
+    <text x="620" y="586" class="hint">Copies steps that target this entity</text>
+
+    <!-- Checkbox 2 -->
+    <rect x="590" y="604" width="18" height="18" rx="4" fill="#1E3B45" stroke="#3EE3FF" stroke-width="2"/>
+    <path d="M594 613 L598 618 L606 608" stroke="#65F2A3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="620" y="618" class="value">Copy handlers (event blocks)</text>
+    <text x="620" y="638" class="hint">Keeps handler grouping and triggers intact</text>
+
+    <!-- Checkbox 3 -->
+    <rect x="590" y="656" width="18" height="18" rx="4" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+    <text x="620" y="670" class="value">Copy into same group</text>
+    <text x="620" y="690" class="hint">If source is in a formation, add duplicate as member</text>
+
+    <!-- Buttons -->
+    <g filter="url(#soft)">
+      <rect x="916" y="652" width="92" height="40" rx="12" fill="#0F171C" stroke="#2E3B43" stroke-width="2"/>
+      <text x="944" y="678" class="btn">Cancel</text>
+    </g>
+    <g filter="url(#soft)">
+      <rect x="1016" y="652" width="92" height="40" rx="12" fill="#1E3B45" stroke="#3EE3FF" stroke-width="2"/>
+      <text x="1042" y="678" class="btn"><tspan class="accent">Duplicate</tspan></text>
+    </g>
+  </g>
+</svg>
+
