@@ -174,7 +174,7 @@ Then decide on each autosave:
 The profiler should eventually understand at least:
 - project title
 - publish metadata
-- scenes
+- scenes 
 - scene metadata
 - entities
 - groups
