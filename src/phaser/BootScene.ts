@@ -6,6 +6,7 @@ import { GameScene } from './GameScene';
 import type { ProjectSpec, SceneSpec } from '../model/types';
 import { OpRegistry } from '../compiler/opRegistry';
 import { createRuntimeServices } from './runtimeServices';
+import { shouldPreserveViewStateOnProjectLoad } from './projectLoadViewState';
 import type { RuntimeServices } from '../runtime/services/RuntimeServices';
 import { resolveTarget, flattenTarget } from '../runtime/targets/resolveTarget';
 import type { ViewState } from '../util/viewStateStorage';
@@ -230,7 +231,7 @@ export class BootScene extends Phaser.Scene {
     // Only preserve camera state on reloads. On initial app startup the editor scene has not
     // initialized its view yet, so capturing `{ zoom: 1, scrollX: 0, scrollY: 0 }` would
     // prevent the default `fitView()` centering from running.
-    if (this.project) {
+    if (shouldPreserveViewStateOnProjectLoad(this.project, project)) {
       this.captureViewStateForProjectReload(mode);
     } else {
       this.lastViewState = undefined;
