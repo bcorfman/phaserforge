@@ -1,13 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { clampCameraScroll, getCenteredCameraScroll, getFitZoom } from '../../src/editor/viewport';
 import { dismissViewHint, getSceneSnapshot, getState, seedProject, waitForViewportToSettle } from './helpers';
 
-test('startup centers the editor viewport @critical', async ({ page }) => {
-  await seedProject(page, createEmptyProject());
-  await dismissViewHint(page);
-  await waitForViewportToSettle(page);
-
+async function expectViewportCentered(page: Page) {
   const state = await getState<{ scene?: { world?: { width: number; height: number } } } | null>(page);
   const world = state?.scene?.world ?? { width: 1024, height: 768 };
   const insets = await page.evaluate(() => {
@@ -60,4 +56,24 @@ test('startup centers the editor viewport @critical', async ({ page }) => {
   expect(Math.abs(snapshot.zoom - expectedZoom)).toBeLessThanOrEqual(0.01);
   expect(Math.abs(snapshot.scrollX - clampedExpectedScroll.scrollX)).toBeLessThanOrEqual(1);
   expect(Math.abs(snapshot.scrollY - clampedExpectedScroll.scrollY)).toBeLessThanOrEqual(1);
+}
+
+test('startup centers the editor viewport @critical', async ({ page }) => {
+  await seedProject(page, createEmptyProject());
+  await dismissViewHint(page);
+  await waitForViewportToSettle(page);
+  await expectViewportCentered(page);
+});
+
+test('viewport reset centers the editor viewport @critical', async ({ page }) => {
+  await seedProject(page, createEmptyProject());
+  await dismissViewHint(page);
+  await waitForViewportToSettle(page);
+
+  await page.getByTestId('zoom-in-button').click();
+  await waitForViewportToSettle(page);
+  await page.getByTestId('reset-zoom-button').click();
+  await waitForViewportToSettle(page);
+
+  await expectViewportCentered(page);
 });
