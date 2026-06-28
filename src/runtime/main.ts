@@ -22,6 +22,7 @@ export function createGameConfig(container: string): Phaser.Types.Core.GameConfi
         },
         antialias: true,
         pixelArt: false,
+        resolution: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
         scale: {
             mode: Phaser.Scale.RESIZE,
             autoCenter: Phaser.Scale.CENTER_BOTH,
