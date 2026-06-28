@@ -65,6 +65,7 @@ test('create a second scene, switch scenes, and preserve per-scene edits @critic
     viewportHeight: number;
   }>(page);
   const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height, insets);
+  const centeringInsets = { top: insets.top, right: 0, bottom: 0, left: 0 };
   const expectedScroll = getCenteredCameraScroll(
     snapshot.viewportWidth,
     snapshot.viewportHeight,
@@ -73,7 +74,7 @@ test('create a second scene, switch scenes, and preserve per-scene edits @critic
     expectedZoom,
     0.5,
     0.5,
-    insets
+    centeringInsets
   );
   const clampedExpectedScroll = clampCameraScroll(
     expectedScroll.scrollX,
@@ -85,7 +86,7 @@ test('create a second scene, switch scenes, and preserve per-scene edits @critic
     expectedZoom,
     0.5,
     0.5,
-    insets
+    centeringInsets
   );
   expect(Math.abs(snapshot.zoom - expectedZoom)).toBeLessThanOrEqual(0.01);
   expect(Math.abs(snapshot.scrollX - clampedExpectedScroll.scrollX)).toBeLessThanOrEqual(1);

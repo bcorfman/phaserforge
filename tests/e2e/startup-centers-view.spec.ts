@@ -30,6 +30,7 @@ async function expectViewportCentered(page: Page) {
   expect(snapshot).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
   const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height, insets);
+  const centeringInsets = { top: insets.top, right: 0, bottom: 0, left: 0 };
   const expectedScroll = getCenteredCameraScroll(
     snapshot.viewportWidth,
     snapshot.viewportHeight,
@@ -38,7 +39,7 @@ async function expectViewportCentered(page: Page) {
     expectedZoom,
     0.5,
     0.5,
-    insets
+    centeringInsets
   );
   const clampedExpectedScroll = clampCameraScroll(
     expectedScroll.scrollX,
@@ -50,7 +51,7 @@ async function expectViewportCentered(page: Page) {
     expectedZoom,
     0.5,
     0.5,
-    insets
+    centeringInsets
   );
 
   expect(Math.abs(snapshot.zoom - expectedZoom)).toBeLessThanOrEqual(0.01);
