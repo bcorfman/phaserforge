@@ -838,10 +838,11 @@ export class EditorScene extends Phaser.Scene {
     this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry, vars: this.varsService });
     this.referenceCompiled = referenceSceneSpec ? compileScene(referenceSceneSpec, { opRegistry: this.opRegistry, vars: this.varsService }) : undefined;
+    const shouldCenterEmptyScene = this.shouldCenterEmptyScene(sceneSpec);
 
     // Initialize the camera view immediately; it does not depend on textures/sprites being ready.
     // Deferring this until after async texture loading can cause transient mismatches during mode switches.
-    if (this.pendingViewState) {
+    if (this.pendingViewState && !shouldCenterEmptyScene) {
       const world = getSceneWorld(sceneSpec);
       const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
       const nextZoom = clampZoom(this.pendingViewState.zoom, maxZoom);
@@ -852,8 +853,9 @@ export class EditorScene extends Phaser.Scene {
       this.pendingViewState = undefined;
       this.hasInitializedView = true;
       this.emitViewState();
-    } else if (!this.hasInitializedView || this.shouldCenterEmptyScene(sceneSpec)) {
-      this.fitView();
+    } else if (!this.hasInitializedView || shouldCenterEmptyScene) {
+      this.pendingViewState = undefined;
+      this.fitView({ centerAcrossFullCanvas: shouldCenterEmptyScene });
       this.hasInitializedView = true;
     } else {
       // On project reloads we expect the camera view to be preserved by BootScene via `pendingViewState`.
@@ -944,7 +946,7 @@ export class EditorScene extends Phaser.Scene {
       this.fitViewInsets
     );
     if (shouldRefit) {
-      this.fitView();
+      this.fitView({ centerAcrossFullCanvas: this.shouldCenterEmptyScene(this.compiled.scene ?? EMPTY_SCENE_SPEC) });
       this.lastViewportSize = next;
       return;
     }
@@ -987,7 +989,7 @@ export class EditorScene extends Phaser.Scene {
         )
       : !this.hasInitializedView;
     this.fitViewInsets = nextInsets;
-    if (shouldRefit) this.fitView();
+    if (shouldRefit) this.fitView({ centerAcrossFullCanvas: this.shouldCenterEmptyScene(this.compiled?.scene ?? EMPTY_SCENE_SPEC) });
   }
 
   private buildBackgroundLayers(
@@ -2041,7 +2043,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private resetZoom(): void {
-    this.fitView();
+    this.fitView({ centerAcrossFullCanvas: true });
   }
 
   private shouldCenterEmptyScene(sceneSpec: GameSceneSpec): boolean {
@@ -2060,17 +2062,23 @@ export class EditorScene extends Phaser.Scene {
       && !sceneSpec.input;
   }
 
-  private fitView(): void {
+  private fitView(options?: { centerAcrossFullCanvas?: boolean }): void {
+    const sceneSpec = this.getSceneSpec();
     const world = getSceneWorld(this.getSceneSpec());
     const zoom = getFitZoom(this.scale.width, this.scale.height, world.width, world.height, this.fitViewInsets);
-    this.applyZoom(zoom);
+    this.applyZoom(zoom, {
+      centerAcrossFullCanvas: options?.centerAcrossFullCanvas ?? this.shouldCenterEmptyScene(sceneSpec),
+    });
   }
 
-  private applyZoom(zoom: number): void {
+  private applyZoom(zoom: number, options?: { centerAcrossFullCanvas?: boolean }): void {
     const world = getSceneWorld(this.getSceneSpec());
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     this.currentZoom = clampZoom(zoom, maxZoom);
     this.cameras.main.setZoom(this.currentZoom);
+    const centeringInsets = options?.centerAcrossFullCanvas
+      ? { top: this.fitViewInsets.top, right: 0, bottom: this.fitViewInsets.bottom, left: 0 }
+      : this.fitViewInsets;
     const centered = getCenteredCameraScroll(
       this.scale.width,
       this.scale.height,
@@ -2079,9 +2087,9 @@ export class EditorScene extends Phaser.Scene {
       this.currentZoom,
       this.cameras.main.originX,
       this.cameras.main.originY,
-      this.fitViewInsets
+      centeringInsets
     );
-    this.applyScroll(centered.scrollX, centered.scrollY);
+    this.applyScroll(centered.scrollX, centered.scrollY, true, centeringInsets);
     this.emitViewState();
   }
 
@@ -2193,12 +2201,22 @@ export class EditorScene extends Phaser.Scene {
     EventBus.emit('grid-toggled', this.gridEnabled);
   }
 
-  private applyScroll(scrollX: number, scrollY: number, clamp = true): void {
+  private applyScroll(
+    scrollX: number,
+    scrollY: number,
+    clamp = true,
+    clampInsets?: Partial<ViewportInsets>
+  ): void {
     if (!clamp) {
       this.cameras.main.setScroll(scrollX, scrollY);
       return;
     }
     const world = getSceneWorld(this.getSceneSpec());
+    const effectiveClampInsets = clampInsets ?? (
+      this.shouldCenterEmptyScene(this.getSceneSpec())
+        ? { top: this.fitViewInsets.top, right: 0, bottom: this.fitViewInsets.bottom, left: 0 }
+        : this.fitViewInsets
+    );
     const clamped = clampCameraScroll(
       scrollX,
       scrollY,
@@ -2209,7 +2227,7 @@ export class EditorScene extends Phaser.Scene {
       this.currentZoom,
       this.cameras.main.originX,
       this.cameras.main.originY,
-      this.fitViewInsets
+      effectiveClampInsets
     );
     this.cameras.main.setScroll(clamped.scrollX, clamped.scrollY);
   }

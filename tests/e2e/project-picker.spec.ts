@@ -57,6 +57,7 @@ test.describe('Project picker', () => {
     expect(snapshot).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
     const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height, insets);
+    const centeringInsets = { top: insets.top, right: 0, bottom: 0, left: 0 };
     const expectedScroll = getCenteredCameraScroll(
       snapshot.viewportWidth,
       snapshot.viewportHeight,
@@ -65,20 +66,20 @@ test.describe('Project picker', () => {
       expectedZoom,
       0.5,
       0.5,
-      insets
+      centeringInsets
     );
-  const clampedExpectedScroll = clampCameraScroll(
-    expectedScroll.scrollX,
+    const clampedExpectedScroll = clampCameraScroll(
+      expectedScroll.scrollX,
     expectedScroll.scrollY,
     snapshot.viewportWidth,
       snapshot.viewportHeight,
     world.width,
-    world.height,
-    expectedZoom,
-    0.5,
-    0.5,
-    insets
-  );
+      world.height,
+      expectedZoom,
+      0.5,
+      0.5,
+      centeringInsets
+    );
 
     expect(Math.abs(snapshot.zoom - expectedZoom)).toBeLessThanOrEqual(0.01);
     expect(Math.abs(snapshot.scrollX - clampedExpectedScroll.scrollX)).toBeLessThanOrEqual(1);
