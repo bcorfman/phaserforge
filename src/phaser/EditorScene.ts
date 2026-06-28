@@ -852,7 +852,7 @@ export class EditorScene extends Phaser.Scene {
       this.pendingViewState = undefined;
       this.hasInitializedView = true;
       this.emitViewState();
-    } else if (!this.hasInitializedView) {
+    } else if (!this.hasInitializedView || this.shouldCenterEmptyScene(sceneSpec)) {
       this.fitView();
       this.hasInitializedView = true;
     } else {
@@ -2041,7 +2041,23 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private resetZoom(): void {
-    this.applyZoom(1);
+    this.fitView();
+  }
+
+  private shouldCenterEmptyScene(sceneSpec: GameSceneSpec): boolean {
+    return Object.keys(sceneSpec.entities ?? {}).length === 0
+      && Object.keys(sceneSpec.groups ?? {}).length === 0
+      && Object.keys(sceneSpec.attachments ?? {}).length === 0
+      && Object.keys(sceneSpec.eventBlocks ?? {}).length === 0
+      && Object.keys(sceneSpec.behaviors ?? {}).length === 0
+      && Object.keys(sceneSpec.actions ?? {}).length === 0
+      && Object.keys(sceneSpec.conditions ?? {}).length === 0
+      && (sceneSpec.backgroundLayers?.length ?? 0) === 0
+      && (sceneSpec.collisionRules?.length ?? 0) === 0
+      && (sceneSpec.triggers?.length ?? 0) === 0
+      && !sceneSpec.music
+      && (sceneSpec.ambience?.length ?? 0) === 0
+      && !sceneSpec.input;
   }
 
   private fitView(): void {
