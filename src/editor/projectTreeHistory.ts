@@ -38,6 +38,14 @@ export type ProjectTreeRow =
   | { kind: 'project'; id: string; label: string; sceneCount: number }
   | { kind: 'scene'; id: string; label: string; isCurrent: boolean };
 
+export type ProjectHistoryVisibleEntry = {
+  primaryRevision: ProjectRevisionRecord;
+  revisions: ProjectRevisionRecord[];
+  summary: string;
+  detailItems: string[];
+  hiddenDetailCount: number;
+};
+
 export function buildProjectTreeRows(project: ProjectSpec, currentSceneId: Id): ProjectTreeRow[] {
   return [
     {
@@ -702,7 +710,66 @@ export function formatProjectRevisionTimestamp(revision: ProjectRevisionRecord):
   return shortMonthDayTime(revision.updatedAt);
 }
 
-function buildProjectRevisionDetailItemsInternal(
+function buildNamedSceneChangeDetails(current: RevisionSnapshot, previous: RevisionSnapshot): string[] | null {
+  const addedSceneIds = [...current.sceneLabelsById.keys()].filter((sceneId) => !previous.sceneLabelsById.has(sceneId));
+  const removedSceneIds = [...previous.sceneLabelsById.keys()].filter((sceneId) => !current.sceneLabelsById.has(sceneId));
+  if (addedSceneIds.length > 0 && removedSceneIds.length === 0) {
+    return addedSceneIds.map((sceneId) => `${current.sceneLabelsById.get(sceneId) ?? sceneId} added`);
+  }
+  if (removedSceneIds.length > 0 && addedSceneIds.length === 0) {
+    return removedSceneIds.map((sceneId) => `${previous.sceneLabelsById.get(sceneId) ?? sceneId} removed`);
+  }
+  return null;
+}
+
+function buildNamedEntityChangeDetails(current: RevisionSnapshot, previous: RevisionSnapshot): string[] | null {
+  const addedEntityIds = [...current.entitySceneById.keys()].filter((entityId) => !previous.entitySceneById.has(entityId));
+  const removedEntityIds = [...previous.entitySceneById.keys()].filter((entityId) => !current.entitySceneById.has(entityId));
+  const movedEntityIds = [...current.entitySceneById.entries()]
+    .filter(([entityId, sceneId]) => previous.entitySceneById.has(entityId) && previous.entitySceneById.get(entityId) !== sceneId)
+    .map(([entityId]) => entityId);
+  if (addedEntityIds.length > 0 && removedEntityIds.length === 0 && movedEntityIds.length === 0) {
+    return addedEntityIds.map((entityId) => {
+      const sceneId = current.entitySceneById.get(entityId);
+      const entity = sceneId ? current.scenesById.get(sceneId)?.entities?.[entityId] : undefined;
+      return `${formatEntityLabel(entityId, entity)} added`;
+    });
+  }
+  if (removedEntityIds.length > 0 && addedEntityIds.length === 0 && movedEntityIds.length === 0) {
+    return removedEntityIds.map((entityId) => {
+      const sceneId = previous.entitySceneById.get(entityId);
+      const entity = sceneId ? previous.scenesById.get(sceneId)?.entities?.[entityId] : undefined;
+      return `${formatEntityLabel(entityId, entity)} removed`;
+    });
+  }
+  if (movedEntityIds.length > 0 && addedEntityIds.length === 0 && removedEntityIds.length === 0) {
+    return movedEntityIds.map((entityId) => {
+      const sceneId = current.entitySceneById.get(entityId);
+      const entity = sceneId ? current.scenesById.get(sceneId)?.entities?.[entityId] : undefined;
+      return `${formatEntityLabel(entityId, entity)} moved`;
+    });
+  }
+  return null;
+}
+
+function buildNamedAssetRecordChangeDetails(
+  currentAssets: Record<string, { name?: string; source?: { originalName?: string } } | undefined> | undefined,
+  previousAssets: Record<string, { name?: string; source?: { originalName?: string } } | undefined> | undefined,
+): string[] | null {
+  const currentIds = Object.keys(currentAssets ?? {});
+  const previousIds = Object.keys(previousAssets ?? {});
+  const addedAssetIds = currentIds.filter((assetId) => !previousAssets?.[assetId]);
+  const removedAssetIds = previousIds.filter((assetId) => !currentAssets?.[assetId]);
+  if (addedAssetIds.length > 0 && removedAssetIds.length === 0) {
+    return addedAssetIds.map((assetId) => `${formatNamedAssetLabel(assetId, currentAssets)} added`);
+  }
+  if (removedAssetIds.length > 0 && addedAssetIds.length === 0) {
+    return removedAssetIds.map((assetId) => `${formatNamedAssetLabel(assetId, previousAssets)} removed`);
+  }
+  return null;
+}
+
+function buildRevisionSummaryItemsInternal(
   revision: ProjectRevisionRecord,
   previousRevision?: ProjectRevisionRecord,
   revisionHistory?: ProjectRevisionRecord[],
@@ -753,6 +820,39 @@ function buildProjectRevisionDetailItemsInternal(
     : 'Minor edits'];
 }
 
+function buildProjectRevisionDetailItemsInternal(
+  revision: ProjectRevisionRecord,
+  previousRevision?: ProjectRevisionRecord,
+  revisionHistory?: ProjectRevisionRecord[],
+  historyEvents?: ProjectHistoryEvent[],
+): string[] {
+  const summaryItems = buildRevisionSummaryItemsInternal(revision, previousRevision, revisionHistory, historyEvents);
+  if (!previousRevision) return summaryItems;
+
+  const eventDetails = buildRevisionEventDetailItems(revision, historyEvents);
+  if (eventDetails.length > 0) return eventDetails;
+  if (revision.changeSummary?.trim()) return [revision.changeSummary.trim()];
+
+  const current = summarizeRevisionContent(revision, previousRevision, revisionHistory);
+  const previous = summarizeRevisionContent(previousRevision, undefined, revisionHistory);
+
+  const namedSceneChanges = buildNamedSceneChangeDetails(current, previous);
+  if (namedSceneChanges?.length) return namedSceneChanges;
+
+  const namedEntityChanges = buildNamedEntityChangeDetails(current, previous);
+  if (namedEntityChanges?.length) return namedEntityChanges;
+
+  const namedAssetChanges = [
+    buildNamedAssetRecordChangeDetails(current.project?.assets.images, previous.project?.assets.images),
+    buildNamedAssetRecordChangeDetails(current.project?.assets.spriteSheets, previous.project?.assets.spriteSheets),
+    buildNamedAssetRecordChangeDetails(current.project?.assets.fonts, previous.project?.assets.fonts),
+    buildNamedAssetRecordChangeDetails(current.project?.audio?.sounds, previous.project?.audio?.sounds),
+  ].flatMap((items) => items ?? []);
+  if (namedAssetChanges.length > 0) return namedAssetChanges;
+
+  return summaryItems;
+}
+
 export function buildProjectRevisionDetailItems(
   revision: ProjectRevisionRecord,
   previousRevision?: ProjectRevisionRecord,
@@ -768,8 +868,98 @@ export function formatProjectRevisionSummary(
   revisionHistory?: ProjectRevisionRecord[],
   historyEvents?: ProjectHistoryEvent[],
 ): string {
-  const detailItems = buildProjectRevisionDetailItemsInternal(revision, previousRevision, revisionHistory, historyEvents);
-  return detailItems.slice(0, 2).join(' · ');
+  const summaryItems = buildRevisionSummaryItemsInternal(revision, previousRevision, revisionHistory, historyEvents);
+  return summaryItems.slice(0, 2).join(' · ');
+}
+
+type RepetitiveHistoryPattern = {
+  key: string;
+  summarize: (count: number) => string;
+};
+
+function classifyRepetitiveHistorySummary(summary: string): RepetitiveHistoryPattern | null {
+  const directPatterns: Array<[RegExp, () => RepetitiveHistoryPattern]> = [
+    [/^1 entity added$/, () => ({ key: 'entity-added', summarize: (count) => `${count} ${count === 1 ? 'entity' : 'entities'} added` })],
+    [/^1 entity removed$/, () => ({ key: 'entity-removed', summarize: (count) => `${count} ${count === 1 ? 'entity' : 'entities'} removed` })],
+    [/^1 entity moved$/, () => ({ key: 'entity-moved', summarize: (count) => `${count} ${count === 1 ? 'entity' : 'entities'} moved` })],
+    [/^1 entity edited$/, () => ({ key: 'entity-edited', summarize: (count) => `${count} ${count === 1 ? 'entity' : 'entities'} edited` })],
+    [/^Added scene (.+)$/, () => ({ key: 'scene-added', summarize: (count) => `${count} ${count === 1 ? 'scene' : 'scenes'} added` })],
+    [/^Removed scene (.+)$/, () => ({ key: 'scene-removed', summarize: (count) => `${count} ${count === 1 ? 'scene' : 'scenes'} removed` })],
+    [/^Added trigger (.+)$/, () => ({ key: 'trigger-added', summarize: (count) => `${count} ${count === 1 ? 'trigger' : 'triggers'} added` })],
+    [/^Removed trigger (.+)$/, () => ({ key: 'trigger-removed', summarize: (count) => `${count} ${count === 1 ? 'trigger' : 'triggers'} removed` })],
+    [/^Added input map (.+)$/, () => ({ key: 'input-map-added', summarize: (count) => `${count} input ${count === 1 ? 'map' : 'maps'} added` })],
+    [/^Removed input map (.+)$/, () => ({ key: 'input-map-removed', summarize: (count) => `${count} input ${count === 1 ? 'map' : 'maps'} removed` })],
+    [/^Created group (.+)$/, () => ({ key: 'group-created', summarize: (count) => `${count} ${count === 1 ? 'group' : 'groups'} created` })],
+    [/^Deleted group (.+)$/, () => ({ key: 'group-deleted', summarize: (count) => `${count} ${count === 1 ? 'group' : 'groups'} deleted` })],
+    [/^Dissolved group (.+)$/, () => ({ key: 'group-dissolved', summarize: (count) => `${count} ${count === 1 ? 'group' : 'groups'} dissolved` })],
+    [/^Named entity (.+)$/, () => ({ key: 'entity-renamed', summarize: (count) => `${count} ${count === 1 ? 'entity' : 'entities'} renamed` })],
+    [/^Renamed entity to (.+)$/, () => ({ key: 'entity-renamed', summarize: (count) => `${count} ${count === 1 ? 'entity' : 'entities'} renamed` })],
+    [/^Moved entity (.+)$/, () => ({ key: 'entity-moved', summarize: (count) => `${count} ${count === 1 ? 'entity' : 'entities'} moved` })],
+    [/^Added image asset (.+)$/, () => ({ key: 'image-added', summarize: (count) => `${count} image ${count === 1 ? 'asset' : 'assets'} added` })],
+    [/^Removed image asset (.+)$/, () => ({ key: 'image-removed', summarize: (count) => `${count} image ${count === 1 ? 'asset' : 'assets'} removed` })],
+    [/^Added sprite sheet (.+)$/, () => ({ key: 'spritesheet-added', summarize: (count) => `${count} sprite ${count === 1 ? 'sheet' : 'sheets'} added` })],
+    [/^Removed sprite sheet (.+)$/, () => ({ key: 'spritesheet-removed', summarize: (count) => `${count} sprite ${count === 1 ? 'sheet' : 'sheets'} removed` })],
+    [/^Added font (.+)$/, () => ({ key: 'font-added', summarize: (count) => `${count} ${count === 1 ? 'font' : 'fonts'} added` })],
+    [/^Removed font (.+)$/, () => ({ key: 'font-removed', summarize: (count) => `${count} ${count === 1 ? 'font' : 'fonts'} removed` })],
+    [/^Added audio (.+)$/, () => ({ key: 'audio-added', summarize: (count) => `${count} audio ${count === 1 ? 'asset' : 'assets'} added` })],
+    [/^Removed audio (.+)$/, () => ({ key: 'audio-removed', summarize: (count) => `${count} audio ${count === 1 ? 'asset' : 'assets'} removed` })],
+  ];
+  for (const [pattern, build] of directPatterns) {
+    if (pattern.test(summary)) return build();
+  }
+  const addedToGroupMatch = summary.match(/^Added entity to (.+)$/);
+  if (addedToGroupMatch) {
+    const groupLabel = addedToGroupMatch[1];
+    return {
+      key: `group-members-added:${groupLabel}`,
+      summarize: (count) => `${count} ${count === 1 ? 'entity' : 'entities'} added to ${groupLabel}`,
+    };
+  }
+  const removedFromGroupMatch = summary.match(/^Removed entity from (.+)$/);
+  if (removedFromGroupMatch) {
+    const groupLabel = removedFromGroupMatch[1];
+    return {
+      key: `group-members-removed:${groupLabel}`,
+      summarize: (count) => `${count} ${count === 1 ? 'entity' : 'entities'} removed from ${groupLabel}`,
+    };
+  }
+  return null;
+}
+
+function buildProjectHistoryVisibleEntries(
+  visibleRevisions: ProjectRevisionRecord[],
+  revisionHistory: ProjectRevisionRecord[],
+  historyEvents: ProjectHistoryEvent[] | undefined,
+): ProjectHistoryVisibleEntry[] {
+  const entries: Array<ProjectHistoryVisibleEntry & { repetitionKey?: string }> = [];
+
+  visibleRevisions.forEach((revision) => {
+    const revisionIndex = revisionHistory.findIndex((entry) => entry.id === revision.id);
+    const previousRevision = revisionIndex >= 0 ? revisionHistory[revisionIndex + 1] : undefined;
+    const summary = formatProjectRevisionSummary(revision, previousRevision, revisionHistory, historyEvents);
+    const detailItems = buildProjectRevisionDetailItems(revision, previousRevision, revisionHistory, historyEvents);
+    const repetition = detailItems.length === 1 ? classifyRepetitiveHistorySummary(summary) : null;
+    const lastEntry = entries.at(-1);
+
+    if (repetition && lastEntry?.repetitionKey === repetition.key) {
+      lastEntry.revisions.push(revision);
+      lastEntry.summary = repetition.summarize(lastEntry.revisions.length);
+      lastEntry.detailItems.push(...detailItems);
+      lastEntry.hiddenDetailCount = lastEntry.detailItems.length;
+      return;
+    }
+
+    entries.push({
+      primaryRevision: revision,
+      revisions: [revision],
+      summary,
+      detailItems,
+      hiddenDetailCount: detailItems.length > 1 ? Math.max(1, detailItems.length - 1) : 0,
+      repetitionKey: repetition?.key,
+    });
+  });
+
+  return entries.map(({ repetitionKey: _repetitionKey, ...entry }) => entry);
 }
 
 export function buildCopyRevisionDefaultName(projectTitle: string | undefined, revision: ProjectRevisionRecord): string {
@@ -832,15 +1022,18 @@ function rebuildProjectRevisionSubset(
 export function buildProjectHistoryViewModel({
   revisions,
   archivedRevisions,
+  historyEvents,
   windowDays = DEFAULT_PROJECT_HISTORY_WINDOW_DAYS,
   nowMs = Date.now(),
 }: {
   revisions: ProjectRevisionRecord[] | undefined;
   archivedRevisions?: ProjectRevisionRecord[] | undefined;
+  historyEvents?: ProjectHistoryEvent[] | undefined;
   windowDays?: ProjectHistoryWindowDays;
   nowMs?: number;
 }): {
   visibleRevisions: ProjectRevisionRecord[];
+  visibleEntries: ProjectHistoryVisibleEntry[];
   staleRevisions: ProjectRevisionRecord[];
   archivedRevisions: ProjectRevisionRecord[];
 } {
@@ -852,6 +1045,7 @@ export function buildProjectHistoryViewModel({
   const staleRevisions = activeRevisions.filter((revision) => isRevisionOlderThanRetentionWindow(revision, nowMs));
   return {
     visibleRevisions,
+    visibleEntries: buildProjectHistoryVisibleEntries(visibleRevisions, activeRevisions, historyEvents),
     staleRevisions,
     archivedRevisions: Array.isArray(archivedRevisions) ? archivedRevisions.filter(Boolean) : [],
   };

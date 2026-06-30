@@ -525,8 +525,7 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
       const overlayRect = overlay.getBoundingClientRect();
       const controlsRect = controls.getBoundingClientRect();
       const top = Math.max(0, controlsRect.bottom - overlayRect.top + 12);
-      const right = Math.max(0, overlayRect.right - controlsRect.left + 12);
-      EventBus.emit('scene-fit-insets-changed', { top, right, bottom: 0, left: 0 });
+      EventBus.emit('scene-fit-insets-changed', { top, right: 0, bottom: 0, left: 0 });
     };
 
     emitInsets();
