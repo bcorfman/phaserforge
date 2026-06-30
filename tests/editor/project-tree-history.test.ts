@@ -449,6 +449,91 @@ describe('project tree + history helpers', () => {
     expect(view.staleRevisions.map((revision) => revision.id)).toEqual(['rev-35d']);
   });
 
+  it('groups adjacent repetitive revisions into a single history entry with named details', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstProject = structuredClone(sampleProject);
+    firstProject.scenes[firstProject.initialSceneId].entities.enemy_c = {
+      id: 'enemy_c',
+      name: 'enemy_c',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    };
+    const secondProject = structuredClone(firstProject);
+    secondProject.scenes[secondProject.initialSceneId].entities.ship_a = {
+      id: 'ship_a',
+      name: 'ship_a',
+      x: 96,
+      y: 64,
+      width: 16,
+      height: 16,
+    };
+    const thirdProject = structuredClone(secondProject);
+    thirdProject.scenes[thirdProject.initialSceneId].entities.effect_purple = {
+      id: 'effect_purple',
+      name: 'effect_purple',
+      x: 128,
+      y: 64,
+      width: 16,
+      height: 16,
+    };
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-27T23:00:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstProject, {
+      id: 'rev-first',
+      updatedAt: '2026-06-27T23:00:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondProject, {
+      id: 'rev-second',
+      updatedAt: '2026-06-27T23:00:40.000Z',
+      reason: 'autosave',
+    });
+    const thirdRevision = createProjectRevision(thirdProject, {
+      id: 'rev-third',
+      updatedAt: '2026-06-27T23:01:00.000Z',
+      reason: 'autosave',
+    });
+
+    const revisions = appendProjectRevision(
+      appendProjectRevision(
+        appendProjectRevision([baseRevision], firstRevision, 25),
+        secondRevision,
+        25,
+      ),
+      thirdRevision,
+      25,
+    );
+
+    const view = buildProjectHistoryViewModel({
+      revisions,
+      archivedRevisions: [],
+      nowMs: new Date('2026-06-28T12:00:00.000Z').valueOf(),
+      windowDays: DEFAULT_PROJECT_HISTORY_WINDOW_DAYS,
+    });
+
+    expect(view.visibleEntries).toHaveLength(2);
+    expect(view.visibleEntries[0]).toMatchObject({
+      summary: '3 entities added',
+      hiddenDetailCount: 3,
+    });
+    expect(view.visibleEntries[0]?.detailItems).toEqual([
+      'effect_purple added',
+      'ship_a added',
+      'enemy_c added',
+    ]);
+    expect(view.visibleEntries[0]?.revisions.map((revision) => revision.id)).toEqual([
+      'rev-third',
+      'rev-second',
+      'rev-first',
+    ]);
+    expect(view.visibleEntries[1]?.revisions.map((revision) => revision.id)).toEqual(['rev-base']);
+  });
+
   it('archives old revisions into hidden storage while rebuilding the remaining active chain', () => {
     const baseProject = structuredClone(sampleProject);
     const olderProject = structuredClone(sampleProject);
