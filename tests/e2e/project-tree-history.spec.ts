@@ -35,7 +35,7 @@ test.describe('Project tree + history', () => {
     await expect(revisionCards.nth(1)).toBeVisible();
     await expect(revisionCards.first()).toContainText('Renamed to History Demo');
     await expect(page.getByTestId(/project-revision-toggle-/)).toHaveCount(0);
-    await expect(page.getByTestId(/project-revision-teaser-/)).toHaveCount(0);
+    await expect(revisionCards.first().getByTestId(/project-revision-teaser-/)).toHaveCount(0);
     await expect(revisionsPane).toContainText(/(Initial snapshot|entity added|entities added|scene added|scenes added|Minor edits)/);
     await expect(revisionsPane).not.toContainText('Autosave checkpoint');
     await expect(revisionsPane).not.toContainText('Start:');
@@ -132,5 +132,119 @@ test.describe('Project tree + history', () => {
     await detailList.click();
     await expect(page.getByTestId('project-revision-details-rev-newer')).toHaveCount(0);
     await expect(page.getByTestId('project-revision-teaser-rev-base')).toHaveCount(0);
+  });
+
+  test('groups repetitive adjacent history rows and expands to named details @smoke', async ({ page }) => {
+    const baseProject = structuredClone(sampleProject);
+    const firstProject = structuredClone(sampleProject);
+    firstProject.scenes[firstProject.initialSceneId].entities.enemy_c = {
+      id: 'enemy_c',
+      name: 'enemy_c',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+    const secondProject = structuredClone(firstProject);
+    secondProject.scenes[secondProject.initialSceneId].entities.ship_a = {
+      id: 'ship_a',
+      name: 'ship_a',
+      x: 96,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+    const thirdProject = structuredClone(secondProject);
+    thirdProject.scenes[thirdProject.initialSceneId].entities.effect_purple = {
+      id: 'effect_purple',
+      name: 'effect_purple',
+      x: 128,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-27T23:00:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstProject, {
+      id: 'rev-first',
+      updatedAt: '2026-06-27T23:00:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondProject, {
+      id: 'rev-second',
+      updatedAt: '2026-06-27T23:00:40.000Z',
+      reason: 'autosave',
+    });
+    const thirdRevision = createProjectRevision(thirdProject, {
+      id: 'rev-third',
+      updatedAt: '2026-06-27T23:01:00.000Z',
+      reason: 'autosave',
+    });
+    const revisions = appendProjectRevision(
+      appendProjectRevision(
+        appendProjectRevision([baseRevision], firstRevision, 25),
+        secondRevision,
+        25,
+      ),
+      thirdRevision,
+      25,
+    );
+    const record = {
+      ...buildStoredProjectRecord(thirdProject, {
+        id: thirdProject.id,
+        updatedAt: '2026-06-27T23:01:00.000Z',
+        origin: 'local-only',
+        syncStatus: 'local',
+      }),
+      revisions,
+    };
+
+    await page.addInitScript(async ({ seededRecord }) => {
+      const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+        const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+        request.onerror = () => reject(request.error);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('workspaceState')) db.createObjectStore('workspaceState');
+          if (!db.objectStoreNames.contains('preferences')) db.createObjectStore('preferences');
+        };
+        request.onsuccess = () => resolve(request.result);
+      });
+
+      const db = await openDb();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(seededRecord);
+        tx.objectStore('workspaceState').put({
+          activeProjectId: seededRecord.id,
+          syncMode: 'offline',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    }, { seededRecord: record });
+
+    await gotoStudio(page, { forceNavigate: true });
+    await waitForSampleScene(page);
+    await dismissViewHint(page);
+
+    await page.getByTestId('project-tree-manage-button').click();
+    await page.getByTestId('project-manage-history').click();
+
+    const revisionCards = page.locator('.behavior-block[data-testid^="project-revision-"]');
+    await expect(revisionCards).toHaveCount(2);
+    await expect(page.getByTestId('project-revision-row-button-rev-third')).toContainText('3 entities added');
+    await expect(page.getByTestId('project-revision-teaser-rev-third')).toContainText('+3 more changes');
+
+    await page.getByTestId('project-revision-teaser-rev-third').click();
+    const detailList = page.getByTestId('project-revision-details-rev-third');
+    await expect(detailList).toContainText('effect_purple added');
+    await expect(detailList).toContainText('ship_a added');
+    await expect(detailList).toContainText('enemy_c added');
   });
 });

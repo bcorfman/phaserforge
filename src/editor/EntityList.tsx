@@ -13,13 +13,11 @@ import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
 import { EventBus } from '../phaser/EventBus';
 import {
-  buildProjectRevisionDetailItems,
   buildProjectHistoryViewModel,
   buildCopyRevisionDefaultName,
   buildProjectTreeRows,
   DEFAULT_PROJECT_HISTORY_WINDOW_DAYS,
   formatProjectRevisionTimestamp,
-  formatProjectRevisionSummary,
   materializeProjectRevision,
   type ProjectHistoryWindowDays,
   type ProjectRevisionRecord,
@@ -281,6 +279,7 @@ export function EntityListView({
   const previousSidebarScopeRef = useRef<'projectTree' | 'projectRevisions'>('projectTree');
   const historyView = buildProjectHistoryViewModel({
     revisions,
+    historyEvents,
     windowDays: historyWindowDays,
   });
 
@@ -732,16 +731,15 @@ export function EntityListView({
               ))}
             </div>
             <div className="member-list" data-testid="project-revisions-pane">
-              {historyView.visibleRevisions.length === 0 ? (
+              {historyView.visibleEntries.length === 0 ? (
                 <div className="muted">No saved revisions yet.</div>
               ) : (
-                historyView.visibleRevisions.map((revision) => {
-                  const revisionIndex = revisions.findIndex((entry) => entry.id === revision.id);
-                  const previousRevision = revisionIndex >= 0 ? revisions[revisionIndex + 1] : undefined;
-                  const detailItems = buildProjectRevisionDetailItems(revision, previousRevision, revisions, historyEvents);
+                historyView.visibleEntries.map((entry) => {
+                  const revision = entry.primaryRevision;
+                  const detailItems = entry.detailItems;
                   const canExpandDetails = detailItems.length > 1;
                   const isExpanded = expandedRevisionId === revision.id;
-                  const hiddenDetailCount = Math.max(1, detailItems.length - 1);
+                  const hiddenDetailCount = entry.hiddenDetailCount;
                   return (
                     <div key={revision.id} className="behavior-block" data-testid={`project-revision-${revision.id}`}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
@@ -769,7 +767,7 @@ export function EntityListView({
                               className="list-item-meta"
                               style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
                             >
-                              {formatProjectRevisionSummary(revision, previousRevision, revisions, historyEvents)}
+                              {entry.summary}
                             </span>
                           </div>
                           <span
