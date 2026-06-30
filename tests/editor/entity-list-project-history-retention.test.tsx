@@ -153,4 +153,80 @@ describe('EntityList project history retention', () => {
     expect(teaser.getAttribute('style') ?? '').toContain('margin-top: 0');
     expect(divider.className).toContain('scene-graph-menu-divider');
   });
+
+  it('groups repetitive history rows and expands into named per-item details', () => {
+    const baseProject = structuredClone(sampleProject);
+    const firstProject = structuredClone(sampleProject);
+    firstProject.scenes[firstProject.initialSceneId].entities.enemy_c = {
+      id: 'enemy_c',
+      name: 'enemy_c',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+    const secondProject = structuredClone(firstProject);
+    secondProject.scenes[secondProject.initialSceneId].entities.ship_a = {
+      id: 'ship_a',
+      name: 'ship_a',
+      x: 96,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+    const thirdProject = structuredClone(secondProject);
+    thirdProject.scenes[thirdProject.initialSceneId].entities.effect_purple = {
+      id: 'effect_purple',
+      name: 'effect_purple',
+      x: 128,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-27T23:00:00.000Z',
+    });
+    const firstRevision = createProjectRevision(firstProject, {
+      id: 'rev-first',
+      updatedAt: '2026-06-27T23:00:20.000Z',
+      reason: 'autosave',
+    });
+    const secondRevision = createProjectRevision(secondProject, {
+      id: 'rev-second',
+      updatedAt: '2026-06-27T23:00:40.000Z',
+      reason: 'autosave',
+    });
+    const thirdRevision = createProjectRevision(thirdProject, {
+      id: 'rev-third',
+      updatedAt: '2026-06-27T23:01:00.000Z',
+      reason: 'autosave',
+    });
+
+    render(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
+        selection={{ kind: 'none' }}
+        sidebarScope="projectRevisions"
+        revisions={[thirdRevision, secondRevision, firstRevision, baseRevision]}
+        expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
+        dispatch={() => {}}
+      />
+    );
+
+    expect(screen.getAllByTestId(/project-revision-row-button-/)).toHaveLength(2);
+    expect(screen.getByTestId('project-revision-row-button-rev-third').textContent).toContain('3 entities added');
+    expect(screen.getByTestId('project-revision-teaser-rev-third').textContent).toContain('+3 more changes');
+
+    fireEvent.click(screen.getByTestId('project-revision-teaser-rev-third'));
+
+    const detailList = screen.getByTestId('project-revision-details-rev-third');
+    expect(detailList.textContent).toContain('enemy_c added');
+    expect(detailList.textContent).toContain('ship_a added');
+    expect(detailList.textContent).toContain('effect_purple added');
+  });
 });

@@ -6,16 +6,13 @@ import { dismissViewHint, getSceneSnapshot, getState, seedProject, waitForViewpo
 async function expectViewportCentered(page: Page) {
   const state = await getState<{ scene?: { world?: { width: number; height: number } } } | null>(page);
   const world = state?.scene?.world ?? { width: 1024, height: 768 };
-  const insets = await page.evaluate(() => {
+  const topInset = await page.evaluate(() => {
     const overlay = document.querySelector('[data-testid="canvas-overlay"]') as HTMLElement | null;
     const controls = document.querySelector('[data-testid="canvas-overlay-top-right"]') as HTMLElement | null;
-    if (!overlay || !controls) return { top: 0, right: 0 };
+    if (!overlay || !controls) return 0;
     const overlayRect = overlay.getBoundingClientRect();
     const controlsRect = controls.getBoundingClientRect();
-    return {
-      top: Math.max(0, controlsRect.bottom - overlayRect.top + 12),
-      right: Math.max(0, overlayRect.right - controlsRect.left + 12),
-    };
+    return Math.max(0, controlsRect.bottom - overlayRect.top + 12);
   });
 
   const snapshot = await getSceneSnapshot<{
@@ -29,8 +26,7 @@ async function expectViewportCentered(page: Page) {
   }>(page);
   expect(snapshot).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
-  const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height, insets);
-  const centeringInsets = { top: insets.top, right: 0, bottom: 0, left: 0 };
+  const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height, { top: topInset });
   const expectedScroll = getCenteredCameraScroll(
     snapshot.viewportWidth,
     snapshot.viewportHeight,
@@ -39,7 +35,7 @@ async function expectViewportCentered(page: Page) {
     expectedZoom,
     0.5,
     0.5,
-    centeringInsets
+    { top: topInset }
   );
   const clampedExpectedScroll = clampCameraScroll(
     expectedScroll.scrollX,
@@ -50,8 +46,7 @@ async function expectViewportCentered(page: Page) {
     world.height,
     expectedZoom,
     0.5,
-    0.5,
-    centeringInsets
+    0.5
   );
 
   expect(Math.abs(snapshot.zoom - expectedZoom)).toBeLessThanOrEqual(0.01);
