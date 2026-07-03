@@ -1492,12 +1492,28 @@ function buildProjectHistoryEventDraftsForAction(
         : Object.keys(stateAfter.project.scenes[stateAfter.currentSceneId]?.entities ?? {}).find((entityId) => (
           !stateBefore.project.scenes[stateBefore.currentSceneId]?.entities?.[entityId]
         ));
+      const scene = stateAfter.project.scenes[stateAfter.currentSceneId];
       if (!createdEntityId) return undefined;
       return [{
         kind: 'entity.created',
         burstId: `entity.created:${stateAfter.currentSceneId}:${createdEntityId}:${actionBurstToken}`,
         scope: { kind: 'entity', sceneId: stateAfter.currentSceneId, entityId: createdEntityId },
-        summary: 'Added text entity',
+        summary: '1 entity added',
+        details: [`${formatEntityLabel(scene, createdEntityId)} added`],
+      }];
+    }
+    case 'create-entity-from-asset': {
+      const createdEntityId = Object.keys(stateAfter.project.scenes[stateAfter.currentSceneId]?.entities ?? {}).find((entityId) => (
+        !stateBefore.project.scenes[stateBefore.currentSceneId]?.entities?.[entityId]
+      ));
+      const scene = stateAfter.project.scenes[stateAfter.currentSceneId];
+      if (!createdEntityId) return undefined;
+      return [{
+        kind: 'entity.created',
+        burstId: `entity.created:${stateAfter.currentSceneId}:${createdEntityId}:${actionBurstToken}`,
+        scope: { kind: 'entity', sceneId: stateAfter.currentSceneId, entityId: createdEntityId },
+        summary: '1 entity added',
+        details: [`${formatEntityLabel(scene, createdEntityId)} added`],
       }];
     }
     case 'duplicate-entities': {

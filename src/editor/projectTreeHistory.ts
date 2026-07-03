@@ -1,6 +1,6 @@
 import type { Id, ProjectSpec } from '../model/types';
 import { parseProjectYaml } from '../model/serialization';
-import { buildRevisionEventDetailItems, type ProjectHistoryEvent } from './projectHistoryEvents';
+import { buildRevisionEventDetailItems, buildRevisionEventSummaryItems, type ProjectHistoryEvent } from './projectHistoryEvents';
 
 export type SidebarScope = 'projectTree' | 'projectRevisions' | 'scene' | 'project';
 
@@ -783,8 +783,8 @@ function buildRevisionSummaryItemsInternal(
       : undefined;
     return [['Initial snapshot', sceneLabel, entityLabel].filter(Boolean).join(' · ')];
   }
-  const eventDetailItems = buildRevisionEventDetailItems(revision, historyEvents);
-  if (eventDetailItems.length > 0) return eventDetailItems;
+  const eventSummaryItems = buildRevisionEventSummaryItems(revision, historyEvents);
+  if (eventSummaryItems.length > 0) return eventSummaryItems;
   if (revision.changeSummary?.trim()) return [revision.changeSummary.trim()];
 
   const previous = summarizeRevisionContent(previousRevision, undefined, revisionHistory);

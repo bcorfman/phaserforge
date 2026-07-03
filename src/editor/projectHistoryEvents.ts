@@ -139,6 +139,35 @@ export function buildRevisionEventDetailItems(
   });
 }
 
+export function buildRevisionEventSummaryItems(
+  revision: Pick<ProjectRevisionRecord, 'historyEventIds'>,
+  historyEvents: ProjectHistoryEvent[] | undefined,
+): string[] {
+  const events = collectRevisionHistoryEvents(revision, historyEvents);
+  if (events.length === 0) return [];
+
+  const items: string[] = [];
+  let pendingSingleEntityAdds = 0;
+
+  const flushSingleEntityAdds = () => {
+    if (pendingSingleEntityAdds === 0) return;
+    items.push(`${pendingSingleEntityAdds} ${pendingSingleEntityAdds === 1 ? 'entity' : 'entities'} added`);
+    pendingSingleEntityAdds = 0;
+  };
+
+  for (const event of events) {
+    if (event.kind === 'entity.created') {
+      pendingSingleEntityAdds += 1;
+      continue;
+    }
+    flushSingleEntityAdds();
+    items.push(event.summary);
+  }
+
+  flushSingleEntityAdds();
+  return items;
+}
+
 export function partitionHistoryEventsByRevisionIds(
   historyEvents: ProjectHistoryEvent[] | undefined,
   revisionIds: string[] | Set<string>,
