@@ -13,7 +13,9 @@ For feature work or bug fixes, read in this order:
 3. `.repo-memory/regression-playbook.md`
 4. Relevant scoped `AGENTS.md`
 5. Relevant tests and implementation
-6. Relevant `.plans/*` file only when the task needs feature history or workflow context
+6. Relevant top-level `.plans/*` file only when the task needs current workflow context or an active proposal
+
+Use `.plans/archive/` only as historical context after checking current tests and implementation.
 
 ## Durable Product Invariants
 
@@ -53,7 +55,16 @@ For feature work or bug fixes, read in this order:
 - Workflow specifics: `.plans/editor-workflows-inventory.md`
 - Workflow simplification decisions: `.plans/ux-checklist-workflow-simplification.md`
 - Exact regression coverage: tests
-- Feature-by-feature history and proposals: `.plans/`
+- Active workflow/proposal notes: top-level `.plans/`
+- Historical proposals and mockups: `.plans/archive/`
+
+## Truth Precedence
+
+1. Tests and implementation
+2. `AGENTS.md`
+3. `.repo-memory/`
+4. Top-level `.plans/`
+5. `.plans/archive/`
 
 ## Update Rule
 

@@ -142,8 +142,23 @@ It follows the original rule: identify the smallest reusable workflows first, th
 
 #### A31b — Browse Project Revisions
 - Project Tree header → `Manage` → `History`.
+- Use `Past 7 Days`, `Past 14`, or `Past 30` to filter active visible revisions.
 - Select a revision row to preview it in the canvas.
 - Use `Restore...` or `Copy...`, or use the back arrow to return to Project Tree.
+
+#### A31c — Archive Multiple Project Revisions
+- In `Project Revisions`, click `Archive...` to enter archive mode.
+- Use the per-row `Select` controls to mark one or more visible revision rows.
+- Click `Archive Selected` and confirm.
+
+#### A31d — Browse Archived Project Revisions
+- In `Project Revisions`, click `Archived`.
+- Select an archived revision row to preview it in the canvas.
+- Use `Restore...`, `Copy...`, or `Delete...`.
+
+#### A31e — Delete Archived Project Revisions
+- In `Archived`, either use per-row `Delete...` or enter delete mode for multi-select cleanup.
+- Confirm `Delete Permanently` in the dialog.
 
 #### A32 — Create Sprite from an Existing Asset
 - Drag an image/spritesheet asset onto the canvas.

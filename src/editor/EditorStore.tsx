@@ -579,7 +579,9 @@ const EditorContext = createContext<{
       cloudProjects: ProjectLibraryEntry[];
       activeProjectId: string | null;
       activeProjectRevisions: ProjectRevisionRecord[];
+      activeProjectArchivedRevisions: ProjectRevisionRecord[];
       activeProjectHistoryEvents: ProjectHistoryEvent[];
+      activeProjectArchivedHistoryEvents: ProjectHistoryEvent[];
       linkActiveProjectToCloudGame: (gameId: string) => Promise<void>;
       createProject: () => Promise<void>;
       duplicateCurrentProject: () => Promise<void>;
@@ -4574,7 +4576,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [cloudProjects, setCloudProjects] = useState<ProjectLibraryEntry[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeProjectRevisions, setActiveProjectRevisions] = useState<ProjectRevisionRecord[]>([]);
+  const [activeProjectArchivedRevisions, setActiveProjectArchivedRevisions] = useState<ProjectRevisionRecord[]>([]);
   const [activeProjectHistoryEvents, setActiveProjectHistoryEvents] = useState<ProjectHistoryEvent[]>([]);
+  const [activeProjectArchivedHistoryEvents, setActiveProjectArchivedHistoryEvents] = useState<ProjectHistoryEvent[]>([]);
   const activeRecordRef = React.useRef<StoredProjectRecord | null>(null);
   const latestStateRef = React.useRef<EditorState>(state);
   const latestActiveProjectIdRef = React.useRef<string | null>(activeProjectId);
@@ -4685,7 +4689,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       activeRecordRef.current = initialRecord;
       setActiveProjectId(initialRecord.id);
       setActiveProjectRevisions(initialRecord.revisions ?? []);
+      setActiveProjectArchivedRevisions(initialRecord.archivedRevisions ?? []);
       setActiveProjectHistoryEvents(initialRecord.historyEvents ?? []);
+      setActiveProjectArchivedHistoryEvents(initialRecord.archivedHistoryEvents ?? []);
       setLocalProjects((snapshot.localProjects.length > 0 ? snapshot.localProjects : [initialRecord]).map(mapStoredProject));
       const project = structuredClone(initialRecord.project);
       const currentSceneId = project.initialSceneId;
@@ -4738,7 +4744,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     );
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
+    setActiveProjectArchivedRevisions(nextRecord.archivedRevisions ?? []);
     setActiveProjectHistoryEvents(nextRecord.historyEvents ?? []);
+    setActiveProjectArchivedHistoryEvents(nextRecord.archivedHistoryEvents ?? []);
     void projectPersistence.saveProjectRecordImmediately(nextRecord)
       .catch((error) => {
         appendPersistenceDebugEntry('editor-store:save-project-record-immediate-error', {
@@ -4781,7 +4789,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         currentState.lastProjectHistoryEventDrafts,
       );
       activeRecordRef.current = nextRecord;
+      setActiveProjectArchivedRevisions(nextRecord.archivedRevisions ?? []);
       setActiveProjectHistoryEvents(nextRecord.historyEvents ?? []);
+      setActiveProjectArchivedHistoryEvents(nextRecord.archivedHistoryEvents ?? []);
       void projectPersistence.saveProjectRecordImmediately(nextRecord)
         .catch((error) => {
           appendPersistenceDebugEntry('editor-store:save-project-record-immediate-error', {
@@ -4876,7 +4886,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       activeRecordRef.current = local;
       setActiveProjectId(local.id);
       setActiveProjectRevisions(local.revisions ?? []);
+      setActiveProjectArchivedRevisions(local.archivedRevisions ?? []);
       setActiveProjectHistoryEvents(local.historyEvents ?? []);
+      setActiveProjectArchivedHistoryEvents(local.archivedHistoryEvents ?? []);
       dispatchProjectLoad(local.project, `open-project:local:${local.title}`);
       const nextSyncMode: ProjectSyncMode = local.cloudProjectId ? 'online' : state.syncMode;
       dispatch({ type: 'set-sync-mode', syncMode: nextSyncMode });
@@ -4897,7 +4909,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     activeRecordRef.current = cacheRecord;
     setActiveProjectId(cacheRecord.id);
     setActiveProjectRevisions(cacheRecord.revisions ?? []);
+    setActiveProjectArchivedRevisions(cacheRecord.archivedRevisions ?? []);
     setActiveProjectHistoryEvents(cacheRecord.historyEvents ?? []);
+    setActiveProjectArchivedHistoryEvents(cacheRecord.archivedHistoryEvents ?? []);
     dispatchProjectLoad(cacheRecord.project, `open-project:cloud:${cloud.game.title}`);
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     await projectPersistence.setActiveProject(cacheRecord.id, 'online');
@@ -4909,7 +4923,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     activeRecordRef.current = record;
     setActiveProjectId(record.id);
     setActiveProjectRevisions(record.revisions ?? []);
+    setActiveProjectArchivedRevisions(record.archivedRevisions ?? []);
     setActiveProjectHistoryEvents(record.historyEvents ?? []);
+    setActiveProjectArchivedHistoryEvents(record.archivedHistoryEvents ?? []);
     dispatchProjectLoad(record.project, `create-project:${record.title}`);
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
@@ -4921,7 +4937,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     activeRecordRef.current = duplicate;
     setActiveProjectId(duplicate.id);
     setActiveProjectRevisions(duplicate.revisions ?? []);
+    setActiveProjectArchivedRevisions(duplicate.archivedRevisions ?? []);
     setActiveProjectHistoryEvents(duplicate.historyEvents ?? []);
+    setActiveProjectArchivedHistoryEvents(duplicate.archivedHistoryEvents ?? []);
     dispatchProjectLoad(duplicate.project, `duplicate-project:${duplicate.title}`);
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
@@ -4939,7 +4957,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     } satisfies StoredProjectRecord;
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
+    setActiveProjectArchivedRevisions(nextRecord.archivedRevisions ?? []);
     setActiveProjectHistoryEvents(nextRecord.historyEvents ?? []);
+    setActiveProjectArchivedHistoryEvents(nextRecord.archivedHistoryEvents ?? []);
     setLocalProjects((await projectPersistence.saveProjectRecord(nextRecord)).map(mapStoredProject));
   };
 
@@ -4954,22 +4974,29 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     } satisfies StoredProjectRecord;
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
+    setActiveProjectArchivedRevisions(nextRecord.archivedRevisions ?? []);
     setActiveProjectHistoryEvents(nextRecord.historyEvents ?? []);
+    setActiveProjectArchivedHistoryEvents(nextRecord.archivedHistoryEvents ?? []);
     setLocalProjects((await projectPersistence.saveProjectRecord(nextRecord)).map(mapStoredProject));
   };
 
   const copyRevisionToNewProject = async (revisionId: string, name: string) => {
-    const revisions = activeRecordRef.current?.revisions ?? [];
+    const activeRevisions = activeRecordRef.current?.revisions ?? [];
+    const archivedRevisions = activeRecordRef.current?.archivedRevisions ?? [];
+    const revisions = [...activeRevisions, ...archivedRevisions];
     const revision = revisions.find((entry) => entry.id === revisionId);
     if (!revision) return;
-    const project = materializeProjectRevision(revisions, revisionId);
+    const sourceRevisions = activeRevisions.some((entry) => entry.id === revisionId) ? activeRevisions : archivedRevisions;
+    const project = materializeProjectRevision(sourceRevisions, revisionId);
     if (!project) return;
     project.title = name.trim() || project.title;
     const record = await projectPersistence.createLocalProject(project);
     activeRecordRef.current = record;
     setActiveProjectId(record.id);
     setActiveProjectRevisions(record.revisions ?? []);
+    setActiveProjectArchivedRevisions(record.archivedRevisions ?? []);
     setActiveProjectHistoryEvents(record.historyEvents ?? []);
+    setActiveProjectArchivedHistoryEvents(record.archivedHistoryEvents ?? []);
     dispatchProjectLoad(record.project, `copy-revision:${record.title}`);
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
@@ -4984,7 +5011,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     if (!nextRecord) return;
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
+    setActiveProjectArchivedRevisions(nextRecord.archivedRevisions ?? []);
     setActiveProjectHistoryEvents(nextRecord.historyEvents ?? []);
+    setActiveProjectArchivedHistoryEvents(nextRecord.archivedHistoryEvents ?? []);
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
   };
 
@@ -4997,13 +5026,18 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     if (!nextRecord) return;
     activeRecordRef.current = nextRecord;
     setActiveProjectRevisions(nextRecord.revisions ?? []);
+    setActiveProjectArchivedRevisions(nextRecord.archivedRevisions ?? []);
     setActiveProjectHistoryEvents(nextRecord.historyEvents ?? []);
+    setActiveProjectArchivedHistoryEvents(nextRecord.archivedHistoryEvents ?? []);
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
   };
 
   const restoreRevision = async (revisionId: string) => {
     const currentRecord = activeRecordRef.current;
-    const revision = currentRecord?.revisions?.find((entry) => entry.id === revisionId);
+    const activeRevisions = currentRecord?.revisions ?? [];
+    const archivedRevisions = currentRecord?.archivedRevisions ?? [];
+    const revision = activeRevisions.find((entry) => entry.id === revisionId)
+      ?? archivedRevisions.find((entry) => entry.id === revisionId);
     if (!currentRecord || !revision) {
       dispatch({
         type: 'set-status',
@@ -5012,7 +5046,10 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       });
       return;
     }
-    const restoredProject = materializeProjectRevision(currentRecord.revisions ?? [], revisionId);
+    const restoredProject = materializeProjectRevision(
+      activeRevisions.some((entry) => entry.id === revisionId) ? activeRevisions : archivedRevisions,
+      revisionId,
+    );
     if (!restoredProject) {
       dispatch({
         type: 'set-status',
@@ -5061,7 +5098,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       cloudProjects,
       activeProjectId,
       activeProjectRevisions,
+      activeProjectArchivedRevisions,
       activeProjectHistoryEvents,
+      activeProjectArchivedHistoryEvents,
       linkActiveProjectToCloudGame,
       createProject,
       duplicateCurrentProject,
@@ -5073,7 +5112,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       refreshCloudProjects,
       toggleSyncMode,
     },
-  }), [state, localProjects, cloudProjects, activeProjectId, activeProjectRevisions, activeProjectHistoryEvents]);
+  }), [state, localProjects, cloudProjects, activeProjectId, activeProjectRevisions, activeProjectArchivedRevisions, activeProjectHistoryEvents, activeProjectArchivedHistoryEvents]);
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
 }

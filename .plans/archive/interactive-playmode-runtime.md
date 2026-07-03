@@ -145,7 +145,7 @@ Enable transitions between scenes driven by authored actions (`Call`).
 Load and play audio in GameScene; author per-scene ambience/music.
 
 ### Mockups
-- Audio library + scene audio inspector: `.plans/mockups/interactive-playmode-runtime/phase5-audio.svg`
+- Audio library + scene audio inspector: `.plans/archive/mockups/interactive-playmode-runtime/phase5-audio.svg`
 
 ### Model
 - [x] Project-level audio library: asset id -> URL/dataUrl
@@ -169,8 +169,8 @@ Load and play audio in GameScene; author per-scene ambience/music.
 Semantic input actions usable by conditions/calls, without leaking raw device keys into authored logic.
 
 ### Mockups
-- Input Maps panel + scene binding: `.plans/mockups/interactive-playmode-runtime/phase6-input-maps.svg`
-- Mouse cursor + click + gamepad button capture (follow-up): `.plans/mockups/interactive-playmode-runtime/phase6b-mouse-gamepad.svg`
+- Input Maps panel + scene binding: `.plans/archive/mockups/interactive-playmode-runtime/phase6-input-maps.svg`
+- Mouse cursor + click + gamepad button capture (follow-up): `.plans/archive/mockups/interactive-playmode-runtime/phase6b-mouse-gamepad.svg`
 
 ### Model
 - [x] `InputActionMapSpec`: actions -> bindings (`keyboard`, `mouse`, `pointer`, `gamepad`)
@@ -206,7 +206,7 @@ Semantic input actions usable by conditions/calls, without leaking raw device ke
 Author collision rules and trigger zones; runtime emits enter/stay/exit events.
 
 ### Mockups
-- Collisions + triggers authoring (rules + zones): `.plans/mockups/interactive-playmode-runtime/phase7-collisions-triggers.svg`
+- Collisions + triggers authoring (rules + zones): `.plans/archive/mockups/interactive-playmode-runtime/phase7-collisions-triggers.svg`
 
 ### Model
 - [x] Entity:

@@ -11,7 +11,7 @@ Recommended shape:
 
 This plan intentionally avoids a local Postgres fallback. For a browser editor, IndexedDB is the simpler and more appropriate local tier.
 
-History/versioning details are intentionally out of scope here. See [project-history-and-asset-dedup-plan-2026-06-05.md](/home/bcorfman/dev/phaserforge/.plans/project-history-and-asset-dedup-plan-2026-06-05.md) for the dedicated plan covering `Manage` → `History`, checkpoint policy, and asset dedupe/separation.
+History/versioning details are intentionally out of scope here. See [project-history-and-asset-dedup-plan-2026-06-05.md](/home/bcorfman/dev/phaserforge/.plans/archive/project-history-and-asset-dedup-plan-2026-06-05.md) for the dedicated plan covering `Manage` → `History`, checkpoint policy, and asset dedupe/separation.
 
 ## Goals
 - Survive browser tab refreshes and ordinary Menlo session churn better than `localStorage` / `sessionStorage`.
