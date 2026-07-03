@@ -26,6 +26,7 @@ Source of truth for naming: `.plans/editor-workflows-inventory.md`.
 - Grid snap: **A10** (Ctrl/Cmd+G as primary; button as parity).
 - Formation authoring: **W2/W3** (create/tune in Inspector + direct manipulation).
 - Actions/Events authoring: **W14** (**Actions/Events** panel is the only “discover → create handler → edit steps” surface; no separate Attached Actions UI).
+- History cleanup: **A31b → A31c → A31d/A31e** (browse current revisions, enter archive mode for bulk clutter cleanup, use Archived for destructive pruning only).
 
 ## 1) Selection + Grouping / Ungrouping
 
@@ -78,3 +79,12 @@ Source of truth for naming: `.plans/editor-workflows-inventory.md`.
   - [x] There is **one primary path** that is discoverable.
   - [x] Secondary paths (shortcuts) are consistent with the primary path, not separate behaviors.
   - [x] The path keeps UI interactions **co-located** (short pointer travel) where possible.
+
+## 7) History Cleanup
+
+- [x] **Keep (primary):** bulk archive from inside `Project Revisions`, not from a separate management surface.
+- [x] **Keep (secondary):** `Archived` as a sibling history state in the same pane.
+- [x] **Delete / merge:**
+  - [x] Keep permanent delete out of the main active-history view.
+  - [x] Reuse the revision-card pattern and existing dialog language instead of inventing a new history table/admin UI.
+- [x] **Primary path rule:** clutter reduction uses archive first; destructive pruning happens only after switching to `Archived`.

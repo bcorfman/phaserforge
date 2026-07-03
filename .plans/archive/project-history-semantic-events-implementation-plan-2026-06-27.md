@@ -3,9 +3,9 @@
 Date: 2026-06-27
 
 Related:
-- `.plans/project-history-semantic-events-adr-2026-06-27.md`
-- `.plans/project-history-revision-grouping-heuristic-2026-06-21.md`
-- `.plans/project-tree-history-implementation-plan-2026-06-19.md`
+- `.plans/archive/project-history-semantic-events-adr-2026-06-27.md`
+- `.plans/archive/project-history-revision-grouping-heuristic-2026-06-21.md`
+- `.plans/archive/project-tree-history-implementation-plan-2026-06-19.md`
 
 ## Summary
 

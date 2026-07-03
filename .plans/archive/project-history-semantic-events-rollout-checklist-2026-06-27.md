@@ -3,8 +3,8 @@
 Date: 2026-06-27
 
 Related:
-- `.plans/project-history-semantic-events-implementation-plan-2026-06-27.md`
-- `.plans/project-history-semantic-events-adr-2026-06-27.md`
+- `.plans/archive/project-history-semantic-events-implementation-plan-2026-06-27.md`
+- `.plans/archive/project-history-semantic-events-adr-2026-06-27.md`
 
 ## Completed
 

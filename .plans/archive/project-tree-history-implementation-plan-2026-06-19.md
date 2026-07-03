@@ -4,13 +4,13 @@
 Implement a single left-sidebar `Project Tree` that replaces the current separate `Scene` and `Project` sidebar tabs, adds project-root management actions, and introduces a `Project Revisions` drill-in pane with safe `Copy...` and `Restore...` dialogs.
 
 This plan follows the approved mockups in:
-- `.plans/mockups/project-tree-history-2026-06-19/01-project-tree-manage-menu.svg`
-- `.plans/mockups/project-tree-history-2026-06-19/02-project-revisions-pane.svg`
-- `.plans/mockups/project-tree-history-2026-06-19/03-project-inline-rename.svg`
-- `.plans/mockups/project-tree-history-2026-06-19/04-copy-dialog.svg`
-- `.plans/mockups/project-tree-history-2026-06-19/05-restore-dialog.svg`
+- `.plans/archive/mockups/project-tree-history-2026-06-19/01-project-tree-manage-menu.svg`
+- `.plans/archive/mockups/project-tree-history-2026-06-19/02-project-revisions-pane.svg`
+- `.plans/archive/mockups/project-tree-history-2026-06-19/03-project-inline-rename.svg`
+- `.plans/archive/mockups/project-tree-history-2026-06-19/04-copy-dialog.svg`
+- `.plans/archive/mockups/project-tree-history-2026-06-19/05-restore-dialog.svg`
 
-It also refines the earlier history plan in `.plans/project-history-and-asset-dedup-plan-2026-06-05.md` by defining the editor-side workflows and exact restore semantics.
+It also refines the earlier history plan in `.plans/archive/project-history-and-asset-dedup-plan-2026-06-05.md` by defining the editor-side workflows and exact restore semantics.
 
 ## Product decisions locked in
 - The left sidebar no longer has separate `Scene` and `Project` tabs.

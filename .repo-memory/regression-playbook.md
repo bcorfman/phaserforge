@@ -62,10 +62,11 @@ Use this file to keep previously solved bug classes from drifting back in.
 ## Choosing Memory vs Plan vs Test
 
 - Put durable repo-wide rules in `.repo-memory/product-memory.md`.
-- Put feature proposals, rollout steps, and historical design notes in `.plans/`.
+- Put active feature proposals or current workflow notes in top-level `.plans/`.
+- Put superseded, partial, or historical design notes in `.plans/archive/`.
 - Put executable behavior guarantees in tests.
-- If the lesson came from repeated fixes, confirm it against tests or recent plans before promoting it into repo memory.
-- Transcript archive evidence can help identify repeated bug classes, but tests and current product docs should remain the final source of truth.
+- If the lesson came from repeated fixes, confirm it against tests or recent top-level plans before promoting it into repo memory.
+- Transcript archive evidence and archived plans can help identify repeated bug classes, but tests and current product docs remain the final source of truth.
 
 ## Keep It Small
 

@@ -4,11 +4,11 @@ Date: 2026-05-17
 
 This plan covers implementing the following mockups:
 
-- `.plans/mockups/pattern-demo-quality-of-life-2026-05-17/01-text-entity-create-and-inspect.svg`
-- `.plans/mockups/pattern-demo-quality-of-life-2026-05-17/03-bounds-helper-calculator.svg`
-- `.plans/mockups/pattern-demo-quality-of-life-2026-05-17/04-duplicate-entity-options.svg`
-- `.plans/mockups/pattern-demo-quality-of-life-2026-05-17/06-loop-templates.svg`
-- `.plans/mockups/pattern-demo-quality-of-life-2026-05-17/07-align-distribute-spacing-panel.svg`
+- `.plans/archive/mockups/pattern-demo-quality-of-life-2026-05-17/01-text-entity-create-and-inspect.svg`
+- `.plans/archive/mockups/pattern-demo-quality-of-life-2026-05-17/03-bounds-helper-calculator.svg`
+- `.plans/archive/mockups/pattern-demo-quality-of-life-2026-05-17/04-duplicate-entity-options.svg`
+- `.plans/archive/mockups/pattern-demo-quality-of-life-2026-05-17/06-loop-templates.svg`
+- `.plans/archive/mockups/pattern-demo-quality-of-life-2026-05-17/07-align-distribute-spacing-panel.svg`
 
 ## Summary
 
