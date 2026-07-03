@@ -164,7 +164,9 @@ export function EntityList() {
       revisionDialogs={revisionDialogs}
       previewRevisionId={revisionPreview?.revisionId}
       revisions={persistence.activeProjectRevisions}
+      archivedRevisions={persistence.activeProjectArchivedRevisions}
       historyEvents={persistence.activeProjectHistoryEvents}
+      archivedHistoryEvents={persistence.activeProjectArchivedHistoryEvents}
       expandedGroups={expandedGroups}
       mode={mode}
       dispatch={dispatch}
@@ -200,7 +202,9 @@ export function EntityListView({
   revisionDialogs = {},
   previewRevisionId,
   revisions = [],
+  archivedRevisions = [],
   historyEvents = [],
+  archivedHistoryEvents = [],
   expandedGroups,
   mode,
   dispatch,
@@ -223,7 +227,9 @@ export function EntityListView({
   revisionDialogs?: { copyRevisionId?: string; restoreRevisionId?: string };
   previewRevisionId?: string;
   revisions?: ProjectRevisionRecord[];
+  archivedRevisions?: ProjectRevisionRecord[];
   historyEvents?: ProjectHistoryEvent[];
+  archivedHistoryEvents?: ProjectHistoryEvent[];
   expandedGroups: Record<string, boolean>;
   mode: 'edit' | 'play';
   dispatch: (action: any) => void;
@@ -273,15 +279,23 @@ export function EntityListView({
   const duplicateDialogRootRef = useRef<HTMLDivElement | null>(null);
   const [copyRevisionName, setCopyRevisionName] = useState('');
   const [expandedRevisionId, setExpandedRevisionId] = useState<string | null>(null);
+  const [historyPaneMode, setHistoryPaneMode] = useState<'active' | 'archived'>('active');
+  const [historySelectionMode, setHistorySelectionMode] = useState<'none' | 'archive' | 'delete'>('none');
+  const [selectedHistoryRevisionIds, setSelectedHistoryRevisionIds] = useState<string[]>([]);
+  const [historyActionDialog, setHistoryActionDialog] = useState<{ kind: 'archive' | 'delete'; revisionIds: string[] } | null>(null);
   const normalizedSidebarScope = sidebarScope === 'projectRevisions' ? 'projectRevisions' : 'projectTree';
   const [historyWindowDays, setHistoryWindowDays] = useState<ProjectHistoryWindowDays>(DEFAULT_PROJECT_HISTORY_WINDOW_DAYS);
   const [historyRetentionDialogOpen, setHistoryRetentionDialogOpen] = useState(false);
   const previousSidebarScopeRef = useRef<'projectTree' | 'projectRevisions'>('projectTree');
   const historyView = buildProjectHistoryViewModel({
     revisions,
+    archivedRevisions,
     historyEvents,
+    archivedHistoryEvents,
     windowDays: historyWindowDays,
   });
+  const historyEntries = historyPaneMode === 'archived' ? historyView.archivedEntries : historyView.visibleEntries;
+  const historySourceRevisions = historyPaneMode === 'archived' ? historyView.archivedRevisions : revisions;
 
   useEffect(() => {
     setExpandedScenes((prev) => ({ ...prev, [currentSceneId]: true }));
@@ -293,24 +307,45 @@ export function EntityListView({
   }, [project.id, project.title, projectRootEditing]);
 
   useEffect(() => {
-    const revision = revisions.find((entry) => entry.id === revisionDialogs.copyRevisionId);
+    const revision = [...revisions, ...archivedRevisions].find((entry) => entry.id === revisionDialogs.copyRevisionId);
     if (!revision) return;
     setCopyRevisionName(buildCopyRevisionDefaultName(project.title, revision));
-  }, [project.title, revisionDialogs.copyRevisionId, revisions]);
+  }, [archivedRevisions, project.title, revisionDialogs.copyRevisionId, revisions]);
 
   useEffect(() => {
     const previousSidebarScope = previousSidebarScopeRef.current;
     if (normalizedSidebarScope === 'projectRevisions' && previousSidebarScope !== 'projectRevisions') {
       setHistoryWindowDays(DEFAULT_PROJECT_HISTORY_WINDOW_DAYS);
       setHistoryRetentionDialogOpen(historyView.staleRevisions.length > 0);
+      setHistoryPaneMode('active');
+      setHistorySelectionMode('none');
+      setSelectedHistoryRevisionIds([]);
+      setHistoryActionDialog(null);
     }
     if (normalizedSidebarScope !== 'projectRevisions') {
       setHistoryWindowDays(DEFAULT_PROJECT_HISTORY_WINDOW_DAYS);
       setHistoryRetentionDialogOpen(false);
       setExpandedRevisionId(null);
+      setHistoryPaneMode('active');
+      setHistorySelectionMode('none');
+      setSelectedHistoryRevisionIds([]);
+      setHistoryActionDialog(null);
     }
     previousSidebarScopeRef.current = normalizedSidebarScope;
   }, [historyView.staleRevisions.length, normalizedSidebarScope]);
+
+  const toggleHistoryRevisionSelection = (revisionId: string) => {
+    setSelectedHistoryRevisionIds((prev) => (
+      prev.includes(revisionId)
+        ? prev.filter((id) => id !== revisionId)
+        : [...prev, revisionId]
+    ));
+  };
+
+  const exitHistorySelectionMode = () => {
+    setHistorySelectionMode('none');
+    setSelectedHistoryRevisionIds([]);
+  };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -668,8 +703,8 @@ export function EntityListView({
   };
 
   const projectTreeRows = buildProjectTreeRows(project, currentSceneId);
-  const selectedCopyRevision = revisions.find((entry) => entry.id === revisionDialogs.copyRevisionId);
-  const selectedRestoreRevision = revisions.find((entry) => entry.id === revisionDialogs.restoreRevisionId);
+  const selectedCopyRevision = [...revisions, ...archivedRevisions].find((entry) => entry.id === revisionDialogs.copyRevisionId);
+  const selectedRestoreRevision = [...revisions, ...archivedRevisions].find((entry) => entry.id === revisionDialogs.restoreRevisionId);
 
   const handleDropOnGroup = (groupId: string, event: React.DragEvent, index?: number) => {
     event.preventDefault();
@@ -720,36 +755,91 @@ export function EntityListView({
                 <button
                   key={windowDays}
                   type="button"
-                  className={`button button-compact ${historyWindowDays === windowDays ? 'active' : ''}`}
+                  className={`button button-compact ${historyPaneMode === 'active' && historyWindowDays === windowDays ? 'active' : ''}`}
                   data-testid={`project-history-filter-${windowDays}`}
                   role="tab"
-                  aria-selected={historyWindowDays === windowDays}
-                  onClick={() => setHistoryWindowDays(windowDays)}
+                  aria-selected={historyPaneMode === 'active' && historyWindowDays === windowDays}
+                  onClick={() => {
+                    setHistoryPaneMode('active');
+                    setHistoryWindowDays(windowDays);
+                    exitHistorySelectionMode();
+                  }}
                 >
                   {windowDays === 7 ? 'Past 7 Days' : `Past ${windowDays}`}
                 </button>
               ))}
+              <button
+                type="button"
+                className={`button button-compact ${historyPaneMode === 'archived' ? 'active' : ''}`}
+                data-testid="project-history-show-archived"
+                role="tab"
+                aria-selected={historyPaneMode === 'archived'}
+                onClick={() => {
+                  setHistoryPaneMode('archived');
+                  exitHistorySelectionMode();
+                }}
+              >
+                Archived
+              </button>
+              {historyPaneMode === 'active' ? (
+                <button
+                  type="button"
+                  className={`button button-compact ${historySelectionMode === 'archive' ? 'active' : ''}`}
+                  data-testid="project-history-enter-archive-mode"
+                  onClick={() => {
+                    setHistorySelectionMode((prev) => prev === 'archive' ? 'none' : 'archive');
+                    setSelectedHistoryRevisionIds([]);
+                  }}
+                >
+                  Archive...
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`button button-compact ${historySelectionMode === 'delete' ? 'active' : ''}`}
+                  data-testid="project-history-enter-delete-mode"
+                  onClick={() => {
+                    setHistorySelectionMode((prev) => prev === 'delete' ? 'none' : 'delete');
+                    setSelectedHistoryRevisionIds([]);
+                  }}
+                >
+                  Delete...
+                </button>
+              )}
             </div>
             <div className="member-list" data-testid="project-revisions-pane">
-              {historyView.visibleEntries.length === 0 ? (
-                <div className="muted">No saved revisions yet.</div>
+              {historyEntries.length === 0 ? (
+                <div className="muted">{historyPaneMode === 'archived' ? 'No archived revisions yet.' : 'No saved revisions yet.'}</div>
               ) : (
-                historyView.visibleEntries.map((entry) => {
+                historyEntries.map((entry) => {
                   const revision = entry.primaryRevision;
                   const detailItems = entry.detailItems;
                   const canExpandDetails = detailItems.length > 1;
                   const isExpanded = expandedRevisionId === revision.id;
                   const hiddenDetailCount = entry.hiddenDetailCount;
+                  const selectionModeActive = historySelectionMode !== 'none';
+                  const isSelectedForHistoryAction = selectedHistoryRevisionIds.includes(revision.id);
                   return (
                     <div key={revision.id} className="behavior-block" data-testid={`project-revision-${revision.id}`}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                        {selectionModeActive ? (
+                          <button
+                            type="button"
+                            className={`button button-compact ${isSelectedForHistoryAction ? 'active' : ''}`}
+                            data-testid={`project-history-select-${revision.id}`}
+                            aria-pressed={isSelectedForHistoryAction}
+                            onClick={() => toggleHistoryRevisionSelection(revision.id)}
+                          >
+                            {isSelectedForHistoryAction ? 'Selected' : 'Select'}
+                          </button>
+                        ) : null}
                         <button
                           className={`list-item ${previewRevisionId === revision.id ? 'active' : ''}`}
                           type="button"
                           data-testid={`project-revision-row-button-${revision.id}`}
                           style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'start' }}
                           onClick={() => {
-                            const previewProject = materializeProjectRevision(revisions, revision.id);
+                            const previewProject = materializeProjectRevision(historySourceRevisions, revision.id);
                             if (!previewProject) return;
                             dispatch({
                               type: 'set-revision-preview',
@@ -853,6 +943,25 @@ export function EntityListView({
                         >
                           Copy...
                         </button>
+                        {historyPaneMode === 'active' ? (
+                          <button
+                            className="button"
+                            data-testid={`project-revision-archive-${revision.id}`}
+                            type="button"
+                            onClick={() => setHistoryActionDialog({ kind: 'archive', revisionIds: [revision.id] })}
+                          >
+                            Archive...
+                          </button>
+                        ) : (
+                          <button
+                            className="button"
+                            data-testid={`project-revision-delete-${revision.id}`}
+                            type="button"
+                            onClick={() => setHistoryActionDialog({ kind: 'delete', revisionIds: [revision.id] })}
+                          >
+                            Delete...
+                          </button>
+                        )}
                       </div>
                       <div
                         className="scene-graph-menu-divider"
@@ -864,6 +973,48 @@ export function EntityListView({
                 })
               )}
             </div>
+            {historySelectionMode === 'archive' && historyPaneMode === 'active' ? (
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="button"
+                  data-testid="project-history-cancel-selection"
+                  onClick={exitHistorySelectionMode}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="button"
+                  data-testid="project-history-archive-selected"
+                  disabled={selectedHistoryRevisionIds.length === 0}
+                  onClick={() => setHistoryActionDialog({ kind: 'archive', revisionIds: selectedHistoryRevisionIds })}
+                >
+                  Archive Selected
+                </button>
+              </div>
+            ) : null}
+            {historySelectionMode === 'delete' && historyPaneMode === 'archived' ? (
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="button"
+                  data-testid="project-history-cancel-delete-selection"
+                  onClick={exitHistorySelectionMode}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="button button-danger"
+                  data-testid="project-history-delete-selected"
+                  disabled={selectedHistoryRevisionIds.length === 0}
+                  onClick={() => setHistoryActionDialog({ kind: 'delete', revisionIds: selectedHistoryRevisionIds })}
+                >
+                  Delete Selected
+                </button>
+              </div>
+            ) : null}
             {historyRetentionDialogOpen && historyView.staleRevisions.length > 0 ? (
               <div
                 className="scene-graph-menu"
@@ -914,6 +1065,62 @@ export function EntityListView({
                     }}
                   >
                     Delete
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {historyActionDialog ? (
+              <div
+                className="scene-graph-menu"
+                style={{ position: 'fixed', left: '50%', top: '20%', transform: 'translateX(-50%)', zIndex: 60, minWidth: 460 }}
+                data-testid={historyActionDialog.kind === 'archive' ? 'project-history-archive-dialog' : 'project-history-delete-dialog'}
+                role="dialog"
+                aria-label={historyActionDialog.kind === 'archive' ? 'Project history archive dialog' : 'Project history delete dialog'}
+              >
+                <div className="scene-graph-menu-hint">
+                  {historyActionDialog.kind === 'archive'
+                    ? `Archive ${historyActionDialog.revisionIds.length === 1 ? 'this revision' : `${historyActionDialog.revisionIds.length} revisions`}?`
+                    : `Delete ${historyActionDialog.revisionIds.length === 1 ? 'this archived revision' : `${historyActionDialog.revisionIds.length} archived revisions`} permanently?`}
+                </div>
+                <div style={{ padding: '0.75rem', display: 'grid', gap: 8 }}>
+                  <div>
+                    {historyActionDialog.kind === 'archive'
+                      ? 'Archived revisions leave the default History list but remain available in Archived History for restore or copy.'
+                      : 'Deleted archived revisions are removed permanently and will no longer be available for restore or copy.'}
+                  </div>
+                </div>
+                <div style={{ padding: '0 0.75rem 0.75rem 0.75rem', display: 'grid', gap: 4 }}>
+                  {historyActionDialog.revisionIds.map((revisionId) => {
+                    const revision = [...revisions, ...archivedRevisions].find((entry) => entry.id === revisionId);
+                    if (!revision) return null;
+                    return <div key={revision.id} className="list-item-meta">{revision.title} · {formatProjectRevisionTimestamp(revision)}</div>;
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className="button"
+                    data-testid={historyActionDialog.kind === 'archive' ? 'project-history-archive-cancel' : 'project-history-delete-cancel'}
+                    onClick={() => setHistoryActionDialog(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className={historyActionDialog.kind === 'archive' ? 'button' : 'button button-danger'}
+                    data-testid={historyActionDialog.kind === 'archive' ? 'project-history-archive-confirm' : 'project-history-delete-confirm'}
+                    onClick={() => {
+                      if (historyActionDialog.kind === 'archive') {
+                        onArchiveHistoryRevisions(historyActionDialog.revisionIds);
+                        setHistoryPaneMode('active');
+                      } else {
+                        onDeleteHistoryRevisions(historyActionDialog.revisionIds);
+                      }
+                      setHistoryActionDialog(null);
+                      exitHistorySelectionMode();
+                    }}
+                  >
+                    {historyActionDialog.kind === 'archive' ? 'Archive' : 'Delete Permanently'}
                   </button>
                 </div>
               </div>

@@ -2,7 +2,7 @@
 
 Reference: `/home/bcorfman/dev/arcadeactions/examples/stars.py`
 
-This document is written in the same “do-this-in-Studio” style as `.plans/pattern_demo_workflow.md`, but `stars.py` cannot currently be duplicated faithfully in Studio without missing/extra product capabilities (listed in **Why this can’t be duplicated (yet)**).
+This document is written in the same “do-this-in-Studio” style as `.plans/archive/pattern_demo_workflow.md`, but `stars.py` cannot currently be duplicated faithfully in Studio without missing/extra product capabilities (listed in **Why this can’t be duplicated (yet)**).
 
 ## Target behavior (what `stars.py` does)
 

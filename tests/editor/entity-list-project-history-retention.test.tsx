@@ -89,6 +89,88 @@ describe('EntityList project history retention', () => {
     expect(screen.getByText('Ten Day Build')).toBeTruthy();
   });
 
+  it('supports bulk archive from the main history pane', () => {
+    const firstProject = structuredClone(sampleProject);
+    firstProject.title = 'First Revision';
+    const firstRevision = createProjectRevision(firstProject, {
+      id: 'rev-first',
+      updatedAt: '2026-06-24T12:00:00.000Z',
+    });
+    const secondProject = structuredClone(sampleProject);
+    secondProject.title = 'Second Revision';
+    const secondRevision = createProjectRevision(secondProject, {
+      id: 'rev-second',
+      updatedAt: '2026-06-23T12:00:00.000Z',
+    });
+    const onArchiveHistoryRevisions = vi.fn();
+
+    render(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
+        selection={{ kind: 'none' }}
+        sidebarScope="projectRevisions"
+        revisions={[firstRevision, secondRevision]}
+        expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
+        dispatch={() => {}}
+        onArchiveHistoryRevisions={onArchiveHistoryRevisions}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('project-history-enter-archive-mode'));
+    fireEvent.click(screen.getByTestId('project-history-select-rev-first'));
+    fireEvent.click(screen.getByTestId('project-history-select-rev-second'));
+    fireEvent.click(screen.getByTestId('project-history-archive-selected'));
+    fireEvent.click(screen.getByTestId('project-history-archive-confirm'));
+
+    expect(onArchiveHistoryRevisions).toHaveBeenCalledWith(['rev-first', 'rev-second']);
+  });
+
+  it('keeps delete controls out of the main history list and shows them in archived history', () => {
+    const activeRevision = createProjectRevision(sampleProject, {
+      id: 'rev-active',
+      updatedAt: '2026-06-24T12:00:00.000Z',
+    });
+    const archivedProject = structuredClone(sampleProject);
+    archivedProject.title = 'Archived Revision';
+    const archivedRevision = createProjectRevision(archivedProject, {
+      id: 'rev-archived',
+      updatedAt: '2026-06-10T12:00:00.000Z',
+    });
+    const onDeleteHistoryRevisions = vi.fn();
+
+    render(
+      <EntityListView
+        project={sampleProject}
+        currentSceneId={sampleProject.initialSceneId}
+        scene={sampleProject.scenes[sampleProject.initialSceneId]}
+        selection={{ kind: 'none' }}
+        sidebarScope="projectRevisions"
+        revisions={[activeRevision]}
+        archivedRevisions={[archivedRevision]}
+        expandedGroups={{ 'g-enemies': false }}
+        mode="edit"
+        dispatch={() => {}}
+        onDeleteHistoryRevisions={onDeleteHistoryRevisions}
+      />
+    );
+
+    expect(screen.queryByTestId('project-history-delete-selected')).toBeNull();
+    expect(screen.queryByTestId('project-revision-delete-rev-active')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('project-history-show-archived'));
+
+    expect(screen.getByText('Archived Revision')).toBeTruthy();
+    expect(screen.getByTestId('project-revision-delete-rev-archived')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('project-revision-delete-rev-archived'));
+    fireEvent.click(screen.getByTestId('project-history-delete-confirm'));
+
+    expect(onDeleteHistoryRevisions).toHaveBeenCalledWith(['rev-archived']);
+  });
+
   it('renders each revision timestamp in a dedicated non-wrapping end column', () => {
     const revision = createProjectRevision(sampleProject, {
       id: 'rev-layout',

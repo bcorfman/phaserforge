@@ -1023,12 +1023,14 @@ export function buildProjectHistoryViewModel({
   revisions,
   archivedRevisions,
   historyEvents,
+  archivedHistoryEvents,
   windowDays = DEFAULT_PROJECT_HISTORY_WINDOW_DAYS,
   nowMs = Date.now(),
 }: {
   revisions: ProjectRevisionRecord[] | undefined;
   archivedRevisions?: ProjectRevisionRecord[] | undefined;
   historyEvents?: ProjectHistoryEvent[] | undefined;
+  archivedHistoryEvents?: ProjectHistoryEvent[] | undefined;
   windowDays?: ProjectHistoryWindowDays;
   nowMs?: number;
 }): {
@@ -1036,8 +1038,10 @@ export function buildProjectHistoryViewModel({
   visibleEntries: ProjectHistoryVisibleEntry[];
   staleRevisions: ProjectRevisionRecord[];
   archivedRevisions: ProjectRevisionRecord[];
+  archivedEntries: ProjectHistoryVisibleEntry[];
 } {
   const activeRevisions = Array.isArray(revisions) ? revisions.filter(Boolean) : [];
+  const archived = Array.isArray(archivedRevisions) ? archivedRevisions.filter(Boolean) : [];
   const visibleRevisions = activeRevisions.filter((revision) => (
     isRevisionWithinWindow(revision, windowDays, nowMs)
     && !isRevisionOlderThanRetentionWindow(revision, nowMs)
@@ -1047,7 +1051,8 @@ export function buildProjectHistoryViewModel({
     visibleRevisions,
     visibleEntries: buildProjectHistoryVisibleEntries(visibleRevisions, activeRevisions, historyEvents),
     staleRevisions,
-    archivedRevisions: Array.isArray(archivedRevisions) ? archivedRevisions.filter(Boolean) : [],
+    archivedRevisions: archived,
+    archivedEntries: buildProjectHistoryVisibleEntries(archived, archived, archivedHistoryEvents),
   };
 }
 
