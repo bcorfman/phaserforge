@@ -31,6 +31,7 @@ The claim is narrow on purpose. This is not “a better everything-editor.” It
 - [DeepWiki](https://deepwiki.com/bcorfman/phaserforge) for architecture and feature details
 - [Getting Started](https://bcorfman.github.io/phaserforge/docs) for the guided path
 - [Workflow Reference](https://bcorfman.github.io/phaserforge/docs/reference/editor-workflows) for exact controls and editor flows
+- [.repo-memory/product-memory.md](.repo-memory/product-memory.md) for compact repo-wide invariants and [.repo-memory/regression-playbook.md](.repo-memory/regression-playbook.md) for regression-prevention habits
 
 ## Requirements
 
@@ -51,6 +52,19 @@ The claim is narrow on purpose. This is not “a better everything-editor.” It
 | `npm run docs:dev` | Start the docs site locally |
 
 > For deeper setup, workflows, testing conventions, and cloud publishing details, use the docs and DeepWiki instead of treating this README as the full manual.
+
+## Lightweight Repo Memory
+
+This repo keeps durable, high-value product memory in `.repo-memory/`:
+
+- `product-memory.md`: short product-wide invariants that future changes should preserve
+- `regression-playbook.md`: compact guidance for turning repeated bug classes into lasting guardrails
+
+Everything else stays where it already fits best:
+
+- tests for executable guarantees
+- `.plans/` for feature proposals, rollout notes, and workflow history
+- scoped `AGENTS.md` files for local rules near the code they govern
 
 ## About `log.js`
 
