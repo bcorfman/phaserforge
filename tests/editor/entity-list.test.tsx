@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { EntityListView } from '../../src/editor/EntityList';
 import { createProjectRevision, formatProjectRevisionTimestamp } from '../../src/editor/projectTreeHistory';
 import { sampleProject } from '../../src/model/sampleProject';
 
 describe('EntityList', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders sprites and formations sections without actions', () => {
     const markup = renderToStaticMarkup(
       <EntityListView
@@ -149,6 +153,9 @@ describe('EntityList', () => {
   });
 
   it('renders richer revision metadata in project revisions mode', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-24T12:00:00.000Z'));
+
     const olderRevision = createProjectRevision(sampleProject, {
       id: 'rev-1',
       updatedAt: '2026-06-22T10:11:00.000Z',
