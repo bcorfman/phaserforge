@@ -10,7 +10,9 @@ For feature work or bug fixes, read the smallest useful set of files in this ord
 3. `.repo-memory/regression-playbook.md`
 4. Relevant scoped `AGENTS.md`
 5. Relevant tests and implementation
-6. Relevant `.plans/*` file only when needed for workflow history, feature background, or rollout context
+6. Relevant top-level `.plans/*` file only when needed for current workflow context or an active proposal
+
+Use `.plans/archive/` only for historical context after checking current tests, implementation, and repo memory first.
 
 The goal is to keep durable repo memory compact and reusable, while leaving detailed feature history in plans and executable guarantees in tests.
 
@@ -103,4 +105,4 @@ Use `.repo-memory/product-memory.md` for durable product invariants that should 
 
 Use `.repo-memory/regression-playbook.md` for recurring bug classes and where their guardrails belong.
 
-Do not turn `.plans/` into the canonical source of product truth. Plans are for proposals, feature history, and rollout detail; move durable conclusions into `.repo-memory/` when they should guide future work.
+Do not turn `.plans/` into the canonical source of product truth. Tests and implementation are the latest behavior truth, `.repo-memory/` holds compact durable rules, top-level `.plans/` holds the small active workflow/proposal surface, and `.plans/archive/` is historical context only.

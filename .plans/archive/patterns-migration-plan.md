@@ -4,7 +4,7 @@ Date: 2026-05-15
 
 This plan migrates the editor’s current “Snippets” + “Macros” feature set to a single concept: **Patterns** (named, reusable action patterns with parameters), aligned with ArcadeActions terminology and expectations.
 
-Mockup reference: `.plans/mockups/patterns-migration-2026-05-15/events-patterns-redesign.png`
+Mockup reference: `.plans/archive/mockups/patterns-migration-2026-05-15/events-patterns-redesign.png`
 
 ## Goals
 
@@ -139,7 +139,7 @@ If IDs collide between imported legacy `snippets` and `macros`:
 - Add/confirm workflow entries in `.plans/editor-workflows-inventory.md` for:
   - “Apply Pattern to Event”
   - “Create Pattern from selected steps”
-- Add a small mockup set under `.plans/mockups/` for:
+- Add a small mockup set under `.plans/archive/mockups/` for:
   - `Handlers/Wiring` tabs
   - `+ Add…` menu
   - Apply Pattern param prompt

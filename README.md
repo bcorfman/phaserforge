@@ -63,7 +63,8 @@ This repo keeps durable, high-value product memory in `.repo-memory/`:
 Everything else stays where it already fits best:
 
 - tests for executable guarantees
-- `.plans/` for feature proposals, rollout notes, and workflow history
+- top-level `.plans/` for the small active workflow/proposal surface
+- `.plans/archive/` for historical plans and mockups that should not drive new implementation by default
 - scoped `AGENTS.md` files for local rules near the code they govern
 
 ## About `log.js`

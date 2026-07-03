@@ -247,4 +247,98 @@ test.describe('Project tree + history', () => {
     await expect(detailList).toContainText('ship_a added');
     await expect(detailList).toContainText('enemy_c added');
   });
+
+  test('archives multiple revisions from the main history pane and exposes delete only in archived history @smoke', async ({ page }) => {
+    const baseProject = structuredClone(sampleProject);
+    const middleProject = structuredClone(sampleProject);
+    middleProject.scenes[middleProject.initialSceneId].entities.enemy_c = {
+      id: 'enemy_c',
+      name: 'enemy_c',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+    const newestProject = structuredClone(sampleProject);
+    newestProject.title = 'Newest Revision';
+
+    const baseRevision = createProjectRevision(baseProject, {
+      id: 'rev-base',
+      updatedAt: '2026-06-27T23:00:00.000Z',
+    });
+    const middleRevision = createProjectRevision(middleProject, {
+      id: 'rev-middle',
+      updatedAt: '2026-06-27T23:00:30.000Z',
+    });
+    const newestRevision = createProjectRevision(newestProject, {
+      id: 'rev-newest',
+      updatedAt: '2026-06-27T23:01:00.000Z',
+    });
+    const revisions = [newestRevision, middleRevision, baseRevision];
+    const record = {
+      ...buildStoredProjectRecord(newestProject, {
+        id: newestProject.id,
+        updatedAt: '2026-06-27T23:01:00.000Z',
+        origin: 'local-only',
+        syncStatus: 'local',
+        revisions,
+      }),
+    };
+
+    await page.addInitScript(async ({ seededRecord }) => {
+      const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+        const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+        request.onerror = () => reject(request.error);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('workspaceState')) db.createObjectStore('workspaceState');
+          if (!db.objectStoreNames.contains('preferences')) db.createObjectStore('preferences');
+        };
+        request.onsuccess = () => resolve(request.result);
+      });
+
+      const db = await openDb();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(seededRecord);
+        tx.objectStore('workspaceState').put({
+          activeProjectId: seededRecord.id,
+          syncMode: 'offline',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    }, { seededRecord: record });
+
+    await gotoStudio(page, { forceNavigate: true });
+    await waitForSampleScene(page);
+    await dismissViewHint(page);
+
+    await page.getByTestId('project-tree-manage-button').click();
+    await page.getByTestId('project-manage-history').click();
+
+    await expect(page.getByTestId('project-history-enter-archive-mode')).toBeVisible();
+    await expect(page.getByTestId('project-revision-delete-rev-newest')).toHaveCount(0);
+
+    await page.getByTestId('project-history-enter-archive-mode').click();
+    const selectButtons = page.getByRole('button', { name: 'Select' });
+    await selectButtons.nth(0).click();
+    await selectButtons.nth(1).click();
+    await page.getByTestId('project-history-archive-selected').click();
+    await page.getByTestId('project-history-archive-confirm').click();
+
+    const activeRevisionCards = page.locator('.behavior-block[data-testid^="project-revision-"]');
+    await expect(activeRevisionCards).toHaveCount(1);
+
+    await page.getByTestId('project-history-show-archived').click();
+    const archivedRevisionCards = page.locator('.behavior-block[data-testid^="project-revision-"]');
+    await expect(archivedRevisionCards).toHaveCount(2);
+    await expect(page.getByTestId('project-revision-delete-rev-newest')).toBeVisible();
+
+    await page.getByTestId('project-revision-delete-rev-newest').click();
+    await page.getByTestId('project-history-delete-confirm').click();
+    await expect(page.getByTestId('project-revision-row-button-rev-newest')).toHaveCount(0);
+  });
 });

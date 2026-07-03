@@ -1,9 +1,9 @@
 # Plan — Approach 1: Event Blocks + Actions with “Until…” Builder (+ No-code Counters/Collections + Score)
 
 Source mockups (May 11, 2026):
-- `.plans/mockups/ace-10x-editor-approaches-2026-05-11/approach-1-event-blocks-actions-with-until-builder.svg`
-- `.plans/mockups/ace-10x-editor-approaches-2026-05-11/approach-1b-no-code-counters-and-collections.svg`
-- `.plans/mockups/ace-10x-editor-approaches-2026-05-11/approach-1c-no-code-score-counter.svg`
+- `.plans/archive/mockups/ace-10x-editor-approaches-2026-05-11/approach-1-event-blocks-actions-with-until-builder.svg`
+- `.plans/archive/mockups/ace-10x-editor-approaches-2026-05-11/approach-1b-no-code-counters-and-collections.svg`
+- `.plans/archive/mockups/ace-10x-editor-approaches-2026-05-11/approach-1c-no-code-score-counter.svg`
 
 Constraints (from `AGENTS.md`):
 - TDD: store/helper tests → scene-level interaction tests where practical → implementation.

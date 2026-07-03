@@ -3,9 +3,9 @@
 Date: 2026-06-27
 
 Related plans:
-- `.plans/project-history-revision-grouping-heuristic-2026-06-21.md`
-- `.plans/project-tree-history-implementation-plan-2026-06-19.md`
-- `.plans/project-history-and-asset-dedup-plan-2026-06-05.md`
+- `.plans/archive/project-history-revision-grouping-heuristic-2026-06-21.md`
+- `.plans/archive/project-tree-history-implementation-plan-2026-06-19.md`
+- `.plans/archive/project-history-and-asset-dedup-plan-2026-06-05.md`
 
 ## Status
 

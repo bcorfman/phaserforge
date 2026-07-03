@@ -3,8 +3,8 @@
 Date: 2026-06-21
 
 Superseded as the long-term primary direction by:
-- `.plans/project-history-semantic-events-adr-2026-06-27.md`
-- `.plans/project-history-semantic-events-implementation-plan-2026-06-27.md`
+- `.plans/archive/project-history-semantic-events-adr-2026-06-27.md`
+- `.plans/archive/project-history-semantic-events-implementation-plan-2026-06-27.md`
 
 This heuristic note is still useful for:
 - understanding the current legacy/fallback grouping logic

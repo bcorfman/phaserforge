@@ -130,14 +130,14 @@ Remove rough edges so the editor feels coherent instead of "barely works."
 Turn the canvas into a genuinely usable scene editor rather than a geometry patch panel.
 
 ### Mockups
-- See `.plans/mockups/phase-3/README.md`
-- Marquee multi-select: `.plans/mockups/phase-3/phase3-01-marquee-multiselect.svg`
-- Regroup/ungroup UX: `.plans/mockups/phase-3/phase3-02-regroup-ungroup.svg`
-- Undo/redo + snap + play/edit + pin: `.plans/mockups/phase-3/phase3-04-undo-redo-snap-playmode.svg`
-- Scene Graph drag/drop group membership: `.plans/mockups/phase-3/phase3-05-dragdrop-group-membership.svg`
-- Cursor context menu: `.plans/mockups/phase-3/phase3-06-cursor-context-menu.svg`
-- Top-right selection actions: `.plans/mockups/phase-3/phase3-07-topright-selection-actions.svg`
-- Convert group layout submenu: `.plans/mockups/phase-3/phase3-08-convert-group-layout-submenu.svg`
+- See `.plans/archive/mockups/phase-3/README.md`
+- Marquee multi-select: `.plans/archive/mockups/phase-3/phase3-01-marquee-multiselect.svg`
+- Regroup/ungroup UX: `.plans/archive/mockups/phase-3/phase3-02-regroup-ungroup.svg`
+- Undo/redo + snap + play/edit + pin: `.plans/archive/mockups/phase-3/phase3-04-undo-redo-snap-playmode.svg`
+- Scene Graph drag/drop group membership: `.plans/archive/mockups/phase-3/phase3-05-dragdrop-group-membership.svg`
+- Cursor context menu: `.plans/archive/mockups/phase-3/phase3-06-cursor-context-menu.svg`
+- Top-right selection actions: `.plans/archive/mockups/phase-3/phase3-07-topright-selection-actions.svg`
+- Convert group layout submenu: `.plans/archive/mockups/phase-3/phase3-08-convert-group-layout-submenu.svg`
 
 ### Behaviors ✅ IMPLEMENTED
 - ✅ Marquee multi-select for entities
