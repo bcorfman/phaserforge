@@ -2,6 +2,18 @@
 
 ## Project Guidelines
 
+### Read Before You Act
+For feature work or bug fixes, read the smallest useful set of files in this order:
+
+1. `AGENTS.md`
+2. `.repo-memory/product-memory.md`
+3. `.repo-memory/regression-playbook.md`
+4. Relevant scoped `AGENTS.md`
+5. Relevant tests and implementation
+6. Relevant `.plans/*` file only when needed for workflow history, feature background, or rollout context
+
+The goal is to keep durable repo memory compact and reusable, while leaving detailed feature history in plans and executable guarantees in tests.
+
 ### TDD Requirement
 All phases and implementation changes should be TDD-driven. Each gesture or editing behavior starts with store/helper tests, then scene-level interaction tests where practical, then implementation. Maintain comprehensive test coverage for reducers, helpers, and integrations.
 
@@ -84,3 +96,11 @@ Common targets:
 - integration points between the visual editor and runtime actions
 
 Do not scan the repo broadly first. Use Serena to identify the smallest relevant set of files and symbols, then read those files as needed.
+
+## Repo Memory Rule
+
+Use `.repo-memory/product-memory.md` for durable product invariants that should survive future refactors and feature work.
+
+Use `.repo-memory/regression-playbook.md` for recurring bug classes and where their guardrails belong.
+
+Do not turn `.plans/` into the canonical source of product truth. Plans are for proposals, feature history, and rollout detail; move durable conclusions into `.repo-memory/` when they should guide future work.

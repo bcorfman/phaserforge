@@ -783,7 +783,7 @@ describe('EditorStore history', () => {
 
   it('captures semantic drafts for asset assignment actions', () => {
     const base = seededState();
-    const withImage = reducer(base, {
+    const withImageAsset = reducer(base, {
       type: 'add-image-asset-from-file',
       file: {
         dataUrl: 'data:image/png;base64,AAAA',
@@ -793,7 +793,7 @@ describe('EditorStore history', () => {
         height: 16,
       },
     } as any);
-    const withAudio = reducer(withImage, {
+    const withAudio = reducer(withImageAsset, {
       type: 'add-audio-asset-from-file',
       file: {
         dataUrl: 'data:audio/mp3;base64,AAAA',
@@ -866,8 +866,35 @@ describe('EditorStore history', () => {
     expect(createdText.lastProjectHistoryEventDrafts).toEqual([
       expect.objectContaining({
         kind: 'entity.created',
-        summary: 'Added text entity',
+        summary: '1 entity added',
         scope: { kind: 'entity', sceneId: createdText.currentSceneId, entityId: createdTextId },
+        details: [expect.stringMatching(/ added$/)],
+      }),
+    ]);
+
+    const withImageAsset = reducer(base, {
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'hero.png',
+        mimeType: 'image/png',
+        width: 32,
+        height: 32,
+      },
+    } as any);
+    const createdFromAsset = reducer(withImageAsset, {
+      type: 'create-entity-from-asset',
+      assetKind: 'image',
+      assetId: Object.keys(withImageAsset.project.assets.images)[0],
+      at: { x: 320, y: 240 },
+    } as any);
+    const createdAssetId = Object.keys(sceneOf(createdFromAsset).entities).find((entityId) => !sceneOf(withImageAsset).entities[entityId]);
+    expect(createdFromAsset.lastProjectHistoryEventDrafts).toEqual([
+      expect.objectContaining({
+        kind: 'entity.created',
+        summary: '1 entity added',
+        scope: { kind: 'entity', sceneId: createdFromAsset.currentSceneId, entityId: createdAssetId },
+        details: [expect.stringMatching(/ added$/)],
       }),
     ]);
 
