@@ -189,6 +189,89 @@ describe('project tree + history helpers', () => {
       .toEqual(['Renamed to Pattern Demo', 'Set publish repo to zoof']);
   });
 
+  it('collapses repeated event-backed entity creates into a count summary while keeping named details', () => {
+    const baseProject = structuredClone(sampleProject);
+    const newerProject = structuredClone(sampleProject);
+    newerProject.scenes[newerProject.initialSceneId].entities.enemy_c = {
+      id: 'enemy_c',
+      name: 'enemy_c',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    };
+    newerProject.scenes[newerProject.initialSceneId].entities.ship_a = {
+      id: 'ship_a',
+      name: 'ship_a',
+      x: 96,
+      y: 64,
+      width: 16,
+      height: 16,
+    };
+    newerProject.scenes[newerProject.initialSceneId].entities.effect_purple = {
+      id: 'effect_purple',
+      name: 'effect_purple',
+      x: 128,
+      y: 64,
+      width: 16,
+      height: 16,
+    };
+
+    const olderRevision = createProjectRevision(baseProject, {
+      id: 'rev-older',
+      updatedAt: '2026-06-26T22:21:00.000Z',
+    });
+    const newerRevision = createProjectRevision(newerProject, {
+      id: 'rev-newer',
+      updatedAt: '2026-06-26T22:22:00.000Z',
+      historyEventIds: ['event-create-1', 'event-create-2', 'event-create-3'],
+      historyBurstIds: ['entity.created:a', 'entity.created:b', 'entity.created:c'],
+    });
+    const historyEvents: ProjectHistoryEvent[] = [
+      {
+        id: 'event-create-1',
+        projectId: newerProject.id,
+        revisionId: 'rev-newer',
+        occurredAt: '2026-06-26T22:22:00.000Z',
+        reason: 'autosave',
+        kind: 'entity.created',
+        burstId: 'entity.created:a',
+        scope: { kind: 'entity', sceneId: newerProject.initialSceneId, entityId: 'enemy_c' },
+        summary: '1 entity added',
+        details: ['enemy_c added'],
+      },
+      {
+        id: 'event-create-2',
+        projectId: newerProject.id,
+        revisionId: 'rev-newer',
+        occurredAt: '2026-06-26T22:22:00.000Z',
+        reason: 'autosave',
+        kind: 'entity.created',
+        burstId: 'entity.created:b',
+        scope: { kind: 'entity', sceneId: newerProject.initialSceneId, entityId: 'ship_a' },
+        summary: '1 entity added',
+        details: ['ship_a added'],
+      },
+      {
+        id: 'event-create-3',
+        projectId: newerProject.id,
+        revisionId: 'rev-newer',
+        occurredAt: '2026-06-26T22:22:00.000Z',
+        reason: 'autosave',
+        kind: 'entity.created',
+        burstId: 'entity.created:c',
+        scope: { kind: 'entity', sceneId: newerProject.initialSceneId, entityId: 'effect_purple' },
+        summary: '1 entity added',
+        details: ['effect_purple added'],
+      },
+    ];
+
+    expect(formatProjectRevisionSummary(newerRevision, olderRevision, [newerRevision, olderRevision], historyEvents))
+      .toBe('3 entities added');
+    expect(buildProjectRevisionDetailItems(newerRevision, olderRevision, [newerRevision, olderRevision], historyEvents))
+      .toEqual(['enemy_c added', 'ship_a added', 'effect_purple added']);
+  });
+
   it('preserves captured change summaries when rebuilding revisions from persisted history', () => {
     const olderProject = structuredClone(sampleProject);
     const newerProject = structuredClone(sampleProject);
