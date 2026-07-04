@@ -95,6 +95,79 @@ describe('EditorStore reducer', () => {
     expect(clamped.project.pixelsPerUnit).toBe(1);
   });
 
+  it('recomputes existing asset-backed sprite sizes when they still match the prior project scale baseline', () => {
+    const state = {
+      ...seededState(),
+      project: {
+        ...sampleProject,
+        pixelsPerUnit: 1,
+        assets: {
+          ...sampleProject.assets,
+          images: {
+            hero: {
+              id: 'hero',
+              width: 64,
+              height: 64,
+              source: {
+                kind: 'embedded',
+                dataUrl: 'data:image/png;base64,AAAA',
+                originalName: 'hero.png',
+                mimeType: 'image/png',
+              },
+            },
+          },
+        },
+        scenes: {
+          ...sampleProject.scenes,
+          [sampleProject.initialSceneId]: {
+            ...sampleProject.scenes[sampleProject.initialSceneId],
+            entities: {
+              auto: {
+                id: 'auto',
+                x: 10,
+                y: 10,
+                width: 64,
+                height: 64,
+                scaleX: 1,
+                scaleY: 1,
+                asset: {
+                  source: { kind: 'asset', assetId: 'hero' },
+                  imageType: 'image',
+                  frame: { kind: 'single' },
+                },
+              },
+              custom: {
+                id: 'custom',
+                x: 20,
+                y: 20,
+                width: 40,
+                height: 40,
+                scaleX: 1,
+                scaleY: 1,
+                asset: {
+                  source: { kind: 'asset', assetId: 'hero' },
+                  imageType: 'image',
+                  frame: { kind: 'single' },
+                },
+              },
+            },
+          },
+        },
+      },
+    } as any;
+
+    const next = reducer(state, {
+      type: 'set-project-metadata',
+      pixelsPerUnit: 2,
+    } as any);
+
+    const scene = next.project.scenes[next.currentSceneId];
+    expect(scene.entities.auto.width).toBe(32);
+    expect(scene.entities.auto.height).toBe(32);
+    expect(scene.entities.custom.width).toBe(40);
+    expect(scene.entities.custom.height).toBe(40);
+  });
+
   it('mirrors a project rename into the publish title only when the publish title is empty', () => {
     const state = {
       ...seededState(),
