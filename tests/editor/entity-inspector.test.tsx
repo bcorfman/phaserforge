@@ -70,4 +70,62 @@ describe('Entity inspector', () => {
     expect(visualIndex).toBeGreaterThan(hitboxIndex);
     expect(eventsIndex).toBeGreaterThan(visualIndex);
   });
+
+  it('explains natural size, project scale, and world size for asset-backed sprites', () => {
+    const projectWithAsset = {
+      ...project,
+      pixelsPerUnit: 2,
+      assets: {
+        images: {
+          hero: {
+            id: 'hero',
+            width: 64,
+            height: 64,
+            source: {
+              kind: 'embedded',
+              dataUrl: 'data:image/png;base64,AAAA',
+              originalName: 'hero.png',
+              mimeType: 'image/png',
+            },
+          },
+        },
+        spriteSheets: {},
+        fonts: {},
+      },
+    } as any;
+    const sceneWithAsset = {
+      ...sampleScene,
+      entities: {
+        ...sampleScene.entities,
+        hero: {
+          id: 'hero',
+          x: 32,
+          y: 48,
+          width: 32,
+          height: 32,
+          asset: {
+            source: { kind: 'asset', assetId: 'hero' },
+            imageType: 'image',
+            frame: { kind: 'single' },
+          },
+        },
+      },
+    } as any;
+
+    const markup = renderToStaticMarkup(
+      renderEntityInspector(sceneWithAsset.entities.hero, () => {}, {
+        ...actionProps,
+        project: projectWithAsset,
+        scene: sceneWithAsset,
+      })
+    );
+
+    expect(markup).toContain('Natural Size');
+    expect(markup).toContain('64×64 px');
+    expect(markup).toContain('Project Scale');
+    expect(markup).toContain('2 px/unit');
+    expect(markup).toContain('World Size');
+    expect(markup).toContain('32×32 units');
+    expect(markup).toContain('Use Project Scale');
+  });
 });

@@ -77,6 +77,24 @@ describe('EditorStore reducer', () => {
     expect(next.dirty).toBe(true);
   });
 
+  it('stores project pixels per unit as a positive integer', () => {
+    const state = seededState();
+
+    const next = reducer(state, {
+      type: 'set-project-metadata',
+      pixelsPerUnit: 2.7,
+    } as any);
+
+    expect(next.project.pixelsPerUnit).toBe(3);
+
+    const clamped = reducer(next, {
+      type: 'set-project-metadata',
+      pixelsPerUnit: 0,
+    } as any);
+
+    expect(clamped.project.pixelsPerUnit).toBe(1);
+  });
+
   it('mirrors a project rename into the publish title only when the publish title is empty', () => {
     const state = {
       ...seededState(),

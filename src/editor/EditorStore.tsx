@@ -18,6 +18,7 @@ import {
   type SpriteAssetSpec,
 } from '../model/types';
 import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject';
+import { deriveWorldUnitsFromNaturalPixels, normalizeProjectPixelsPerUnit } from '../model/projectPixelScale';
 import { validateProjectSpec, validateSceneSpec } from '../model/validation';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { applyGroupArrangeLayout, applyGroupGridLayout, applyGroupGridLayoutPreserveMembers, inferGroupGridLayout, type GroupGridLayout } from './formationLayout';
@@ -212,7 +213,7 @@ export type EditorAction =
   | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; syncMode: ProjectSyncMode; registry: EditorRegistryConfig }
   | { type: 'set-sync-mode'; syncMode: ProjectSyncMode }
   | { type: 'reset-project' }
-  | { type: 'set-project-metadata'; title?: string; publishTitle?: string; publishGithubPagesRepo?: string }
+  | { type: 'set-project-metadata'; title?: string; publishTitle?: string; publishGithubPagesRepo?: string; pixelsPerUnit?: number }
   | { type: 'set-theme-mode'; themeMode: ThemeMode }
   | { type: 'set-ui-scale'; uiScale: number }
   | { type: 'set-show-hitbox-overlay'; value: boolean }
@@ -1092,6 +1093,9 @@ function describeEditorAction(stateBefore: EditorState, stateAfter: EditorState,
       return 'Imported Demo Pack';
     case 'set-project-metadata':
       if (stateBefore.project.title !== stateAfter.project.title) return `Renamed to ${stateAfter.project.title?.trim() || 'Untitled Project'}`;
+      if (stateBefore.project.pixelsPerUnit !== stateAfter.project.pixelsPerUnit) {
+        return `Set project scale to ${stateAfter.project.pixelsPerUnit ?? 1} px/unit`;
+      }
       if (stateBefore.project.publishTitle !== stateAfter.project.publishTitle) {
         return stateAfter.project.publishTitle ? `Set publish title to ${stateAfter.project.publishTitle}` : 'Cleared publish title';
       }
@@ -1269,6 +1273,14 @@ function buildProjectHistoryEventDraftsForAction(
           burstId: `publish.repo.set:${actionBurstToken}`,
           scope: { kind: 'project' },
           summary: publishRepo ? `Set publish repo to ${publishRepo}` : 'Cleared publish repo',
+        });
+      }
+      if (stateBefore.project.pixelsPerUnit !== stateAfter.project.pixelsPerUnit) {
+        drafts.push({
+          kind: 'project.settings.updated',
+          burstId: `project.settings.updated:${actionBurstToken}`,
+          scope: { kind: 'project' },
+          summary: `Set project scale to ${stateAfter.project.pixelsPerUnit ?? 1} px/unit`,
         });
       }
       return drafts.length > 0 ? drafts : undefined;
@@ -2253,6 +2265,9 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const nextProject: ProjectSpec = {
         ...state.project,
         ...(typeof action.title === 'string' ? { title: action.title } : {}),
+        ...(typeof action.pixelsPerUnit === 'number'
+          ? { pixelsPerUnit: normalizeProjectPixelsPerUnit(action.pixelsPerUnit) }
+          : {}),
         ...(typeof action.publishTitle === 'string'
           ? { publishTitle: action.publishTitle }
           : shouldMirrorPublishTitle
@@ -3200,18 +3215,21 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const world = getSceneWorld(scene);
       const at = action.at ?? { x: world.width / 2, y: world.height / 2 };
       const defaultSize = 64;
+      const pixelsPerUnit = normalizeProjectPixelsPerUnit(state.project.pixelsPerUnit);
       const image = action.assetKind === 'image'
         ? state.project.assets.images?.[action.assetId]
         : undefined;
       const spritesheet = action.assetKind === 'spritesheet'
         ? state.project.assets.spriteSheets?.[action.assetId]
         : undefined;
-      const width = action.assetKind === 'image'
+      const naturalWidth = action.assetKind === 'image'
         ? (image?.width ?? defaultSize)
         : (spritesheet?.grid?.frameWidth ?? defaultSize);
-      const height = action.assetKind === 'image'
+      const naturalHeight = action.assetKind === 'image'
         ? (image?.height ?? defaultSize)
         : (spritesheet?.grid?.frameHeight ?? defaultSize);
+      const width = deriveWorldUnitsFromNaturalPixels(naturalWidth, pixelsPerUnit);
+      const height = deriveWorldUnitsFromNaturalPixels(naturalHeight, pixelsPerUnit);
 
       const entity: EntitySpec = resolveEntityDefaults({
         id: entityId,
