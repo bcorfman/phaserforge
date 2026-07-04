@@ -126,6 +126,8 @@ describe('Entity inspector', () => {
     expect(markup).toContain('2 px/unit');
     expect(markup).toContain('World Size');
     expect(markup).toContain('32×32 units');
-    expect(markup).toContain('Use Project Scale');
+    expect(markup).not.toContain('Use Project Scale');
+    expect(markup).not.toContain('sprite-size-width-px-readonly');
+    expect(markup).not.toContain('sprite-size-height-px-readonly');
   });
 });

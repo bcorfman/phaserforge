@@ -582,36 +582,11 @@ function EntityInspector({
                     />
                   </label>
                 </div>
-                <div className="inspector-grid-2" style={{ marginTop: 6 }}>
-                  <label className="field">
-                    <span>Width (px)</span>
-                    <input className="text-input" type="text" readOnly value={displayWidth} data-testid="sprite-size-width-px-readonly" />
-                  </label>
-                  <label className="field">
-                    <span>Height (px)</span>
-                    <input className="text-input" type="text" readOnly value={displayHeight} data-testid="sprite-size-height-px-readonly" />
-                  </label>
-                </div>
                 {naturalSpriteSize && projectScaledSpriteSize ? (
                   <>
                     <div className="muted" style={{ marginTop: 6 }}>Natural Size: {naturalSpriteSize.width}×{naturalSpriteSize.height} px</div>
                     <div className="muted" style={{ marginTop: 4 }}>Project Scale: {projectPixelsPerUnit} px/unit</div>
                     <div className="muted" style={{ marginTop: 4 }}>World Size: {projectScaledSpriteSize.width}×{projectScaledSpriteSize.height} units</div>
-                    <div style={{ marginTop: 8 }}>
-                      <button
-                        type="button"
-                        className="button button-compact"
-                        data-testid="sprite-size-use-project-scale"
-                        onClick={() => update({
-                          width: projectScaledSpriteSize.width,
-                          height: projectScaledSpriteSize.height,
-                          scaleX: Math.sign(resolved.scaleX) || 1,
-                          scaleY: Math.sign(resolved.scaleY) || 1,
-                        })}
-                      >
-                        Use Project Scale
-                      </button>
-                    </div>
                   </>
                 ) : (
                   <div className="muted" style={{ marginTop: 6 }}>Original (natural): {baseWidth}×{baseHeight} px</div>
@@ -681,21 +656,6 @@ function EntityInspector({
                     <div className="muted" style={{ marginTop: 6 }}>Natural Size: {naturalSpriteSize.width}×{naturalSpriteSize.height} px</div>
                     <div className="muted" style={{ marginTop: 4 }}>Project Scale: {projectPixelsPerUnit} px/unit</div>
                     <div className="muted" style={{ marginTop: 4 }}>World Size: {projectScaledSpriteSize.width}×{projectScaledSpriteSize.height} units</div>
-                    <div style={{ marginTop: 8 }}>
-                      <button
-                        type="button"
-                        className="button button-compact"
-                        data-testid="sprite-size-use-project-scale"
-                        onClick={() => update({
-                          width: projectScaledSpriteSize.width,
-                          height: projectScaledSpriteSize.height,
-                          scaleX: Math.sign(resolved.scaleX) || 1,
-                          scaleY: Math.sign(resolved.scaleY) || 1,
-                        })}
-                      >
-                        Use Project Scale
-                      </button>
-                    </div>
                   </>
                 ) : (
                   <div className="muted" style={{ marginTop: 6 }}>Original (natural): {baseWidth}×{baseHeight} px</div>
