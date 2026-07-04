@@ -145,6 +145,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Use `Past 7 Days`, `Past 14`, or `Past 30` to filter active visible revisions.
 - Select a revision row to preview it in the canvas.
 - Use `Restore...` or `Copy...`, or use the back arrow to return to Project Tree.
+- Use the pane-level `Archive...` control when you want to clean up multiple visible revisions.
 
 #### A31c — Archive Multiple Project Revisions
 - In `Project Revisions`, click `Archive...` to enter archive mode.
