@@ -20,6 +20,7 @@ import { executeCollisionScripts } from '../runtime/collisions/collisionScripts'
 import type { TriggerZoneSpec } from '../model/types';
 import { assetSourceKey, resolveAssetSourceUrl } from '../cloud/assetUrls';
 import type { ViewState } from '../util/viewStateStorage';
+import { applyNearestTextureFilter } from './textureFiltering';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
 const EMPTY_SCENE_SPEC: SceneSpec = { id: '', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} };
@@ -1047,6 +1048,7 @@ export class GameScene extends Phaser.Scene {
     gfx.fillRect(0, 0, 1, 1);
     gfx.generateTexture(PLACEHOLDER_TEXTURE_KEY, 1, 1);
     gfx.destroy();
+    applyNearestTextureFilter(this.textures as any, PLACEHOLDER_TEXTURE_KEY);
   }
 
   private configurePhysicsObject(entityId: string, sprite: PhysicsObject, physicsObjects: Map<string, PhysicsObject>): void {
@@ -1435,5 +1437,12 @@ export class GameScene extends Phaser.Scene {
       // Audio loads can occasionally stall without surfacing a global error; keep the timeout fallback for those cases.
       this.load.start();
     });
+
+    for (const asset of pendingAssets) {
+      applyNearestTextureFilter(this.textures as any, this.getTextureKey(asset));
+    }
+    for (const background of pendingBackgrounds) {
+      applyNearestTextureFilter(this.textures as any, background.key);
+    }
   }
 }
