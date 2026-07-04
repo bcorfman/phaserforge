@@ -18,7 +18,12 @@ import {
   type SpriteAssetSpec,
 } from '../model/types';
 import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject';
-import { deriveWorldUnitsFromNaturalPixels, normalizeProjectPixelsPerUnit } from '../model/projectPixelScale';
+import {
+  deriveWorldSpriteSize,
+  deriveWorldUnitsFromNaturalPixels,
+  getProjectPixelsPerUnit,
+  normalizeProjectPixelsPerUnit,
+} from '../model/projectPixelScale';
 import { validateProjectSpec, validateSceneSpec } from '../model/validation';
 import { resolveEntityDefaults } from '../model/entityDefaults';
 import { applyGroupArrangeLayout, applyGroupGridLayout, applyGroupGridLayoutPreserveMembers, inferGroupGridLayout, type GroupGridLayout } from './formationLayout';
@@ -2198,6 +2203,46 @@ function recordHistoryForAction(stateBefore: EditorState, stateAfter: EditorStat
   };
 }
 
+function reapplyProjectPixelScaleToMatchingSprites(
+  previousProject: ProjectSpec,
+  nextProject: ProjectSpec,
+): ProjectSpec {
+  const previousPixelsPerUnit = getProjectPixelsPerUnit(previousProject);
+  const nextPixelsPerUnit = getProjectPixelsPerUnit(nextProject);
+  if (previousPixelsPerUnit === nextPixelsPerUnit) return nextProject;
+
+  let scenesChanged = false;
+  const scenes = Object.fromEntries(
+    Object.entries(nextProject.scenes).map(([sceneId, scene]) => {
+      let entitiesChanged = false;
+      const entities = Object.fromEntries(
+        Object.entries(scene.entities).map(([entityId, entity]) => {
+          const resolved = resolveEntityDefaults(entity);
+          if (!resolved.asset) return [entityId, entity];
+
+          const previousWorldSize = deriveWorldSpriteSize(previousProject, resolved.asset);
+          const nextWorldSize = deriveWorldSpriteSize(nextProject, resolved.asset);
+          if (!previousWorldSize || !nextWorldSize) return [entityId, entity];
+          if (resolved.width !== previousWorldSize.width || resolved.height !== previousWorldSize.height) return [entityId, entity];
+
+          entitiesChanged = true;
+          return [entityId, {
+            ...entity,
+            width: nextWorldSize.width,
+            height: nextWorldSize.height,
+          }];
+        }),
+      );
+
+      if (!entitiesChanged) return [sceneId, scene];
+      scenesChanged = true;
+      return [sceneId, { ...scene, entities }];
+    }),
+  ) as ProjectSpec['scenes'];
+
+  return scenesChanged ? { ...nextProject, scenes } : nextProject;
+}
+
 function applyAction(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'initialize':
@@ -2262,7 +2307,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         && typeof action.publishTitle !== 'string'
         && (typeof state.project.publishTitle !== 'string' || state.project.publishTitle.trim().length === 0)
       );
-      const nextProject: ProjectSpec = {
+      const nextProjectDraft: ProjectSpec = {
         ...state.project,
         ...(typeof action.title === 'string' ? { title: action.title } : {}),
         ...(typeof action.pixelsPerUnit === 'number'
@@ -2275,6 +2320,9 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
             : {}),
         ...(typeof action.publishGithubPagesRepo === 'string' ? { publishGithubPagesRepo: action.publishGithubPagesRepo } : {}),
       };
+      const nextProject = typeof action.pixelsPerUnit === 'number'
+        ? reapplyProjectPixelScaleToMatchingSprites(state.project, nextProjectDraft)
+        : nextProjectDraft;
       return { ...state, project: nextProject, dirty: true, error: undefined, projectRootEditing: false };
     }
     case 'set-theme-mode':
