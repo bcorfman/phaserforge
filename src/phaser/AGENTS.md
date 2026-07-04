@@ -1,32 +1,30 @@
-# Canvas / Gesture Rules (Workflow + Style)
+# Canvas / Gesture Rules
 
-Scope: `src/phaser/**` (especially `EditorScene.ts`)
+Scope: `src/phaser/**`, especially `EditorScene.ts`
 
-## UX Priorities (in order)
+## Priorities
+
 1. Intuitive primary workflow
 2. Fewer total steps
 3. Shorter mouse pointer travel distance
-4. Style consistency (match established editor patterns)
+4. Style consistency
 
-## Significant-by-default changes (confirm before implementing)
+## Confirm First
 
-Treat changes as significant and ask the user to confirm before implementing if they touch:
-- Selection behavior (single/multi/marquee), clearing selection, delete semantics
-- Drag/move/duplicate gestures (Alt-duplicate), snapping behavior, bounds handle behavior
-- Pan/zoom/fit/reset controls or shortcuts
-- Mode toggling (Edit/Play) shortcuts or surfaces
-- Right-click context menu behavior on canvas objects
+Ask the user before changing:
+- selection semantics
+- drag/move/duplicate gestures
+- snap behavior or bounds handles
+- pan/zoom/fit/reset controls or shortcuts
+- mode toggles
+- right-click canvas behavior
 
-## Canvas Style Contract
+## Canvas Contract
 
-- **Context menu parity:** if most interactive canvas objects expose right-click actions, new comparable objects should participate in the same context menu system rather than relocating actions to inspector/toolbar by default.
-- **Affordances stay consistent:** maintain hover/cursor feedback patterns for new interactive objects to match existing canvas interactions.
+- Comparable interactive canvas objects should participate in the same context-menu system.
+- Hover, cursor, and interaction affordances should match existing canvas behavior.
+- If gestures or shortcuts change, update any user-facing hints/copy that describe them.
 
-## Copy must match behavior
+## Tests
 
-If gestures/shortcuts change, update any user-facing copy/hints that describe them so instructions remain accurate.
-
-## Tests (when behavior changes)
-
-For gesture/interaction changes, add/update Playwright tests where practical to cover the primary workflow path.
-
+- Add or update Playwright coverage for primary gesture paths when interaction behavior changes.

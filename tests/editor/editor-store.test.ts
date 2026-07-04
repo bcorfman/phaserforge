@@ -95,7 +95,7 @@ describe('EditorStore reducer', () => {
     expect(clamped.project.pixelsPerUnit).toBe(1);
   });
 
-  it('recomputes existing asset-backed sprite sizes when they still match the prior project scale baseline', () => {
+  it('rescales existing asset-backed sprites across the project when pixels per unit changes', () => {
     const state = {
       ...seededState(),
       project: {
@@ -164,8 +164,8 @@ describe('EditorStore reducer', () => {
     const scene = next.project.scenes[next.currentSceneId];
     expect(scene.entities.auto.width).toBe(32);
     expect(scene.entities.auto.height).toBe(32);
-    expect(scene.entities.custom.width).toBe(40);
-    expect(scene.entities.custom.height).toBe(40);
+    expect(scene.entities.custom.width).toBe(20);
+    expect(scene.entities.custom.height).toBe(20);
   });
 
   it('mirrors a project rename into the publish title only when the publish title is empty', () => {
