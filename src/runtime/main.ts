@@ -20,8 +20,8 @@ export function createGameConfig(container: string): Phaser.Types.Core.GameConfi
                 debug: false,
             },
         },
-        antialias: true,
-        pixelArt: false,
+        antialias: false,
+        pixelArt: true,
         resolution: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
         scale: {
             mode: Phaser.Scale.RESIZE,
