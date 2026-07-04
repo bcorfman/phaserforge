@@ -47,6 +47,7 @@ import {
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { resolvePointerModifier } from './inputModifiers';
 import { getPreferredTextResolution } from './textResolution';
+import { applyNearestTextureFilter } from './textureFiltering';
 import type { ViewState } from '../util/viewStateStorage';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
@@ -1142,6 +1143,7 @@ export class EditorScene extends Phaser.Scene {
     gfx.fillRect(0, 0, 1, 1);
     gfx.generateTexture(PLACEHOLDER_TEXTURE_KEY, 1, 1);
     gfx.destroy();
+    applyNearestTextureFilter(this.textures as any, PLACEHOLDER_TEXTURE_KEY);
   }
 
   private configurePhysicsObject(entityId: string, sprite: PhysicsObject): void {
@@ -1618,6 +1620,13 @@ export class EditorScene extends Phaser.Scene {
       this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
       this.load.start();
     });
+
+    for (const asset of pendingAssets) {
+      applyNearestTextureFilter(this.textures as any, this.getTextureKey(asset));
+    }
+    for (const background of pendingBackgrounds) {
+      applyNearestTextureFilter(this.textures as any, background.key);
+    }
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {

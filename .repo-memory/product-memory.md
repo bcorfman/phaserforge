@@ -25,6 +25,7 @@ Use `.plans/archive/` only as historical context after checking current tests an
 - Near-cursor actions should stay near-cursor unless there is an explicitly approved workflow reason to move them.
 - Editor copy, hints, shortcuts, and gestures must match actual behavior.
 - Pixel-authored geometry such as entity positions, trigger rects, and hitbox rectangles should round to integer pixels unless a field is intentionally continuous.
+- Pixel-art sprite textures should load with nearest-neighbor filtering; global Phaser config is not sufficient if runtime texture loads can still default to linear filtering.
 
 ### Persistence and history
 
