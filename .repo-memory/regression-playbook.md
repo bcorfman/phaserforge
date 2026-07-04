@@ -32,6 +32,13 @@ Use this file to keep previously solved bug classes from drifting back in.
   - scene/e2e tests for the primary user path
   - workflow doc updates when the flow materially changes
 
+### Geometry / rendering regressions
+
+- Risks: fractional pixel geometry leaks back into authored state, or global render settings silently re-enable blur.
+- Preferred coverage:
+  - reducer/unit tests for integer-authored geometry normalization
+  - bootstrap/runtime tests for crisp-render defaults
+
 ### Serialization / migration regressions
 
 - Risks: semantic drift after save/load, legacy compatibility breaks, canonicalization mismatch.

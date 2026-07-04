@@ -101,6 +101,16 @@ function formatProjectLoadStatus(sourceLabel: string): string | undefined {
   return `Loaded project: ${sourceLabel}`;
 }
 
+function roundPixelRect<T extends { x: number; y: number; width: number; height: number }>(rect: T): T {
+  return {
+    ...rect,
+    x: Number.isFinite(rect.x) ? Math.round(rect.x) : rect.x,
+    y: Number.isFinite(rect.y) ? Math.round(rect.y) : rect.y,
+    width: Number.isFinite(rect.width) ? Math.max(1, Math.round(rect.width)) : rect.width,
+    height: Number.isFinite(rect.height) ? Math.max(1, Math.round(rect.height)) : rect.height,
+  };
+}
+
 export type Selection =
   | { kind: 'none' }
   | { kind: 'entity'; id: Id }
@@ -3452,7 +3462,9 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const zones = [...(scene.triggers ?? [])];
       const index = zones.findIndex((z) => z.id === action.id);
       if (index < 0) return state;
-      zones[index] = { ...zones[index], ...action.patch } as TriggerZoneSpec;
+      const nextZone = { ...zones[index], ...action.patch } as TriggerZoneSpec;
+      if (nextZone.rect) nextZone.rect = roundPixelRect(nextZone.rect);
+      zones[index] = nextZone;
       return withScene(state, { ...scene, triggers: zones } as GameSceneSpec, true);
     }
     case 'remove-trigger-zone': {
@@ -3474,6 +3486,14 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const prev = scene.entities[action.id];
       if (!prev) return state;
       let nextEntity = action.next;
+      nextEntity = {
+        ...nextEntity,
+        x: Number.isFinite(nextEntity.x) ? Math.round(nextEntity.x) : nextEntity.x,
+        y: Number.isFinite(nextEntity.y) ? Math.round(nextEntity.y) : nextEntity.y,
+        width: Number.isFinite(nextEntity.width) ? Math.max(1, Math.round(nextEntity.width)) : nextEntity.width,
+        height: Number.isFinite(nextEntity.height) ? Math.max(1, Math.round(nextEntity.height)) : nextEntity.height,
+        hitbox: nextEntity.hitbox ? roundPixelRect(nextEntity.hitbox) : nextEntity.hitbox,
+      };
       if ((nextEntity as any).text) {
         // Enforce mutual exclusivity with sprite assets.
         if (nextEntity.asset) nextEntity = { ...nextEntity, asset: undefined };
