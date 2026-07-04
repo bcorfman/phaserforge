@@ -15,6 +15,7 @@ import {
   type AttachmentTriggerSpec,
   type InlineConditionSpec,
 } from './types';
+import { normalizeProjectPixelsPerUnit } from './projectPixelScale';
 import { resolveEntityDefaults } from './entityDefaults';
 
 export function validateProjectSpec(project: ProjectSpec): void {
@@ -24,6 +25,9 @@ export function validateProjectSpec(project: ProjectSpec): void {
   if (!project.audio || typeof project.audio !== 'object') throw new Error('Project must have audio');
   if (!project.inputMaps || typeof project.inputMaps !== 'object') throw new Error('Project must have inputMaps');
   if (!project.scenes || typeof project.scenes !== 'object') throw new Error('Project must have scenes');
+  if (project.pixelsPerUnit !== undefined && normalizeProjectPixelsPerUnit(project.pixelsPerUnit) !== project.pixelsPerUnit) {
+    throw new Error('Project pixelsPerUnit must be a positive integer');
+  }
   if (typeof project.initialSceneId !== 'string' || project.initialSceneId.length === 0) {
     throw new Error('Project must have an initialSceneId');
   }

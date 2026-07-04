@@ -11,6 +11,7 @@ import { buildProjectPickerModel, type ProjectPickerFilter } from './projectLibr
 import { exportYamlToDisk } from './yamlFileExport';
 import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
+import { deriveWorldUnitsFromNaturalPixels, getProjectPixelsPerUnit, normalizeProjectPixelsPerUnit } from '../model/projectPixelScale';
 import { EventBus } from '../phaser/EventBus';
 import {
   buildProjectHistoryViewModel,
@@ -278,6 +279,8 @@ export function EntityListView({
   } | null>(null);
   const duplicateDialogRootRef = useRef<HTMLDivElement | null>(null);
   const [copyRevisionName, setCopyRevisionName] = useState('');
+  const [projectSettingsDialogOpen, setProjectSettingsDialogOpen] = useState(false);
+  const [projectPixelsPerUnitDraft, setProjectPixelsPerUnitDraft] = useState(() => String(getProjectPixelsPerUnit(project)));
   const [expandedRevisionId, setExpandedRevisionId] = useState<string | null>(null);
   const [historyPaneMode, setHistoryPaneMode] = useState<'active' | 'archived'>('active');
   const [historySelectionMode, setHistorySelectionMode] = useState<'none' | 'archive' | 'delete'>('none');
@@ -313,6 +316,11 @@ export function EntityListView({
   }, [archivedRevisions, project.title, revisionDialogs.copyRevisionId, revisions]);
 
   useEffect(() => {
+    if (!projectSettingsDialogOpen) return;
+    setProjectPixelsPerUnitDraft(String(getProjectPixelsPerUnit(project)));
+  }, [project, projectSettingsDialogOpen]);
+
+  useEffect(() => {
     const previousSidebarScope = previousSidebarScopeRef.current;
     if (normalizedSidebarScope === 'projectRevisions' && previousSidebarScope !== 'projectRevisions') {
       setHistoryWindowDays(DEFAULT_PROJECT_HISTORY_WINDOW_DAYS);
@@ -345,6 +353,12 @@ export function EntityListView({
   const exitHistorySelectionMode = () => {
     setHistorySelectionMode('none');
     setSelectedHistoryRevisionIds([]);
+  };
+
+  const saveProjectSettings = () => {
+    const pixelsPerUnit = normalizeProjectPixelsPerUnit(Number(projectPixelsPerUnitDraft));
+    dispatch({ type: 'set-project-metadata', pixelsPerUnit });
+    setProjectSettingsDialogOpen(false);
   };
 
   useEffect(() => {
@@ -1843,6 +1857,79 @@ export function EntityListView({
         </div>
       ) : null}
 
+      {projectSettingsDialogOpen ? (
+        <div
+          className="scene-graph-menu"
+          style={{ position: 'fixed', left: '50%', top: '20%', transform: 'translateX(-50%)', zIndex: 60, minWidth: 420 }}
+          data-testid="project-settings-dialog"
+          role="dialog"
+          aria-label="Project settings"
+        >
+          <div className="scene-graph-menu-hint">Project Settings</div>
+          <div style={{ padding: '0.75rem', display: 'grid', gap: 10 }}>
+            <label className="field">
+              <span>Pixels Per Unit</span>
+              <input
+                className="text-input"
+                aria-label="Pixels Per Unit"
+                data-testid="project-settings-pixels-per-unit-input"
+                type="text"
+                inputMode="numeric"
+                value={projectPixelsPerUnitDraft}
+                onChange={(event) => setProjectPixelsPerUnitDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    saveProjectSettings();
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setProjectSettingsDialogOpen(false);
+                  }
+                }}
+              />
+            </label>
+            <div className="inspector-grid-3">
+              {[1, 2, 4].map((value) => {
+                const normalizedValue = normalizeProjectPixelsPerUnit(Number(projectPixelsPerUnitDraft));
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`button button-compact ${normalizedValue === value ? 'active' : ''}`}
+                    data-testid={`project-settings-preset-${value}`}
+                    onClick={() => setProjectPixelsPerUnitDraft(String(value))}
+                  >
+                    {value}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="muted">
+              64px art becomes {deriveWorldUnitsFromNaturalPixels(64, Number(projectPixelsPerUnitDraft) || 1)} world units at {normalizeProjectPixelsPerUnit(Number(projectPixelsPerUnitDraft) || 1)} px/unit.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '0.75rem' }}>
+            <button
+              type="button"
+              className="button"
+              data-testid="project-settings-cancel"
+              onClick={() => setProjectSettingsDialogOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="button"
+              data-testid="project-settings-save"
+              onClick={saveProjectSettings}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {duplicateDialog ? (
         <div
           ref={duplicateDialogRootRef}
@@ -2048,6 +2135,18 @@ export function EntityListView({
                 }}
               >
                 Export as YAML
+              </button>
+              <button
+                type="button"
+                className="scene-graph-menu-item"
+                data-testid="project-manage-settings"
+                onClick={() => {
+                  setMenuOpen(null);
+                  setProjectPixelsPerUnitDraft(String(getProjectPixelsPerUnit(project)));
+                  setProjectSettingsDialogOpen(true);
+                }}
+              >
+                Project Settings...
               </button>
               <div className="scene-graph-menu-divider" />
               <button

@@ -7,6 +7,7 @@ import { EventsPanel } from './EventsPanel';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { AttachmentSpec, AttachmentTriggerSpec, InlineBoundsHitConditionSpec, GroupSpec, SceneSpec, EntitySpec, ProjectSpec, type Id, type SpriteAssetSpec, type EditorRegistryConfig } from '../model/types';
 import { resolveEntityDefaults } from '../model/entityDefaults';
+import { deriveWorldSpriteSize, getNaturalSpriteSize, getProjectPixelsPerUnit } from '../model/projectPixelScale';
 import { resolveTextEntityDefaults } from './textEntity';
 import { boundsToCenterSpan, computeEdgeSafeBounds, computeTargetAabb } from './boundsHelper';
 import { getSceneWorld } from './sceneWorld';
@@ -464,6 +465,9 @@ function EntityInspector({
 
   const baseWidth = resolved.width;
   const baseHeight = resolved.height;
+  const naturalSpriteSize = project ? getNaturalSpriteSize(project, resolved.asset) : null;
+  const projectScaledSpriteSize = project ? deriveWorldSpriteSize(project, resolved.asset) : null;
+  const projectPixelsPerUnit = project ? getProjectPixelsPerUnit(project) : 1;
   const displayWidth = displayPixelsFromBaseAndScale(baseWidth, Math.abs(resolved.scaleX));
   const displayHeight = displayPixelsFromBaseAndScale(baseHeight, Math.abs(resolved.scaleY));
 
@@ -588,7 +592,30 @@ function EntityInspector({
                     <input className="text-input" type="text" readOnly value={displayHeight} data-testid="sprite-size-height-px-readonly" />
                   </label>
                 </div>
-                <div className="muted" style={{ marginTop: 6 }}>Original (natural): {baseWidth}×{baseHeight} px</div>
+                {naturalSpriteSize && projectScaledSpriteSize ? (
+                  <>
+                    <div className="muted" style={{ marginTop: 6 }}>Natural Size: {naturalSpriteSize.width}×{naturalSpriteSize.height} px</div>
+                    <div className="muted" style={{ marginTop: 4 }}>Project Scale: {projectPixelsPerUnit} px/unit</div>
+                    <div className="muted" style={{ marginTop: 4 }}>World Size: {projectScaledSpriteSize.width}×{projectScaledSpriteSize.height} units</div>
+                    <div style={{ marginTop: 8 }}>
+                      <button
+                        type="button"
+                        className="button button-compact"
+                        data-testid="sprite-size-use-project-scale"
+                        onClick={() => update({
+                          width: projectScaledSpriteSize.width,
+                          height: projectScaledSpriteSize.height,
+                          scaleX: Math.sign(resolved.scaleX) || 1,
+                          scaleY: Math.sign(resolved.scaleY) || 1,
+                        })}
+                      >
+                        Use Project Scale
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="muted" style={{ marginTop: 6 }}>Original (natural): {baseWidth}×{baseHeight} px</div>
+                )}
               </>
             ) : (
               <>
@@ -649,7 +676,30 @@ function EntityInspector({
                     <input className="text-input" type="text" readOnly value={Math.round(scaleYPercent * 100) / 100} data-testid="sprite-size-scale-y-percent-readonly" />
                   </label>
                 </div>
-                <div className="muted" style={{ marginTop: 6 }}>Original (natural): {baseWidth}×{baseHeight} px</div>
+                {naturalSpriteSize && projectScaledSpriteSize ? (
+                  <>
+                    <div className="muted" style={{ marginTop: 6 }}>Natural Size: {naturalSpriteSize.width}×{naturalSpriteSize.height} px</div>
+                    <div className="muted" style={{ marginTop: 4 }}>Project Scale: {projectPixelsPerUnit} px/unit</div>
+                    <div className="muted" style={{ marginTop: 4 }}>World Size: {projectScaledSpriteSize.width}×{projectScaledSpriteSize.height} units</div>
+                    <div style={{ marginTop: 8 }}>
+                      <button
+                        type="button"
+                        className="button button-compact"
+                        data-testid="sprite-size-use-project-scale"
+                        onClick={() => update({
+                          width: projectScaledSpriteSize.width,
+                          height: projectScaledSpriteSize.height,
+                          scaleX: Math.sign(resolved.scaleX) || 1,
+                          scaleY: Math.sign(resolved.scaleY) || 1,
+                        })}
+                      >
+                        Use Project Scale
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="muted" style={{ marginTop: 6 }}>Original (natural): {baseWidth}×{baseHeight} px</div>
+                )}
               </>
             )}
           </div>

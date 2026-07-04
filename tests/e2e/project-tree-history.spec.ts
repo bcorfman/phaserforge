@@ -21,10 +21,17 @@ test.describe('Project tree + history', () => {
     await expect(page.getByTestId('project-manage-toggle-sync')).toBeVisible();
     await expect(page.getByTestId('project-manage-import-yaml')).toBeVisible();
     await expect(page.getByTestId('project-manage-export-yaml')).toBeVisible();
+    await expect(page.getByTestId('project-manage-settings')).toBeVisible();
     await expect(page.getByTestId('project-manage-rename')).toBeVisible();
     await expect(page.getByTestId('project-manage-history')).toBeVisible();
     await expect(page.getByTestId('project-manage-clear')).toBeVisible();
 
+    await page.getByTestId('project-manage-settings').click();
+    await expect(page.getByTestId('project-settings-dialog')).toBeVisible();
+    await page.getByTestId('project-settings-preset-2').click();
+    await page.getByTestId('project-settings-save').click();
+
+    await page.getByTestId('project-tree-manage-button').click();
     await page.getByTestId('project-manage-rename').click();
     await expect(page.getByTestId('rename-project-input')).toBeVisible();
     await page.getByTestId('rename-project-input').fill('History Demo');
