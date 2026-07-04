@@ -57,12 +57,10 @@
   <text class="strong" x="124" y="438">Pattern Demo</text>
   <text class="small" x="124" y="464">Renamed to Pattern Demo</text>
   <text class="small" x="560" y="438">Jun 27, 10:12 AM</text>
-  <rect class="btnBlue" x="344" y="486" width="104" height="36" rx="16" />
-  <text class="btnTextLight" x="396" y="509" text-anchor="middle">Restore...</text>
-  <rect class="btn" x="460" y="486" width="86" height="36" rx="16" />
-  <text class="btnTextDark" x="503" y="509" text-anchor="middle">Copy...</text>
-  <rect class="btn" x="558" y="486" width="92" height="36" rx="16" />
-  <text class="btnTextDark" x="604" y="509" text-anchor="middle">Archive...</text>
+  <rect class="btnBlue" x="442" y="486" width="104" height="36" rx="16" />
+  <text class="btnTextLight" x="494" y="509" text-anchor="middle">Restore...</text>
+  <rect class="btn" x="558" y="486" width="86" height="36" rx="16" />
+  <text class="btnTextDark" x="601" y="509" text-anchor="middle">Copy...</text>
 
   <rect class="tabOn" x="98" y="570" width="580" height="184" rx="20" />
   <rect class="tabOn" x="114" y="590" width="26" height="26" rx="8" />
@@ -71,16 +69,14 @@
   <text class="small" x="548" y="608">Jun 27, 10:01 AM</text>
   <rect class="panelMuted" x="124" y="654" width="170" height="34" rx="17" />
   <text class="small" x="209" y="676" text-anchor="middle">+3 more changes</text>
-  <rect class="btnBlue" x="344" y="692" width="104" height="36" rx="16" />
-  <text class="btnTextLight" x="396" y="715" text-anchor="middle">Restore...</text>
-  <rect class="btn" x="460" y="692" width="86" height="36" rx="16" />
-  <text class="btnTextDark" x="503" y="715" text-anchor="middle">Copy...</text>
-  <rect class="btn" x="558" y="692" width="92" height="36" rx="16" />
-  <text class="btnTextDark" x="604" y="715" text-anchor="middle">Archive...</text>
+  <rect class="btnBlue" x="442" y="692" width="104" height="36" rx="16" />
+  <text class="btnTextLight" x="494" y="715" text-anchor="middle">Restore...</text>
+  <rect class="btn" x="558" y="692" width="86" height="36" rx="16" />
+  <text class="btnTextDark" x="601" y="715" text-anchor="middle">Copy...</text>
 
   <rect class="panelMuted" x="98" y="780" width="580" height="92" rx="16" />
   <text class="small" x="124" y="812">Archive mode stays inside the current pane and current cards.</text>
-  <text class="small" x="124" y="836">The new piece is a lightweight row-selection affordance so multiple revisions can be archived at once.</text>
+  <text class="small" x="124" y="836">The only archive entrypoint is the pane-level control, so cleanup stays bulk-first instead of duplicating row actions.</text>
   <rect class="btn" x="410" y="820" width="96" height="34" rx="16" />
   <text class="btnTextDark" x="458" y="842" text-anchor="middle">Cancel</text>
   <rect class="btnWarn" x="518" y="820" width="132" height="34" rx="16" />

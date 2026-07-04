@@ -119,6 +119,9 @@ describe('EntityList project history retention', () => {
       />
     );
 
+    expect(screen.queryByTestId('project-revision-archive-rev-first')).toBeNull();
+    expect(screen.queryByTestId('project-revision-archive-rev-second')).toBeNull();
+
     fireEvent.click(screen.getByTestId('project-history-enter-archive-mode'));
     fireEvent.click(screen.getByTestId('project-history-select-rev-first'));
     fireEvent.click(screen.getByTestId('project-history-select-rev-second'));
@@ -159,6 +162,7 @@ describe('EntityList project history retention', () => {
 
     expect(screen.queryByTestId('project-history-delete-selected')).toBeNull();
     expect(screen.queryByTestId('project-revision-delete-rev-active')).toBeNull();
+    expect(screen.queryByTestId('project-revision-archive-rev-active')).toBeNull();
 
     fireEvent.click(screen.getByTestId('project-history-show-archived'));
 

@@ -34,7 +34,7 @@ Use a two-state model inside the existing History pane:
 1. Main History
    - shows the current visible revision narrative
    - keeps existing `Restore...` and `Copy...`
-   - adds `Archive...` as the cleanup action
+   - uses a pane-level `Archive...` action as the cleanup entrypoint
    - does not expose permanent delete
 
 2. Archived History
@@ -55,7 +55,7 @@ That is not how the current history pane behaves today.
 
 The tighter fit is:
 
-- same card actions
+- same card layout
 - one additional pane state
 - one explicit archive-selection mode inside the same pane
 - dialogs that look like the ones already in the sidebar/history flows
@@ -130,6 +130,7 @@ Add:
 
 Do not add:
 
+- per-row archive buttons on the main list
 - inline delete on the main list
 - a separate archive-management toolbar
 

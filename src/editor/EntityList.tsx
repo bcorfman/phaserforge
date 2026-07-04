@@ -943,16 +943,7 @@ export function EntityListView({
                         >
                           Copy...
                         </button>
-                        {historyPaneMode === 'active' ? (
-                          <button
-                            className="button"
-                            data-testid={`project-revision-archive-${revision.id}`}
-                            type="button"
-                            onClick={() => setHistoryActionDialog({ kind: 'archive', revisionIds: [revision.id] })}
-                          >
-                            Archive...
-                          </button>
-                        ) : (
+                        {historyPaneMode === 'archived' && (
                           <button
                             className="button"
                             data-testid={`project-revision-delete-${revision.id}`}
