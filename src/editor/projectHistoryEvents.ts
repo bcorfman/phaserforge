@@ -4,6 +4,7 @@ export type ProjectHistoryEventReason = 'autosave' | 'protective' | 'restore' | 
 
 export type ProjectHistoryEventKind =
   | 'project.renamed'
+  | 'project.settings.updated'
   | 'publish.title.set'
   | 'publish.repo.set'
   | 'project.default-input-map.set'
