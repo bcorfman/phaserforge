@@ -76,7 +76,7 @@
         "express-rate-limit": "^8.5.2",
         "helmet": "^8.2.0",
         "ip-address": "^10.2.0",
-        "pg": "^8.21.0",
+        "pg": "^8.22.0",
         "phaser": "^4.2.0",
         "react": "^19.2.6",
         "react-dom": "^19.2.7",
