@@ -6,78 +6,44 @@ Use this file to keep previously solved bug classes from drifting back in.
 
 1. Identify the bug class, not just the symptom.
 2. Find the narrowest existing invariant in tests, product memory, or workflow docs.
-3. Add or tighten tests before implementation when practical.
-4. Fix the product if the behavior is wrong.
-5. Redesign the test if the bug is really flaky coverage rather than broken behavior.
-6. Record any new durable rule in `.repo-memory/product-memory.md`.
+3. Add or tighten tests first when practical.
+4. Fix the product if behavior is wrong.
+5. Redesign the test when the failure is flake rather than product behavior.
+6. Record a new durable rule in `.repo-memory/product-memory.md` only if it will matter again.
 
 ## Common Regression Classes
 
-### Persistence / reload regressions
+### Persistence / reload
 
-- Risks: reload, reopen, snapshot selection, stale cache precedence, local/cloud divergence.
-- Preferred coverage:
-  - unit tests for reducers/helpers/history logic
-  - targeted Playwright reload/reopen coverage for user-visible recovery flows
-- Strong invariants to prefer:
-  - latest active head restores after reload/reopen
-  - legacy localStorage project YAML does not silently win over the durable store
-  - restore sequencing does not transiently materialize the wrong project and make it durable
+- Risks: stale cache precedence, reload/reopen recovery, local/cloud divergence.
+- Preferred coverage: reducer/helper tests plus targeted Playwright reload/reopen checks.
 
-### Workflow regressions
+### Workflow
 
-- Risks: a previously simplified path gains duplicate entrypoints, extra steps, or mismatched labels.
-- Preferred coverage:
-  - store/helper tests where logic changed
-  - scene/e2e tests for the primary user path
-  - workflow doc updates when the flow materially changes
+- Risks: duplicate entry points, extra steps, mismatched labels, inconsistent primary path.
+- Preferred coverage: shared logic tests plus E2E on the primary user path.
 
-### Geometry / rendering regressions
+### Geometry / rendering
 
-- Risks: fractional pixel geometry leaks back into authored state, or global render settings silently re-enable blur.
-- Preferred coverage:
-  - reducer/unit tests for integer-authored geometry normalization
-  - bootstrap/runtime tests for crisp-render defaults
+- Risks: fractional authored geometry, blurry sprite rendering, inconsistent pixel scaling.
+- Preferred coverage: reducer/unit tests plus runtime/bootstrap tests.
 
-### Serialization / migration regressions
+### Serialization / migration
 
-- Risks: semantic drift after save/load, legacy compatibility breaks, canonicalization mismatch.
-- Preferred coverage:
-  - round-trip unit tests
-  - migration fixture tests
-- Strong invariants to prefer:
-  - parse legacy shapes, serialize canonical shapes
-  - preserve optional metadata that users can see or rely on later
+- Risks: save/load drift, canonicalization mismatch, legacy compatibility breaks.
+- Preferred coverage: round-trip and migration fixture tests.
 
-### History narrative regressions
+### History narrative
 
-- Risks: user-visible history summaries or grouping drift after reload, compaction, coalescing, or rebuild.
-- Preferred coverage:
-  - unit tests for history-event/revision helpers
-  - targeted E2E for reload/reopen narrative preservation
-- Strong invariants to prefer:
-  - preserve action-time summaries such as specific rename/resize intent
-  - do not let specific summaries degrade into generic “edited scene/project” text after rebuild
+- Risks: summaries/grouping drift after reload, compaction, or rebuild.
+- Preferred coverage: helper tests plus targeted E2E for reload/reopen preservation.
 
-### Cross-surface regressions
+### Cross-surface
 
-- Risks: fix lands in one UI surface but not another, or one code path bypasses the fix.
-- Preferred coverage:
-  - at least one test for the underlying shared logic
-  - one integration test on the user-facing path most likely to drift
-
-## Choosing Memory vs Plan vs Test
-
-- Put durable repo-wide rules in `.repo-memory/product-memory.md`.
-- Put active feature proposals or current workflow notes in top-level `.plans/`.
-- Put superseded, partial, or historical design notes in `.plans/archive/`.
-- Put executable behavior guarantees in tests.
-- If the lesson came from repeated fixes, confirm it against tests or recent top-level plans before promoting it into repo memory.
-- Transcript archive evidence and archived plans can help identify repeated bug classes, but tests and current product docs remain the final source of truth.
+- Risks: a fix lands in one surface but not another.
+- Preferred coverage: one shared-logic test and one user-facing integration path.
 
 ## Keep It Small
 
-- If a lesson will matter again, add one short rule.
-- If it only mattered for one feature rollout, keep it in the relevant `.plans/` file.
+- Add one short rule per bug class, not a list of historical symptoms.
 - Prefer updating an existing rule over adding a near-duplicate rule.
-- Prefer naming one bug class with 2-3 strong invariants over listing every historical symptom.

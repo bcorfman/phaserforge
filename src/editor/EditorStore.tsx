@@ -19,7 +19,6 @@ import {
 } from '../model/types';
 import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject';
 import {
-  deriveWorldSpriteSize,
   deriveWorldUnitsFromNaturalPixels,
   getProjectPixelsPerUnit,
   normalizeProjectPixelsPerUnit,
@@ -2210,6 +2209,7 @@ function reapplyProjectPixelScaleToMatchingSprites(
   const previousPixelsPerUnit = getProjectPixelsPerUnit(previousProject);
   const nextPixelsPerUnit = getProjectPixelsPerUnit(nextProject);
   if (previousPixelsPerUnit === nextPixelsPerUnit) return nextProject;
+  const scaleRatio = previousPixelsPerUnit / nextPixelsPerUnit;
 
   let scenesChanged = false;
   const scenes = Object.fromEntries(
@@ -2220,16 +2220,11 @@ function reapplyProjectPixelScaleToMatchingSprites(
           const resolved = resolveEntityDefaults(entity);
           if (!resolved.asset) return [entityId, entity];
 
-          const previousWorldSize = deriveWorldSpriteSize(previousProject, resolved.asset);
-          const nextWorldSize = deriveWorldSpriteSize(nextProject, resolved.asset);
-          if (!previousWorldSize || !nextWorldSize) return [entityId, entity];
-          if (resolved.width !== previousWorldSize.width || resolved.height !== previousWorldSize.height) return [entityId, entity];
-
           entitiesChanged = true;
           return [entityId, {
             ...entity,
-            width: nextWorldSize.width,
-            height: nextWorldSize.height,
+            width: Math.max(1, Math.round(resolved.width * scaleRatio)),
+            height: Math.max(1, Math.round(resolved.height * scaleRatio)),
           }];
         }),
       );
