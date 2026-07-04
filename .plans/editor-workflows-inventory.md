@@ -136,7 +136,8 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Scene overflow `⋯` → `Rename…`, `⧉ Duplicate Scene`, `★ Set as Base / Clear Base`, `Clear Scene…`, or `Delete…`.
 
 #### A31a — Manage Project Root
-- Project Tree header → `Manage` → `Create New`, `Open...`, `Toggle Sync Mode`, `Import YAML`, `Export as YAML`, `Rename`, `History`, or `Clear Project ...`.
+- Project Tree header → `Manage` → `Create New`, `Open...`, `Toggle Sync Mode`, `Import YAML`, `Export as YAML`, `Project Settings...`, `Rename`, `History`, or `Clear Project ...`.
+- `Project Settings...` opens a lightweight dialog for project-wide `Pixels Per Unit`.
 - `Rename` opens inline rename on the project root row.
 - `History` swaps the left pane into `Project Revisions`.
 
@@ -165,6 +166,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Drag an image/spritesheet asset onto the canvas.
 - Double-click an image/spritesheet in Assets Dock.
 - Scene graph → `Sprites` → `+ Add ▾` → `Sprite (from Asset)` → choose asset.
+- New sprites derive authored `width/height` from natural asset pixels and the current project `Pixels Per Unit`.
 
 #### A33 — Create Text Entity
 - Scene graph → `Text` → `+ Add`.
@@ -187,6 +189,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Drag image/spritesheet asset onto an existing canvas sprite to replace its asset.
 - Drag image asset onto Background Layers to create/replace a layer.
 - Drag audio asset onto Scene Music to assign music.
+- Creating a sprite from empty canvas space uses project pixel scale for the initial world size.
 
 #### A38 — Manage Asset Row Actions
 - Asset overflow `⋯` → `Rename…`, `Delete…`.
@@ -196,6 +199,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 
 #### A39 — Edit Single Entity Properties
 - In Inspector, edit transform, sprite size, text settings, hitbox, physics, visual settings, asset selection, frame settings, alpha/visibility/depth, and flip.
+- For asset-backed sprites, `Sprite Size` also shows `Natural Size`, `Project Scale`, `World Size`, and `Use Project Scale`.
 - Text entities can also be rasterized to a sprite.
 - If the entity is in a formation, `Apply Asset to Formation` pushes the chosen asset to sibling members.
 

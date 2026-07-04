@@ -35,6 +35,34 @@ describe('EditorStore assets actions', () => {
     expect(entity.asset?.imageType).toBe('image');
   });
 
+  it('derives created sprite world size from the project pixels-per-unit setting', () => {
+    const state = initState();
+    const withScale = reducer(state, {
+      type: 'set-project-metadata',
+      pixelsPerUnit: 2,
+    } as any);
+    const withAsset = reducer(withScale, {
+      type: 'add-image-asset-from-file',
+      file: {
+        dataUrl: 'data:image/png;base64,AAAA',
+        originalName: 'player.png',
+        mimeType: 'image/png',
+        width: 256,
+        height: 128,
+      },
+    } as any);
+
+    const withEntity = reducer(withAsset, { type: 'create-entity-from-asset', assetKind: 'image', assetId: 'player', at: { x: 10, y: 20 } } as any);
+    const scene = sceneOf(withEntity);
+    const ids = Object.keys(scene.entities);
+    expect(ids.length).toBe(1);
+    const entity = scene.entities[ids[0]];
+    expect(entity.width).toBe(128);
+    expect(entity.height).toBe(64);
+    expect(entity.scaleX ?? 1).toBe(1);
+    expect(entity.scaleY ?? 1).toBe(1);
+  });
+
   it('blocks deletion of referenced assets', () => {
     const state = initState();
     const withAsset = reducer(state, {

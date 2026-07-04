@@ -177,6 +177,11 @@ export interface ProjectSpec {
    * Optional GitHub Pages publish repository name (editor metadata; serialized to YAML).
    */
   publishGithubPagesRepo?: string;
+  /**
+   * Optional project-wide pixel scale used to derive authored world size from natural sprite pixels.
+   * `1` preserves legacy behavior.
+   */
+  pixelsPerUnit?: number;
   assets: {
     images: Record<Id, ImageAssetSpec>;
     spriteSheets: Record<Id, SpriteSheetAssetSpec>;
