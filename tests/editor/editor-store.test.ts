@@ -409,6 +409,78 @@ describe('EditorStore reducer', () => {
     expect(next.dirty).toBe(true);
   });
 
+  it('rounds updated entity x/y values to integers', () => {
+    const state = seededState();
+    const entity = sceneOf(state).entities.e1;
+    const next = reducer(state, {
+      type: 'update-entity',
+      id: 'e1',
+      next: {
+        ...entity,
+        x: 123.6,
+        y: 456.2,
+      },
+    });
+
+    expect(sceneOf(next).entities.e1.x).toBe(124);
+    expect(sceneOf(next).entities.e1.y).toBe(456);
+  });
+
+  it('rounds updated entity pixel geometry to integers', () => {
+    const state = seededState();
+    const entity = sceneOf(state).entities.e1;
+    const next = reducer(state, {
+      type: 'update-entity',
+      id: 'e1',
+      next: {
+        ...entity,
+        width: 31.9,
+        height: 19.2,
+        hitbox: {
+          x: 4.6,
+          y: 7.4,
+          width: 12.8,
+          height: 9.1,
+        },
+      },
+    });
+
+    expect(sceneOf(next).entities.e1.width).toBe(32);
+    expect(sceneOf(next).entities.e1.height).toBe(19);
+    expect(sceneOf(next).entities.e1.hitbox).toEqual({
+      x: 5,
+      y: 7,
+      width: 13,
+      height: 9,
+    });
+  });
+
+  it('rounds updated trigger rect geometry to integers', () => {
+    const withTrigger = reducer(seededState(), { type: 'add-trigger-zone' } as any);
+    const trigger = sceneOf(withTrigger).triggers?.[0];
+    expect(trigger).toBeDefined();
+
+    const next = reducer(withTrigger, {
+      type: 'update-trigger-zone',
+      id: trigger!.id,
+      patch: {
+        rect: {
+          x: 10.7,
+          y: 22.2,
+          width: 30.8,
+          height: 40.1,
+        },
+      },
+    } as any);
+
+    expect(sceneOf(next).triggers?.[0]?.rect).toEqual({
+      x: 11,
+      y: 22,
+      width: 31,
+      height: 40,
+    });
+  });
+
   it('rounds move deltas to integers', () => {
     const state = seededState();
     const nextEntity = reducer(state, { type: 'move-entity', id: 'e1', dx: 1.2, dy: 2.7 });

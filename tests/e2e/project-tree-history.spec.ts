@@ -4,6 +4,10 @@ import { appendProjectRevision, createProjectRevision } from '../../src/editor/p
 import { sampleProject } from '../../src/model/sampleProject';
 import { dismissViewHint, gotoStudio, seedSampleScene, waitForSampleScene } from './helpers';
 
+function isoMinutesAgo(minutesAgo: number): string {
+  return new Date(Date.now() - minutesAgo * 60_000).toISOString();
+}
+
 test.describe('Project tree + history', () => {
   test('supports manage actions, restore, and copy flows @smoke', async ({ page }) => {
     await seedSampleScene(page);
@@ -65,20 +69,22 @@ test.describe('Project tree + history', () => {
     const newerProject = structuredClone(sampleProject);
     newerProject.title = 'Pattern Demo';
     newerProject.publishTitle = 'Pattern Demo';
+    const baseUpdatedAt = isoMinutesAgo(2);
+    const newerUpdatedAt = isoMinutesAgo(1);
 
     const baseRevision = createProjectRevision(baseProject, {
       id: 'rev-base',
-      updatedAt: '2026-06-27T02:21:00.000Z',
+      updatedAt: baseUpdatedAt,
     });
     const newerRevision = createProjectRevision(newerProject, {
       id: 'rev-newer',
-      updatedAt: '2026-06-27T02:22:00.000Z',
+      updatedAt: newerUpdatedAt,
     });
     const revisions = appendProjectRevision([baseRevision], newerRevision, 25);
     const record = {
       ...buildStoredProjectRecord(newerProject, {
         id: newerProject.id,
-        updatedAt: '2026-06-27T02:22:00.000Z',
+        updatedAt: newerUpdatedAt,
         origin: 'local-only',
         syncStatus: 'local',
       }),
