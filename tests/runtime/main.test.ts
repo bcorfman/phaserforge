@@ -20,6 +20,13 @@ describe('runtime game bootstrap', () => {
     }
   });
 
+  it('boots Phaser in crisp pixel-art mode', () => {
+    const config = createGameConfig('game-container');
+
+    expect(config.antialias).toBe(false);
+    expect(config.pixelArt).toBe(true);
+  });
+
   it('disables Phaser pause-on-blur so published audio keeps playing across focus changes', () => {
     const game = {
       sound: {

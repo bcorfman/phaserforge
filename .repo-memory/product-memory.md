@@ -24,6 +24,7 @@ Use `.plans/archive/` only as historical context after checking current tests an
 - The editor should have one obvious primary workflow for common tasks.
 - Near-cursor actions should stay near-cursor unless there is an explicitly approved workflow reason to move them.
 - Editor copy, hints, shortcuts, and gestures must match actual behavior.
+- Pixel-authored geometry such as entity positions, trigger rects, and hitbox rectangles should round to integer pixels unless a field is intentionally continuous.
 
 ### Persistence and history
 
