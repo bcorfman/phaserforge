@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { clampCameraScroll, getCenteredCameraScroll, getFitZoom } from '../../src/editor/viewport';
-import { dismissViewHint, getSceneSnapshot, getState, openProjectScope, seedSampleScene, waitForEmptyScene, waitForViewportToSettle } from './helpers';
+import { dismissViewHint, getSceneSnapshot, getState, openProjectScope, panByScreenDelta, seedSampleScene, waitForEmptyScene, waitForViewportToSettle } from './helpers';
 
 test.describe('Project picker', () => {
   test('opens the picker from the project tree and preserves the sync toggle @smoke', async ({ page }) => {
@@ -24,6 +24,8 @@ test.describe('Project picker', () => {
   test('creates a new local project from the project tree manage menu @smoke', async ({ page }) => {
     await seedSampleScene(page);
     await dismissViewHint(page);
+    await panByScreenDelta(page, { x: 180, y: 120 });
+    await waitForViewportToSettle(page);
 
     await page.getByTestId('project-tree-manage-button').click();
     await page.getByTestId('project-manage-create').click();

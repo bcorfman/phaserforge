@@ -30,6 +30,7 @@ import {
 } from '../editor/canvasInteraction';
 import { getEditableBoundsConditionId } from '../editor/boundsCondition';
 import { getSceneWorld } from '../editor/sceneWorld';
+import { getProjectRenderMode } from '../model/projectPixelScale';
 import { resolveTextEntityDefaults, resolveTextFontFamily } from '../editor/textEntity';
 import {
   canPanCamera,
@@ -47,7 +48,7 @@ import {
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { resolvePointerModifier } from './inputModifiers';
 import { getPreferredTextResolution } from './textResolution';
-import { applyNearestTextureFilter } from './textureFiltering';
+import { applyProjectTextureFilter } from './textureFiltering';
 import type { ViewState } from '../util/viewStateStorage';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
@@ -833,6 +834,9 @@ export class EditorScene extends Phaser.Scene {
     referenceSceneSpec?: GameSceneSpec
   ): void {
     const currentLoadVersion = ++this.loadVersion;
+    const previousProjectId = this.project?.id ?? null;
+    const nextProjectId = project?.id ?? null;
+    const isProjectSwitch = previousProjectId !== nextProjectId;
     this.clearScene();
     this.project = project;
     this.mode = mode;
@@ -853,7 +857,8 @@ export class EditorScene extends Phaser.Scene {
       this.pendingViewState = undefined;
       this.hasInitializedView = true;
       this.emitViewState();
-    } else if (!this.hasInitializedView) {
+    } else if (!this.hasInitializedView || isProjectSwitch) {
+      // Different projects should start from fit view unless a persisted view was explicitly queued.
       this.fitView();
       this.hasInitializedView = true;
     } else {
@@ -1143,7 +1148,7 @@ export class EditorScene extends Phaser.Scene {
     gfx.fillRect(0, 0, 1, 1);
     gfx.generateTexture(PLACEHOLDER_TEXTURE_KEY, 1, 1);
     gfx.destroy();
-    applyNearestTextureFilter(this.textures as any, PLACEHOLDER_TEXTURE_KEY);
+    applyProjectTextureFilter(this.textures as any, PLACEHOLDER_TEXTURE_KEY, this.project ? getProjectRenderMode(this.project) : 'pixel-art');
   }
 
   private configurePhysicsObject(entityId: string, sprite: PhysicsObject): void {
@@ -1565,6 +1570,7 @@ export class EditorScene extends Phaser.Scene {
   private async ensureAssetTextures(project: ProjectSpec | undefined, sceneSpecs: GameSceneSpec[]): Promise<void> {
     const pendingAssets: SpriteAssetSpec[] = [];
     const pendingBackgrounds: Array<{ key: string; url: string }> = [];
+    const renderMode = project ? getProjectRenderMode(project) : 'pixel-art';
 
     for (const sceneSpec of sceneSpecs) {
       for (const asset of Object.values(sceneSpec.entities)
@@ -1594,7 +1600,17 @@ export class EditorScene extends Phaser.Scene {
       }
     }
 
-    if (pendingAssets.length === 0 && pendingBackgrounds.length === 0) return;
+    if (pendingAssets.length === 0 && pendingBackgrounds.length === 0) {
+      for (const sceneSpec of sceneSpecs) {
+        for (const asset of Object.values(sceneSpec.entities).map((entity) => entity.asset).filter((asset): asset is SpriteAssetSpec => Boolean(asset))) {
+          applyProjectTextureFilter(this.textures as any, this.getTextureKey(asset), renderMode);
+        }
+        for (const layer of sceneSpec.backgroundLayers ?? []) {
+          applyProjectTextureFilter(this.textures as any, this.getBackgroundTextureKey(layer.assetId), renderMode);
+        }
+      }
+      return;
+    }
 
     for (const asset of pendingAssets) {
       const key = this.getTextureKey(asset);
@@ -1622,10 +1638,10 @@ export class EditorScene extends Phaser.Scene {
     });
 
     for (const asset of pendingAssets) {
-      applyNearestTextureFilter(this.textures as any, this.getTextureKey(asset));
+      applyProjectTextureFilter(this.textures as any, this.getTextureKey(asset), renderMode);
     }
     for (const background of pendingBackgrounds) {
-      applyNearestTextureFilter(this.textures as any, background.key);
+      applyProjectTextureFilter(this.textures as any, background.key, renderMode);
     }
   }
 

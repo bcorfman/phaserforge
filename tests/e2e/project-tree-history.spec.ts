@@ -176,24 +176,28 @@ test.describe('Project tree + history', () => {
       width: 16,
       height: 16,
     } as any;
+    const baseUpdatedAt = isoMinutesAgo(3);
+    const firstUpdatedAt = isoMinutesAgo(2);
+    const secondUpdatedAt = isoMinutesAgo(1);
+    const thirdUpdatedAt = isoMinutesAgo(0);
 
     const baseRevision = createProjectRevision(baseProject, {
       id: 'rev-base',
-      updatedAt: '2026-06-27T23:00:00.000Z',
+      updatedAt: baseUpdatedAt,
     });
     const firstRevision = createProjectRevision(firstProject, {
       id: 'rev-first',
-      updatedAt: '2026-06-27T23:00:20.000Z',
+      updatedAt: firstUpdatedAt,
       reason: 'autosave',
     });
     const secondRevision = createProjectRevision(secondProject, {
       id: 'rev-second',
-      updatedAt: '2026-06-27T23:00:40.000Z',
+      updatedAt: secondUpdatedAt,
       reason: 'autosave',
     });
     const thirdRevision = createProjectRevision(thirdProject, {
       id: 'rev-third',
-      updatedAt: '2026-06-27T23:01:00.000Z',
+      updatedAt: thirdUpdatedAt,
       reason: 'autosave',
     });
     const revisions = appendProjectRevision(
@@ -208,7 +212,7 @@ test.describe('Project tree + history', () => {
     const record = {
       ...buildStoredProjectRecord(thirdProject, {
         id: thirdProject.id,
-        updatedAt: '2026-06-27T23:01:00.000Z',
+        updatedAt: thirdUpdatedAt,
         origin: 'local-only',
         syncStatus: 'local',
       }),
@@ -274,24 +278,27 @@ test.describe('Project tree + history', () => {
     } as any;
     const newestProject = structuredClone(sampleProject);
     newestProject.title = 'Newest Revision';
+    const baseUpdatedAt = isoMinutesAgo(3);
+    const middleUpdatedAt = isoMinutesAgo(2);
+    const newestUpdatedAt = isoMinutesAgo(1);
 
     const baseRevision = createProjectRevision(baseProject, {
       id: 'rev-base',
-      updatedAt: '2026-06-27T23:00:00.000Z',
+      updatedAt: baseUpdatedAt,
     });
     const middleRevision = createProjectRevision(middleProject, {
       id: 'rev-middle',
-      updatedAt: '2026-06-27T23:00:30.000Z',
+      updatedAt: middleUpdatedAt,
     });
     const newestRevision = createProjectRevision(newestProject, {
       id: 'rev-newest',
-      updatedAt: '2026-06-27T23:01:00.000Z',
+      updatedAt: newestUpdatedAt,
     });
     const revisions = [newestRevision, middleRevision, baseRevision];
     const record = {
       ...buildStoredProjectRecord(newestProject, {
         id: newestProject.id,
-        updatedAt: '2026-06-27T23:01:00.000Z',
+        updatedAt: newestUpdatedAt,
         origin: 'local-only',
         syncStatus: 'local',
         revisions,
