@@ -26,6 +26,20 @@ export function ProjectPickerPanel({
     { value: 'local', label: 'Local' },
     { value: 'templates', label: 'Templates' },
   ];
+  const listTitle = filter === 'local'
+    ? 'Local Projects'
+    : filter === 'cloud'
+      ? 'Cloud Projects'
+      : filter === 'templates'
+        ? 'Templates'
+        : 'Recent Projects';
+  const emptyCopy = filter === 'local'
+    ? 'No locally stored projects match this filter yet.'
+    : filter === 'cloud'
+      ? 'No cloud projects match this filter yet.'
+      : filter === 'templates'
+        ? 'Templates are not available yet.'
+        : 'No projects match this filter yet.';
 
   return (
     <div className="project-picker-panel" data-testid="project-picker-panel">
@@ -66,19 +80,19 @@ export function ProjectPickerPanel({
 
         <div className="project-picker-grid">
           <div className="project-picker-sources">
-            <div className="project-picker-source-card project-picker-source-card-cloud">
+            <div className={`project-picker-source-card ${filter === 'cloud' ? 'project-picker-source-card-cloud' : ''}`}>
               <div>
                 <div className="project-picker-source-title">Cloud Projects</div>
                 <div className="project-picker-source-copy">{counts.cloud} available</div>
               </div>
             </div>
-            <div className="project-picker-source-card">
+            <div className={`project-picker-source-card ${filter === 'local' ? 'project-picker-source-card-cloud' : ''}`}>
               <div>
                 <div className="project-picker-source-title">Local Projects</div>
-                <div className="project-picker-source-copy">{counts.local} local only</div>
+                <div className="project-picker-source-copy">{counts.local} stored locally</div>
               </div>
             </div>
-            <div className="project-picker-source-card project-picker-source-card-warn">
+            <div className={`project-picker-source-card ${filter === 'recent' ? 'project-picker-source-card-cloud' : 'project-picker-source-card-warn'}`}>
               <div>
                 <div className="project-picker-source-title">Cloud Sync Issues</div>
                 <div className="project-picker-source-copy">{counts.unsynced} need retry</div>
@@ -87,9 +101,9 @@ export function ProjectPickerPanel({
           </div>
 
           <div className="project-picker-list" data-testid="project-picker-list">
-            <div className="project-picker-list-title">Recent Projects</div>
+            <div className="project-picker-list-title">{listTitle}</div>
             {projects.length === 0 ? (
-              <div className="project-picker-empty">No projects match this filter yet.</div>
+              <div className="project-picker-empty">{emptyCopy}</div>
             ) : (
               projects.map((project) => (
                 <div

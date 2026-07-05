@@ -52,4 +52,33 @@ describe('projectLibrary helpers', () => {
     expect(model.counts.local).toBe(2);
     expect(model.counts.cloud).toBe(1);
   });
+
+  it('keeps locally stored cloud-linked projects visible on the local filter', () => {
+    const model = buildProjectPickerModel({
+      localProjects: [
+        entry({
+          id: 'cloud:cached-a',
+          projectId: 'game-a',
+          title: 'Cloud Cached Locally',
+          source: 'cloud',
+          status: 'cloud',
+        }),
+      ],
+      cloudProjects: [
+        entry({
+          id: 'game-a',
+          projectId: 'game-a',
+          title: 'Cloud Remote Copy',
+          source: 'cloud',
+          status: 'cloud',
+        }),
+      ],
+      activeProjectId: null,
+      search: '',
+      filter: 'local',
+    });
+
+    expect(model.counts.local).toBe(1);
+    expect(model.visibleProjects.map((item) => item.id)).toEqual(['cloud:cached-a']);
+  });
 });

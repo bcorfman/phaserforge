@@ -43,11 +43,13 @@ export function buildProjectPickerModel({
   visibleProjects: ProjectLibraryEntry[];
 } {
   const normalizedSearch = search.trim().toLowerCase();
+  const localProjectIds = new Set(localProjects.map((entry) => entry.id));
+  const cloudProjectIds = new Set(cloudProjects.map((entry) => entry.id));
   const merged = [...localProjects, ...cloudProjects]
     .map((entry) => ({ ...entry, isCurrent: entry.id === activeProjectId }))
     .filter((entry) => {
-      if (filter === 'cloud' && entry.source !== 'cloud') return false;
-      if (filter === 'local' && entry.source !== 'local') return false;
+      if (filter === 'cloud' && !cloudProjectIds.has(entry.id)) return false;
+      if (filter === 'local' && !localProjectIds.has(entry.id)) return false;
       if (filter === 'templates') return false;
       if (!normalizedSearch) return true;
       return `${entry.title} ${entry.projectId}`.toLowerCase().includes(normalizedSearch);
