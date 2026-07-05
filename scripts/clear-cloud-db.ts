@@ -22,14 +22,16 @@ function hasFlag(flag: string): boolean {
 }
 
 async function clearContent(prisma: NonNullable<ReturnType<typeof createPrismaClient>>) {
-  const [deletedCloudAssets, deletedGames] = await prisma.$transaction([
-    prisma.cloudAsset.deleteMany({}),
-    prisma.game.deleteMany({}),
+  const [deletedCloudAssets, deletedGames] = await Promise.all([
+    prisma.cloudAsset.count(),
+    prisma.game.count(),
   ]);
 
+  await prisma.$executeRawUnsafe('TRUNCATE TABLE "CloudAsset", "Game" CASCADE');
+
   return {
-    deletedCloudAssets: deletedCloudAssets.count,
-    deletedGames: deletedGames.count,
+    deletedCloudAssets,
+    deletedGames,
   };
 }
 
@@ -41,22 +43,26 @@ async function clearAll(prisma: NonNullable<ReturnType<typeof createPrismaClient
     deletedOauthAccounts,
     deletedInvites,
     deletedUsers,
-  ] = await prisma.$transaction([
-    prisma.cloudAsset.deleteMany({}),
-    prisma.game.deleteMany({}),
-    prisma.session.deleteMany({}),
-    prisma.oAuthAccount.deleteMany({}),
-    prisma.invite.deleteMany({}),
-    prisma.user.deleteMany({}),
+  ] = await Promise.all([
+    prisma.cloudAsset.count(),
+    prisma.game.count(),
+    prisma.session.count(),
+    prisma.oAuthAccount.count(),
+    prisma.invite.count(),
+    prisma.user.count(),
   ]);
 
+  await prisma.$executeRawUnsafe(
+    'TRUNCATE TABLE "CloudAsset", "Game", "Session", "OAuthAccount", "Invite", "User" CASCADE',
+  );
+
   return {
-    deletedCloudAssets: deletedCloudAssets.count,
-    deletedGames: deletedGames.count,
-    deletedSessions: deletedSessions.count,
-    deletedOauthAccounts: deletedOauthAccounts.count,
-    deletedInvites: deletedInvites.count,
-    deletedUsers: deletedUsers.count,
+    deletedCloudAssets,
+    deletedGames,
+    deletedSessions,
+    deletedOauthAccounts,
+    deletedInvites,
+    deletedUsers,
   };
 }
 
