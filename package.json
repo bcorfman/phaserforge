@@ -42,6 +42,8 @@
         "prisma:generate": "prisma generate",
         "prisma:migrate:dev": "prisma migrate dev",
         "prisma:migrate:deploy": "prisma migrate deploy",
+        "cloud:clear-db": "node --import tsx scripts/clear-cloud-db.ts",
+        "cloud:clear-db-content": "node --import tsx scripts/clear-cloud-db.ts",
         "cloud:migrate-games": "node --import tsx scripts/migrate-cloud-games-to-project.ts",
         "cloud:verify-games": "node --import tsx scripts/migrate-cloud-games-to-project.ts --verify-only",
         "railway:start": "npm run prisma:migrate:deploy && npm run server:start",
