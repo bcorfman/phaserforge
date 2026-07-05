@@ -186,17 +186,16 @@ async function startManagedExternalWebServer({
     }
   };
 
-  child.once('exit', async (code, signal) => {
-    await lifecycle.markExit(code ?? null, signal ?? null);
+  child.once('exit', (code, signal) => {
+    const phase = lifecycle.state.readyAt ? 'during the Playwright run' : 'before ready';
+    const exitError = createManagedServerError(
+      `Managed E2E web server exited ${phase} (code=${code ?? 'null'}, signal=${signal ?? 'null'})`,
+      logDir,
+    );
+    rejectUnexpectedExit(exitError);
+    void lifecycle.markExit(code ?? null, signal ?? null);
     stdout.end();
     stderr.end();
-    const phase = lifecycle.state.readyAt ? 'during the Playwright run' : 'before ready';
-    rejectUnexpectedExit(
-      createManagedServerError(
-        `Managed E2E web server exited ${phase} (code=${code ?? 'null'}, signal=${signal ?? 'null'})`,
-        logDir,
-      ),
-    );
   });
 
   try {
