@@ -95,6 +95,17 @@ describe('EditorStore reducer', () => {
     expect(clamped.project.pixelsPerUnit).toBe(1);
   });
 
+  it('stores project render mode metadata', () => {
+    const state = seededState();
+
+    const next = reducer(state, {
+      type: 'set-project-metadata',
+      renderMode: 'smooth-2d',
+    } as any);
+
+    expect(next.project.renderMode).toBe('smooth-2d');
+  });
+
   it('rescales existing asset-backed sprites across the project when pixels per unit changes', () => {
     const state = {
       ...seededState(),

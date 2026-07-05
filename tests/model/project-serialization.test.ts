@@ -120,6 +120,7 @@ describe('project YAML serialization', () => {
       id: 'project-1',
       title: 'My Game',
       pixelsPerUnit: 2,
+      renderMode: 'smooth-2d',
       publishTitle: 'My Published Game',
       publishGithubPagesRepo: 'mygame',
       assets: { images: {}, spriteSheets: {}, fonts: {} },
@@ -132,6 +133,7 @@ describe('project YAML serialization', () => {
     const yaml = serializeProjectToYaml(project as any);
     expect(yaml).toMatch(/\ntitle:\s*My Game\n/);
     expect(yaml).toMatch(/\npixelsPerUnit:\s*2\n/);
+    expect(yaml).toMatch(/\nrenderMode:\s*smooth-2d\n/);
     expect(yaml).toMatch(/\npublishTitle:\s*My Published Game\n/);
     expect(yaml).toMatch(/\npublishGithubPagesRepo:\s*mygame\n/);
     expect(parseProjectYaml(yaml)).toEqual(project);

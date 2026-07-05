@@ -1,4 +1,5 @@
 export type Id = string;
+export type ProjectRenderMode = 'pixel-art' | 'smooth-2d';
 
 export type StartupMode = 'new_empty_scene';
 
@@ -182,6 +183,11 @@ export interface ProjectSpec {
    * `1` preserves legacy behavior.
    */
   pixelsPerUnit?: number;
+  /**
+   * Optional project-wide render mode for sprite/background filtering.
+   * `pixel-art` preserves nearest-neighbor rendering.
+   */
+  renderMode?: ProjectRenderMode;
   assets: {
     images: Record<Id, ImageAssetSpec>;
     spriteSheets: Record<Id, SpriteSheetAssetSpec>;

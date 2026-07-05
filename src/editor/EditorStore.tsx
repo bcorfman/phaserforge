@@ -21,6 +21,7 @@ import { createEmptyProject, createEmptyGameScene } from '../model/emptyProject'
 import {
   deriveWorldUnitsFromNaturalPixels,
   getProjectPixelsPerUnit,
+  normalizeProjectRenderMode,
   normalizeProjectPixelsPerUnit,
 } from '../model/projectPixelScale';
 import { validateProjectSpec, validateSceneSpec } from '../model/validation';
@@ -217,7 +218,7 @@ export type EditorAction =
   | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; syncMode: ProjectSyncMode; registry: EditorRegistryConfig }
   | { type: 'set-sync-mode'; syncMode: ProjectSyncMode }
   | { type: 'reset-project' }
-  | { type: 'set-project-metadata'; title?: string; publishTitle?: string; publishGithubPagesRepo?: string; pixelsPerUnit?: number }
+  | { type: 'set-project-metadata'; title?: string; publishTitle?: string; publishGithubPagesRepo?: string; pixelsPerUnit?: number; renderMode?: 'pixel-art' | 'smooth-2d' }
   | { type: 'set-theme-mode'; themeMode: ThemeMode }
   | { type: 'set-ui-scale'; uiScale: number }
   | { type: 'set-show-hitbox-overlay'; value: boolean }
@@ -1100,6 +1101,9 @@ function describeEditorAction(stateBefore: EditorState, stateAfter: EditorState,
       if (stateBefore.project.pixelsPerUnit !== stateAfter.project.pixelsPerUnit) {
         return `Set project scale to ${stateAfter.project.pixelsPerUnit ?? 1} px/unit`;
       }
+      if (stateBefore.project.renderMode !== stateAfter.project.renderMode) {
+        return `Set render mode to ${stateAfter.project.renderMode === 'smooth-2d' ? 'Smooth 2D' : 'Pixel Art'}`;
+      }
       if (stateBefore.project.publishTitle !== stateAfter.project.publishTitle) {
         return stateAfter.project.publishTitle ? `Set publish title to ${stateAfter.project.publishTitle}` : 'Cleared publish title';
       }
@@ -1285,6 +1289,14 @@ function buildProjectHistoryEventDraftsForAction(
           burstId: `project.settings.updated:${actionBurstToken}`,
           scope: { kind: 'project' },
           summary: `Set project scale to ${stateAfter.project.pixelsPerUnit ?? 1} px/unit`,
+        });
+      }
+      if (stateBefore.project.renderMode !== stateAfter.project.renderMode) {
+        drafts.push({
+          kind: 'project.settings.updated',
+          burstId: `project.settings.render-mode:${actionBurstToken}`,
+          scope: { kind: 'project' },
+          summary: `Set render mode to ${stateAfter.project.renderMode === 'smooth-2d' ? 'Smooth 2D' : 'Pixel Art'}`,
         });
       }
       return drafts.length > 0 ? drafts : undefined;
@@ -2307,6 +2319,9 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         ...(typeof action.title === 'string' ? { title: action.title } : {}),
         ...(typeof action.pixelsPerUnit === 'number'
           ? { pixelsPerUnit: normalizeProjectPixelsPerUnit(action.pixelsPerUnit) }
+          : {}),
+        ...(typeof action.renderMode === 'string'
+          ? { renderMode: normalizeProjectRenderMode(action.renderMode) }
           : {}),
         ...(typeof action.publishTitle === 'string'
           ? { publishTitle: action.publishTitle }
