@@ -472,6 +472,79 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
+  it('recreates a missing cloud game instead of surfacing not_found for a stale local cloud link', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+    api.updateGame.mockRejectedValueOnce(new Error('not_found'));
+    api.createGame.mockResolvedValueOnce({ game: { id: 'g-recreated', title: 'Pattern Demo 2', created_at: 'c', updated_at: 'u' } });
+
+    const project = createEmptyProject();
+    project.id = 'project-stale-link';
+    project.title = 'Pattern Demo';
+
+    const onCloudGameLinked = vi.fn();
+    const onError = vi.fn();
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project }}
+        activeCloudGameId="g-stale"
+        dispatch={vi.fn() as any}
+        onLoadYaml={() => {}}
+        onCloudGameLinked={onCloudGameLinked}
+        onStatus={vi.fn()}
+        onError={onError}
+      />,
+    );
+
+    try {
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      api.updateGame.mockClear();
+
+      const edited = structuredClone(project);
+      edited.title = 'Pattern Demo 2';
+
+      act(() => {
+        view.root.render(
+          <CloudAccountPanel
+            state={{ project: edited }}
+            activeCloudGameId="g-stale"
+            dispatch={vi.fn() as any}
+            onLoadYaml={() => {}}
+            onCloudGameLinked={onCloudGameLinked}
+            onStatus={vi.fn()}
+            onError={onError}
+          />,
+        );
+      });
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(api.updateGame).toHaveBeenCalledWith(
+        'g-stale',
+        expect.objectContaining({
+          title: 'Pattern Demo 2',
+        }),
+        'csrf',
+      );
+      expect(api.createGame).toHaveBeenCalledWith(
+        'Pattern Demo 2',
+        expect.objectContaining({
+          id: 'project-stale-link',
+          title: 'Pattern Demo 2',
+        }),
+        'csrf',
+      );
+      expect(onCloudGameLinked).toHaveBeenCalledWith('g-recreated');
+      expect(onError).not.toHaveBeenCalledWith('not_found');
+    } finally {
+      view.cleanup();
+    }
+  });
+
   it('shows a workspace conflict for a linked project only when sync mode is offline', async () => {
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
 
