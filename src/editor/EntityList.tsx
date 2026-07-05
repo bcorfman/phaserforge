@@ -11,7 +11,12 @@ import { buildProjectPickerModel, type ProjectPickerFilter } from './projectLibr
 import { exportYamlToDisk } from './yamlFileExport';
 import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
 import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
-import { deriveWorldUnitsFromNaturalPixels, getProjectPixelsPerUnit, normalizeProjectPixelsPerUnit } from '../model/projectPixelScale';
+import {
+  deriveWorldUnitsFromNaturalPixels,
+  getProjectPixelsPerUnit,
+  getProjectRenderMode,
+  normalizeProjectPixelsPerUnit,
+} from '../model/projectPixelScale';
 import { EventBus } from '../phaser/EventBus';
 import {
   buildProjectHistoryViewModel,
@@ -281,6 +286,7 @@ export function EntityListView({
   const [copyRevisionName, setCopyRevisionName] = useState('');
   const [projectSettingsDialogOpen, setProjectSettingsDialogOpen] = useState(false);
   const [projectPixelsPerUnitDraft, setProjectPixelsPerUnitDraft] = useState(() => String(getProjectPixelsPerUnit(project)));
+  const [projectRenderModeDraft, setProjectRenderModeDraft] = useState<'pixel-art' | 'smooth-2d'>(() => getProjectRenderMode(project));
   const [expandedRevisionId, setExpandedRevisionId] = useState<string | null>(null);
   const [historyPaneMode, setHistoryPaneMode] = useState<'active' | 'archived'>('active');
   const [historySelectionMode, setHistorySelectionMode] = useState<'none' | 'archive' | 'delete'>('none');
@@ -318,6 +324,7 @@ export function EntityListView({
   useEffect(() => {
     if (!projectSettingsDialogOpen) return;
     setProjectPixelsPerUnitDraft(String(getProjectPixelsPerUnit(project)));
+    setProjectRenderModeDraft(getProjectRenderMode(project));
   }, [project, projectSettingsDialogOpen]);
 
   useEffect(() => {
@@ -357,7 +364,7 @@ export function EntityListView({
 
   const saveProjectSettings = () => {
     const pixelsPerUnit = normalizeProjectPixelsPerUnit(Number(projectPixelsPerUnitDraft));
-    dispatch({ type: 'set-project-metadata', pixelsPerUnit });
+    dispatch({ type: 'set-project-metadata', pixelsPerUnit, renderMode: projectRenderModeDraft });
     setProjectSettingsDialogOpen(false);
   };
 
@@ -1905,8 +1912,32 @@ export function EntityListView({
                 );
               })}
             </div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              <div className="muted">Render Mode</div>
+              <div className="inspector-grid-2">
+                {([
+                  { value: 'pixel-art', label: 'Pixel Art' },
+                  { value: 'smooth-2d', label: 'Smooth 2D' },
+                ] as const).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`button button-compact ${projectRenderModeDraft === option.value ? 'active' : ''}`}
+                    data-testid={`project-settings-render-mode-${option.value}`}
+                    onClick={() => setProjectRenderModeDraft(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="muted">
               64px art becomes {deriveWorldUnitsFromNaturalPixels(64, Number(projectPixelsPerUnitDraft) || 1)} world units at {normalizeProjectPixelsPerUnit(Number(projectPixelsPerUnitDraft) || 1)} px/unit.
+            </div>
+            <div className="muted">
+              {projectRenderModeDraft === 'smooth-2d'
+                ? 'Smooth 2D uses linear filtering for softer downscaling.'
+                : 'Pixel Art uses nearest-neighbor filtering for crisp edges.'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '0.75rem' }}>
@@ -2143,6 +2174,7 @@ export function EntityListView({
                 onClick={() => {
                   setMenuOpen(null);
                   setProjectPixelsPerUnitDraft(String(getProjectPixelsPerUnit(project)));
+                  setProjectRenderModeDraft(getProjectRenderMode(project));
                   setProjectSettingsDialogOpen(true);
                 }}
               >

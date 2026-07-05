@@ -1,3 +1,5 @@
+import type { ProjectRenderMode } from '../model/types';
+
 type TextureLike = {
   setFilter?: (mode: number) => void;
 };
@@ -7,11 +9,16 @@ type TextureManagerLike = {
   get: (key: string) => TextureLike | null | undefined;
 };
 
-// Phaser.Textures.FilterMode.NEAREST
+// Phaser.Textures.FilterMode.LINEAR / NEAREST
+const LINEAR_FILTER_MODE = 0;
 const NEAREST_FILTER_MODE = 1;
 
-export function applyNearestTextureFilter(textures: TextureManagerLike, key: string): void {
+export function applyProjectTextureFilter(
+  textures: TextureManagerLike,
+  key: string,
+  renderMode: ProjectRenderMode = 'pixel-art',
+): void {
   if (!textures.exists(key)) return;
   const texture = textures.get(key);
-  texture?.setFilter?.(NEAREST_FILTER_MODE);
+  texture?.setFilter?.(renderMode === 'smooth-2d' ? LINEAR_FILTER_MODE : NEAREST_FILTER_MODE);
 }

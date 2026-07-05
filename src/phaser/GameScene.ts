@@ -20,7 +20,8 @@ import { executeCollisionScripts } from '../runtime/collisions/collisionScripts'
 import type { TriggerZoneSpec } from '../model/types';
 import { assetSourceKey, resolveAssetSourceUrl } from '../cloud/assetUrls';
 import type { ViewState } from '../util/viewStateStorage';
-import { applyNearestTextureFilter } from './textureFiltering';
+import { getProjectRenderMode } from '../model/projectPixelScale';
+import { applyProjectTextureFilter } from './textureFiltering';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
 const EMPTY_SCENE_SPEC: SceneSpec = { id: '', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} };
@@ -1048,7 +1049,7 @@ export class GameScene extends Phaser.Scene {
     gfx.fillRect(0, 0, 1, 1);
     gfx.generateTexture(PLACEHOLDER_TEXTURE_KEY, 1, 1);
     gfx.destroy();
-    applyNearestTextureFilter(this.textures as any, PLACEHOLDER_TEXTURE_KEY);
+    applyProjectTextureFilter(this.textures as any, PLACEHOLDER_TEXTURE_KEY, this.project ? getProjectRenderMode(this.project) : 'pixel-art');
   }
 
   private configurePhysicsObject(entityId: string, sprite: PhysicsObject, physicsObjects: Map<string, PhysicsObject>): void {
@@ -1347,6 +1348,7 @@ export class GameScene extends Phaser.Scene {
     const pendingAssets: SpriteAssetSpec[] = [];
     const pendingBackgrounds: Array<{ key: string; url: string }> = [];
     const pendingAudio: Array<{ key: string; url: string }> = [];
+    const renderMode = project ? getProjectRenderMode(project) : 'pixel-art';
 
     for (const sceneSpec of sceneSpecs) {
       for (const asset of Object.values(sceneSpec.entities)
@@ -1399,7 +1401,17 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    if (pendingAssets.length === 0 && pendingBackgrounds.length === 0 && pendingAudio.length === 0) return;
+    if (pendingAssets.length === 0 && pendingBackgrounds.length === 0 && pendingAudio.length === 0) {
+      for (const sceneSpec of sceneSpecs) {
+        for (const asset of Object.values(sceneSpec.entities).map((entity) => entity.asset).filter((asset): asset is SpriteAssetSpec => Boolean(asset))) {
+          applyProjectTextureFilter(this.textures as any, this.getTextureKey(asset), renderMode);
+        }
+        for (const layer of sceneSpec.backgroundLayers ?? []) {
+          applyProjectTextureFilter(this.textures as any, this.getBackgroundTextureKey(layer.assetId), renderMode);
+        }
+      }
+      return;
+    }
 
     for (const asset of pendingAssets) {
       const key = this.getTextureKey(asset);
@@ -1439,10 +1451,10 @@ export class GameScene extends Phaser.Scene {
     });
 
     for (const asset of pendingAssets) {
-      applyNearestTextureFilter(this.textures as any, this.getTextureKey(asset));
+      applyProjectTextureFilter(this.textures as any, this.getTextureKey(asset), renderMode);
     }
     for (const background of pendingBackgrounds) {
-      applyNearestTextureFilter(this.textures as any, background.key);
+      applyProjectTextureFilter(this.textures as any, background.key, renderMode);
     }
   }
 }

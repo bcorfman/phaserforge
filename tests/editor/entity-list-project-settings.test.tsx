@@ -28,7 +28,7 @@ function renderEntityList() {
 }
 
 describe('EntityList project settings', () => {
-  it('opens project settings from Manage and dispatches the saved pixels-per-unit value', async () => {
+  it('opens project settings from Manage and dispatches saved scale + render mode values', async () => {
     const { container, root, dispatch, props } = renderEntityList();
 
     await React.act(async () => {
@@ -55,6 +55,12 @@ describe('EntityList project settings', () => {
       preset!.click();
     });
 
+    await React.act(async () => {
+      const renderMode = container.querySelector('[data-testid="project-settings-render-mode-smooth-2d"]') as HTMLButtonElement | null;
+      expect(renderMode).not.toBeNull();
+      renderMode!.click();
+    });
+
     const saveButton = container.querySelector('[data-testid="project-settings-save"]') as HTMLButtonElement | null;
     expect(saveButton).not.toBeNull();
 
@@ -62,6 +68,6 @@ describe('EntityList project settings', () => {
       saveButton!.click();
     });
 
-    expect(dispatch).toHaveBeenCalledWith({ type: 'set-project-metadata', pixelsPerUnit: 2 });
+    expect(dispatch).toHaveBeenCalledWith({ type: 'set-project-metadata', pixelsPerUnit: 2, renderMode: 'smooth-2d' });
   });
 });

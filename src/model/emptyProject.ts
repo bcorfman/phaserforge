@@ -17,6 +17,7 @@ export function createEmptyProject(): ProjectSpec {
   return {
     id: 'project-1',
     pixelsPerUnit: 1,
+    renderMode: 'pixel-art',
     assets: { images: {}, spriteSheets: {}, fonts: {} },
     audio: { sounds: {} },
     inputMaps: {},
