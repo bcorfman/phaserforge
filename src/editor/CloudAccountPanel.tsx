@@ -555,6 +555,39 @@ export function CloudAccountPanel({
     return await fn(await ensureCsrf({ forceRefresh: true }));
   };
 
+  const saveProjectToCloud = async (args: {
+    title: string;
+    project: ProjectSpec;
+    cloudGameId: string | null;
+  }): Promise<string> => {
+    const { title, project, cloudGameId } = args;
+
+    if (cloudGameId) {
+      try {
+        await runWithCsrfRetry(async (csrf) => updateGame(
+          cloudGameId,
+          { title, project: await prepareProjectForRemoteSave(project, csrf) },
+          csrf,
+        ));
+        return cloudGameId;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+        if (message !== 'not_found') throw err;
+      }
+    }
+
+    const created = await runWithCsrfRetry(async (csrf) => createGame(
+      title,
+      await prepareProjectForRemoteSave(project, csrf),
+      csrf,
+    ));
+    const nextCloudGameId = created.game.id;
+    cloudGameIdRef.current = nextCloudGameId;
+    setCloudGameId(nextCloudGameId);
+    await onCloudGameLinked?.(nextCloudGameId);
+    return nextCloudGameId;
+  };
+
   const handleSignup = async () => {
     setBusy(true);
     try {
@@ -649,15 +682,11 @@ export function CloudAccountPanel({
     if (!user) return null;
     const project = structuredClone(state.project);
     const title = publishTitleDraft.trim() || state.project.title?.trim() || 'Untitled';
-    if (cloudGameId) {
-      await runWithCsrfRetry(async (csrf) => updateGame(cloudGameId, { title, project: await prepareProjectForRemoteSave(project, csrf) }, csrf));
-      return cloudGameId;
-    }
-    const created = await runWithCsrfRetry(async (csrf) => createGame(title, await prepareProjectForRemoteSave(project, csrf), csrf));
-    const id = created.game.id;
-    setCloudGameId(id);
-    await onCloudGameLinked?.(id);
-    return id;
+    return await saveProjectToCloud({
+      title,
+      project,
+      cloudGameId,
+    });
   };
 
   const clearAutosaveTimer = () => {
@@ -729,29 +758,17 @@ export function CloudAccountPanel({
         cloudGameId: existingCloudGameId ?? null,
         ...pendingYamlSummary,
       });
-      if (existingCloudGameId) {
-        await runWithCsrfRetry(async (csrf) => updateGame(
-          existingCloudGameId,
-          { title: pending.title, project: await prepareProjectForRemoteSave(pending.project, csrf) },
-          csrf,
-        ));
-      } else {
-        const created = await runWithCsrfRetry(async (csrf) => createGame(
-          pending.title,
-          await prepareProjectForRemoteSave(pending.project, csrf),
-          csrf,
-        ));
-        const nextCloudGameId = created.game.id;
-        cloudGameIdRef.current = nextCloudGameId;
-        setCloudGameId(nextCloudGameId);
-        await onCloudGameLinked?.(nextCloudGameId);
-      }
+      const savedCloudGameId = await saveProjectToCloud({
+        title: pending.title,
+        project: pending.project,
+        cloudGameId: existingCloudGameId,
+      });
       lastAutosavedSignatureRef.current = pending.signature;
       appendPersistenceDebugEntry('cloud:autosave-flush-success', {
         ...buildProjectDebugDetails(),
         pendingProjectId: pending.projectId,
         pendingTitle: pending.title,
-        cloudGameId: cloudGameIdRef.current ?? existingCloudGameId ?? null,
+        cloudGameId: savedCloudGameId,
         ...pendingYamlSummary,
       });
     } catch (err) {
