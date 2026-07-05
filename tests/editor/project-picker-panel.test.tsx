@@ -46,9 +46,30 @@ describe('ProjectPickerPanel', () => {
     expect(screen.getByTestId('project-picker-panel')).toBeTruthy();
     expect(screen.getByText('Cloud Projects')).toBeTruthy();
     expect(screen.getByText('12 available')).toBeTruthy();
+    expect(screen.getByText('3 stored locally')).toBeTruthy();
+    expect(screen.getByText('Recent Projects')).toBeTruthy();
     expect(screen.getByText('Local Debug Copy')).toBeTruthy();
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0);
     expect(screen.queryByText('Active Project Summary')).toBeNull();
+  });
+
+  it('updates the list heading and empty copy for the local filter', () => {
+    render(
+      <ProjectPickerPanel
+        counts={{ cloud: 12, local: 3, unsynced: 2 }}
+        filter="local"
+        onCreateProject={() => {}}
+        onFilterChange={() => {}}
+        onOpenProject={() => {}}
+        onRefreshCloudProjects={() => {}}
+        onSearchChange={() => {}}
+        projects={[]}
+        search=""
+      />
+    );
+
+    expect(screen.getAllByText('Local Projects').length).toBeGreaterThan(0);
+    expect(screen.getByText('No locally stored projects match this filter yet.')).toBeTruthy();
   });
 
   it('routes user actions through callbacks', () => {
