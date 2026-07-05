@@ -1,5 +1,5 @@
 import { parse, stringify } from 'yaml';
-import { normalizeProjectPixelsPerUnit } from './projectPixelScale';
+import { normalizeProjectPixelsPerUnit, normalizeProjectRenderMode } from './projectPixelScale';
 import { CollisionRuleSpec, GameSceneSpec, ProjectSpec, TriggerZoneSpec } from './types';
 import { migrateSceneSpec } from './migrateScene';
 
@@ -264,6 +264,7 @@ export function parseProjectYaml(text: string): ProjectSpec {
     id: typeof raw.id === 'string' ? raw.id : 'project-1',
     ...(typeof raw.title === 'string' ? { title: raw.title } : {}),
     ...(raw.pixelsPerUnit !== undefined ? { pixelsPerUnit: normalizeProjectPixelsPerUnit(raw.pixelsPerUnit) } : {}),
+    ...(raw.renderMode !== undefined ? { renderMode: normalizeProjectRenderMode(raw.renderMode) } : {}),
     ...(typeof raw.publishTitle === 'string' ? { publishTitle: raw.publishTitle } : {}),
     ...(() => {
       if (typeof raw.publishGithubPagesRepo === 'string') return { publishGithubPagesRepo: raw.publishGithubPagesRepo };

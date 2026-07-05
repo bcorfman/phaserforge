@@ -1,6 +1,7 @@
-import type { ProjectSpec, SpriteAssetSpec } from './types';
+import type { ProjectRenderMode, ProjectSpec, SpriteAssetSpec } from './types';
 
 export const DEFAULT_PROJECT_PIXELS_PER_UNIT = 1;
+export const DEFAULT_PROJECT_RENDER_MODE: ProjectRenderMode = 'pixel-art';
 
 export function normalizeProjectPixelsPerUnit(value: unknown, fallback = DEFAULT_PROJECT_PIXELS_PER_UNIT): number {
   if (!Number.isFinite(value)) return fallback;
@@ -9,6 +10,14 @@ export function normalizeProjectPixelsPerUnit(value: unknown, fallback = DEFAULT
 
 export function getProjectPixelsPerUnit(project: Pick<ProjectSpec, 'pixelsPerUnit'>): number {
   return normalizeProjectPixelsPerUnit(project.pixelsPerUnit, DEFAULT_PROJECT_PIXELS_PER_UNIT);
+}
+
+export function normalizeProjectRenderMode(value: unknown, fallback = DEFAULT_PROJECT_RENDER_MODE): ProjectRenderMode {
+  return value === 'smooth-2d' || value === 'pixel-art' ? value : fallback;
+}
+
+export function getProjectRenderMode(project: Pick<ProjectSpec, 'renderMode'>): ProjectRenderMode {
+  return normalizeProjectRenderMode(project.renderMode, DEFAULT_PROJECT_RENDER_MODE);
 }
 
 export function deriveWorldUnitsFromNaturalPixels(naturalPixels: number, pixelsPerUnit: number): number {

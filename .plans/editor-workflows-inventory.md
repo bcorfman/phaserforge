@@ -137,7 +137,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 
 #### A31a — Manage Project Root
 - Project Tree header → `Manage` → `Create New`, `Open...`, `Toggle Sync Mode`, `Import YAML`, `Export as YAML`, `Project Settings...`, `Rename`, `History`, or `Clear Project ...`.
-- `Project Settings...` opens a lightweight dialog for project-wide `Pixels Per Unit`.
+- `Project Settings...` opens a lightweight dialog for project-wide `Pixels Per Unit` and render mode (`Pixel Art` / `Smooth 2D`).
 - `Rename` opens inline rename on the project root row.
 - `History` swaps the left pane into `Project Revisions`.
 
