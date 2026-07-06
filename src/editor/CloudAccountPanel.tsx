@@ -14,7 +14,6 @@ type CloudAccountUser = { id: string; email: string } | null;
 type CloudPublishInfo = { ok: true; login: string; pagesBaseUrl: string } | { ok: false; error: string };
 type CloudAuthMode = 'login' | 'signup';
 export const CLOUD_RETURN_TO_CLOUD_AFTER_AUTH_STORAGE_KEY = 'phaserforge.cloud.return_to_cloud_after_auth';
-const CLOUD_ACCOUNT_CREATED_STORAGE_KEY = 'phaserforge.cloud.account_created_v1';
 const GITHUB_AUTHORIZED_APPS_SETTINGS_URL = 'https://github.com/settings/connections/applications';
 
 let cachedCloudAccountUser: CloudAccountUser | undefined;
@@ -50,24 +49,8 @@ export function __resetCloudAccountPanelAuthCacheForTests() {
   cachedPublishInfoByUserId.clear();
 }
 
-function hasCreatedCloudAccount(): boolean {
-  try {
-    return window.localStorage.getItem(CLOUD_ACCOUNT_CREATED_STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
 function getDefaultAuthMode(): CloudAuthMode {
-  return hasCreatedCloudAccount() ? 'login' : 'signup';
-}
-
-function markCloudAccountCreated() {
-  try {
-    window.localStorage.setItem(CLOUD_ACCOUNT_CREATED_STORAGE_KEY, '1');
-  } catch {
-    // Ignore storage failures and fall back to first-time defaults next load.
-  }
+  return 'signup';
 }
 
 export function buildGithubStartHref(params: {
@@ -200,6 +183,7 @@ export function CloudAccountPanel({
   const [publishInlineError, setPublishInlineError] = useState('');
   const [cloudGameId, setCloudGameId] = useState<string | null>(null);
   const [cloudGameLookupResolved, setCloudGameLookupResolved] = useState(false);
+  const [cloudLinkVerificationPending, setCloudLinkVerificationPending] = useState(false);
   const [conflictCheckComplete, setConflictCheckComplete] = useState(true);
   const [workspaceConflict, setWorkspaceConflict] = useState<{
     cloud: { project: ProjectSpec; updatedAt: string; label: string };
@@ -217,6 +201,7 @@ export function CloudAccountPanel({
 
   const CLOUD_AUTOSAVE_DEBOUNCE_MS = 1000;
   const CLOUD_AUTOSAVE_RETRY_MS = 5000;
+  const resolvedCloudGameId = cloudGameIdRef.current ?? cloudGameId ?? null;
 
   const githubEnabled = useMemo(() => true, []);
   const githubStartHref = useMemo(() => {
@@ -295,18 +280,74 @@ export function CloudAccountPanel({
   }, [cloudGameId]);
 
   useEffect(() => {
+    let cancelled = false;
+    if (!user) return;
+    if (!cloudLinkVerificationPending) return;
+    const linkedCloudGameId = cloudGameIdRef.current ?? cloudGameId ?? null;
+    if (!linkedCloudGameId) {
+      setCloudLinkVerificationPending(false);
+      return;
+    }
+
+    const verifyLinkedCloudGame = async () => {
+      try {
+        await getGame(linkedCloudGameId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '';
+        if (message === 'not_found' && !cancelled) {
+          const project = structuredClone(state.project);
+          const title = project.publishTitle?.trim() || project.title?.trim() || 'Untitled';
+          const signature = `${project.id}\n${title}\n${canonicalizeProjectForComparison(project)}`;
+          appendPersistenceDebugEntry('cloud:stale-cloud-game-link-cleared', {
+            staleCloudGameId: linkedCloudGameId,
+            stateProjectId: state.project.id,
+          });
+          cloudGameIdRef.current = null;
+          setCloudGameId(null);
+          if (state.syncMode === 'online') {
+            try {
+              const recreatedCloudGameId = await saveProjectToCloud({
+                title,
+                project,
+                cloudGameId: null,
+              });
+              lastAutosavedSignatureRef.current = signature;
+              appendPersistenceDebugEntry('cloud:stale-cloud-game-link-recreated', {
+                previousCloudGameId: linkedCloudGameId,
+                recreatedCloudGameId,
+                stateProjectId: state.project.id,
+              });
+            } catch (recreateError) {
+              onError(recreateError instanceof Error ? recreateError.message : 'Cloud save failed');
+            }
+          }
+        }
+      } finally {
+        if (cancelled) return;
+        setCloudLinkVerificationPending(false);
+      }
+    };
+
+    void verifyLinkedCloudGame();
+    return () => {
+      cancelled = true;
+    };
+  }, [cloudGameId, cloudLinkVerificationPending, state.project.id, user]);
+
+  useEffect(() => {
     onWorkspaceConflictChange?.(workspaceConflict != null);
   }, [onWorkspaceConflictChange, workspaceConflict]);
 
   useEffect(() => {
     let cancelled = false;
     if (!user) return;
+    if (cloudLinkVerificationPending) return;
     if (!cloudGameLookupResolved) return;
     if (hasCheckedConflictRef.current) return;
     hasCheckedConflictRef.current = true;
     setConflictCheckComplete(false);
     appendPersistenceDebugEntry('cloud:conflict-check-start', {
-      activeCloudGameId: activeCloudGameId ?? cloudGameIdRef.current ?? null,
+      activeCloudGameId: resolvedCloudGameId,
       stateProjectId: state.project.id,
     });
 
@@ -335,7 +376,7 @@ export function CloudAccountPanel({
           project: structuredClone(state.project),
           savedAtMs: null as number | null,
         };
-        const mappedCloudGameId = activeCloudGameId ?? cloudGameIdRef.current;
+        const mappedCloudGameId = resolvedCloudGameId;
         if (!mappedCloudGameId) {
           appendPersistenceDebugEntry('cloud:conflict-check-skipped-unlinked-project', {
             stateProjectId: state.project.id,
@@ -397,7 +438,7 @@ export function CloudAccountPanel({
         );
       } catch (error) {
         appendPersistenceDebugEntry('cloud:conflict-check-error', {
-          activeCloudGameId: activeCloudGameId ?? cloudGameIdRef.current ?? null,
+          activeCloudGameId: resolvedCloudGameId,
           stateProjectId: state.project.id,
           error,
         });
@@ -405,7 +446,7 @@ export function CloudAccountPanel({
       } finally {
         if (!cancelled) {
           appendPersistenceDebugEntry('cloud:conflict-check-complete', {
-            activeCloudGameId: activeCloudGameId ?? cloudGameIdRef.current ?? null,
+            activeCloudGameId: resolvedCloudGameId,
             stateProjectId: state.project.id,
           });
           setConflictCheckComplete(true);
@@ -417,7 +458,7 @@ export function CloudAccountPanel({
     return () => {
       cancelled = true;
     };
-  }, [user, activeCloudGameId, cloudGameLookupResolved, state.project.id]);
+  }, [cloudGameLookupResolved, cloudLinkVerificationPending, state.project.id, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -487,7 +528,7 @@ export function CloudAccountPanel({
     publishTitleDraft,
     publishRepoDraft,
     activeCloudGameId: activeCloudGameId ?? null,
-    cloudGameId: cloudGameIdRef.current ?? cloudGameId,
+    cloudGameId: resolvedCloudGameId,
   });
 
   useEffect(() => {
@@ -592,7 +633,7 @@ export function CloudAccountPanel({
     setBusy(true);
     try {
       const res = await runWithCsrfRetry((csrf) => signup(email, password, csrf, inviteToken.trim() || undefined));
-      markCloudAccountCreated();
+      setCloudLinkVerificationPending(true);
       setCachedCloudAccountUser(res.user);
       setUser(res.user);
       setAuthResolved(true);
@@ -611,6 +652,7 @@ export function CloudAccountPanel({
     setBusy(true);
     try {
       const res = await runWithCsrfRetry((csrf) => login(email, password, csrf));
+      setCloudLinkVerificationPending(true);
       setCachedCloudAccountUser(res.user);
       setUser(res.user);
       setAuthResolved(true);
@@ -642,6 +684,7 @@ export function CloudAccountPanel({
       setShowGithubConfirm(null);
       setWorkspaceConflict(null);
       setCloudGameId(null);
+      setCloudLinkVerificationPending(false);
       setAuthMode(getDefaultAuthMode());
       hasCheckedConflictRef.current = false;
       onStatus('Signed out');
@@ -798,11 +841,12 @@ export function CloudAccountPanel({
     if (workspaceConflict) {
       clearAutosaveTimer();
     }
-    if (!authResolved || !user || !cloudGameLookupResolved || !conflictCheckComplete || workspaceConflict) {
+    if (!authResolved || !user || !cloudGameLookupResolved || cloudLinkVerificationPending || !conflictCheckComplete || workspaceConflict) {
       appendPersistenceDebugEntry('cloud:autosave-gate-blocked', {
         authResolved,
         hasUser: Boolean(user),
         cloudGameLookupResolved,
+        cloudLinkVerificationPending,
         conflictCheckComplete,
         hasWorkspaceConflict: Boolean(workspaceConflict),
         stateProjectId: state.project.id,
@@ -830,7 +874,7 @@ export function CloudAccountPanel({
     return () => {
       clearAutosaveTimer();
     };
-  }, [authResolved, cloudGameLookupResolved, conflictCheckComplete, state.project, user, workspaceConflict]);
+  }, [authResolved, cloudGameLookupResolved, cloudLinkVerificationPending, conflictCheckComplete, state.project, user, workspaceConflict]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
