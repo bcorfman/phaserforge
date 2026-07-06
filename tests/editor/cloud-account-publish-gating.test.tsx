@@ -774,7 +774,68 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
-  it('defaults to the Log in tab for returning users who already created an account', async () => {
+  it('signs up cleanly when a wiped backend leaves the current project linked to a stale cloud game id', async () => {
+    vi.useFakeTimers();
+    api.me.mockImplementationOnce(async () => {
+      throw new Error('not_signed_in');
+    });
+    api.signup.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+    api.getGame.mockRejectedValue(new Error('not_found'));
+    api.createGame.mockResolvedValueOnce({ game: { id: 'g-recreated', title: 'Untitled', created_at: 'c', updated_at: 'u' } });
+
+    const project = createEmptyProject();
+    project.id = 'project-stale-signup';
+    project.title = 'Untitled';
+
+    const onCloudGameLinked = vi.fn();
+    const onError = vi.fn();
+
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project, syncMode: 'online' }}
+        activeCloudGameId="g-stale"
+        dispatch={() => {}}
+        onLoadYaml={() => {}}
+        onCloudGameLinked={onCloudGameLinked}
+        onStatus={() => {}}
+        onError={onError}
+      />,
+    );
+
+    try {
+      await flushEffects();
+
+      const form = document.querySelector('.cloud-auth-form') as HTMLFormElement | null;
+      const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement | null;
+      const passwordInput = document.querySelector('input[name="password"]') as HTMLInputElement | null;
+      const inviteInput = document.querySelector('input[aria-label="Invite code"]') as HTMLInputElement | null;
+
+      fireEvent.change(emailInput as HTMLInputElement, { target: { value: 'dev@example.com' } });
+      fireEvent.change(passwordInput as HTMLInputElement, { target: { value: 'hunter2' } });
+      fireEvent.change(inviteInput as HTMLInputElement, { target: { value: 'invite-code-123' } });
+
+      await act(async () => {
+        fireEvent.submit(form as HTMLFormElement);
+        await vi.runAllTimersAsync();
+      });
+
+      expect(api.signup).toHaveBeenCalledWith('dev@example.com', 'hunter2', 'csrf', 'invite-code-123');
+      expect(api.createGame).toHaveBeenCalledWith(
+        'Untitled',
+        expect.objectContaining({
+          id: 'project-stale-signup',
+          title: 'Untitled',
+        }),
+        'csrf',
+      );
+      expect(onCloudGameLinked).toHaveBeenCalledWith('g-recreated');
+      expect(onError).not.toHaveBeenCalledWith('not_found');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('still defaults to the Create tab even if a stale local account-created hint exists', async () => {
     api.me.mockImplementationOnce(async () => {
       throw new Error('not_signed_in');
     });
@@ -799,11 +860,11 @@ describe('CloudAccountPanel publish gating', () => {
     );
     try {
       await flushEffects();
-      expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Log in');
-      expect(document.querySelector('[aria-label="Invite code"]')).toBeFalsy();
-      expect(document.body.textContent).toContain('Log in to access your cloud projects and publishing tools.');
-      expect(document.querySelector('[data-testid="cloud-account-submit"]')?.textContent).toContain('Log in');
-      expect(document.body.textContent).toContain('Create');
+      expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Create');
+      expect(document.querySelector('[aria-label="Invite code"]')).toBeTruthy();
+      expect(document.body.textContent).toContain('Create your account with your invite code.');
+      expect(document.querySelector('[data-testid="cloud-account-submit"]')?.textContent).toContain('Create account');
+      expect(document.body.textContent).toContain('Already have an account?');
     } finally {
       view.cleanup();
     }
