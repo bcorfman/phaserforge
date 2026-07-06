@@ -1,7 +1,7 @@
 import type { ProjectRenderMode, ProjectSpec, SpriteAssetSpec } from './types';
 
-export const DEFAULT_PROJECT_PIXELS_PER_UNIT = 1;
-export const DEFAULT_PROJECT_RENDER_MODE: ProjectRenderMode = 'pixel-art';
+export const DEFAULT_PROJECT_PIXELS_PER_UNIT = 2;
+export const DEFAULT_PROJECT_RENDER_MODE: ProjectRenderMode = 'smooth-2d';
 
 export function normalizeProjectPixelsPerUnit(value: unknown, fallback = DEFAULT_PROJECT_PIXELS_PER_UNIT): number {
   if (!Number.isFinite(value)) return fallback;
