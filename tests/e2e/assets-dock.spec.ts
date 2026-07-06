@@ -58,8 +58,8 @@ test.describe('Assets dock', () => {
       return Object.values(entities).find((e: any) => e?.asset?.source?.kind === 'asset' && e?.asset?.source?.assetId === 'enemy-a') ?? null;
     });
     if (!created) throw new Error('Failed to find created entity');
-    expect(created.width).toBe(importedMeta.width);
-    expect(created.height).toBe(importedMeta.height);
+    expect(created.width).toBe(Math.round((importedMeta.width ?? 0) / 2));
+    expect(created.height).toBe(Math.round((importedMeta.height ?? 0) / 2));
     expect(created.scaleX ?? 1).toBe(1);
     expect(created.scaleY ?? 1).toBe(1);
   });
