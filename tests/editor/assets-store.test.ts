@@ -27,8 +27,8 @@ describe('EditorStore assets actions', () => {
     const entity = scene.entities[ids[0]];
     expect(entity.x).toBe(10);
     expect(entity.y).toBe(20);
-    expect(entity.width).toBe(256);
-    expect(entity.height).toBe(128);
+    expect(entity.width).toBe(128);
+    expect(entity.height).toBe(64);
     expect(entity.scaleX ?? 1).toBe(1);
     expect(entity.scaleY ?? 1).toBe(1);
     expect(entity.asset?.source).toEqual({ kind: 'asset', assetId: 'player' });
