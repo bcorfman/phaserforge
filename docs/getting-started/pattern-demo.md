@@ -13,9 +13,9 @@ This walkthrough recreates the `Pattern Demo` scene in PhaserForge. It assumes y
 ## Before You Start
 
 - Open PhaserForge and sign in if needed.
-- If you are continuing from older work, reset to a new empty scene from `Project -> Startup & Reset`.
+- If you are continuing from older work, reset to a new empty scene from the Project Tree in the upper left. Click `Manage -> Create New`.
 - Stay in the same signed-in project flow you established during cloud account setup.
-- Set the scene world size to `800 x 600` before you begin placing ships.
+- Set the scene world size to `800 x 600` and then the `Fit` button to recenter the canvas to full size before you begin placing ships.
 
 <img src="../assets/screenshots/playwright/world-size.png" alt="Assets dock add menu with the demo pack import option" style="display: block; margin: 0 auto; width: 500px; max-width: 100%; height: auto;" />
 
@@ -23,7 +23,7 @@ This walkthrough recreates the `Pattern Demo` scene in PhaserForge. It assumes y
 
 Success check:
 - The canvas is empty and the scene graph does not show leftover sprites or formations.
-- The World Size is `800 x 600`, as shown in the Viewport panel (Figure 1).
+- The World Size is `800 x 600`, as shown in the Viewport panel (Figure 1), and the viewport is fully fit to the canvas. 
 
 ## Import the Demo Pack Assets 
 

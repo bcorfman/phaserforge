@@ -48,7 +48,7 @@ import {
 import { registerSceneGetter, unregisterSceneGetter } from '../testing/testBridge';
 import { resolvePointerModifier } from './inputModifiers';
 import { getPreferredTextResolution } from './textResolution';
-import { applyProjectTextureFilter } from './textureFiltering';
+import { applyProjectCanvasRenderMode, applyProjectTextureFilter } from './textureFiltering';
 import type { ViewState } from '../util/viewStateStorage';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
@@ -155,7 +155,7 @@ export class EditorScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor('#0c0f1a');
-    this.cameras.main.roundPixels = true;
+    applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, this.project ? getProjectRenderMode(this.project) : 'pixel-art');
     this.bindSceneListeners();
     EventBus.emit('current-scene-ready', this);
     this.lastViewportSize = { width: this.scale.width, height: this.scale.height };
@@ -840,6 +840,7 @@ export class EditorScene extends Phaser.Scene {
     this.clearScene();
     this.project = project;
     this.mode = mode;
+    applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, project ? getProjectRenderMode(project) : 'pixel-art');
     this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry, vars: this.varsService });
     this.referenceCompiled = referenceSceneSpec ? compileScene(referenceSceneSpec, { opRegistry: this.opRegistry, vars: this.varsService }) : undefined;

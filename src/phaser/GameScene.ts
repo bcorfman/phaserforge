@@ -21,7 +21,7 @@ import type { TriggerZoneSpec } from '../model/types';
 import { assetSourceKey, resolveAssetSourceUrl } from '../cloud/assetUrls';
 import type { ViewState } from '../util/viewStateStorage';
 import { getProjectRenderMode } from '../model/projectPixelScale';
-import { applyProjectTextureFilter } from './textureFiltering';
+import { applyProjectCanvasRenderMode, applyProjectTextureFilter } from './textureFiltering';
 
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
 const EMPTY_SCENE_SPEC: SceneSpec = { id: '', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} };
@@ -155,7 +155,7 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // Match editor canvas background so offscreen space is consistent between edit and preview.
     this.cameras.main.setBackgroundColor('#0c0f1a');
-    this.cameras.main.roundPixels = true;
+    applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, this.project ? getProjectRenderMode(this.project) : 'pixel-art');
     this.audioService = new BasicAudioService(this.sound as any);
     this.inputService = new BasicInputService({
       getGamepads: () => (typeof navigator !== 'undefined' && navigator.getGamepads ? Array.from(navigator.getGamepads()) : []),
@@ -204,6 +204,7 @@ export class GameScene extends Phaser.Scene {
   public loadSceneSpec(projectOrScene: ProjectSpec | SceneSpec, maybeScene?: SceneSpec): void {
     const project = maybeScene ? (projectOrScene as ProjectSpec) : undefined;
     this.project = project;
+    applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, project ? getProjectRenderMode(project) : 'pixel-art');
     this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
     const sceneSpec = (maybeScene ?? projectOrScene) as GameSceneSpec;
     if (project) {
