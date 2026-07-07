@@ -109,6 +109,43 @@ describe('BasicAudioService', () => {
     expect(playback?.musicIsPlaying).toBe(true);
   });
 
+  it('retries music playback when the sound exists but the first play call does not start audio', () => {
+    let firstPlayBlocked = true;
+    let sound: FakeSound | undefined;
+    const manager: SoundManagerLike = {
+      add(key: string) {
+        sound ??= new FakeSoundManager().add(key);
+        const originalPlay = sound.play.bind(sound);
+        sound.play = (config) => {
+          if (firstPlayBlocked) {
+            firstPlayBlocked = false;
+            sound!.playCount += 1;
+            if (config?.loop != null) sound!.loop = Boolean(config.loop);
+            if (config?.volume != null) sound!.volume = Number(config.volume);
+            sound!.isPlaying = false;
+            return false;
+          }
+          return originalPlay(config);
+        };
+        return sound;
+      },
+      removeByKey() {},
+    };
+
+    const svc = new BasicAudioService(manager, (id) => `audio:${id}`);
+    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'embedded', dataUrl: 'data:audio/mp3;base64,AAAA', originalName: 'a.mp3', mimeType: 'audio/mpeg' } } } } } as any;
+
+    svc.applySceneAudio({ music: { assetId: 'a', loop: true, volume: 1, fadeMs: 0 } } as any, project);
+    expect(svc.getSnapshot()).toEqual({ musicAssetId: 'a', ambienceAssetIds: [] });
+    expect(sound?.isPlaying).toBe(false);
+
+    svc.applySceneAudio({ music: { assetId: 'a', loop: true, volume: 1, fadeMs: 0 } } as any, project);
+
+    const playback = (svc as any).getDebugPlayback?.();
+    expect(playback?.musicIsPlaying).toBe(true);
+    expect(sound?.playCount).toBeGreaterThanOrEqual(2);
+  });
+
   it('retries ambience playback when the first attempt fails', () => {
     let shouldThrow = true;
     const sounds = new Map<string, FakeSound>();
