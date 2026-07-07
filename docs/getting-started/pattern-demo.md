@@ -81,7 +81,7 @@ Success check:
 
 ## Position the Ships with Selection Tools and Layout
 
-1. For the top row, drag-select (or SHIFT-click to select) the top four ships and click the `Layout…` button to change their positions as a group:
+1. For the top row, drag-select the top four ships and click the `Layout…` button to change their positions as a group:
 
 <img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up"  style="display: block; margin: 0 auto; width: 498px; max-width: 100%; height: auto;" />
 
@@ -99,7 +99,7 @@ Success check:
    - Under Advanced, level the ships with `Match top edges`
    - Click on a blank area of the canvas to close the Layout popup.
 
-2. For the bottom row, drag-select (or SHIFT-click to select) all three ships and use `Layout …` again. 
+2. For the bottom row, drag-select all three ships and use `Layout …` again. 
    - Set `Spacing X` to `180` and hit `Apply Spacing X`
    - Set `Y` to `420` and hit `Set Y`
    - Center the ships with `Center X`
