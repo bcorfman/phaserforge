@@ -58,6 +58,7 @@ export class GameScene extends Phaser.Scene {
   private baseBackgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private audioService?: BasicAudioService;
+  private pendingAudioRetryTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
   private inputService?: BasicInputService;
   private varsService: BasicVarsService = new BasicVarsService();
   private testPointerOverride?: { x: number; y: number; worldX: number; worldY: number };
@@ -124,6 +125,7 @@ export class GameScene extends Phaser.Scene {
   private unbindSceneListeners(): void {
     if (!this.listenersBound) return;
     this.listenersBound = false;
+    this.clearPendingAudioRetry();
     if (getActiveScene() === this) setActiveScene(null);
     unregisterSceneGetter(this.sceneBridgeGetter);
     EventBus.off('scene-restore-view-state', this.restoreViewState, this);
@@ -202,6 +204,7 @@ export class GameScene extends Phaser.Scene {
   public loadSceneSpec(sceneSpec: SceneSpec): void;
   public loadSceneSpec(project: ProjectSpec, sceneSpec: SceneSpec): void;
   public loadSceneSpec(projectOrScene: ProjectSpec | SceneSpec, maybeScene?: SceneSpec): void {
+    this.clearPendingAudioRetry();
     const project = maybeScene ? (projectOrScene as ProjectSpec) : undefined;
     this.project = project;
     applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, project ? getProjectRenderMode(project) : 'pixel-art');
@@ -311,6 +314,7 @@ export class GameScene extends Phaser.Scene {
 
     if (project) {
       this.audioService?.applySceneAudio(sceneSpec, project);
+      this.scheduleSceneAudioRetry(sceneSpec, project, currentLoadVersion);
       this.applySceneInput(sceneSpec, project);
     } else {
       this.audioService?.stopAll();
@@ -325,6 +329,7 @@ export class GameScene extends Phaser.Scene {
       if (project) {
         // Audio playback may have failed if it was applied before assets were loaded; retry once assets are ready.
         this.audioService?.applySceneAudio(sceneSpec, project);
+        this.scheduleSceneAudioRetry(sceneSpec, project, currentLoadVersion);
       }
       if (layered && rebuildBase && this.baseCompiled) {
         this.buildBackgroundLayersInto(project, baseSceneSpec!, this.baseBackgroundObjects);
@@ -904,6 +909,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private clearScene(): void {
+    this.clearPendingAudioRetry();
     this.clearActiveLayer();
     this.clearBaseLayer();
     this.baseCompiled = undefined;
@@ -1343,6 +1349,46 @@ export class GameScene extends Phaser.Scene {
 
   private getAudioKey(assetId: string): string {
     return `audio:${assetId}`;
+  }
+
+  private clearPendingAudioRetry(): void {
+    if (this.pendingAudioRetryTimeout == null) return;
+    globalThis.clearTimeout(this.pendingAudioRetryTimeout);
+    this.pendingAudioRetryTimeout = null;
+  }
+
+  private hasPendingSceneAudioPlayback(sceneSpec: GameSceneSpec, project: ProjectSpec): boolean {
+    const sounds = project.audio?.sounds ?? {};
+    const wantsMusic = Boolean(sceneSpec.music?.assetId && sounds[sceneSpec.music.assetId]);
+    const wantedAmbienceIds = (sceneSpec.ambience ?? [])
+      .map((entry) => entry.assetId)
+      .filter((assetId) => Boolean(sounds[assetId]));
+    if (!wantsMusic && wantedAmbienceIds.length === 0) return false;
+
+    const playback = this.audioService?.getDebugPlayback?.();
+    if (wantsMusic && !playback?.musicIsPlaying) return true;
+    const playingAmbienceIds = new Set(playback?.ambiencePlayingAssetIds ?? []);
+    return wantedAmbienceIds.some((assetId) => !playingAmbienceIds.has(assetId));
+  }
+
+  private scheduleSceneAudioRetry(
+    sceneSpec: GameSceneSpec,
+    project: ProjectSpec,
+    loadVersion: number,
+    attempt = 0,
+  ): void {
+    this.clearPendingAudioRetry();
+    if (loadVersion !== this.loadVersion) return;
+    if (!this.hasPendingSceneAudioPlayback(sceneSpec, project)) return;
+    if (attempt >= 40) return;
+
+    const delayMs = attempt < 4 ? 250 : 500;
+    this.pendingAudioRetryTimeout = globalThis.setTimeout(() => {
+      this.pendingAudioRetryTimeout = null;
+      if (loadVersion !== this.loadVersion) return;
+      this.audioService?.applySceneAudio(sceneSpec, project);
+      this.scheduleSceneAudioRetry(sceneSpec, project, loadVersion, attempt + 1);
+    }, delayMs);
   }
 
   private async ensureSceneAssets(project: ProjectSpec | undefined, sceneSpecs: GameSceneSpec[]): Promise<void> {
