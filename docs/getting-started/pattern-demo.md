@@ -137,6 +137,7 @@ Success check:
    - Under Arrange Items, click `Distribute X`.
    - Under Position Selection, type `120` under `Y`, then click `Set Y`. 
    - Under Align Selection, click `Center X`.
+   - Under Advanced, level the ships with `Match top edges`
    - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 7. Click a blank space somewhere in the canvas to deselect the top-row sprites.
@@ -146,6 +147,7 @@ Success check:
    - Under Arrange Items, click `Distribute X`.
    - Under Position Selection, type `340` under `Y`, then click `Set Y`. 
    - Under Align Selection, click `Center X`.
+   - Under Advanced, level the ships with `Match top edges`
    - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 <img src="../assets/screenshots/playwright/ships-and-titles.png" alt="Ships and titles lined up"  style="display: block; margin: 0 auto; width: 910px; max-width: 100%; height: auto;" />
@@ -159,8 +161,6 @@ Success check:
 ## Attach the Movement Patterns
 
 **NOTE:** The goal is to build the patterns one ship at a time in the same scene-start event flow. Take your time, and work ship-by-ship. Your progress is saved automatically, so you can return to the process later.
-
-**NOTE:** Hit `Play Mode` in the upper-right of the canvas to check each ship's actions as you build them. After you've viewed the action steps, click the same button again to return to `Edit Mode`.
 
 <img src="../assets/screenshots/playwright/actions-events-panel.png" alt="Actions and events panel"  style="display: block; margin: 0 auto; width: 408px; max-width: 100%; height: auto;" />
 
@@ -190,23 +190,30 @@ Success check:
 9. Click on the `Loop Body` name in the Steps list.
 
    **NOTE:** The Inspector will switch to show `Loop Body` step properties.
+
 10. Set the `Loop Body` step properties to the following:
-   - `Type = Wave`
-   - The other defaults are fine.
+    - `Type = Wave`
+    - The other defaults are fine.
 11. Click the Back arrow in the properties panel to return to the Actions list.
+
+Success check:
+- Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in a wave pattern.
 
 <img src="../assets/screenshots/playwright/wave-pattern-panel.png" alt="Wave pattern inspector"  style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 10. Wave pattern inspector with intro-step progress parameters.</em></p>
+
 
 ### Zigzag action
 
 1. Select the ship titled `Zigzag` on the canvas or in the scene graph.
 
    **NOTE:** Remember to collapse other panels besides `Actions/Events` in the Inspector if it is too cluttered.
+
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
 
    **NOTE:** The Action Library popup will appear.
+
 3. In the Action Library categories, click the `Loops` tab.
 4. Under Actions, choose `Repeat With Children…`
 5. Leave `Children = 2`, set `Child Type = Zigzag Pattern` and click the `Create` button.
@@ -227,7 +234,7 @@ Success check:
    - Click the Back arrow in the properties panel to return to the Actions list.
 9. Click the `...` next to the Loop in the Actions list. 
 
-    **NOTE:** A popup menu will appear below. 
+   **NOTE:** A popup menu will appear below. 
 10. Click `+ Add Action Above` in the popup menu.
 
     **NOTE:** The Action Library will popup above the Loop action.
@@ -237,6 +244,9 @@ Success check:
     - `Δx = -15`
     - `Δy = -30`
 
+Success check:
+- Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in a zigzag pattern.
+- Click the `Edit Mode` button to resume editing.
 
 ### Figure-8 action
 
@@ -253,6 +263,10 @@ Success check:
    - `Name = Loop`
    - The other defaults are fine.
    - Click the Back arrow in the properties panel to return to the Actions list.
+
+Success check:
+- Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in a figure-8 pattern.
+- Click the `Edit Mode` button to resume editing.
 
 ### Orbit action
 
@@ -289,6 +303,10 @@ Success check:
     - The other defaults are fine.
     - Click the Back arrow in the properties panel to return to the Actions list.
 
+Success check:
+- Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in an orbiting pattern.
+- Click the `Edit Mode` button to resume editing.
+
 ### Bounce action
 
 1. Select the ship titled `Bounce` on the canvas.
@@ -308,6 +326,10 @@ Success check:
 <img src="../assets/screenshots/playwright/bounce-bounds-panel.png" alt="Bounce bounds panel" style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 11. Bounce pattern with the bounds helper in Center/Span mode.</em></p>
+
+Success check:
+- Click the `Play Mode` button in the upper right of the canvas to check that the ship bounces around in the defined box.
+- Click the `Edit Mode` button to resume editing.
 
 ### Patrol action
 
