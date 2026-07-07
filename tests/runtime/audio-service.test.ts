@@ -146,6 +146,36 @@ describe('BasicAudioService', () => {
     expect(sound?.playCount).toBeGreaterThanOrEqual(2);
   });
 
+  it('resumes a suspended audio context before starting music playback', () => {
+    const sound = new FakeSound();
+    let resumeCalls = 0;
+    const context = {
+      state: 'suspended',
+      resume() {
+        resumeCalls += 1;
+        context.state = 'running';
+        return Promise.resolve();
+      },
+    };
+    const manager: SoundManagerLike = {
+      add() {
+        if (context.state === 'suspended') throw new Error('audio context is suspended');
+        return sound;
+      },
+      removeByKey() {},
+      context,
+    } as SoundManagerLike & { context: typeof context };
+
+    const svc = new BasicAudioService(manager, (id) => `audio:${id}`);
+    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'embedded', dataUrl: 'data:audio/mp3;base64,AAAA', originalName: 'a.mp3', mimeType: 'audio/mpeg' } } } } } as any;
+
+    svc.applySceneAudio({ music: { assetId: 'a', loop: true, volume: 1, fadeMs: 0 } } as any, project);
+
+    expect(resumeCalls).toBe(1);
+    expect(context.state).toBe('running');
+    expect(sound.isPlaying).toBe(true);
+  });
+
   it('retries ambience playback when the first attempt fails', () => {
     let shouldThrow = true;
     const sounds = new Map<string, FakeSound>();

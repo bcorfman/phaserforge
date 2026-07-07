@@ -3,6 +3,7 @@ import { resolveProjectAssetPathToUrl } from '../assets/projectAssetPaths';
 import { resolveApiUrl } from './api';
 
 const cloudAssetUrlCache = new Map<string, Promise<string | null>>();
+const pathAudioUrlCache = new Map<string, Promise<string>>();
 
 function cloudAssetContentUrl(assetId: string): string {
   return resolveApiUrl(`/api/v1/assets/${encodeURIComponent(assetId)}/content`);
@@ -27,7 +28,26 @@ export function inlinePreviewUrlForAssetSource(source: AssetFileSource): string 
 
 export async function resolveAssetSourceUrl(source: AssetFileSource): Promise<string | null> {
   if (source.kind === 'embedded') return source.dataUrl;
-  if (source.kind === 'path') return resolveProjectAssetPathToUrl(source.path);
+  if (source.kind === 'path') {
+    const directUrl = resolveProjectAssetPathToUrl(source.path);
+    if (!source.mimeType?.startsWith('audio/')) return directUrl;
+
+    let pending = pathAudioUrlCache.get(source.path);
+    if (!pending) {
+      pending = (async () => {
+        try {
+          const res = await fetch(directUrl, { cache: 'force-cache' });
+          if (!res.ok) return directUrl;
+          const blob = await res.blob();
+          return URL.createObjectURL(blob);
+        } catch {
+          return directUrl;
+        }
+      })();
+      pathAudioUrlCache.set(source.path, pending);
+    }
+    return pending;
+  }
 
   let pending = cloudAssetUrlCache.get(source.assetId);
   if (!pending) {
