@@ -47,11 +47,12 @@ Success check:
 
 1. In the Assets Dock under Images, scroll down to find the image labeled "ship_sidesA". 
 
-2. Drag the ship_sidesA image from the Dock onto the center canvas to create a spaceship object (or "sprite") there.
+2. Drag the ship_sidesA image from the Dock onto the center canvas (within the blue viewport rectangle) to create a spaceship object (or "sprite") there.
 
-   - **NOTE:** If everything goes correctly, you will see the ship (titled "entity") also show up in the Sprites list in the left sidebar. The imported ship will look a bit too large on the canvas; this is normal.
+   - **NOTE:** If everything goes correctly, you will see the ship (titled "entity") also show up in the Sprites list in the left sidebar.
 
-3. Hold down the Alt key and drag a copy of the spaceship sprite to a new location until you have seven ships total. 
+3. Hold down the Alt key and drag a copy of the spaceship sprite to a new location until you have seven ships total: four ships in a row at the top of the viewport, and three ships in a row at the bottom. 
+   - **NOTE:** Don't worry if the placement of your ships is a little off - you'll fix that in the next task.
 
 4. Rename each of the seven ships you duplicated, starting with the ship titled `entity` in the Sprites list (in the left sidebar).
    
@@ -80,10 +81,13 @@ Success check:
 
 ## Position the Ships with Selection Tools and Layout
 
-1. Rough-place the ships first, then use `Layout…` to clean up spacing. The pattern demo uses two rows:
+1. For the top row, drag-select (or SHIFT-click to select) the top four ships and use `Layout…` to change their positions as a group:
 
-   - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
-   - bottom row: `Spiral`, `Bounce`, `Patrol`
+   - Under Spacing, type `180` in the `Spacing X` box, then hit `Apply Spacing X`
+   - Under Position Selection, type `200` in the `Y` box, then hit `Set Y`
+   - Under Align Selection, center the ships with `Center X`
+   - Under Advanced, level the ships with `Match top edges`
+   - Click on a blank area of the canvas to close the Layout popup.
 
 <img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up"  style="display: block; margin: 0 auto; width: 498px; max-width: 100%; height: auto;" />
 
@@ -93,13 +97,12 @@ Success check:
 
 <p align="center"><em>Figure 6. Layout popover for spacing and set-position operations.</em></p>
 
-2. For the top row, drag-select (or SHIFT-click to select) the four ships and use `Layout…` to:
-
-   - Under Spacing, type `180` in the `Spacing X` box, then hit `Apply Spacing X`.
-   - Under Position Selection, type `200` in the `Y` box, then hit `Set Y`.
-   - Finally, under Align Selection, hit `Center X`.
-
-3. For the bottom row, drag-select (or SHIFT-click to select) all three ships and use `Layout …` again. Set `Spacing X` to `180`, **`Y` to `420`**, then center the ships with `Center X` as above.
+2. For the bottom row, drag-select (or SHIFT-click to select) all three ships and use `Layout …` again. 
+   - Set `Spacing X` to `180` and hit `Apply Spacing X`
+   - Set `Y` to `420` and hit `Set Y`
+   - Center the ships with `Center X`
+   - Level the ships with `Match top edges`
+   - Click on a blank area of the canvas to close the Layout popup.
 
 <img src="../assets/screenshots/playwright/ships-lined-up.png" alt="Ships lined up"  style="display: block; margin: 0 auto; width: 1063px; max-width: 100%; height: auto;" />
 
