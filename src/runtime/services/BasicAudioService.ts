@@ -19,6 +19,16 @@ export interface SoundManagerLike {
   removeByKey?(key: string): void;
 }
 
+type AudioContextLike = {
+  state?: string;
+  resume?: () => Promise<unknown> | unknown;
+};
+
+type UnlockableSoundManagerLike = SoundManagerLike & {
+  context?: AudioContextLike;
+  unlock?: () => void;
+};
+
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 1;
   return Math.max(0, Math.min(1, value));
@@ -33,7 +43,25 @@ export class BasicAudioService implements AudioService {
     private readonly getKey: (assetId: string) => string = (assetId) => `audio:${assetId}`,
   ) {}
 
+  private resumeManagerIfNeeded(): void {
+    const manager = this.manager as UnlockableSoundManagerLike;
+    try {
+      manager.unlock?.();
+    } catch {
+      // ignore unlock errors
+    }
+    const context = manager.context;
+    if (!context?.resume) return;
+    if (context.state && context.state !== 'suspended' && context.state !== 'interrupted') return;
+    try {
+      void context.resume();
+    } catch {
+      // ignore resume errors
+    }
+  }
+
   public playMusic(assetId: string, options: { loop?: boolean; volume?: number; fadeMs?: number } = {}): void {
+    this.resumeManagerIfNeeded();
     const loop = options.loop ?? true;
     const volume = clamp01(options.volume ?? 1);
     const fadeMs = Number.isFinite(Number(options.fadeMs)) ? Math.max(0, Number(options.fadeMs)) : 0;
@@ -101,6 +129,7 @@ export class BasicAudioService implements AudioService {
   }
 
   public playSfx(assetId: string, options: { volume?: number } = {}): void {
+    this.resumeManagerIfNeeded();
     const volume = clamp01(options.volume ?? 1);
     const key = this.getKey(assetId);
     try {
