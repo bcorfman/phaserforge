@@ -937,6 +937,118 @@ describe('projectPersistence steady-state storage', () => {
     expect(snapshot.localProjects[0]?.title).toBe('Recovered Title');
   });
 
+  it('does not let a newer snapshot for a different saved project override the explicit workspace active project', async () => {
+    const patternDemoProject = createEmptyProject();
+    patternDemoProject.id = 'project-pattern-demo';
+    patternDemoProject.title = 'Pattern Demo';
+
+    const newerDraftProject = createEmptyProject();
+    newerDraftProject.id = 'project-newer-draft';
+    newerDraftProject.title = 'Scratch Draft';
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(buildStoredProjectRecord(patternDemoProject, {
+          id: patternDemoProject.id,
+          updatedAt: '2026-06-22T12:00:00.000Z',
+        }));
+        tx.objectStore('projects').put(buildStoredProjectRecord(newerDraftProject, {
+          id: newerDraftProject.id,
+          updatedAt: '2026-06-22T12:05:00.000Z',
+        }));
+        tx.objectStore('workspaceState').put({
+          activeProjectId: patternDemoProject.id,
+          syncMode: 'online',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put({
+          recordId: newerDraftProject.id,
+          updatedAt: '2026-06-22T12:05:00.000Z',
+          syncMode: 'online',
+          savedAt: '2026-06-22T12:05:00.000Z',
+        }, 'latestActiveSnapshot');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.workspace.activeProjectId).toBe('project-pattern-demo');
+    expect(snapshot.localProjects[0]?.id).toBe('project-pattern-demo');
+    expect(snapshot.localProjects[0]?.title).toBe('Pattern Demo');
+  });
+
+  it('falls back to valid revision or yaml data when a stored project head is invalid', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+    project.scenes[project.initialSceneId].entities.player = {
+      id: 'player',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+
+    const corruptedRecord = buildStoredProjectRecord(project, {
+      id: project.id,
+      updatedAt: '2026-07-07T03:00:30.459Z',
+      yaml: serializeProjectToYaml(project),
+    }) as any;
+    corruptedRecord.project = {
+      ...structuredClone(project),
+      scenes: {},
+      initialSceneId: project.initialSceneId,
+    };
+
+    await seedPersistenceRecords({
+      projectRecord: corruptedRecord,
+    });
+
+    const snapshot = await projectPersistence.load();
+    const restored = snapshot.localProjects[0];
+
+    expect(restored?.id).toBe('project-1');
+    expect(restored?.project.title).toBe('Pattern Demo');
+    expect(Object.keys(restored?.project.scenes ?? {})).toEqual([project.initialSceneId]);
+    expect(Object.keys(restored?.project.scenes?.[project.initialSceneId]?.entities ?? {})).toEqual(['player']);
+  });
+
+  it('rejects persisting an invalid active project head and preserves the last valid stored row', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+
+    const initialRecord = buildStoredProjectRecord(project, {
+      id: project.id,
+      updatedAt: '2026-07-07T02:55:28.477Z',
+    });
+    await projectPersistence.saveActiveProjectRecord(initialRecord, 'online');
+
+    const invalidProject = {
+      ...structuredClone(project),
+      scenes: {},
+      initialSceneId: project.initialSceneId,
+    } as any;
+    const invalidRecord = buildStoredProjectRecord(invalidProject, {
+      id: project.id,
+      updatedAt: '2026-07-07T03:00:30.459Z',
+    });
+
+    await expect(projectPersistence.saveActiveProjectRecord(invalidRecord, 'online'))
+      .rejects
+      .toThrow(`initialSceneId references unknown scene ${project.initialSceneId}`);
+
+    const stored = await readStoredProjectRecord(project.id);
+    expect(stored?.updatedAt).toBe('2026-07-07T02:55:28.477Z');
+    expect(stored?.title).toBe('Pattern Demo');
+  });
+
   it('loads the durable latest active snapshot record from the stored active project id marker', async () => {
     const latestProject = createEmptyProject();
     latestProject.id = 'project-1';

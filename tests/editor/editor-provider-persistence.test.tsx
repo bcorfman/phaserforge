@@ -83,6 +83,16 @@ function RenameAndPublishOnReadyHarness() {
   return null;
 }
 
+function StatusMessageHarness({ onStatus }: { onStatus: (value: string | undefined) => void }) {
+  const { state } = useEditorStore();
+
+  useEffect(() => {
+    onStatus(state.statusMessage);
+  }, [onStatus, state.statusMessage]);
+
+  return null;
+}
+
 describe('EditorProvider persistence', () => {
   beforeEach(() => {
     persistenceSpies.saveActiveProjectRecord.mockClear();
@@ -160,5 +170,25 @@ describe('EditorProvider persistence', () => {
     expect(latestRecord?.revisions?.[0]?.historyEventIds).toEqual(
       expect.arrayContaining(latestRecord.historyEvents.map((event: any) => event.id))
     );
+  });
+
+  it('surfaces a status warning when durable autosave rejects an invalid project head', async () => {
+    persistenceSpies.saveActiveProjectRecord.mockRejectedValueOnce(
+      new Error('initialSceneId references unknown scene scene-1')
+    );
+    const onStatus = vi.fn();
+
+    render(
+      <EditorProvider>
+        <RenameOnReadyHarness />
+        <StatusMessageHarness onStatus={onStatus} />
+      </EditorProvider>
+    );
+
+    await waitFor(() => {
+      expect(onStatus).toHaveBeenCalledWith(
+        'Autosave blocked: initialSceneId references unknown scene scene-1. Your last valid saved version was preserved.'
+      );
+    });
   });
 });

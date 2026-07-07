@@ -4768,6 +4768,15 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'load-project', project, sourceLabel });
   };
 
+  const notifyAutosaveBlocked = (error: unknown) => {
+    const message = error instanceof Error ? error.message : 'unknown persistence error';
+    dispatch({
+      type: 'set-status',
+      message: `Autosave blocked: ${message}. Your last valid saved version was preserved.`,
+      expiresAt: Date.now() + 7000,
+    });
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -4869,6 +4878,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
           ...summarizeActiveProjectForDebug(state.project, nextRecord, 'state-change', state.syncMode),
           error,
         });
+        notifyAutosaveBlocked(error);
       });
   }, [activeProjectId, state.initialized, state.project, state.syncMode]);
 
