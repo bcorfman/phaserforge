@@ -284,6 +284,10 @@ Success check:
 8. Set `Children = 1` and `Child Type = Orbit Pattern` in the popup menu, then click the `Create` button.
 9. Click the Back arrow in the properties panel to return to the Actions list.
 
+Success check:
+- Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in an orbiting pattern.
+- Click the `Edit Mode` button to resume editing.
+
 ### Spiral action
 
 1. Select the ship titled `Spiral` on the canvas.
@@ -304,7 +308,7 @@ Success check:
     - Click the Back arrow in the properties panel to return to the Actions list.
 
 Success check:
-- Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in an orbiting pattern.
+- Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in a spiral pattern.
 - Click the `Edit Mode` button to resume editing.
 
 ### Bounce action
