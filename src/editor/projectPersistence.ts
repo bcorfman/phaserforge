@@ -326,12 +326,24 @@ function normalizeStoredProjectRevisions(
   return rebuilt.length === 0 && fallbackToCurrentProject ? [createProjectRevision(project)] : rebuilt;
 }
 
+function getValidProjectOrNull(project: ProjectSpec | undefined): ProjectSpec | null {
+  if (!project) return null;
+  try {
+    validateProjectSpec(project);
+    return project;
+  } catch {
+    return null;
+  }
+}
+
 function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectRecord {
-  if (record.project) {
+  const validProject = getValidProjectOrNull(record.project);
+  if (validProject) {
     return {
       ...record,
-      revisions: normalizeStoredProjectRevisions(record.project, record.revisions),
-      archivedRevisions: normalizeStoredProjectRevisions(record.project, record.archivedRevisions, {
+      project: validProject,
+      revisions: normalizeStoredProjectRevisions(validProject, record.revisions),
+      archivedRevisions: normalizeStoredProjectRevisions(validProject, record.archivedRevisions, {
         fallbackToCurrentProject: false,
         enforceLatestMatchesProject: false,
       }),
@@ -341,12 +353,13 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
   }
   if (Array.isArray(record.revisions) && record.revisions.length > 0) {
     const latestProject = materializeProjectRevision(record.revisions, record.revisions[0].id);
-    if (latestProject) {
+    const validLatestProject = getValidProjectOrNull(latestProject ?? undefined);
+    if (validLatestProject) {
       return {
         ...record,
-        project: latestProject,
-        revisions: normalizeStoredProjectRevisions(latestProject, record.revisions),
-        archivedRevisions: normalizeStoredProjectRevisions(latestProject, record.archivedRevisions, {
+        project: validLatestProject,
+        revisions: normalizeStoredProjectRevisions(validLatestProject, record.revisions),
+        archivedRevisions: normalizeStoredProjectRevisions(validLatestProject, record.archivedRevisions, {
           fallbackToCurrentProject: false,
           enforceLatestMatchesProject: false,
         }),
@@ -386,6 +399,10 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
 function dehydrateStoredProjectRecord(record: StoredProjectRecord): PersistedProjectRecord {
   const { project: _project, ...persisted } = structuredClone(record);
   return persisted;
+}
+
+function validateStoredProjectRecordForPersistence(record: StoredProjectRecord): void {
+  validateProjectSpec(record.project);
 }
 
 async function readAllProjects(db: IDBDatabase): Promise<StoredProjectRecord[]> {
@@ -518,14 +535,19 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
     const snapshotMs = Date.parse(latestActiveSnapshot.updatedAt || latestActiveSnapshot.savedAt);
     const currentActiveMs = Date.parse(currentActiveRecord?.updatedAt ?? '');
     const snapshotLooksPlaceholder = isPlaceholderProjectRecord(snapshotRecord);
+    const currentActiveLooksPlaceholder = isPlaceholderProjectRecord(currentActiveRecord);
     const currentActiveLooksMeaningful = currentActiveRecord != null && !isPlaceholderProjectRecord(currentActiveRecord);
+    const snapshotMatchesWorkspace = latestActiveSnapshot.recordId === workspace.activeProjectId;
+    const workspaceHasExplicitMeaningfulActiveProject =
+      Boolean(workspace.activeProjectId && currentActiveLooksMeaningful);
     const shouldUseTimestampTiebreak =
       !(snapshotLooksPlaceholder && currentActiveLooksMeaningful);
     const shouldPreferSnapshot =
       !currentActiveRecord
       || !workspace.activeProjectId
-      || latestActiveSnapshot.recordId === workspace.activeProjectId
-      || (shouldUseTimestampTiebreak && (
+      || snapshotMatchesWorkspace
+      || (!snapshotLooksPlaceholder && currentActiveLooksPlaceholder)
+      || (!workspaceHasExplicitMeaningfulActiveProject && shouldUseTimestampTiebreak && (
         !Number.isFinite(currentActiveMs)
         || (Number.isFinite(snapshotMs) && snapshotMs >= currentActiveMs)
       ));
@@ -563,6 +585,7 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
 }
 
 async function upsertProjectRecord(record: StoredProjectRecord): Promise<void> {
+  validateStoredProjectRecordForPersistence(record);
   const db = await openDb();
   if (!db) return;
   const tx = db.transaction(PROJECTS_STORE, 'readwrite');
