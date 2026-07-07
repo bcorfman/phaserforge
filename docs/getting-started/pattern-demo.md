@@ -81,21 +81,23 @@ Success check:
 
 ## Position the Ships with Selection Tools and Layout
 
-1. For the top row, drag-select (or SHIFT-click to select) the top four ships and use `Layout…` to change their positions as a group:
-
-   - Under Spacing, type `180` in the `Spacing X` box, then hit `Apply Spacing X`
-   - Under Position Selection, type `200` in the `Y` box, then hit `Set Y`
-   - Under Align Selection, center the ships with `Center X`
-   - Under Advanced, level the ships with `Match top edges`
-   - Click on a blank area of the canvas to close the Layout popup.
+1. For the top row, drag-select (or SHIFT-click to select) the top four ships and click the `Layout…` button to change their positions as a group:
 
 <img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up"  style="display: block; margin: 0 auto; width: 498px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 5. On-canvas selection bar for multi-selection actions.</em></p>
 
+   - **NOTE:** A Layout pop-up window will appear.
+
 <img src="../assets/screenshots/playwright/layout-popover.png" alt="Layout popover close-up"  style="display: block; margin: 0 auto; width: 345px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 6. Layout popover for spacing and set-position operations.</em></p>
+
+   - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and hit `Apply Spacing X`
+   - Under Position Selection, type `200` in the `Y` box, then hit `Set Y`
+   - Under Align Selection, center the ships with `Center X`
+   - Under Advanced, level the ships with `Match top edges`
+   - Click on a blank area of the canvas to close the Layout popup.
 
 2. For the bottom row, drag-select (or SHIFT-click to select) all three ships and use `Layout …` again. 
    - Set `Spacing X` to `180` and hit `Apply Spacing X`
