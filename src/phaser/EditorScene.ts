@@ -1589,7 +1589,6 @@ export class EditorScene extends Phaser.Scene {
           pending = (async () => {
             const url = await resolveAssetSourceUrl(asset.source);
             if (!url || asset.source.kind !== 'path') return;
-            if (url.startsWith('blob:')) return;
             const response = await fetch(url, { cache: 'force-cache' });
             if (!response.ok) return;
             await response.blob();

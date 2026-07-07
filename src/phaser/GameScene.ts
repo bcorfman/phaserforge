@@ -26,6 +26,30 @@ import { applyProjectCanvasRenderMode, applyProjectTextureFilter } from './textu
 const PLACEHOLDER_TEXTURE_KEY = '__phaserforge:placeholder-1x1';
 const EMPTY_SCENE_SPEC: SceneSpec = { id: '', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} };
 
+function inferAudioTypeFromMimeType(mimeType?: string): string | undefined {
+  switch (mimeType?.toLowerCase()) {
+    case 'audio/mpeg':
+    case 'audio/mp3':
+      return 'mp3';
+    case 'audio/ogg':
+      return 'ogg';
+    case 'audio/wav':
+    case 'audio/wave':
+    case 'audio/x-wav':
+      return 'wav';
+    default:
+      return undefined;
+  }
+}
+
+function toAudioUrlConfig(source: AssetFileSource, url: string): Phaser.Types.Loader.FileTypes.AudioFileURLConfig {
+  const explicitType = inferAudioTypeFromMimeType(source.mimeType);
+  if (explicitType) return { url, type: explicitType };
+  const inferredType = url.match(/\.([a-zA-Z0-9]+)($|\?)/)?.[1]?.toLowerCase();
+  if (inferredType) return { url, type: inferredType };
+  return { url, type: '' };
+}
+
 type PhysicsObject =
   | Phaser.Types.Physics.Arcade.ImageWithDynamicBody
   | Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
@@ -59,6 +83,8 @@ export class GameScene extends Phaser.Scene {
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
   private audioService?: BasicAudioService;
   private pendingAudioRetryTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
+  private audioDebugAnalyser?: AnalyserNode;
+  private audioDebugSamples?: Uint8Array;
   private inputService?: BasicInputService;
   private varsService: BasicVarsService = new BasicVarsService();
   private testPointerOverride?: { x: number; y: number; worldX: number; worldY: number };
@@ -159,6 +185,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#0c0f1a');
     applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, this.project ? getProjectRenderMode(this.project) : 'pixel-art');
     this.audioService = new BasicAudioService(this.sound as any);
+    this.ensureAudioDebugProbe();
     this.inputService = new BasicInputService({
       getGamepads: () => (typeof navigator !== 'undefined' && navigator.getGamepads ? Array.from(navigator.getGamepads()) : []),
       getPointer: () => {
@@ -193,6 +220,25 @@ export class GameScene extends Phaser.Scene {
       this.unbindSceneListeners();
       this.clearScene();
     });
+  }
+
+  private ensureAudioDebugProbe(): void {
+    if (this.audioDebugAnalyser || !this.sound) return;
+    const soundManager = this.sound as Phaser.Sound.BaseSoundManager & {
+      context?: AudioContext;
+      masterVolumeNode?: AudioNode;
+    };
+    if (!soundManager.context || !soundManager.masterVolumeNode) return;
+    try {
+      const analyser = soundManager.context.createAnalyser();
+      analyser.fftSize = 2048;
+      soundManager.masterVolumeNode.connect(analyser);
+      this.audioDebugAnalyser = analyser;
+      this.audioDebugSamples = new Uint8Array(analyser.frequencyBinCount);
+    } catch {
+      this.audioDebugAnalyser = undefined;
+      this.audioDebugSamples = undefined;
+    }
   }
 
   public queueLoad(project: ProjectSpec, sceneSpec: SceneSpec, viewState?: { zoom: number; scrollX: number; scrollY: number }): void {
@@ -447,6 +493,7 @@ export class GameScene extends Phaser.Scene {
     backgroundLayerCount: number;
     audio?: { musicAssetId?: string; ambienceAssetIds: string[] };
     audioPlayback?: { musicIsPlaying: boolean; ambiencePlayingAssetIds: string[] };
+    audioDebug?: { contextState?: string; locked?: boolean; outputRange?: number; usingWebAudio: boolean };
     input?: any;
     collisions?: any;
     lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
@@ -463,6 +510,46 @@ export class GameScene extends Phaser.Scene {
     const maxZoom = getMaxZoom(this.scale.width, this.scale.height, world.width, world.height);
     const audio = this.audioService?.getSnapshot();
     const audioPlayback = this.audioService?.getDebugPlayback?.();
+    const soundManager = this.sound as Phaser.Sound.BaseSoundManager & {
+      context?: AudioContext;
+      locked?: boolean;
+      masterVolumeNode?: AudioNode;
+    };
+    let audioDebug:
+      | { contextState?: string; locked?: boolean; outputRange?: number; usingWebAudio: boolean }
+      | undefined;
+    if (soundManager?.context && soundManager?.masterVolumeNode) {
+      this.ensureAudioDebugProbe();
+      try {
+        const analyser = this.audioDebugAnalyser;
+        const samples = this.audioDebugSamples;
+        if (!analyser || !samples) throw new Error('missing analyser');
+        analyser.getByteTimeDomainData(samples);
+        let min = 255;
+        let max = 0;
+        for (const sample of samples) {
+          if (sample < min) min = sample;
+          if (sample > max) max = sample;
+        }
+        audioDebug = {
+          usingWebAudio: true,
+          contextState: soundManager.context.state,
+          locked: soundManager.locked,
+          outputRange: max - min,
+        };
+      } catch {
+        audioDebug = {
+          usingWebAudio: true,
+          contextState: soundManager.context.state,
+          locked: soundManager.locked,
+        };
+      }
+    } else if (soundManager) {
+      audioDebug = {
+        usingWebAudio: false,
+        locked: soundManager.locked,
+      };
+    }
     const input = this.inputService?.getSnapshot();
     const collisions = this.collisionService?.getSnapshot();
     const activeCollisionEventCount = Array.isArray((collisions as any)?.collisionEvents) ? (collisions as any).collisionEvents.length : 0;
@@ -494,6 +581,7 @@ export class GameScene extends Phaser.Scene {
       backgroundLayerCount: this.baseBackgroundObjects.length + this.backgroundObjects.length,
       ...(audio ? { audio } : {}),
       ...(audioPlayback ? { audioPlayback } : {}),
+      ...(audioDebug ? { audioDebug } : {}),
       ...(input ? { input } : {}),
       ...(collisions ? { collisions } : {}),
       ...(this.lastEntityPointerDown ? { lastEntityPointerDown: { ...this.lastEntityPointerDown } } : {}),
@@ -1394,7 +1482,7 @@ export class GameScene extends Phaser.Scene {
   private async ensureSceneAssets(project: ProjectSpec | undefined, sceneSpecs: GameSceneSpec[]): Promise<void> {
     const pendingAssets: SpriteAssetSpec[] = [];
     const pendingBackgrounds: Array<{ key: string; url: string }> = [];
-    const pendingAudio: Array<{ key: string; url: string }> = [];
+    const pendingAudio: Array<{ key: string; urlConfig: Phaser.Types.Loader.FileTypes.AudioFileURLConfig }> = [];
     const renderMode = project ? getProjectRenderMode(project) : 'pixel-art';
 
     for (const sceneSpec of sceneSpecs) {
@@ -1441,7 +1529,7 @@ export class GameScene extends Phaser.Scene {
           if (!pendingAudio.some((a) => a.key === key)) {
             pendingAudio.push({
               key,
-              url,
+              urlConfig: toAudioUrlConfig(asset.source, url),
             });
           }
         }
@@ -1481,7 +1569,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     for (const audio of pendingAudio) {
-      (this.load as any).audio(audio.key, audio.url);
+      this.load.audio(audio.key, [audio.urlConfig]);
     }
 
     await new Promise<void>((resolve) => {
