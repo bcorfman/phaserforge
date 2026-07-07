@@ -46,7 +46,15 @@ export class BasicAudioService implements AudioService {
       }
       const current = this.music;
       this.music = { ...current, loop, volume, fadeMs };
-      if (current.sound) return;
+      if (current.sound) {
+        // Retry if the sound object exists but audio never actually started.
+        try {
+          if (!current.sound.isPlaying) current.sound.play({ loop, volume });
+        } catch {
+          // ignore playback errors
+        }
+        return;
+      }
 
       // Initial playback may have failed (missing cache entry, locked audio context, etc.). Retry.
       try {
