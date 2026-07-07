@@ -51,13 +51,9 @@ Success check:
 
    - **NOTE:** If everything goes correctly, you will see the ship (titled "entity") also show up in the Sprites list in the left sidebar. The imported ship will look a bit too large on the canvas; this is normal.
 
-3. Click on the ship to select it, then reduce its `Scale X (%)` to `50` in the Inspector (in the right sidebar). 
+3. Hold down the Alt key and drag a copy of the spaceship sprite to a new location until you have seven ships total. 
 
-   - **NOTE:** Changing `Scale X (%)` to `50` will automatically change `Scale Y (%)` to `50` as well; the aspect ratio is locked together with the highlighted link button.
-
-4. Hold down the Alt key and drag a copy of the spaceship sprite to a new location until you have seven ships total. 
-
-5. Rename each of the seven ships you duplicated, starting with the ship titled `entity` in the Sprites list (in the left sidebar).
+4. Rename each of the seven ships you duplicated, starting with the ship titled `entity` in the Sprites list (in the left sidebar).
    
    a. Click the ship name to highlight it
    
@@ -67,12 +63,12 @@ Success check:
 
    d. Type `Wave` followed by the `ENTER` key
 
-6. Move to the next sprite name in the list (`entity2`) by hitting the `Down Arrow` on your keyboard, then follow the same procedure above to rename it.
+5. Move to the next sprite name in the list (`entity2`) by hitting the `Down Arrow` on your keyboard, then follow the same procedure above to rename it.
 
    - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
    - bottom row: `Spiral`, `Bounce`, `Patrol`
 
-7. Continue until you have renamed all seven sprites to the names above, so the later pattern steps are easier to follow.
+6. Continue until you have renamed all seven sprites to the names above, so the later pattern steps are easier to follow.
 
 <img src="../assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png" alt="Scene graph Sprites list with the seven renamed ships" style="display: block; margin: 0 auto; width: 374px; max-width: 100%; height: auto;" />
 
