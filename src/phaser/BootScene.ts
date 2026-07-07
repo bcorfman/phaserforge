@@ -212,6 +212,26 @@ export class BootScene extends Phaser.Scene {
     this.loadIntoGameScene(sceneSpec);
   }
 
+  private unlockAndResumeAudio(): void {
+    const soundManager = this.sound as Phaser.Sound.BaseSoundManager & {
+      unlock?: () => void;
+      context?: AudioContext;
+    };
+    try {
+      soundManager?.unlock?.();
+    } catch {
+      // ignore unlock errors
+    }
+    const context = soundManager?.context;
+    if (!context) return;
+    if (context.state !== 'suspended' && context.state !== 'interrupted') return;
+    try {
+      void context.resume();
+    } catch {
+      // ignore resume errors
+    }
+  }
+
   private captureViewStateForModeSwitch(nextMode: 'edit' | 'play'): void {
     if (this.mode === nextMode) return;
     try {
@@ -242,11 +262,7 @@ export class BootScene extends Phaser.Scene {
     this.captureViewStateForModeSwitch(mode);
     this.mode = mode;
     if (mode === 'play') {
-      try {
-        (this.sound as any)?.unlock?.();
-      } catch {
-        // ignore unlock errors
-      }
+      this.unlockAndResumeAudio();
     }
     this.playStartSceneId = mode === 'play' ? currentSceneId : undefined;
     this.syncActiveScene();
@@ -256,11 +272,7 @@ export class BootScene extends Phaser.Scene {
     if (!this.project) return;
     this.captureViewStateForModeSwitch(mode);
     if (mode === 'play') {
-      try {
-        (this.sound as any)?.unlock?.();
-      } catch {
-        // ignore unlock errors
-      }
+      this.unlockAndResumeAudio();
       this.playStartSceneId = this.authoredSceneId ?? this.runtimeSceneId;
       if (this.playStartSceneId) this.runtimeSceneId = this.playStartSceneId;
     } else {
