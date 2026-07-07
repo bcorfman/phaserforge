@@ -57,6 +57,7 @@ const REFERENCE_GHOST_DEPTH_OFFSET = -10_000;
 const BOUNDS_OVERLAY_STROKE_COLOR = 0xf97316; // orange: distinct from world frame + selection frames
 const BOUNDS_OVERLAY_STROKE_ALPHA = 0.95;
 const EMPTY_SCENE_SPEC: SceneSpec = { id: '', entities: {}, groups: {}, attachments: {}, behaviors: {}, actions: {}, conditions: {} };
+const AUDIO_PREFETCHES = new Map<string, Promise<void>>();
 
 type PhysicsObject =
   | Phaser.Types.Physics.Arcade.ImageWithDynamicBody
@@ -874,6 +875,10 @@ export class EditorScene extends Phaser.Scene {
       this.emitViewState();
     }
 
+    if (project) {
+      void this.prefetchSceneAudio(project, referenceSceneSpec ? [sceneSpec, referenceSceneSpec] : [sceneSpec]);
+    }
+
     void this.ensureAssetTextures(project, referenceSceneSpec ? [sceneSpec, referenceSceneSpec] : [sceneSpec]).finally(() => {
       if (currentLoadVersion !== this.loadVersion || !this.compiled) return;
       if (referenceSceneSpec && this.referenceCompiled) {
@@ -1566,6 +1571,33 @@ export class EditorScene extends Phaser.Scene {
 
   private getBackgroundTextureKey(assetId: string): string {
     return `bg:${assetId}`;
+  }
+
+  private async prefetchSceneAudio(project: ProjectSpec, sceneSpecs: GameSceneSpec[]): Promise<void> {
+    const sounds = project.audio?.sounds ?? {};
+    for (const sceneSpec of sceneSpecs) {
+      const wantedIds = new Set<string>();
+      if (sceneSpec.music?.assetId) wantedIds.add(sceneSpec.music.assetId);
+      for (const entry of sceneSpec.ambience ?? []) wantedIds.add(entry.assetId);
+
+      for (const assetId of wantedIds) {
+        const asset = sounds[assetId];
+        if (!asset) continue;
+        const cacheKey = assetSourceKey(asset.source);
+        let pending = AUDIO_PREFETCHES.get(cacheKey);
+        if (!pending) {
+          pending = (async () => {
+            const url = await resolveAssetSourceUrl(asset.source);
+            if (!url || asset.source.kind !== 'path') return;
+            const response = await fetch(url, { cache: 'force-cache' });
+            if (!response.ok) return;
+            await response.blob();
+          })().catch(() => {});
+          AUDIO_PREFETCHES.set(cacheKey, pending);
+        }
+        await pending;
+      }
+    }
   }
 
   private async ensureAssetTextures(project: ProjectSpec | undefined, sceneSpecs: GameSceneSpec[]): Promise<void> {

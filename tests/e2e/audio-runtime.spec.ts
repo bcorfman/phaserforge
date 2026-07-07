@@ -41,3 +41,52 @@ test('entering play mode applies scene music/ambience (bridge snapshot) @slow', 
     };
   }).toEqual({ music: 'music_theme', ambience: ['forest_ambience'] });
 });
+
+test('entering play mode eventually starts delayed path-backed demo-pack music @slow', async ({ page }) => {
+  await page.route('**/assets/demo-pack/audio/Simulacra-chosic.com_.mp3*', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await route.continue();
+  });
+
+  const sceneId = sampleProject.initialSceneId;
+  const project = {
+    ...sampleProject,
+    audio: {
+      sounds: {
+        theme: {
+          id: 'theme',
+          source: {
+            kind: 'path',
+            path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+            originalName: 'Simulacra-chosic.com_.mp3',
+            mimeType: 'audio/mpeg',
+          },
+        },
+      },
+    },
+    scenes: {
+      ...sampleProject.scenes,
+      [sceneId]: {
+        ...sampleProject.scenes[sceneId],
+        music: { assetId: 'theme', loop: true, volume: 0.65, fadeMs: 250 },
+      },
+    },
+  };
+
+  await seedProject(page, project as any);
+  await dismissViewHint(page);
+
+  await page.getByTestId('toggle-mode-button').click();
+  await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
+
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{
+      audio?: { musicAssetId?: string };
+      audioPlayback?: { musicIsPlaying?: boolean };
+    }>(page);
+    return {
+      music: snap?.audio?.musicAssetId,
+      isPlaying: Boolean(snap?.audioPlayback?.musicIsPlaying),
+    };
+  }, { timeout: 15000 }).toEqual({ music: 'theme', isPlaying: true });
+});
