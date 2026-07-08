@@ -85,6 +85,7 @@ export class GameScene extends Phaser.Scene {
   private pendingAudioRetryTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
   private audioDebugAnalyser?: AnalyserNode;
   private audioDebugSamples?: Uint8Array;
+  private audioLoadDebug = new Map<string, { url: string; type: string; status: 'queued' | 'complete' | 'error' | 'cached'; error?: string }>();
   private inputService?: BasicInputService;
   private varsService: BasicVarsService = new BasicVarsService();
   private testPointerOverride?: { x: number; y: number; worldX: number; worldY: number };
@@ -186,6 +187,7 @@ export class GameScene extends Phaser.Scene {
     applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, this.project ? getProjectRenderMode(this.project) : 'pixel-art');
     this.audioService = new BasicAudioService(this.sound as any);
     this.ensureAudioDebugProbe();
+    this.bindAudioLoadDebug();
     this.inputService = new BasicInputService({
       getGamepads: () => (typeof navigator !== 'undefined' && navigator.getGamepads ? Array.from(navigator.getGamepads()) : []),
       getPointer: () => {
@@ -239,6 +241,25 @@ export class GameScene extends Phaser.Scene {
       this.audioDebugAnalyser = undefined;
       this.audioDebugSamples = undefined;
     }
+  }
+
+  private bindAudioLoadDebug(): void {
+    this.load.on(Phaser.Loader.Events.FILE_COMPLETE, (key: string, type: string) => {
+      if (type !== 'audio') return;
+      const existing = this.audioLoadDebug.get(key);
+      if (!existing) return;
+      this.audioLoadDebug.set(key, { ...existing, status: 'complete', error: undefined });
+    });
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: { key?: string; type?: string; src?: string; url?: string }) => {
+      if (file?.type !== 'audio' || !file?.key) return;
+      const existing = this.audioLoadDebug.get(file.key);
+      this.audioLoadDebug.set(file.key, {
+        url: existing?.url ?? file.src ?? file.url ?? '',
+        type: existing?.type ?? '',
+        status: 'error',
+        error: file.src ?? file.url ?? 'load error',
+      });
+    });
   }
 
   public queueLoad(project: ProjectSpec, sceneSpec: SceneSpec, viewState?: { zoom: number; scrollX: number; scrollY: number }): void {
@@ -504,6 +525,10 @@ export class GameScene extends Phaser.Scene {
       globalVolume?: number;
       musicKey?: string;
       cacheHasCurrentMusic?: boolean;
+      currentMusicResolvedUrl?: string;
+      currentMusicLoadType?: string;
+      currentMusicLoadStatus?: 'queued' | 'complete' | 'error' | 'cached';
+      currentMusicLoadError?: string;
     };
     input?: any;
     collisions?: any;
@@ -541,6 +566,7 @@ export class GameScene extends Phaser.Scene {
       }
       | undefined;
     const currentMusicKey = audio?.musicAssetId ? this.getAudioKey(audio.musicAssetId) : undefined;
+    const currentMusicLoadDebug = currentMusicKey ? this.audioLoadDebug.get(currentMusicKey) : undefined;
     const cacheHasCurrentMusic = currentMusicKey
       ? (() => {
         const cache = (this.cache as any).audio;
@@ -575,6 +601,10 @@ export class GameScene extends Phaser.Scene {
           globalVolume: typeof (soundManager as any).volume === 'number' ? (soundManager as any).volume : undefined,
           musicKey: currentMusicKey,
           cacheHasCurrentMusic,
+          currentMusicResolvedUrl: currentMusicLoadDebug?.url,
+          currentMusicLoadType: currentMusicLoadDebug?.type,
+          currentMusicLoadStatus: currentMusicLoadDebug?.status,
+          currentMusicLoadError: currentMusicLoadDebug?.error,
         };
       } catch {
         audioDebug = {
@@ -587,6 +617,10 @@ export class GameScene extends Phaser.Scene {
           globalVolume: typeof (soundManager as any).volume === 'number' ? (soundManager as any).volume : undefined,
           musicKey: currentMusicKey,
           cacheHasCurrentMusic,
+          currentMusicResolvedUrl: currentMusicLoadDebug?.url,
+          currentMusicLoadType: currentMusicLoadDebug?.type,
+          currentMusicLoadStatus: currentMusicLoadDebug?.status,
+          currentMusicLoadError: currentMusicLoadDebug?.error,
         };
       }
     } else if (soundManager) {
@@ -599,6 +633,10 @@ export class GameScene extends Phaser.Scene {
         globalVolume: typeof (soundManager as any).volume === 'number' ? (soundManager as any).volume : undefined,
         musicKey: currentMusicKey,
         cacheHasCurrentMusic,
+        currentMusicResolvedUrl: currentMusicLoadDebug?.url,
+        currentMusicLoadType: currentMusicLoadDebug?.type,
+        currentMusicLoadStatus: currentMusicLoadDebug?.status,
+        currentMusicLoadError: currentMusicLoadDebug?.error,
       };
     }
     const input = this.inputService?.getSnapshot();
@@ -1576,11 +1614,17 @@ export class GameScene extends Phaser.Scene {
           const key = this.getAudioKey(asset.id);
           const cache = (this.cache as any).audio;
           const exists = typeof cache?.exists === 'function' ? cache.exists(key) : Boolean(cache?.get?.(key));
-          if (exists) continue;
+          if (exists) {
+            const urlConfig = toAudioUrlConfig(asset.source, url);
+            this.audioLoadDebug.set(key, { url: urlConfig.url, type: urlConfig.type, status: 'cached' });
+            continue;
+          }
           if (!pendingAudio.some((a) => a.key === key)) {
+            const urlConfig = toAudioUrlConfig(asset.source, url);
+            this.audioLoadDebug.set(key, { url: urlConfig.url, type: urlConfig.type, status: 'queued' });
             pendingAudio.push({
               key,
-              urlConfig: toAudioUrlConfig(asset.source, url),
+              urlConfig,
             });
           }
         }
