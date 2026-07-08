@@ -110,6 +110,7 @@ async function materializeProjectForPublish(
   const nextProject = structuredClone(project);
   const files: Array<{ path: string; bytes: Uint8Array }> = [];
   const usedPaths = new Set<string>();
+  const copiedPathSources = new Set<string>();
 
   const allocatePath = (source: AssetFileSource, fallbackBase: string): string => {
     const preferred = sanitizeFilename(source.originalName?.trim() || `${fallbackBase}${extensionFromMimeType(source.mimeType)}`);
@@ -126,7 +127,24 @@ async function materializeProjectForPublish(
   };
 
   const materializeSource = async (source: AssetFileSource, fallbackBase: string): Promise<AssetFileSource | null> => {
-    if (source.kind === 'path') return source;
+    if (source.kind === 'path') {
+      const relPath = source.path.replace(/^\/+/, '');
+      const absPath = path.resolve(process.cwd(), relPath);
+      const relativeToRepo = path.relative(process.cwd(), absPath);
+      if (relativeToRepo.startsWith('..') || path.isAbsolute(relativeToRepo)) {
+        return source;
+      }
+      if (!copiedPathSources.has(relPath)) {
+        try {
+          const bytes = new Uint8Array(await fs.readFile(absPath));
+          files.push({ path: relPath, bytes });
+          copiedPathSources.add(relPath);
+        } catch {
+          return null;
+        }
+      }
+      return source;
+    }
     if (source.kind === 'embedded') {
       const bytes = decodeEmbeddedDataUrl(source.dataUrl);
       if (!bytes) return null;

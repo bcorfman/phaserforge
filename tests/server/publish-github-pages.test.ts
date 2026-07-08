@@ -440,4 +440,97 @@ describe('publish github pages', () => {
     expect(yamlBlob).toContain('path: assets/cloud/theme.mp3');
     expect(yamlBlob).not.toContain('kind: cloud');
   });
+
+  it('publish includes repo path-backed demo-pack audio files in the published repo', async () => {
+    const { app, repositories } = makeApp();
+    const agent = request.agent(app);
+    const { userId, csrf } = await signup(agent);
+    await linkGithub(repositories, userId);
+    await addGame(repositories, userId);
+
+    const game = await repositories.games.findByIdForUser('g1', userId);
+    if (!game) throw new Error('expected game');
+    game.project.audio.sounds.theme = {
+      id: 'theme',
+      source: {
+        kind: 'path',
+        path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+        originalName: 'Simulacra-chosic.com_.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any;
+    game.project.scenes.s1.music = { assetId: 'theme', loop: true, volume: 0.8 };
+    await repositories.games.updateForUser('g1', userId, {
+      project: game.project,
+      updatedAt: '2026-06-04T01:00:00.000Z',
+    });
+
+    await fs.mkdir(path.join(tempDir, 'assets', 'demo-pack', 'audio'), { recursive: true });
+    await fs.writeFile(path.join(tempDir, 'assets', 'demo-pack', 'audio', 'Simulacra-chosic.com_.mp3'), Buffer.from('DEMOAUDIO'));
+
+    const treeBodies: any[] = [];
+    const blobBodies: Array<{ content: string; encoding: string }> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === 'https://api.github.com/repos/alice/zoof') {
+          if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
+        }
+        if (url === 'https://api.github.com/user/repos') {
+          return new Response(JSON.stringify({ name: 'zoof', full_name: 'alice/zoof', default_branch: 'main' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/pages') {
+          if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
+          return new Response(JSON.stringify({ html_url: 'https://alice.github.io/zoof' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/ref/heads/main') {
+          return new Response(JSON.stringify({ object: { sha: 'basecommit' } }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/commits/basecommit') {
+          return new Response(JSON.stringify({ sha: 'basecommit', tree: { sha: 'basetree' } }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/blobs') {
+          blobBodies.push(JSON.parse(String(init?.body)));
+          return new Response(JSON.stringify({ sha: `blob-${blobBodies.length}` }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/trees') {
+          treeBodies.push(JSON.parse(String(init?.body)));
+          return new Response(JSON.stringify({ sha: 'newtree' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/commits') {
+          return new Response(JSON.stringify({ sha: 'newcommit' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/refs/heads/main') {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        if (url.includes('https://api.github.com/repos/alice/zoof/actions/runs?')) {
+          return new Response(
+            JSON.stringify({
+              workflow_runs: [{ head_sha: 'newcommit', status: 'queued', conclusion: null }],
+            }),
+            { status: 200 },
+          );
+        }
+        throw new Error(`Unhandled fetch ${url}`);
+      }) as any,
+    );
+
+    await agent
+      .post('/api/v1/publish/github-pages')
+      .set('x-csrf-token', csrf)
+      .send({ gameId: 'g1', repo: 'zoof' })
+      .expect(200);
+
+    expect(treeBodies).toHaveLength(1);
+    expect(treeBodies[0].tree.some((entry: any) => entry.path === 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3')).toBe(true);
+    const audioBlob = blobBodies
+      .map((blob) => Buffer.from(blob.content, 'base64'))
+      .find((bytes) => bytes.toString('utf8') === 'DEMOAUDIO');
+    expect(audioBlob).toBeDefined();
+    const yamlBlob = blobBodies
+      .map((blob) => Buffer.from(blob.content, 'base64').toString('utf8'))
+      .find((content) => content.includes('initialSceneId'));
+    expect(yamlBlob).toContain('path: assets/demo-pack/audio/Simulacra-chosic.com_.mp3');
+  });
 });
