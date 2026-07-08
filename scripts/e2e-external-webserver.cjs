@@ -67,6 +67,27 @@ async function waitForPort(host, port, timeoutMs) {
   throw new Error(`Timed out waiting for ${host}:${port}`);
 }
 
+async function waitForManagedServerReadiness({ host, port, timeoutMs, child, logDir }) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (child.exitCode != null || child.signalCode != null) {
+      throw createManagedServerError(
+        `Managed E2E web server exited before ready (code=${child.exitCode ?? 'null'}, signal=${child.signalCode ?? 'null'})`,
+        logDir,
+      );
+    }
+    if (await isPortOpen(host, port)) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  if (child.exitCode != null || child.signalCode != null) {
+    throw createManagedServerError(
+      `Managed E2E web server exited before ready (code=${child.exitCode ?? 'null'}, signal=${child.signalCode ?? 'null'})`,
+      logDir,
+    );
+  }
+  throw new Error(`Timed out waiting for ${host}:${port}`);
+}
+
 async function ensureCleanLogDir(logDir) {
   await fsp.rm(logDir, { recursive: true, force: true });
   await fsp.mkdir(logDir, { recursive: true });
@@ -199,7 +220,10 @@ async function startManagedExternalWebServer({
   });
 
   try {
-    await Promise.race([waitForPort(host, port, timeoutMs), unexpectedExit]);
+    await Promise.race([
+      waitForManagedServerReadiness({ host, port, timeoutMs, child, logDir }),
+      unexpectedExit,
+    ]);
   } catch (error) {
     cleanup();
     throw error;
