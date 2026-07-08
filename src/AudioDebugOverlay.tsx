@@ -16,6 +16,10 @@ type AudioDebugSnapshot = {
     globalVolume?: number;
     musicKey?: string;
     cacheHasCurrentMusic?: boolean;
+    currentMusicResolvedUrl?: string;
+    currentMusicLoadType?: string;
+    currentMusicLoadStatus?: 'queued' | 'complete' | 'error' | 'cached';
+    currentMusicLoadError?: string;
   };
 };
 
@@ -80,8 +84,14 @@ export function AudioDebugOverlay(): JSX.Element | null {
       <div>musicAsset: {audio?.musicAssetId ?? 'none'}</div>
       <div>musicKey: {debug?.musicKey ?? 'none'}</div>
       <div>cacheHasCurrentMusic: {String(debug?.cacheHasCurrentMusic ?? false)}</div>
+      <div>loadStatus: {debug?.currentMusicLoadStatus ?? 'n/a'}</div>
+      <div>loadType: {debug?.currentMusicLoadType ?? 'n/a'}</div>
       <div>musicIsPlaying: {String(playback?.musicIsPlaying ?? false)}</div>
       <div>outputRange: {debug?.outputRange ?? 'n/a'}</div>
+      <div style={{ wordBreak: 'break-all' }}>url: {debug?.currentMusicResolvedUrl ?? 'n/a'}</div>
+      {debug?.currentMusicLoadError ? (
+        <div style={{ wordBreak: 'break-all', color: '#ffb4a2' }}>error: {debug.currentMusicLoadError}</div>
+      ) : null}
       <div>ambience: {(audio?.ambienceAssetIds ?? []).join(', ') || 'none'}</div>
     </div>
   );
