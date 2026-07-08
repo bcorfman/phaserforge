@@ -8,6 +8,7 @@ import { InspectorPane } from './editor/InspectorPane';
 import { Toolbar } from './editor/Toolbar';
 import { CanvasOverlay } from './editor/CanvasOverlay';
 import { ViewbarYamlControls } from './editor/ViewbarYamlControls';
+import { AudioDebugOverlay } from './AudioDebugOverlay';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
 import { loadProjectFonts } from './editor/fontLoader';
 import { projectPersistence } from './editor/projectPersistence';
@@ -879,6 +880,7 @@ function AppShell() {
           </div>
         </div>
       )}
+      <AudioDebugOverlay />
       <Toolbar />
       <div
         ref={appBodyRef}

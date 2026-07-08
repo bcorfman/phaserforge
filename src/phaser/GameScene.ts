@@ -493,7 +493,18 @@ export class GameScene extends Phaser.Scene {
     backgroundLayerCount: number;
     audio?: { musicAssetId?: string; ambienceAssetIds: string[] };
     audioPlayback?: { musicIsPlaying: boolean; ambiencePlayingAssetIds: string[] };
-    audioDebug?: { contextState?: string; locked?: boolean; outputRange?: number; usingWebAudio: boolean };
+    audioDebug?: {
+      contextState?: string;
+      locked?: boolean;
+      unlocked?: boolean;
+      outputRange?: number;
+      usingWebAudio: boolean;
+      managerType: 'webaudio' | 'html5' | 'unknown';
+      globalMute?: boolean;
+      globalVolume?: number;
+      musicKey?: string;
+      cacheHasCurrentMusic?: boolean;
+    };
     input?: any;
     collisions?: any;
     lastEntityPointerDown?: { entityId: string; button: number; worldX: number; worldY: number; x: number; y: number };
@@ -516,8 +527,30 @@ export class GameScene extends Phaser.Scene {
       masterVolumeNode?: AudioNode;
     };
     let audioDebug:
-      | { contextState?: string; locked?: boolean; outputRange?: number; usingWebAudio: boolean }
+      | {
+        contextState?: string;
+        locked?: boolean;
+        unlocked?: boolean;
+        outputRange?: number;
+        usingWebAudio: boolean;
+        managerType: 'webaudio' | 'html5' | 'unknown';
+        globalMute?: boolean;
+        globalVolume?: number;
+        musicKey?: string;
+        cacheHasCurrentMusic?: boolean;
+      }
       | undefined;
+    const currentMusicKey = audio?.musicAssetId ? this.getAudioKey(audio.musicAssetId) : undefined;
+    const cacheHasCurrentMusic = currentMusicKey
+      ? (() => {
+        const cache = (this.cache as any).audio;
+        return typeof cache?.has === 'function'
+          ? cache.has(currentMusicKey)
+          : typeof cache?.exists === 'function'
+            ? cache.exists(currentMusicKey)
+            : Boolean(cache?.get?.(currentMusicKey));
+      })()
+      : undefined;
     if (soundManager?.context && soundManager?.masterVolumeNode) {
       this.ensureAudioDebugProbe();
       try {
@@ -533,21 +566,39 @@ export class GameScene extends Phaser.Scene {
         }
         audioDebug = {
           usingWebAudio: true,
+          managerType: 'webaudio',
           contextState: soundManager.context.state,
           locked: soundManager.locked,
+          unlocked: Boolean((soundManager as any).unlocked),
           outputRange: max - min,
+          globalMute: Boolean((soundManager as any).mute),
+          globalVolume: typeof (soundManager as any).volume === 'number' ? (soundManager as any).volume : undefined,
+          musicKey: currentMusicKey,
+          cacheHasCurrentMusic,
         };
       } catch {
         audioDebug = {
           usingWebAudio: true,
+          managerType: 'webaudio',
           contextState: soundManager.context.state,
           locked: soundManager.locked,
+          unlocked: Boolean((soundManager as any).unlocked),
+          globalMute: Boolean((soundManager as any).mute),
+          globalVolume: typeof (soundManager as any).volume === 'number' ? (soundManager as any).volume : undefined,
+          musicKey: currentMusicKey,
+          cacheHasCurrentMusic,
         };
       }
     } else if (soundManager) {
       audioDebug = {
         usingWebAudio: false,
+        managerType: typeof (soundManager as any).override === 'boolean' ? 'html5' : 'unknown',
         locked: soundManager.locked,
+        unlocked: Boolean((soundManager as any).unlocked),
+        globalMute: Boolean((soundManager as any).mute),
+        globalVolume: typeof (soundManager as any).volume === 'number' ? (soundManager as any).volume : undefined,
+        musicKey: currentMusicKey,
+        cacheHasCurrentMusic,
       };
     }
     const input = this.inputService?.getSnapshot();
