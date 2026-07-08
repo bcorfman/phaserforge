@@ -22,18 +22,15 @@ jobs:
   unit-tests-node:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
       - name: Install Git LFS
         run: |
           sudo apt-get update
           sudo apt-get install -y git-lfs
 
-      - name: Ensure Git LFS assets are present
-        run: |
-          git lfs install --skip-repo
-          git lfs pull
-          git lfs checkout
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          lfs: true
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -50,18 +47,15 @@ jobs:
   unit-tests-jsdom:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
       - name: Install Git LFS
         run: |
           sudo apt-get update
           sudo apt-get install -y git-lfs
 
-      - name: Ensure Git LFS assets are present
-        run: |
-          git lfs install --skip-repo
-          git lfs pull
-          git lfs checkout
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          lfs: true
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -78,18 +72,15 @@ jobs:
   storybook-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
       - name: Install Git LFS
         run: |
           sudo apt-get update
           sudo apt-get install -y git-lfs
 
-      - name: Ensure Git LFS assets are present
-        run: |
-          git lfs install --skip-repo
-          git lfs pull
-          git lfs checkout
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          lfs: true
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -106,18 +97,15 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
       - name: Install Git LFS
         run: |
           sudo apt-get update
           sudo apt-get install -y git-lfs
 
-      - name: Ensure Git LFS assets are present
-        run: |
-          git lfs install --skip-repo
-          git lfs pull
-          git lfs checkout
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          lfs: true
 
       - name: Setup Node
         uses: actions/setup-node@v6
