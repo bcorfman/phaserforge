@@ -35,14 +35,6 @@ test.describe('Project picker', () => {
 
     const state = await getState<{ scene?: { world?: { width: number; height: number } } } | null>(page);
     const world = state?.scene?.world ?? { width: 1024, height: 768 };
-    const topInset = await page.evaluate(() => {
-      const overlay = document.querySelector('[data-testid="canvas-overlay"]') as HTMLElement | null;
-      const controls = document.querySelector('[data-testid="canvas-overlay-top-right"]') as HTMLElement | null;
-      if (!overlay || !controls) return 0;
-      const overlayRect = overlay.getBoundingClientRect();
-      const controlsRect = controls.getBoundingClientRect();
-      return Math.max(0, controlsRect.bottom - overlayRect.top + 12);
-    });
     const snapshot = await getSceneSnapshot<{
       ready: boolean;
       sceneKey: string;
@@ -55,7 +47,7 @@ test.describe('Project picker', () => {
 
     expect(snapshot).toMatchObject({ ready: true, sceneKey: 'EditorScene' });
 
-    const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height, { top: topInset });
+    const expectedZoom = getFitZoom(snapshot.viewportWidth, snapshot.viewportHeight, world.width, world.height);
     const expectedScroll = getCenteredCameraScroll(
       snapshot.viewportWidth,
       snapshot.viewportHeight,
@@ -63,8 +55,7 @@ test.describe('Project picker', () => {
       world.height,
       expectedZoom,
       0.5,
-      0.5,
-      { top: topInset }
+      0.5
     );
     const clampedExpectedScroll = clampCameraScroll(
       expectedScroll.scrollX,
