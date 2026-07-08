@@ -37,6 +37,12 @@ jobs:
         with:
           # Always deploy from trusted `main`, never from an arbitrary SHA.
           ref: main
+          lfs: true
+
+      - name: Ensure Git LFS assets are present
+        run: |
+          git lfs pull
+          git lfs checkout
 
       - name: Verify main SHA (workflow_run)
         if: github.event_name == 'workflow_run'
