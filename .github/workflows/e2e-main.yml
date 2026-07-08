@@ -29,6 +29,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          lfs: true
+
+      - name: Ensure Git LFS assets are present
+        run: |
+          git lfs pull
+          git lfs checkout
 
       - name: Setup Node
         uses: actions/setup-node@v6
