@@ -5,6 +5,7 @@ import { getGame } from './cloud/api';
 import { parseProjectYaml } from './model/serialization';
 import { getSceneWorld } from './editor/sceneWorld';
 import type { ProjectSpec } from './model/types';
+import { AudioDebugOverlay } from './AudioDebugOverlay';
 import './app/layout.css';
 
 function readPlayGameId(): string | null {
@@ -108,6 +109,7 @@ export default function PlayApp() {
 
   return (
     <div className="play-root" data-testid="play-root">
+      <AudioDebugOverlay />
       <div className="play-frame" data-testid="play-frame" style={world ? { width: world.width, height: world.height } : undefined}>
         <PhaserGame currentActiveScene={() => setSceneReady(true)} />
       </div>
