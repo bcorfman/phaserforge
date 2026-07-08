@@ -24,11 +24,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          lfs: true
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
 
       - name: Ensure Git LFS assets are present
         run: |
+          git lfs install
           git lfs pull
           git lfs checkout
 
@@ -49,11 +52,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          lfs: true
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
 
       - name: Ensure Git LFS assets are present
         run: |
+          git lfs install
           git lfs pull
           git lfs checkout
 
@@ -74,11 +80,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          lfs: true
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
 
       - name: Ensure Git LFS assets are present
         run: |
+          git lfs install
           git lfs pull
           git lfs checkout
 
@@ -99,11 +108,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          lfs: true
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
 
       - name: Ensure Git LFS assets are present
         run: |
+          git lfs install
           git lfs pull
           git lfs checkout
 
