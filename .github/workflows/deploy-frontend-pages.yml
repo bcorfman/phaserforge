@@ -32,22 +32,17 @@ jobs:
         github.event.workflow_run.head_repository.full_name == github.repository
       )
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          # Always deploy from trusted `main`, never from an arbitrary SHA.
-          ref: main
-
       - name: Install Git LFS
         run: |
           sudo apt-get update
           sudo apt-get install -y git-lfs
 
-      - name: Ensure Git LFS assets are present
-        run: |
-          git lfs install --skip-repo
-          git lfs pull
-          git lfs checkout
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Always deploy from trusted `main`, never from an arbitrary SHA.
+          ref: main
+          lfs: true
 
       - name: Verify main SHA (workflow_run)
         if: github.event_name == 'workflow_run'
