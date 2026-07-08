@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { buildAssetFileName } from './assetFileNames.mjs';
 
 const phasermsg = () => {
     return {
@@ -27,6 +28,7 @@ export default defineConfig({
     build: {
         rollupOptions: {
             output: {
+                assetFileNames: buildAssetFileName,
                 manualChunks(id) {
                     if (id.includes('/node_modules/phaser/')) {
                         return 'phaser';
