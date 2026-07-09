@@ -136,6 +136,7 @@ describe('publish github pages', () => {
       routeExists: false,
       pagesConfigured: false,
       deploymentStatus: null,
+      currentPublishLive: null,
     });
   });
 
@@ -174,6 +175,51 @@ describe('publish github pages', () => {
       routeExists: true,
       pagesConfigured: false,
       deploymentStatus: null,
+      currentPublishLive: null,
+    });
+  });
+
+  it('check reports whether the public Pages site is serving the expected publish token', async () => {
+    const { app, repositories } = makeApp();
+    const agent = request.agent(app);
+    const { userId, csrf } = await signup(agent);
+    await linkGithub(repositories, userId);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === 'https://alice.github.io/zoof/') {
+          expect(init?.method).toBe('HEAD');
+          return new Response('', { status: 200 });
+        }
+        if (url.startsWith('https://alice.github.io/zoof/phaserforge-publish.json?')) {
+          return new Response(JSON.stringify({ publishToken: 'current-token' }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof') {
+          return new Response(JSON.stringify({ name: 'zoof', full_name: 'alice/zoof', default_branch: 'main' }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/pages') {
+          return new Response(JSON.stringify({ status: 'built' }), { status: 200 });
+        }
+        throw new Error(`Unhandled fetch ${url}`);
+      }) as any,
+    );
+
+    const res = await agent
+      .post('/api/v1/publish/github-pages/check')
+      .set('x-csrf-token', csrf)
+      .send({ repo: 'zoof', publishToken: 'current-token' })
+      .expect(200);
+
+    expect(res.body).toEqual({
+      ok: true,
+      url: 'https://alice.github.io/zoof/',
+      exists: true,
+      routeExists: true,
+      pagesConfigured: true,
+      deploymentStatus: 'built',
+      currentPublishLive: true,
     });
   });
 
@@ -253,11 +299,13 @@ describe('publish github pages', () => {
       repo: 'zoof',
       repoCreated: true,
       deploymentStatus: 'queued',
+      publishToken: expect.any(String),
     });
     expect(treeBodies).toHaveLength(1);
     expect(treeBodies[0].tree.some((entry: any) => entry.path === '.github/workflows/deploy-phaserforge-pages.yml')).toBe(true);
     expect(treeBodies[0].tree.some((entry: any) => entry.path === 'index.html')).toBe(true);
     expect(treeBodies[0].tree.some((entry: any) => entry.path === 'game.yaml')).toBe(true);
+    expect(treeBodies[0].tree.some((entry: any) => entry.path === 'phaserforge-publish.json')).toBe(true);
     const workflowBlob = blobBodies
       .map((blob) => Buffer.from(blob.content, 'base64').toString('utf8'))
       .find((content) => content.includes('Deploy PhaserForge game to GitHub Pages'));
