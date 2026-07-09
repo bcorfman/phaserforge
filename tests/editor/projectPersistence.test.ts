@@ -902,6 +902,14 @@ describe('projectPersistence steady-state storage', () => {
         }),
       }),
       expect.objectContaining({
+        event: 'restore:project-candidates-loaded',
+        details: expect.objectContaining({
+          workspaceActiveProjectId: null,
+          latestActiveSnapshotRecordId: 'project-1',
+          localProjectCount: 1,
+        }),
+      }),
+      expect.objectContaining({
         event: 'restore:latest-active-marker-loaded',
         details: expect.objectContaining({
           recordId: 'project-1',
@@ -1008,6 +1016,100 @@ describe('projectPersistence steady-state storage', () => {
     expect(snapshot.workspace.activeProjectId).toBe('project-pattern-demo');
     expect(snapshot.localProjects[0]?.id).toBe('project-pattern-demo');
     expect(snapshot.localProjects[0]?.title).toBe('Pattern Demo');
+  });
+
+  it('falls back to the newest meaningful stored project when active markers are missing', async () => {
+    const blankProject = createEmptyProject();
+    blankProject.id = 'project-blank';
+    blankProject.title = 'Untitled Project';
+
+    const meaningfulProject = createEmptyProject();
+    meaningfulProject.id = 'project-pattern-demo';
+    meaningfulProject.title = 'Pattern Demo';
+    meaningfulProject.scenes[meaningfulProject.initialSceneId].entities.player = {
+      id: 'player',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(buildStoredProjectRecord(blankProject, {
+          id: blankProject.id,
+          updatedAt: '2026-06-22T12:00:00.000Z',
+        }));
+        tx.objectStore('projects').put(buildStoredProjectRecord(meaningfulProject, {
+          id: meaningfulProject.id,
+          updatedAt: '2026-06-22T12:05:00.000Z',
+        }));
+        tx.objectStore('workspaceState').put({
+          activeProjectId: null,
+          syncMode: 'online',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.workspace.activeProjectId).toBe('project-pattern-demo');
+    expect(snapshot.localProjects[0]?.id).toBe('project-pattern-demo');
+    expect(snapshot.localProjects[0]?.project.title).toBe('Pattern Demo');
+  });
+
+  it('falls back to the newest meaningful stored project when the workspace active id points at a missing row', async () => {
+    const blankProject = createEmptyProject();
+    blankProject.id = 'project-blank';
+    blankProject.title = 'Untitled Project';
+
+    const meaningfulProject = createEmptyProject();
+    meaningfulProject.id = 'project-pattern-demo';
+    meaningfulProject.title = 'Pattern Demo';
+    meaningfulProject.scenes[meaningfulProject.initialSceneId].entities.player = {
+      id: 'player',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(buildStoredProjectRecord(blankProject, {
+          id: blankProject.id,
+          updatedAt: '2026-06-22T12:00:00.000Z',
+        }));
+        tx.objectStore('projects').put(buildStoredProjectRecord(meaningfulProject, {
+          id: meaningfulProject.id,
+          updatedAt: '2026-06-22T12:05:00.000Z',
+        }));
+        tx.objectStore('workspaceState').put({
+          activeProjectId: 'project-missing',
+          syncMode: 'online',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.workspace.activeProjectId).toBe('project-pattern-demo');
+    expect(snapshot.localProjects[0]?.id).toBe('project-pattern-demo');
+    expect(snapshot.localProjects[0]?.project.title).toBe('Pattern Demo');
   });
 
   it('falls back to valid revision or yaml data when a stored project head is invalid', async () => {
