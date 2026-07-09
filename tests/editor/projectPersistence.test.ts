@@ -482,6 +482,33 @@ describe('projectPersistence steady-state storage', () => {
     expect(stored?.project).toBeUndefined();
   });
 
+  it('stores a recoverable head revision even when callers pass an empty revisions array', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+    project.scenes[project.initialSceneId].entities.player = {
+      id: 'player',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+
+    const record = buildStoredProjectRecord(project, {
+      id: project.id,
+      revisions: [],
+    });
+    await projectPersistence.saveProjectRecord(record);
+
+    const stored = await readStoredProjectRecord(project.id);
+    expect(stored?.project).toBeUndefined();
+    expect(stored?.revisions).toHaveLength(1);
+
+    const restored = await projectPersistence.loadProjectById(project.id);
+    expect(restored?.project.title).toBe('Pattern Demo');
+    expect(Object.keys(restored?.project.scenes?.[project.initialSceneId]?.entities ?? {})).toEqual(['player']);
+  });
+
   it('can still retain an explicit YAML payload for import-export compatibility', () => {
     const project = createEmptyProject();
 
