@@ -4788,9 +4788,16 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       const storedThemeMode = snapshot.preferences?.themeMode ?? 'system';
       const storedUiScale = snapshot.preferences?.uiScale ?? DEFAULT_UI_SCALE;
       const storedShowHitboxOverlay = snapshot.preferences?.showHitboxOverlay ?? true;
-      const initialRecord = snapshot.localProjects.find((record) => record.id === snapshot.workspace.activeProjectId)
-        ?? snapshot.localProjects[0]
+      const matchedActiveRecord = snapshot.localProjects.find((record) => record.id === snapshot.workspace.activeProjectId) ?? null;
+      const firstLocalRecord = snapshot.localProjects[0] ?? null;
+      const initialRecord = matchedActiveRecord
+        ?? firstLocalRecord
         ?? await projectPersistence.createLocalProject(createEmptyProject());
+      const initialRecordSource = matchedActiveRecord
+        ? 'workspace-active-record'
+        : firstLocalRecord
+          ? 'first-local-project'
+          : 'create-local-project-fallback';
       activeRecordRef.current = initialRecord;
       setActiveProjectId(initialRecord.id);
       setActiveProjectRevisions(initialRecord.revisions ?? []);
@@ -4800,6 +4807,15 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       setLocalProjects((snapshot.localProjects.length > 0 ? snapshot.localProjects : [initialRecord]).map(mapStoredProject));
       const project = structuredClone(initialRecord.project);
       const currentSceneId = project.initialSceneId;
+      appendPersistenceDebugEntry('editor-store:initialize-record-selection', {
+        source: initialRecordSource,
+        workspaceActiveProjectId: snapshot.workspace.activeProjectId,
+        selectedRecordId: initialRecord.id,
+        selectedProjectId: initialRecord.projectId,
+        selectedTitle: initialRecord.title,
+        localProjectCount: snapshot.localProjects.length,
+        candidateRecordIds: snapshot.localProjects.map((record) => record.id),
+      });
       appendPersistenceDebugEntry('editor-store:initialize-loaded-project', summarizeActiveProjectForDebug(
         project,
         initialRecord,

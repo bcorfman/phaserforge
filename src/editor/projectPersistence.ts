@@ -529,6 +529,12 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
       savedAt: null,
     });
   const localProjects = [...storedProjects];
+  appendPersistenceDebugEntry('restore:project-candidates-loaded', {
+    workspaceActiveProjectId: storedWorkspace.activeProjectId,
+    latestActiveSnapshotRecordId: latestActiveSnapshot?.recordId ?? null,
+    localProjectCount: localProjects.length,
+    candidates: localProjects.map(summarizeRecordForRestoreCandidate),
+  });
   let workspace = storedWorkspace;
   let activeProjectSelectionSource: 'latest-active-snapshot' | 'workspace-active-project' | 'none' = 'none';
   if (latestActiveSnapshot) {
@@ -570,7 +576,29 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
   if (workspace.activeProjectId && activeProjectSelectionSource === 'none') {
     activeProjectSelectionSource = 'workspace-active-project';
   }
-  const activeProject = localProjects.find((record) => record.id === workspace.activeProjectId) ?? null;
+  let activeProject = localProjects.find((record) => record.id === workspace.activeProjectId) ?? null;
+  if (!activeProject) {
+    const bootstrapCandidate = selectBestBootstrapProject(localProjects);
+    if (bootstrapCandidate) {
+      const bootstrapIndex = localProjects.findIndex((record) => record.id === bootstrapCandidate.id);
+      if (bootstrapIndex > 0) {
+        localProjects.splice(bootstrapIndex, 1);
+        localProjects.unshift(bootstrapCandidate);
+      }
+      workspace = {
+        ...workspace,
+        activeProjectId: bootstrapCandidate.id,
+      };
+      activeProject = bootstrapCandidate;
+      activeProjectSelectionSource = 'bootstrap-fallback';
+      appendPersistenceDebugEntry('restore:bootstrap-fallback-selected', {
+        previousWorkspaceActiveProjectId: storedWorkspace.activeProjectId,
+        latestActiveSnapshotRecordId: latestActiveSnapshot?.recordId ?? null,
+        selected: summarizeRecordForRestoreCandidate(bootstrapCandidate),
+        candidates: localProjects.map(summarizeRecordForRestoreCandidate),
+      });
+    }
+  }
   appendPersistenceDebugEntry('restore:active-project-selected', {
     activeProjectId: workspace.activeProjectId,
     syncMode: workspace.syncMode,
@@ -715,6 +743,45 @@ function isPlaceholderProjectRecord(record: StoredProjectRecord | null): boolean
   empty.id = 'project-placeholder';
   return (record.title?.trim() || 'Untitled Project') === 'Untitled Project'
     && projectsSemanticallyEqual(normalized, empty);
+}
+
+function projectRecordUpdatedAtMs(record: StoredProjectRecord | null): number {
+  if (!record) return Number.NEGATIVE_INFINITY;
+  const updatedAtMs = Date.parse(record.updatedAt ?? '');
+  return Number.isFinite(updatedAtMs) ? updatedAtMs : Number.NEGATIVE_INFINITY;
+}
+
+function selectBestBootstrapProject(records: StoredProjectRecord[]): StoredProjectRecord | null {
+  if (records.length === 0) return null;
+  return [...records].sort((left, right) => {
+    const leftPlaceholder = isPlaceholderProjectRecord(left);
+    const rightPlaceholder = isPlaceholderProjectRecord(right);
+    if (leftPlaceholder !== rightPlaceholder) return leftPlaceholder ? 1 : -1;
+
+    const updatedAtDelta = projectRecordUpdatedAtMs(right) - projectRecordUpdatedAtMs(left);
+    if (updatedAtDelta !== 0) return updatedAtDelta;
+
+    return left.id.localeCompare(right.id);
+  })[0] ?? null;
+}
+
+function summarizeRecordForRestoreCandidate(record: StoredProjectRecord) {
+  return {
+    recordId: record.id,
+    projectId: record.projectId,
+    title: record.title,
+    updatedAt: record.updatedAt,
+    origin: record.origin,
+    syncStatus: record.syncStatus,
+    cloudProjectId: record.cloudProjectId ?? null,
+    revisionCount: record.revisions?.length ?? 0,
+    sceneCount: Object.keys(record.project.scenes ?? {}).length,
+    entityCount: Object.values(record.project.scenes ?? {}).reduce(
+      (total, scene) => total + Object.keys(scene.entities ?? {}).length,
+      0,
+    ),
+    isPlaceholder: isPlaceholderProjectRecord(record),
+  };
 }
 
 function summarizeRecordForDebug(
@@ -980,9 +1047,20 @@ export const projectPersistence = {
 
   async createLocalProject(project?: ProjectSpec): Promise<StoredProjectRecord> {
     const nextProject = project ? cloneProject(project) : createEmptyProject();
+    const requestedProjectId = nextProject.id;
     if (!nextProject.id || nextProject.id === 'project-1') nextProject.id = allocateProjectId();
     if (!nextProject.title) nextProject.title = 'Untitled Project';
     const record = buildStoredProjectRecord(nextProject, { id: nextProject.id, origin: 'local-only', syncStatus: 'local' });
+    appendPersistenceDebugEntry('project-persistence:create-local-project', {
+      requestedProjectId: requestedProjectId ?? null,
+      allocatedProjectId: record.id,
+      title: record.title,
+      sceneCount: Object.keys(record.project.scenes ?? {}).length,
+      entityCount: Object.values(record.project.scenes ?? {}).reduce(
+        (total, scene) => total + Object.keys(scene.entities ?? {}).length,
+        0,
+      ),
+    });
     await upsertProjectRecord(record);
     await updateWorkspaceState({ activeProjectId: record.id, syncMode: 'online' });
     await persistLatestActiveSnapshot(record, 'online');
