@@ -99,18 +99,22 @@ describe('cloud api', () => {
       expect(init?.credentials).toBe('include');
       expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
       expect((init?.headers as any)['content-type']).toBe('application/json');
-      expect(init?.body).toBe(JSON.stringify({ repo: 'mygame' }));
-      return new Response(JSON.stringify({ ok: true, url: 'u', exists: false, routeExists: true, pagesConfigured: false, deploymentStatus: null }), { status: 200 });
+      expect(init?.body).toBe(JSON.stringify({ repo: 'mygame', publishToken: 'token-1' }));
+      return new Response(
+        JSON.stringify({ ok: true, url: 'u', exists: false, routeExists: true, pagesConfigured: false, deploymentStatus: null, currentPublishLive: false }),
+        { status: 200 },
+      );
     });
     vi.stubGlobal('fetch', fetchMock as any);
 
-    await expect(checkGithubPagesTarget('mygame', 'csrf')).resolves.toEqual({
+    await expect(checkGithubPagesTarget('mygame', 'csrf', 'token-1')).resolves.toEqual({
       ok: true,
       url: 'u',
       exists: false,
       routeExists: true,
       pagesConfigured: false,
       deploymentStatus: null,
+      currentPublishLive: false,
     });
   });
 
@@ -125,7 +129,7 @@ describe('cloud api', () => {
       expect((init?.headers as any)['content-type']).toBe('application/json');
       expect(init?.credentials).toBe('include');
       expect(init?.body).toBe(JSON.stringify({ gameId: 'g1', repo: 'r1' }));
-      return new Response(JSON.stringify({ ok: true, url: 'https://x', repo: 'r1', repoCreated: true, deploymentStatus: 'queued' }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, url: 'https://x', repo: 'r1', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock as any);
 
@@ -135,6 +139,7 @@ describe('cloud api', () => {
       repo: 'r1',
       repoCreated: true,
       deploymentStatus: 'queued',
+      publishToken: 'token-1',
     });
   });
 });
