@@ -1432,6 +1432,213 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
+  it('opens the publish tab from the confirm click and navigates it after publish completes', async () => {
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValue({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+    });
+    api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
+
+    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }) => void) | null = null;
+    api.publishToGithubPages.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePublish = resolve;
+        }),
+    );
+
+    const popup = {
+      closed: false,
+      close: vi.fn(() => {
+        popup.closed = true;
+      }),
+      location: {
+        href: '',
+        replace: vi.fn((value: string) => {
+          popup.location.href = value;
+        }),
+      },
+      document: {
+        title: '',
+        body: { textContent: '' },
+      },
+      opener: window,
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => popup);
+
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRepo: 'zoof',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[data-testid="cloud-publish-pages-button"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+      await flushEffects();
+      await act(async () => {
+        (view.container.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+
+      expect(openSpy).toHaveBeenCalledWith('', '_blank');
+      expect(api.publishToGithubPages).toHaveBeenCalledTimes(1);
+      expect(popup.location.replace).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'built' });
+        await Promise.resolve();
+      });
+      await flushEffects();
+
+      expect(popup.location.replace).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/x\/\?pf_publish=\d+$/));
+      expect(popup.close).not.toHaveBeenCalled();
+    } finally {
+      openSpy.mockRestore();
+      view.cleanup();
+    }
+  });
+
+  it('waits for GitHub Pages to report built before navigating the publish tab', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValue({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+    });
+    api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
+    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' });
+    api.checkGithubPagesTarget
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null })
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'building' })
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built' });
+
+    const popup = {
+      closed: false,
+      close: vi.fn(() => {
+        popup.closed = true;
+      }),
+      location: {
+        href: '',
+        replace: vi.fn((value: string) => {
+          popup.location.href = value;
+        }),
+      },
+      document: {
+        title: '',
+        body: { textContent: '' },
+      },
+      opener: window,
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => popup);
+
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRepo: 'zoof',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[data-testid="cloud-publish-pages-button"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+      await flushEffects();
+      await act(async () => {
+        (view.container.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+
+      expect(openSpy).toHaveBeenCalledWith('', '_blank');
+      expect(popup.location.replace).not.toHaveBeenCalled();
+      expect(popup.document.body.textContent).toContain('Waiting for the new version to go live');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf');
+      expect(popup.location.replace).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(api.checkGithubPagesTarget).toHaveBeenCalledTimes(3);
+      expect(popup.location.replace).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/x\/\?pf_publish=\d+$/));
+    } finally {
+      openSpy.mockRestore();
+      view.cleanup();
+    }
+  });
+
   it('keeps a deployment note visible after publish succeeds', async () => {
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
     api.getGithubPagesPublishInfo.mockResolvedValue({
