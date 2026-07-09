@@ -124,6 +124,88 @@ function mapPublishError(error: string): string {
   }
 }
 
+type PublishWindowLike = Pick<Window, 'close' | 'closed' | 'location'> & {
+  document?: Pick<Document, 'title' | 'body'>;
+  opener?: Window | null;
+};
+
+const GITHUB_PAGES_PUBLISH_POLL_MS = 5000;
+const GITHUB_PAGES_PUBLISH_MAX_WAIT_MS = 120000;
+
+function openPendingPublishWindow(): PublishWindowLike | null {
+  if (typeof window === 'undefined' || typeof window.open !== 'function') return null;
+  try {
+    const popup = window.open('', '_blank') as PublishWindowLike | null;
+    if (!popup) return null;
+    try {
+      popup.opener = null;
+    } catch {
+      // ignore opener reset errors
+    }
+    try {
+      if (popup.document) {
+        popup.document.title = 'Opening published game…';
+        if (popup.document.body) popup.document.body.textContent = 'Opening published game…';
+      }
+    } catch {
+      // ignore temporary document write errors
+    }
+    return popup;
+  } catch {
+    return null;
+  }
+}
+
+function closePendingPublishWindow(popup: PublishWindowLike | null): void {
+  if (!popup || popup.closed) return;
+  try {
+    popup.close();
+  } catch {
+    // ignore close errors
+  }
+}
+
+function renderPendingPublishWindow(popup: PublishWindowLike | null, message: string): void {
+  if (!popup || popup.closed) return;
+  try {
+    if (popup.document) {
+      popup.document.title = 'Waiting for GitHub Pages…';
+      if (popup.document.body) popup.document.body.textContent = message;
+    }
+  } catch {
+    // ignore document update errors
+  }
+}
+
+function withPublishCacheBust(url: string, publishedAtMs: number): string {
+  try {
+    const next = new URL(url);
+    next.searchParams.set('pf_publish', String(publishedAtMs));
+    return next.toString();
+  } catch {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}pf_publish=${encodeURIComponent(String(publishedAtMs))}`;
+  }
+}
+
+function navigatePublishedWindow(popup: PublishWindowLike | null, url: string, publishedAtMs: number): void {
+  const targetUrl = withPublishCacheBust(url, publishedAtMs);
+  if (popup && !popup.closed) {
+    try {
+      popup.location.replace(targetUrl);
+      return;
+    } catch {
+      try {
+        popup.location.href = targetUrl;
+        return;
+      } catch {
+        // fall through to a normal open call
+      }
+    }
+  }
+  window.open(targetUrl, '_blank', 'noopener,noreferrer');
+}
+
 function markReturnToCloudAfterAuth() {
   if (typeof window === 'undefined') return;
   try {
@@ -198,10 +280,22 @@ export function CloudAccountPanel({
   const lastAutosavedSignatureRef = useRef<string>('');
   const autosaveRetryTimerRef = useRef<number | null>(null);
   const uploadedAssetSourceCacheRef = useRef<Map<string, Extract<AssetFileSource, { kind: 'cloud' }>>>(new Map());
+  const publishNavigationPollTimerRef = useRef<number | null>(null);
+  const publishNavigationPollVersionRef = useRef(0);
 
   const CLOUD_AUTOSAVE_DEBOUNCE_MS = 1000;
   const CLOUD_AUTOSAVE_RETRY_MS = 5000;
   const resolvedCloudGameId = cloudGameIdRef.current ?? cloudGameId ?? null;
+
+  useEffect(() => {
+    return () => {
+      publishNavigationPollVersionRef.current += 1;
+      if (publishNavigationPollTimerRef.current != null && typeof window !== 'undefined') {
+        window.clearTimeout(publishNavigationPollTimerRef.current);
+        publishNavigationPollTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const githubEnabled = useMemo(() => true, []);
   const githubStartHref = useMemo(() => {
@@ -945,12 +1039,75 @@ export function CloudAccountPanel({
     }
   };
 
-  const handlePublish = async () => {
+  const waitForPublishedRoute = (
+    publishWindow: PublishWindowLike | null,
+    repo: string,
+    url: string,
+    publishedAtMs: number,
+    initialStatus: 'built' | 'building' | 'queued' | 'configured',
+  ) => {
+    if (initialStatus === 'built') {
+      navigatePublishedWindow(publishWindow, url, publishedAtMs);
+      return;
+    }
+
+    const version = ++publishNavigationPollVersionRef.current;
+    let elapsedMs = 0;
+    renderPendingPublishWindow(
+      publishWindow,
+      'GitHub Pages accepted the publish. Waiting for the new version to go live before opening it…',
+    );
+
+    const poll = async () => {
+      if (publishNavigationPollVersionRef.current !== version) return;
+      if (elapsedMs >= GITHUB_PAGES_PUBLISH_MAX_WAIT_MS) {
+        renderPendingPublishWindow(
+          publishWindow,
+          'GitHub Pages is still updating. Leave this tab open a bit longer, or reload it manually once the deployment finishes.',
+        );
+        publishNavigationPollTimerRef.current = null;
+        return;
+      }
+
+      try {
+        const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(repo, csrf));
+        if (publishNavigationPollVersionRef.current !== version) return;
+        if (check.ok && check.deploymentStatus === 'built') {
+          publishNavigationPollTimerRef.current = null;
+          navigatePublishedWindow(publishWindow, url, publishedAtMs);
+          return;
+        }
+      } catch {
+        // Keep polling; transient GitHub/API hiccups should not strand the publish flow.
+      }
+
+      elapsedMs += GITHUB_PAGES_PUBLISH_POLL_MS;
+      renderPendingPublishWindow(
+        publishWindow,
+        'GitHub Pages is still publishing the new version. This tab will open it automatically when the deployment is ready.',
+      );
+      if (typeof window === 'undefined') return;
+      publishNavigationPollTimerRef.current = window.setTimeout(() => {
+        void poll();
+      }, GITHUB_PAGES_PUBLISH_POLL_MS);
+    };
+
+    if (typeof window === 'undefined') return;
+    publishNavigationPollTimerRef.current = window.setTimeout(() => {
+      void poll();
+    }, GITHUB_PAGES_PUBLISH_POLL_MS);
+  };
+
+  const handlePublish = async (publishWindow: PublishWindowLike | null) => {
     if (!user) return;
     setBusy(true);
     setPublishBusyLabel('Saving project to cloud…');
     setPublishDeploymentNote('');
     setPublishInlineError('');
+    let publishedUrl: string | null = null;
+    let publishedAtMs: number | null = null;
+    let deploymentStatus: 'built' | 'building' | 'queued' | 'configured' | null = null;
+    let publishedRepo: string | null = null;
     try {
       const gameId = await ensureCloudGameSaved();
       if (!gameId) return;
@@ -975,7 +1132,7 @@ export function CloudAccountPanel({
           ? `Repository ${result.repo} is live at ${result.url}`
           : `GitHub Pages accepted the deployment for ${result.repo}. If the URL is not live yet, wait about a minute and reload.`,
       );
-      const publishedAtMs = Date.now();
+      publishedAtMs = Date.now();
       if (user?.id) {
         void projectPersistence.saveLastPublishInfo(user.id, { url: result.url, publishedAtMs });
       }
@@ -985,12 +1142,24 @@ export function CloudAccountPanel({
           ? `Published ${result.repo} to ${result.url}`
           : `Published ${result.repo} to ${result.url}. GitHub Pages may take about a minute to go live.`,
       );
-      window.open(result.url, '_blank', 'noopener,noreferrer');
+      publishedUrl = result.url;
+      publishedRepo = result.repo;
+      deploymentStatus = result.deploymentStatus;
     } finally {
+      if (publishedUrl && publishedAtMs != null && deploymentStatus && publishedRepo) {
+        waitForPublishedRoute(publishWindow, publishedRepo, publishedUrl, publishedAtMs, deploymentStatus);
+      } else {
+        closePendingPublishWindow(publishWindow);
+      }
       setBusy(false);
       setPublishBusyLabel(null);
       setShowPublishConfirm(false);
     }
+  };
+
+  const handlePublishConfirmClick = () => {
+    const publishWindow = openPendingPublishWindow();
+    void handlePublish(publishWindow);
   };
 
   const loadConflictProject = (project: ProjectSpec, sourceLabel: string) => {
@@ -1467,7 +1636,7 @@ export function CloudAccountPanel({
               <button className="button" type="button" onClick={() => setShowPublishConfirm(false)}>
                 Cancel
               </button>
-              <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={() => void handlePublish()}>
+              <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={handlePublishConfirmClick}>
                 {busy ? 'Publishing…' : publishCheck.routeExists ? 'Overwrite route and publish' : publishCheck.exists ? 'Update repository' : 'Create repo and publish'}
               </button>
             </div>
