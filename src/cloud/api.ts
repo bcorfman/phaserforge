@@ -153,17 +153,34 @@ export async function getGithubPagesPublishInfo(): Promise<{ ok: true; login: st
 export async function checkGithubPagesTarget(
   repo: string,
   csrfToken: string,
+  publishToken?: string,
 ): Promise<
-  | { ok: true; url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }
+  | {
+      ok: true;
+      url: string;
+      exists: boolean;
+      routeExists: boolean;
+      pagesConfigured: boolean;
+      deploymentStatus: string | null;
+      currentPublishLive: boolean | null;
+    }
   | { ok: false; error: string }
 > {
   try {
-    const json = await api<{ ok: true; url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }>(
+    const json = await api<{
+      ok: true;
+      url: string;
+      exists: boolean;
+      routeExists: boolean;
+      pagesConfigured: boolean;
+      deploymentStatus: string | null;
+      currentPublishLive: boolean | null;
+    }>(
       '/api/v1/publish/github-pages/check',
       {
       method: 'POST',
       headers: { 'x-csrf-token': csrfToken },
-      body: JSON.stringify({ repo }),
+      body: JSON.stringify({ repo, ...(publishToken ? { publishToken } : {}) }),
     },
     );
     return json;
@@ -177,11 +194,18 @@ export async function publishToGithubPages(
   repo: string,
   csrfToken: string,
 ): Promise<
-  | { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }
+  | { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; publishToken: string }
   | { ok: false; error: string; url?: string }
 > {
   try {
-    const json = await api<{ ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }>(
+    const json = await api<{
+      ok: true;
+      url: string;
+      repo: string;
+      repoCreated: boolean;
+      deploymentStatus: 'built' | 'building' | 'queued' | 'configured';
+      publishToken: string;
+    }>(
       '/api/v1/publish/github-pages',
       {
       method: 'POST',

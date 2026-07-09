@@ -70,10 +70,25 @@ export function createCloudAuthHandlers(options: {
   loginUser?: { id: string; email: string };
   games?: Array<{ id: string; title: string; created_at: string; updated_at: string }>;
   publishCheck?:
-    | { ok: true; url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }
+    | {
+        ok: true;
+        url: string;
+        exists: boolean;
+        routeExists: boolean;
+        pagesConfigured: boolean;
+        deploymentStatus: string | null;
+        currentPublishLive?: boolean | null;
+      }
     | { ok: false; error: string };
   publishResult?:
-    | { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }
+    | {
+        ok: true;
+        url: string;
+        repo: string;
+        repoCreated: boolean;
+        deploymentStatus: 'built' | 'building' | 'queued' | 'configured';
+        publishToken?: string;
+      }
     | { ok: false; error: string; url?: string };
 }) {
   const publishInfo = options.publishInfo ?? { ok: false as const, error: 'github_not_linked' };

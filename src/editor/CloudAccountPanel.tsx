@@ -1045,17 +1045,15 @@ export function CloudAccountPanel({
     url: string,
     publishedAtMs: number,
     initialStatus: 'built' | 'building' | 'queued' | 'configured',
+    publishToken: string,
   ) => {
-    if (initialStatus === 'built') {
-      navigatePublishedWindow(publishWindow, url, publishedAtMs);
-      return;
-    }
-
     const version = ++publishNavigationPollVersionRef.current;
     let elapsedMs = 0;
     renderPendingPublishWindow(
       publishWindow,
-      'GitHub Pages accepted the publish. Waiting for the new version to go live before opening it…',
+      initialStatus === 'built'
+        ? 'GitHub finished the Pages build. Waiting for the public site to serve this new publish before opening it…'
+        : 'GitHub Pages accepted the publish. Waiting for the new version to go live before opening it…',
     );
 
     const poll = async () => {
@@ -1070,9 +1068,9 @@ export function CloudAccountPanel({
       }
 
       try {
-        const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(repo, csrf));
+        const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(repo, csrf, publishToken));
         if (publishNavigationPollVersionRef.current !== version) return;
-        if (check.ok && check.deploymentStatus === 'built') {
+        if (check.ok && check.deploymentStatus === 'built' && check.currentPublishLive === true) {
           publishNavigationPollTimerRef.current = null;
           navigatePublishedWindow(publishWindow, url, publishedAtMs);
           return;
@@ -1084,7 +1082,7 @@ export function CloudAccountPanel({
       elapsedMs += GITHUB_PAGES_PUBLISH_POLL_MS;
       renderPendingPublishWindow(
         publishWindow,
-        'GitHub Pages is still publishing the new version. This tab will open it automatically when the deployment is ready.',
+        'GitHub Pages is still publishing or propagating the new version. This tab will open it automatically when this exact publish is live.',
       );
       if (typeof window === 'undefined') return;
       publishNavigationPollTimerRef.current = window.setTimeout(() => {
@@ -1108,6 +1106,7 @@ export function CloudAccountPanel({
     let publishedAtMs: number | null = null;
     let deploymentStatus: 'built' | 'building' | 'queued' | 'configured' | null = null;
     let publishedRepo: string | null = null;
+    let publishedToken: string | null = null;
     try {
       const gameId = await ensureCloudGameSaved();
       if (!gameId) return;
@@ -1145,9 +1144,10 @@ export function CloudAccountPanel({
       publishedUrl = result.url;
       publishedRepo = result.repo;
       deploymentStatus = result.deploymentStatus;
+      publishedToken = result.publishToken;
     } finally {
-      if (publishedUrl && publishedAtMs != null && deploymentStatus && publishedRepo) {
-        waitForPublishedRoute(publishWindow, publishedRepo, publishedUrl, publishedAtMs, deploymentStatus);
+      if (publishedUrl && publishedAtMs != null && deploymentStatus && publishedRepo && publishedToken) {
+        waitForPublishedRoute(publishWindow, publishedRepo, publishedUrl, publishedAtMs, deploymentStatus, publishedToken);
       } else {
         closePendingPublishWindow(publishWindow);
       }
