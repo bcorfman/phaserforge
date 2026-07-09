@@ -92,16 +92,16 @@ Success check:
 1. For the top row, drag-select the top four ships and click the `Layout…` button to change their positions as a group:
    - **NOTE:** A Layout pop-up window will appear.
    - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and hit `Apply Spacing X`
-   - Under Position Selection, type `200` in the `Y` box, then hit `Set Y`
    - Under Align Selection, center the ships with `Center X`
    - Under Advanced, level the ships with `Match top edges`
+   - Under Position Selection, type `200` in the `Y` box, then hit `Set Y`
    - Click on a blank area of the canvas to close the Layout popup.
 
 2. For the bottom row, drag-select all three ships and use `Layout …` again. 
    - Set `Spacing X` to `180` and hit `Apply Spacing X`
-   - Set `Y` to `420` and hit `Set Y`
    - Center the ships with `Center X`
    - Level the ships with `Match top edges`
+   - Set `Y` to `420` and hit `Set Y`
    - Click on a blank area of the canvas to close the Layout popup.
 
 <img src="../assets/screenshots/playwright/ships-lined-up.png" alt="Ships lined up"  style="display: block; margin: 0 auto; width: 1063px; max-width: 100%; height: auto;" />
@@ -126,28 +126,28 @@ Success check:
 
    - **NOTE:** you should see the text change for the entity in the Canvas.
 
-5. Repeat these steps for each of the sprites in the top and bottom rows until you have named labels over each of the ship sprites.
+5. Repeat steps 1-4 for each of the sprites in the top and bottom rows until you have named labels over each of the ship sprites.
 
    - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
    - bottom row: `Spiral`, `Bounce`, `Patrol`
    - **NOTE:** You may be tempted to use Alt-Drag to duplicate the text entities as you did earlier with the ship sprites, but duplicating the text entities also copies their name and text as well, so this can quickly get confusing. Using "+ Add" is the better approach in this scenario.
 
-6. Drag-to-select (or SHIFT-click to select each of) the top-row labels, and in the popup Selection Bar, use `Layout …`:
+6. Drag-select the top-row labels, and in the popup Selection Bar, use `Layout …`:
 
    - Under Arrange Items, click `Distribute X`.
-   - Under Position Selection, type `120` under `Y`, then click `Set Y`. 
    - Under Align Selection, click `Center X`.
    - Under Advanced, level the ships with `Match top edges`
+   - Under Position Selection, type `120` under `Y`, then click `Set Y`. 
    - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 7. Click a blank space somewhere in the canvas to deselect the top-row sprites.
 
-8. Drag-to-select (or SHIFT-click to select each of) the bottom-row labels, and in the popup Selection Bar, use `Layout …`. 
+8. Drag-select the bottom-row labels, and in the popup Selection Bar, use `Layout …`. 
 
    - Under Arrange Items, click `Distribute X`.
-   - Under Position Selection, type `340` under `Y`, then click `Set Y`. 
    - Under Align Selection, click `Center X`.
    - Under Advanced, level the ships with `Match top edges`
+   - Under Position Selection, type `340` under `Y`, then click `Set Y`. 
    - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 <img src="../assets/screenshots/playwright/ships-and-titles.png" alt="Ships and titles lined up"  style="display: block; margin: 0 auto; width: 910px; max-width: 100%; height: auto;" />
@@ -175,7 +175,7 @@ Success check:
 3. Click `+ Add Action` in the panel's `OnSceneStart` handler.
 
    **NOTE:** The Action Library popup will appear.
-4. In the Action Library categories, click the `Loops` tab.
+4. In the Action Library categories, click the `Loops` filter.
 5. Under Actions, choose `Intro then Repeat…`
 
    **NOTE:** The Action Library popup will close, and OnSceneStart will contain three actions: Intro, Repeat, and a nested Loop body.
@@ -214,7 +214,7 @@ Success check:
 
    **NOTE:** The Action Library popup will appear.
 
-3. In the Action Library categories, click the `Loops` tab.
+3. In the Action Library categories, click the `Loops` filter.
 4. Under Actions, choose `Repeat With Children…`
 5. Leave `Children = 2`, set `Child Type = Zigzag Pattern` and click the `Create` button.
 
@@ -254,7 +254,7 @@ Success check:
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
 
    **NOTE:** The Action Library popup will appear.
-3. In the Action Library categories, click the `Loops` tab.
+3. In the Action Library categories, click the `Loops` filter.
 4. In the Actions list, click `Repeat with Children…`
 
    **NOTE:** The Actions Library will close, and a popup menu in the `OnSceneStart` menu will appear.
@@ -262,7 +262,6 @@ Success check:
 6. Set the `Repeat` step properties in the Inspector to the following:
    - `Name = Loop`
    - The other defaults are fine.
-   - Click the Back arrow in the properties panel to return to the Actions list.
 
 Success check:
 - Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in a figure-8 pattern.
@@ -273,16 +272,17 @@ Success check:
 1. Select the ship titled `Orbit` on the canvas.
 2. In the Inspector, expand the Transform panel (if it's not already visible) by clicking the chevron next to its name.
 3. Check the box labeled `Flip Y`.
+
+   **NOTE:** The ship will flip upside down.
 4. Click the Transform panel chevron again to close it.
 5. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
 
    **NOTE:** The Action Library popup will appear.
-6. In the Action Library categories, click the `Loops` tab.
+6. In the Action Library categories, click the `Loops` filter.
 7. In the Actions list, click `Repeat with Children…`
 
    **NOTE:** The Actions Library will close, and a popup menu in the `OnSceneStart` menu will appear.
 8. Set `Children = 1` and `Child Type = Orbit Pattern` in the popup menu, then click the `Create` button.
-9. Click the Back arrow in the properties panel to return to the Actions list.
 
 Success check:
 - Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in an orbiting pattern.
@@ -294,7 +294,7 @@ Success check:
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
 
    **NOTE:** The Action Library popup will appear.
-3. In the Action Library categories, click the `Loops` tab.
+3. In the Action Library categories, click the `Loops` filter.
 4. In the Actions list, click `Repeat with Children…`
 
    **NOTE:** The Actions Library will close, and a popup menu in the `OnSceneStart` menu will appear.
@@ -305,7 +305,6 @@ Success check:
     - `Direction = Inward`
     - `Flip Y = Checked`
     - The other defaults are fine.
-    - Click the Back arrow in the properties panel to return to the Actions list.
 
 Success check:
 - Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in a spiral pattern.
@@ -317,7 +316,7 @@ Success check:
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
 
    **NOTE:** The Action Library popup will appear.
-3. In the Action Library categories, click the `Movement` tab.
+3. In the Action Library categories, click the `Movement` filter.
 4. Add a `Bounce` step and set:
    - `Name = BounceBox`
    - `Velocity X = 100`
@@ -325,6 +324,7 @@ Success check:
       - Switch `Bounds` edit mode to `Center/Span`
       - Set `± X Span = 50`
       - Set `± Y Span = 60`
+        **NOTE:** You will see the bounding box around the ship expand, indicating the bounce area.
       - Click the Back arrow in the properties panel to return to the Actions list.
 
 <img src="../assets/screenshots/playwright/bounce-bounds-panel.png" alt="Bounce bounds panel" style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
@@ -341,7 +341,7 @@ Success check:
 2. Click `+ Add Action` in the panel's `OnSceneStart` handler under the `Actions/Events` panel.
 
    **NOTE:** The Action Library popup will appear.
-3. In the Action Library categories, click the `Movement` tab.
+3. In the Action Library categories, click the `Movement` filter.
 4. Add a `Patrol` step and set:
    - `Velocity X = 80`
    - In the `Bounds` panel for the same ship:
@@ -350,6 +350,7 @@ Success check:
       - Switch `Bounds` edit mode to `Min/Max`
       - Set `Min Y = 400`
       - Set `Max Y = 500`
+        **NOTE:** You will see the bounding box around the ship expand, indicating the patrol bounds.
 
 <img src="../assets/screenshots/playwright/patrol-bounds-panel.png" alt="Patrol bounds panel" style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
 
