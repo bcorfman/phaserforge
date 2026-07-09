@@ -273,6 +273,9 @@ export function buildStoredProjectRecord(
     archivedHistoryEvents?: ProjectHistoryEvent[];
   }
 ): StoredProjectRecord {
+  const revisions = Array.isArray(options?.revisions) && options.revisions.length > 0
+    ? options.revisions
+    : [createProjectRevision(project)];
   return {
     id: options?.id ?? project.id,
     projectId: project.id,
@@ -284,7 +287,7 @@ export function buildStoredProjectRecord(
     origin: options?.origin ?? 'local-only',
     syncStatus: options?.syncStatus ?? 'local',
     cloudProjectId: options?.cloudProjectId,
-    revisions: options?.revisions ?? [createProjectRevision(project)],
+    revisions,
     archivedRevisions: options?.archivedRevisions ?? [],
     historyEvents: options?.historyEvents ?? [],
     archivedHistoryEvents: options?.archivedHistoryEvents ?? [],
