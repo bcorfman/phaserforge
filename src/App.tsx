@@ -9,13 +9,14 @@ import { Toolbar } from './editor/Toolbar';
 import { CanvasOverlay } from './editor/CanvasOverlay';
 import { ViewbarYamlControls } from './editor/ViewbarYamlControls';
 import { AudioDebugOverlay } from './AudioDebugOverlay';
+import { RestoreDebugOverlay } from './RestoreDebugOverlay';
 import { getEditableBoundsConditionId } from './editor/boundsCondition';
 import { loadProjectFonts } from './editor/fontLoader';
 import { projectPersistence } from './editor/projectPersistence';
 import { formatZoomPercent } from './editor/viewport';
 import { getSceneWorld } from './editor/sceneWorld';
 import { computeFormationDraftPositions, getTemplateSize } from './editor/formationDraft';
-import { appendPersistenceDebugEntry, installPersistenceDebugBridge } from './util/persistenceDebug';
+import { appendPersistenceDebugEntry, installPersistenceDebugBridge, preparePersistenceDebugFromUrl } from './util/persistenceDebug';
 import { installViewDebugBridge, isViewDebugEnabled } from './util/viewDebug';
 import {
   canRestorePersistedView,
@@ -1071,9 +1072,14 @@ function AppShell() {
 }
 
 export default function App() {
+  preparePersistenceDebugFromUrl();
+
   return (
-    <EditorProvider>
-      <AppShell />
-    </EditorProvider>
+    <>
+      <EditorProvider>
+        <AppShell />
+      </EditorProvider>
+      <RestoreDebugOverlay />
+    </>
   );
 }

@@ -4,6 +4,9 @@ import {
   appendPersistenceDebugEntry,
   clearPersistenceDebugEntries,
   installPersistenceDebugBridge,
+  isDebugUrlFlagEnabled,
+  isPersistenceDebugEnabled,
+  preparePersistenceDebugFromUrl,
   readPersistenceDebugEntries,
   summarizeProjectLoadForDebug,
   setPersistenceDebugEnabled,
@@ -85,6 +88,8 @@ describe('persistenceDebug', () => {
     installPersistenceDebugBridge();
     appendPersistenceDebugEntry('cloud:autosave-flush-success', { cloudGameId: 'g-1' });
 
+    expect(window.__PHASER_FORGE_PERSISTENCE_DEBUG__?.isEnabled()).toBe(true);
+
     const firstRead = window.__PHASER_FORGE_PERSISTENCE_DEBUG__?.read() ?? [];
     expect(firstRead).toHaveLength(1);
     expect(firstRead[0]).toEqual(expect.objectContaining({
@@ -113,5 +118,24 @@ describe('persistenceDebug', () => {
     }));
     expect(details.yamlHash).toEqual(expect.any(String));
     expect(details.yamlLength).toBeGreaterThan(100);
+  });
+
+  it('prepares persistence debug from the restore URL flag before restore boot logs are written', () => {
+    window.history.replaceState({}, '', '/editor?restoreDebug=1');
+    expect(isDebugUrlFlagEnabled('restoreDebug')).toBe(true);
+
+    const prepared = preparePersistenceDebugFromUrl();
+    expect(prepared).toBe(true);
+    expect(isPersistenceDebugEnabled()).toBe(true);
+
+    appendPersistenceDebugEntry('restore:workspace-state-loaded', { activeProjectId: 'project-1' });
+    expect(readPersistenceDebugEntries()).toEqual([
+      expect.objectContaining({
+        event: 'restore:workspace-state-loaded',
+        details: expect.objectContaining({
+          activeProjectId: 'project-1',
+        }),
+      }),
+    ]);
   });
 });

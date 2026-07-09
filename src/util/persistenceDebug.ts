@@ -22,6 +22,7 @@ export type PersistenceDebugBridge = {
   disable: () => void;
   dump: () => PersistenceDebugEntry[];
   enable: () => void;
+  isEnabled: () => boolean;
   read: () => PersistenceDebugEntry[];
 };
 
@@ -95,6 +96,27 @@ export function isPersistenceDebugEnabled(): boolean {
   return storage.getItem(PERSISTENCE_DEBUG_FLAG_KEY) === '1';
 }
 
+export function isDebugUrlFlagEnabled(paramName: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const url = new URL(window.location.href);
+    return url.searchParams.get(paramName) === '1';
+  } catch {
+    return false;
+  }
+}
+
+let persistenceDebugPreparedFromUrl = false;
+
+export function preparePersistenceDebugFromUrl(paramName: string = 'restoreDebug'): boolean {
+  if (!isDebugUrlFlagEnabled(paramName)) return false;
+  if (persistenceDebugPreparedFromUrl) return true;
+  clearPersistenceDebugEntries();
+  setPersistenceDebugEnabled(true);
+  persistenceDebugPreparedFromUrl = true;
+  return true;
+}
+
 export function clearPersistenceDebugEntries() {
   const storage = getSafeLocalStorage();
   if (!storage) return;
@@ -161,6 +183,7 @@ export function installPersistenceDebugBridge() {
       return entries;
     },
     enable: () => setPersistenceDebugEnabled(true),
+    isEnabled: isPersistenceDebugEnabled,
     read: readPersistenceDebugEntries,
   };
 }
