@@ -95,6 +95,7 @@ async function ensureCleanLogDir(logDir) {
 
 function createLifecycleTracker({ command, host, port, logDir }) {
   const lifecyclePath = path.join(logDir, 'lifecycle.json');
+  let persistChain = Promise.resolve();
   const state = {
     command,
     host,
@@ -112,7 +113,13 @@ function createLifecycleTracker({ command, host, port, logDir }) {
   };
 
   const persist = async () => {
-    await fsp.writeFile(lifecyclePath, JSON.stringify(state, null, 2));
+    const nextPersist = persistChain.then(async () => {
+      const tempPath = `${lifecyclePath}.tmp`;
+      await fsp.writeFile(tempPath, JSON.stringify(state, null, 2));
+      await fsp.rename(tempPath, lifecyclePath);
+    });
+    persistChain = nextPersist.catch(() => {});
+    await nextPersist;
   };
 
   return {
@@ -153,6 +160,9 @@ function createLifecycleTracker({ command, host, port, logDir }) {
       state.healthcheck.failureMessage = message;
       await persist();
     },
+    waitForPendingWrites() {
+      return persistChain;
+    },
   };
 }
 
@@ -188,6 +198,7 @@ async function startManagedExternalWebServer({
   let healthcheckTimer;
   let consecutiveProbeFailures = 0;
   let rejectUnexpectedExit;
+  let exitPersistPromise = Promise.resolve();
   const unexpectedExit = new Promise((_, reject) => {
     rejectUnexpectedExit = reject;
   });
@@ -213,8 +224,8 @@ async function startManagedExternalWebServer({
       `Managed E2E web server exited ${phase} (code=${code ?? 'null'}, signal=${signal ?? 'null'})`,
       logDir,
     );
+    exitPersistPromise = lifecycle.markExit(code ?? null, signal ?? null);
     rejectUnexpectedExit(exitError);
-    void lifecycle.markExit(code ?? null, signal ?? null);
     stdout.end();
     stderr.end();
   });
@@ -226,6 +237,8 @@ async function startManagedExternalWebServer({
     ]);
   } catch (error) {
     cleanup();
+    await exitPersistPromise;
+    await lifecycle.waitForPendingWrites();
     throw error;
   }
 
