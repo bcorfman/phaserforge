@@ -41,6 +41,7 @@ type WorkflowRunsResponse = {
 
 const GITHUB_API_VERSION = '2022-11-28';
 const PAGES_WORKFLOW_PATH = '.github/workflows/deploy-phaserforge-pages.yml';
+const PAGES_PUBLISH_PROBE_PATH = 'phaserforge-publish.json';
 
 function normalizeRepoName(repo: string): string {
   return repo.trim();
@@ -58,6 +59,32 @@ async function routeExists(url: string): Promise<boolean> {
     return res.status >= 200 && res.status < 400;
   } catch {
     return false;
+  }
+}
+
+function createPublishToken(): string {
+  return `pf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function buildPublishProbeJson(publishToken: string): string {
+  return JSON.stringify({ publishToken, generatedAt: new Date().toISOString() }, null, 2);
+}
+
+async function fetchPublishedToken(url: string): Promise<string | null> {
+  try {
+    const probeUrl = new URL(PAGES_PUBLISH_PROBE_PATH, url);
+    probeUrl.searchParams.set('pf_check', String(Date.now()));
+    const res = await fetch(probeUrl.toString(), {
+      method: 'GET',
+      cache: 'no-store',
+      headers: { 'cache-control': 'no-cache, no-store, max-age=0', pragma: 'no-cache' },
+      redirect: 'follow',
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { publishToken?: unknown };
+    return typeof json.publishToken === 'string' && json.publishToken.trim() ? json.publishToken : null;
+  } catch {
+    return null;
   }
 }
 
@@ -543,8 +570,9 @@ export async function checkGithubPagesTarget(
   repositories: Repositories,
   userId: string,
   repo: string,
+  publishToken?: string,
 ): Promise<
-  Ok<{ url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null }>
+  Ok<{ url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null; currentPublishLive: boolean | null }>
   | Err<'github_not_linked' | 'github_token_missing' | 'github_repo_permission_required' | 'github_failed'>
 > {
   const info = await resolveGithubToken(repositories, userId);
@@ -556,10 +584,11 @@ export async function checkGithubPagesTarget(
   const normalizedRepo = normalizeRepoName(repo);
   const url = pagesUrlFor(info.login, normalizedRepo);
   const publicRouteExists = await routeExists(url);
+  const currentPublishLive = publishToken ? (await fetchPublishedToken(url)) === publishToken : null;
   const repoRes = await getRepo(accessToken, info.login, normalizedRepo);
   if (!repoRes.ok) {
     if (repoRes.status === 404) {
-      return { ok: true, url, exists: false, routeExists: publicRouteExists, pagesConfigured: false, deploymentStatus: null };
+      return { ok: true, url, exists: false, routeExists: publicRouteExists, pagesConfigured: false, deploymentStatus: null, currentPublishLive };
     }
     if (repoRes.status === 401 || repoRes.status === 403) return { ok: false, error: 'github_repo_permission_required' };
     return { ok: false, error: 'github_failed' };
@@ -571,9 +600,9 @@ export async function checkGithubPagesTarget(
   );
   if (!pageRes.ok) {
     if (pageRes.status === 404) {
-      return { ok: true, url, exists: true, routeExists: publicRouteExists, pagesConfigured: false, deploymentStatus: null };
+      return { ok: true, url, exists: true, routeExists: publicRouteExists, pagesConfigured: false, deploymentStatus: null, currentPublishLive };
     }
-    return { ok: true, url, exists: true, routeExists: publicRouteExists, pagesConfigured: false, deploymentStatus: null };
+    return { ok: true, url, exists: true, routeExists: publicRouteExists, pagesConfigured: false, deploymentStatus: null, currentPublishLive };
   }
 
   return {
@@ -583,6 +612,7 @@ export async function checkGithubPagesTarget(
     routeExists: publicRouteExists,
     pagesConfigured: true,
     deploymentStatus: pageRes.json.status ?? null,
+    currentPublishLive,
   };
 }
 
@@ -590,7 +620,10 @@ export async function publishGameToGithubPages(
   repositories: Repositories,
   userId: string,
   input: { gameId: string; repo: string },
-): Promise<Ok<{ url: string; repo: string; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; repoCreated: boolean }> | Err<PublishError>> {
+): Promise<
+  Ok<{ url: string; repo: string; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; repoCreated: boolean; publishToken: string }>
+  | Err<PublishError>
+> {
   const info = await resolveGithubToken(repositories, userId);
   if (!info.ok) return info;
   const normalizedRepo = normalizeRepoName(input.repo);
@@ -624,10 +657,12 @@ export async function publishGameToGithubPages(
   const publishableProject = await materializeProjectForPublish(repositories, userId, game.project);
   if (!publishableProject) return { ok: false, error: 'cloud_asset_missing' };
   const yamlNormalized = serializeProjectToYaml(publishableProject.project);
+  const publishToken = createPublishToken();
   const files: Array<{ path: string; bytes: Uint8Array }> = [
     { path: PAGES_WORKFLOW_PATH, bytes: Buffer.from(buildPagesWorkflowYaml(), 'utf8') },
     { path: 'index.html', bytes: Buffer.from(playIndex, 'utf8') },
     { path: 'game.yaml', bytes: Buffer.from(yamlNormalized, 'utf8') },
+    { path: PAGES_PUBLISH_PROBE_PATH, bytes: Buffer.from(buildPublishProbeJson(publishToken), 'utf8') },
   ];
 
   for (const file of distFiles) {
@@ -655,5 +690,6 @@ export async function publishGameToGithubPages(
     repo: normalizedRepo,
     repoCreated: !ensuredRepo.existed,
     deploymentStatus: deployment.deploymentStatus,
+    publishToken,
   };
 }

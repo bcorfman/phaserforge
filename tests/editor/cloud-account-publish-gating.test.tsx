@@ -32,8 +32,16 @@ const api = vi.hoisted(() => {
     updateGame: vi.fn(async () => ({ game: { id: 'g1', title: 'G', created_at: 'c', updated_at: 'u' } })),
     disconnectGithub: vi.fn(async () => {}),
     getGithubPagesPublishInfo: vi.fn(async () => ({ ok: false, error: 'github_not_linked' })),
-    checkGithubPagesTarget: vi.fn(async () => ({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null })),
-    publishToGithubPages: vi.fn(async () => ({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' })),
+    checkGithubPagesTarget: vi.fn(async () => ({
+      ok: true,
+      url: 'https://x',
+      exists: false,
+      routeExists: false,
+      pagesConfigured: false,
+      deploymentStatus: null,
+      currentPublishLive: null,
+    })),
+    publishToGithubPages: vi.fn(async () => ({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' })),
   };
 });
 
@@ -1289,7 +1297,7 @@ describe('CloudAccountPanel publish gating', () => {
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
     api.publishToGithubPages
       .mockResolvedValueOnce({ ok: false, error: 'csrf_required' })
-      .mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' });
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
 
     const onStatus = vi.fn();
     const onError = vi.fn();
@@ -1362,7 +1370,7 @@ describe('CloudAccountPanel publish gating', () => {
     });
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
 
-    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }) => void) | null = null;
+    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; publishToken: string }) => void) | null = null;
     api.publishToGithubPages.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -1423,7 +1431,7 @@ describe('CloudAccountPanel publish gating', () => {
       expect(document.querySelector('[data-testid="publish-confirm-submit"]')?.textContent).toContain('Publishing');
 
       await act(async () => {
-        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' });
+        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
         await Promise.resolve();
       });
       await flushEffects();
@@ -1433,6 +1441,7 @@ describe('CloudAccountPanel publish gating', () => {
   });
 
   it('opens the publish tab from the confirm click and navigates it after publish completes', async () => {
+    vi.useFakeTimers();
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
     api.getGithubPagesPublishInfo.mockResolvedValue({
       ok: true,
@@ -1440,8 +1449,11 @@ describe('CloudAccountPanel publish gating', () => {
       pagesBaseUrl: 'https://bcorfman.github.io/',
     });
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
+    api.checkGithubPagesTarget
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null, currentPublishLive: null })
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built', currentPublishLive: true });
 
-    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured' }) => void) | null = null;
+    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; publishToken: string }) => void) | null = null;
     api.publishToGithubPages.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -1522,10 +1534,13 @@ describe('CloudAccountPanel publish gating', () => {
       expect(popup.location.replace).not.toHaveBeenCalled();
 
       await act(async () => {
-        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'built' });
+        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'built', publishToken: 'token-1' });
         await Promise.resolve();
       });
       await flushEffects();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
 
       expect(popup.location.replace).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/x\/\?pf_publish=\d+$/));
       expect(popup.close).not.toHaveBeenCalled();
@@ -1544,11 +1559,11 @@ describe('CloudAccountPanel publish gating', () => {
       pagesBaseUrl: 'https://bcorfman.github.io/',
     });
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
-    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' });
+    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
     api.checkGithubPagesTarget
-      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null })
-      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'building' })
-      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built' });
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null, currentPublishLive: null })
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'building', currentPublishLive: false })
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built', currentPublishLive: true });
 
     const popup = {
       closed: false,
@@ -1625,7 +1640,7 @@ describe('CloudAccountPanel publish gating', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
-      expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf');
+      expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
       expect(popup.location.replace).not.toHaveBeenCalled();
 
       await act(async () => {
@@ -1647,7 +1662,7 @@ describe('CloudAccountPanel publish gating', () => {
       pagesBaseUrl: 'https://bcorfman.github.io/',
     });
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
-    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued' });
+    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
 
     function Harness() {
       const [state, setState] = React.useState<any>({
