@@ -99,7 +99,7 @@ describe('cloud api', () => {
       expect(init?.credentials).toBe('include');
       expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
       expect((init?.headers as any)['content-type']).toBe('application/json');
-      expect(init?.body).toBe(JSON.stringify({ repo: 'mygame', publishToken: 'token-1' }));
+      expect(init?.body).toBe(JSON.stringify({ repo: 'mygame', publishMarker: 'marker-1' }));
       return new Response(
         JSON.stringify({ ok: true, url: 'u', exists: false, routeExists: true, pagesConfigured: false, deploymentStatus: null, currentPublishLive: false }),
         { status: 200 },
@@ -107,7 +107,7 @@ describe('cloud api', () => {
     });
     vi.stubGlobal('fetch', fetchMock as any);
 
-    await expect(checkGithubPagesTarget('mygame', 'csrf', 'token-1')).resolves.toEqual({
+    await expect(checkGithubPagesTarget('mygame', 'csrf', 'marker-1')).resolves.toEqual({
       ok: true,
       url: 'u',
       exists: false,
@@ -129,7 +129,7 @@ describe('cloud api', () => {
       expect((init?.headers as any)['content-type']).toBe('application/json');
       expect(init?.credentials).toBe('include');
       expect(init?.body).toBe(JSON.stringify({ gameId: 'g1', repo: 'r1' }));
-      return new Response(JSON.stringify({ ok: true, url: 'https://x', repo: 'r1', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, url: 'https://x', repo: 'r1', repoCreated: true, deploymentStatus: 'queued', publishMarker: 'marker-1' }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock as any);
 
@@ -139,7 +139,7 @@ describe('cloud api', () => {
       repo: 'r1',
       repoCreated: true,
       deploymentStatus: 'queued',
-      publishToken: 'token-1',
+      publishMarker: 'marker-1',
     });
   });
 });

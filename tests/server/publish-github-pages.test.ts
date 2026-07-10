@@ -194,7 +194,7 @@ describe('publish github pages', () => {
           return new Response('', { status: 200 });
         }
         if (url.startsWith('https://alice.github.io/zoof/phaserforge-publish.json?')) {
-          return new Response(JSON.stringify({ publishToken: 'current-token' }), { status: 200 });
+          return new Response(JSON.stringify({ publishMarker: 'current-marker' }), { status: 200 });
         }
         if (url === 'https://api.github.com/repos/alice/zoof') {
           return new Response(JSON.stringify({ name: 'zoof', full_name: 'alice/zoof', default_branch: 'main' }), { status: 200 });
@@ -209,7 +209,7 @@ describe('publish github pages', () => {
     const res = await agent
       .post('/api/v1/publish/github-pages/check')
       .set('x-csrf-token', csrf)
-      .send({ repo: 'zoof', publishToken: 'current-token' })
+      .send({ repo: 'zoof', publishMarker: 'current-marker' })
       .expect(200);
 
     expect(res.body).toEqual({
@@ -299,7 +299,7 @@ describe('publish github pages', () => {
       repo: 'zoof',
       repoCreated: true,
       deploymentStatus: 'queued',
-      publishToken: expect.any(String),
+      publishMarker: expect.stringMatching(/^publish-/),
     });
     expect(treeBodies).toHaveLength(1);
     expect(treeBodies[0].tree.some((entry: any) => entry.path === '.github/workflows/deploy-phaserforge-pages.yml')).toBe(true);

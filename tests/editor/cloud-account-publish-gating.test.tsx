@@ -41,7 +41,7 @@ const api = vi.hoisted(() => {
       deploymentStatus: null,
       currentPublishLive: null,
     })),
-    publishToGithubPages: vi.fn(async () => ({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' })),
+    publishToGithubPages: vi.fn(async () => ({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishMarker: 'marker-1' })),
   };
 });
 
@@ -1297,7 +1297,7 @@ describe('CloudAccountPanel publish gating', () => {
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
     api.publishToGithubPages
       .mockResolvedValueOnce({ ok: false, error: 'csrf_required' })
-      .mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishMarker: 'marker-1' });
 
     const onStatus = vi.fn();
     const onError = vi.fn();
@@ -1370,7 +1370,7 @@ describe('CloudAccountPanel publish gating', () => {
     });
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
 
-    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; publishToken: string }) => void) | null = null;
+    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; publishMarker: string }) => void) | null = null;
     api.publishToGithubPages.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -1431,7 +1431,7 @@ describe('CloudAccountPanel publish gating', () => {
       expect(document.querySelector('[data-testid="publish-confirm-submit"]')?.textContent).toContain('Publishing');
 
       await act(async () => {
-        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
+        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishMarker: 'marker-1' });
         await Promise.resolve();
       });
       await flushEffects();
@@ -1456,7 +1456,7 @@ describe('CloudAccountPanel publish gating', () => {
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null, currentPublishLive: null })
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built', currentPublishLive: true });
 
-    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; publishToken: string }) => void) | null = null;
+    let resolvePublish: ((value: { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; publishMarker: string }) => void) | null = null;
     api.publishToGithubPages.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -1521,7 +1521,7 @@ describe('CloudAccountPanel publish gating', () => {
       expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeFalsy();
 
       await act(async () => {
-        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'built', publishToken: 'token-1' });
+        resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'built', publishMarker: 'marker-1' });
         await Promise.resolve();
       });
       await flushEffects();
@@ -1558,7 +1558,7 @@ describe('CloudAccountPanel publish gating', () => {
       pagesBaseUrl: 'https://bcorfman.github.io/',
     });
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
-    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
+    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishMarker: 'marker-1' });
     api.checkGithubPagesTarget
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null, currentPublishLive: null })
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built', currentPublishLive: true });
@@ -1623,7 +1623,7 @@ describe('CloudAccountPanel publish gating', () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
       await flushEffects();
-      expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
+      expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'marker-1');
       expect(api.checkGithubPagesTarget).toHaveBeenCalledTimes(2);
       expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeTruthy();
       expect(document.querySelector('[data-testid="cloud-publish-progress"]')).toBeFalsy();
@@ -1641,7 +1641,7 @@ describe('CloudAccountPanel publish gating', () => {
       pagesBaseUrl: 'https://bcorfman.github.io/',
     });
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
-    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
+    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishMarker: 'marker-1' });
     api.checkGithubPagesTarget
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null, currentPublishLive: null })
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built', currentPublishLive: null });
@@ -1652,7 +1652,7 @@ describe('CloudAccountPanel publish gating', () => {
       value: vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith('https://x/phaserforge-publish.json?')) {
-          return new Response(JSON.stringify({ publishToken: 'token-1' }), { status: 200 });
+          return new Response(JSON.stringify({ publishMarker: 'marker-1' }), { status: 200 });
         }
         throw new Error(`Unhandled fetch ${url}`);
       }),
@@ -1712,7 +1712,7 @@ describe('CloudAccountPanel publish gating', () => {
       });
       await flushEffects();
 
-      expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
+      expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'marker-1');
       expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeTruthy();
     } finally {
       if (originalFetch === undefined) {
@@ -1732,7 +1732,7 @@ describe('CloudAccountPanel publish gating', () => {
       pagesBaseUrl: 'https://bcorfman.github.io/',
     });
     api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
-    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
+    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishMarker: 'marker-1' });
 
     function Harness() {
       const [state, setState] = React.useState<any>({

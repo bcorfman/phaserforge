@@ -30,13 +30,13 @@ export function publishRouter(settings: Settings, repositories: Repositories) {
   });
 
   router.post('/github-pages/check', async (req, res) => {
-    const parsed = z.object({ repo: RepoSchema, publishToken: z.string().trim().min(1).max(200).optional() }).safeParse(req.body);
+    const parsed = z.object({ repo: RepoSchema, publishMarker: z.string().trim().min(1).max(200).optional() }).safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: 'invalid_request' });
       return;
     }
     const userId = (req as unknown as { userId: string }).userId;
-    const result = await checkGithubPagesTarget(repositories, userId, parsed.data.repo, parsed.data.publishToken);
+    const result = await checkGithubPagesTarget(repositories, userId, parsed.data.repo, parsed.data.publishMarker);
     if (!result.ok) {
       res.status(400).json({ error: result.error });
       return;

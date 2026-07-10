@@ -153,7 +153,7 @@ export async function getGithubPagesPublishInfo(): Promise<{ ok: true; login: st
 export async function checkGithubPagesTarget(
   repo: string,
   csrfToken: string,
-  publishToken?: string,
+  publishMarker?: string,
 ): Promise<
   | {
       ok: true;
@@ -180,7 +180,7 @@ export async function checkGithubPagesTarget(
       {
       method: 'POST',
       headers: { 'x-csrf-token': csrfToken },
-      body: JSON.stringify({ repo, ...(publishToken ? { publishToken } : {}) }),
+      body: JSON.stringify({ repo, ...(publishMarker ? { publishMarker } : {}) }),
     },
     );
     return json;
@@ -194,7 +194,7 @@ export async function publishToGithubPages(
   repo: string,
   csrfToken: string,
 ): Promise<
-  | { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; publishToken: string }
+  | { ok: true; url: string; repo: string; repoCreated: boolean; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; publishMarker: string }
   | { ok: false; error: string; url?: string }
 > {
   try {
@@ -204,7 +204,7 @@ export async function publishToGithubPages(
       repo: string;
       repoCreated: boolean;
       deploymentStatus: 'built' | 'building' | 'queued' | 'configured';
-      publishToken: string;
+      publishMarker: string;
     }>(
       '/api/v1/publish/github-pages',
       {
