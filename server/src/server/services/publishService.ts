@@ -70,19 +70,25 @@ function buildPublishProbeJson(publishMarker: string): string {
   return JSON.stringify({ publishMarker, generatedAt: new Date().toISOString() }, null, 2);
 }
 
+function extractPublishMarkerFromHtml(html: string): string | null {
+  const metaMatch = /<meta\s+name=["']phaserforge-publish-marker["']\s+content=["']([^"']+)["']/i.exec(html);
+  if (metaMatch?.[1]?.trim()) return metaMatch[1].trim();
+  const scriptMatch = /window\.__PHASER_FORGE_PUBLISH_MARKER\s*=\s*["']([^"']+)["']/i.exec(html);
+  return scriptMatch?.[1]?.trim() || null;
+}
+
 async function fetchPublishedMarker(url: string): Promise<string | null> {
   try {
-    const probeUrl = new URL(PAGES_PUBLISH_PROBE_PATH, url);
-    probeUrl.searchParams.set('pf_check', String(Date.now()));
-    const res = await fetch(probeUrl.toString(), {
+    const pageUrl = new URL(url);
+    pageUrl.searchParams.set('pf_check', String(Date.now()));
+    const res = await fetch(pageUrl.toString(), {
       method: 'GET',
       cache: 'no-store',
       headers: { 'cache-control': 'no-cache, no-store, max-age=0', pragma: 'no-cache' },
       redirect: 'follow',
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as { publishMarker?: unknown };
-    return typeof json.publishMarker === 'string' && json.publishMarker.trim() ? json.publishMarker : null;
+    return extractPublishMarkerFromHtml(await res.text());
   } catch {
     return null;
   }
@@ -253,11 +259,18 @@ async function readPublishableDistFiles(): Promise<Array<{ relPath: string; byte
   return files;
 }
 
-function buildPlayIndexHtml(distIndexHtml: string): string {
+function buildPlayIndexHtml(distIndexHtml: string, publishMarker: string): string {
   const meta = `<meta name="phaserforge-mode" content="play" />`;
-  const boot = `<script>window.__PHASER_FORGE_PLAY_YAML_URL = './game.yaml';</script>`;
+  const publishMeta = `<meta name="phaserforge-publish-marker" content="${publishMarker}" />`;
+  const boot = `<script>window.__PHASER_FORGE_PLAY_YAML_URL = './game.yaml';window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(publishMarker)};</script>`;
   if (distIndexHtml.includes('name="phaserforge-mode"')) return distIndexHtml;
-  return distIndexHtml.replace('</title>', `</title>\n  ${meta}\n  ${boot}`);
+  if (distIndexHtml.includes('</title>')) {
+    return distIndexHtml.replace('</title>', `</title>\n  ${meta}\n  ${publishMeta}\n  ${boot}`);
+  }
+  if (distIndexHtml.includes('</head>')) {
+    return distIndexHtml.replace('</head>', `  ${meta}\n  ${publishMeta}\n  ${boot}\n</head>`);
+  }
+  return `${meta}\n${publishMeta}\n${boot}\n${distIndexHtml}`;
 }
 
 function buildPagesWorkflowYaml(): string {
@@ -650,11 +663,11 @@ export async function publishGameToGithubPages(
   const indexEntry = distFiles.find((file) => file.relPath === 'index.html');
   if (!indexEntry) return { ok: false, error: 'dist_missing' };
 
-  const playIndex = buildPlayIndexHtml(Buffer.from(indexEntry.bytes).toString('utf8'));
+  const publishMarker = createPublishMarker();
+  const playIndex = buildPlayIndexHtml(Buffer.from(indexEntry.bytes).toString('utf8'), publishMarker);
   const publishableProject = await materializeProjectForPublish(repositories, userId, game.project);
   if (!publishableProject) return { ok: false, error: 'cloud_asset_missing' };
   const yamlNormalized = serializeProjectToYaml(publishableProject.project);
-  const publishMarker = createPublishMarker();
   const files: Array<{ path: string; bytes: Uint8Array }> = [
     { path: PAGES_WORKFLOW_PATH, bytes: Buffer.from(buildPagesWorkflowYaml(), 'utf8') },
     { path: 'index.html', bytes: Buffer.from(playIndex, 'utf8') },
