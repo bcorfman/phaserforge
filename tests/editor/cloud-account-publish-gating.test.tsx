@@ -1549,7 +1549,7 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
-  it('waits for GitHub Pages to report built before showing the open button', async () => {
+  it('waits for the live publish token before showing the open button', async () => {
     vi.useFakeTimers();
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
     api.getGithubPagesPublishInfo.mockResolvedValue({
@@ -1561,7 +1561,6 @@ describe('CloudAccountPanel publish gating', () => {
     api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
     api.checkGithubPagesTarget
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null, currentPublishLive: null })
-      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'building', currentPublishLive: false })
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built', currentPublishLive: true });
 
     function Harness() {
@@ -1625,14 +1624,7 @@ describe('CloudAccountPanel publish gating', () => {
       });
       await flushEffects();
       expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
-      expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeFalsy();
-      expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Waiting for GitHub Pages to go live');
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(5000);
-      });
-      await flushEffects();
-      expect(api.checkGithubPagesTarget).toHaveBeenCalledTimes(3);
+      expect(api.checkGithubPagesTarget).toHaveBeenCalledTimes(2);
       expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeTruthy();
       expect(document.querySelector('[data-testid="cloud-publish-progress"]')).toBeFalsy();
     } finally {
