@@ -1033,7 +1033,7 @@ export function CloudAccountPanel({
       try {
         const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(repo, csrf, publishToken));
         if (publishNavigationPollVersionRef.current !== version) return;
-        if (check.ok && check.deploymentStatus === 'built') {
+        if (check.ok) {
           const liveViaServer = check.currentPublishLive === true;
           const liveViaBrowser = liveViaServer ? false : (await fetchPublishedTokenFromBrowser(url)) === publishToken;
           if (publishNavigationPollVersionRef.current !== version) return;
