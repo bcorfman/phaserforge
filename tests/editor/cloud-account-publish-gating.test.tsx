@@ -1435,6 +1435,9 @@ describe('CloudAccountPanel publish gating', () => {
         await Promise.resolve();
       });
       await flushEffects();
+
+      expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Waiting for GitHub Pages to go live');
+      expect((document.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement | null)?.disabled).toBe(true);
     } finally {
       view.cleanup();
     }
@@ -1512,6 +1515,7 @@ describe('CloudAccountPanel publish gating', () => {
       });
       await flushEffects();
 
+      expect(document.querySelector('.workspace-conflict-header .button')).toBeFalsy();
       expect(openSpy).not.toHaveBeenCalled();
       expect(api.publishToGithubPages).toHaveBeenCalledTimes(1);
       expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeFalsy();
@@ -1521,9 +1525,12 @@ describe('CloudAccountPanel publish gating', () => {
         await Promise.resolve();
       });
       await flushEffects();
+      expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Waiting for GitHub Pages to go live');
+      expect((document.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement | null)?.disabled).toBe(true);
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
+      await flushEffects();
 
       const openButton = document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]') as HTMLButtonElement | null;
       expect(openButton?.textContent).toContain('Open Published Game');
@@ -1610,18 +1617,24 @@ describe('CloudAccountPanel publish gating', () => {
       expect(document.querySelector('[data-testid="publish-confirm-help"]')?.textContent).toContain(
         'Open Published Game will appear when the new version is live.',
       );
+      expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Waiting for GitHub Pages to go live');
+      expect((document.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement | null)?.disabled).toBe(true);
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
+      await flushEffects();
       expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
       expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeFalsy();
+      expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Waiting for GitHub Pages to go live');
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
+      await flushEffects();
       expect(api.checkGithubPagesTarget).toHaveBeenCalledTimes(3);
       expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeTruthy();
+      expect(document.querySelector('[data-testid="cloud-publish-progress"]')).toBeFalsy();
     } finally {
       view.cleanup();
     }
@@ -1705,6 +1718,7 @@ describe('CloudAccountPanel publish gating', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
+      await flushEffects();
 
       expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
       expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeTruthy();
