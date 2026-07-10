@@ -124,56 +124,24 @@ function mapPublishError(error: string): string {
   }
 }
 
-type PublishWindowLike = Pick<Window, 'close' | 'closed' | 'location'> & {
-  document?: Pick<Document, 'title' | 'body'>;
-  opener?: Window | null;
-};
-
 const GITHUB_PAGES_PUBLISH_POLL_MS = 5000;
 const GITHUB_PAGES_PUBLISH_MAX_WAIT_MS = 120000;
+const PAGES_PUBLISH_PROBE_PATH = 'phaserforge-publish.json';
 
-function openPendingPublishWindow(): PublishWindowLike | null {
-  if (typeof window === 'undefined' || typeof window.open !== 'function') return null;
+async function fetchPublishedTokenFromBrowser(url: string): Promise<string | null> {
   try {
-    const popup = window.open('', '_blank') as PublishWindowLike | null;
-    if (!popup) return null;
-    try {
-      popup.opener = null;
-    } catch {
-      // ignore opener reset errors
-    }
-    try {
-      if (popup.document) {
-        popup.document.title = 'Opening published game…';
-        if (popup.document.body) popup.document.body.textContent = 'Opening published game…';
-      }
-    } catch {
-      // ignore temporary document write errors
-    }
-    return popup;
+    const probeUrl = new URL(PAGES_PUBLISH_PROBE_PATH, url);
+    probeUrl.searchParams.set('pf_check', String(Date.now()));
+    const res = await fetch(probeUrl.toString(), {
+      method: 'GET',
+      cache: 'no-store',
+      headers: { 'cache-control': 'no-cache, no-store, max-age=0', pragma: 'no-cache' },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { publishToken?: unknown };
+    return typeof json.publishToken === 'string' && json.publishToken.trim() ? json.publishToken : null;
   } catch {
     return null;
-  }
-}
-
-function closePendingPublishWindow(popup: PublishWindowLike | null): void {
-  if (!popup || popup.closed) return;
-  try {
-    popup.close();
-  } catch {
-    // ignore close errors
-  }
-}
-
-function renderPendingPublishWindow(popup: PublishWindowLike | null, message: string): void {
-  if (!popup || popup.closed) return;
-  try {
-    if (popup.document) {
-      popup.document.title = 'Waiting for GitHub Pages…';
-      if (popup.document.body) popup.document.body.textContent = message;
-    }
-  } catch {
-    // ignore document update errors
   }
 }
 
@@ -188,21 +156,8 @@ function withPublishCacheBust(url: string, publishedAtMs: number): string {
   }
 }
 
-function navigatePublishedWindow(popup: PublishWindowLike | null, url: string, publishedAtMs: number): void {
+function openPublishedWindow(url: string, publishedAtMs: number): void {
   const targetUrl = withPublishCacheBust(url, publishedAtMs);
-  if (popup && !popup.closed) {
-    try {
-      popup.location.replace(targetUrl);
-      return;
-    } catch {
-      try {
-        popup.location.href = targetUrl;
-        return;
-      } catch {
-        // fall through to a normal open call
-      }
-    }
-  }
   window.open(targetUrl, '_blank', 'noopener,noreferrer');
 }
 
@@ -260,6 +215,7 @@ export function CloudAccountPanel({
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showGithubConfirm, setShowGithubConfirm] = useState<null | { mode: 'connect' | 'switch' }>(null);
   const [lastPublish, setLastPublish] = useState<{ url: string; publishedAtMs: number } | null>(null);
+  const [publishedGameReady, setPublishedGameReady] = useState<{ url: string; publishedAtMs: number } | null>(null);
   const [publishBusyLabel, setPublishBusyLabel] = useState<string | null>(null);
   const [publishDeploymentNote, setPublishDeploymentNote] = useState('');
   const [publishInlineError, setPublishInlineError] = useState('');
@@ -287,13 +243,17 @@ export function CloudAccountPanel({
   const CLOUD_AUTOSAVE_RETRY_MS = 5000;
   const resolvedCloudGameId = cloudGameIdRef.current ?? cloudGameId ?? null;
 
+  const clearPublishNavigationPoll = () => {
+    publishNavigationPollVersionRef.current += 1;
+    if (publishNavigationPollTimerRef.current != null && typeof window !== 'undefined') {
+      window.clearTimeout(publishNavigationPollTimerRef.current);
+      publishNavigationPollTimerRef.current = null;
+    }
+  };
+
   useEffect(() => {
     return () => {
-      publishNavigationPollVersionRef.current += 1;
-      if (publishNavigationPollTimerRef.current != null && typeof window !== 'undefined') {
-        window.clearTimeout(publishNavigationPollTimerRef.current);
-        publishNavigationPollTimerRef.current = null;
-      }
+      clearPublishNavigationPoll();
     };
   }, []);
 
@@ -633,6 +593,11 @@ export function CloudAccountPanel({
     setPublishRepoDraft(storedPublishRepo);
   }, [storedPublishRepo, state.project.id]);
 
+  useEffect(() => {
+    setPublishedGameReady(null);
+    clearPublishNavigationPoll();
+  }, [state.project.id]);
+
   const persistPublishTitleDraft = () => {
     if (publishTitleDraft === (storedPublishTitle ?? projectTitle)) {
       appendPersistenceDebugEntry('cloud:publish-title-draft-persist-skip', {
@@ -776,6 +741,7 @@ export function CloudAccountPanel({
       setPublishCheck(null);
       setShowPublishConfirm(false);
       setShowGithubConfirm(null);
+      setPublishedGameReady(null);
       setWorkspaceConflict(null);
       setCloudGameId(null);
       setCloudLinkVerificationPending(false);
@@ -799,6 +765,7 @@ export function CloudAccountPanel({
       setPublishInfo(info);
       setPublishCheck(null);
       setShowPublishConfirm(false);
+      setPublishedGameReady(null);
       onStatus('Disconnected GitHub');
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to disconnect GitHub');
@@ -1039,29 +1006,16 @@ export function CloudAccountPanel({
     }
   };
 
-  const waitForPublishedRoute = (
-    publishWindow: PublishWindowLike | null,
-    repo: string,
-    url: string,
-    publishedAtMs: number,
-    initialStatus: 'built' | 'building' | 'queued' | 'configured',
-    publishToken: string,
-  ) => {
+  const waitForPublishedRoute = (repo: string, url: string, publishedAtMs: number, publishToken: string) => {
+    clearPublishNavigationPoll();
     const version = ++publishNavigationPollVersionRef.current;
     let elapsedMs = 0;
-    renderPendingPublishWindow(
-      publishWindow,
-      initialStatus === 'built'
-        ? 'GitHub finished the Pages build. Waiting for the public site to serve this new publish before opening it…'
-        : 'GitHub Pages accepted the publish. Waiting for the new version to go live before opening it…',
-    );
 
     const poll = async () => {
       if (publishNavigationPollVersionRef.current !== version) return;
       if (elapsedMs >= GITHUB_PAGES_PUBLISH_MAX_WAIT_MS) {
-        renderPendingPublishWindow(
-          publishWindow,
-          'GitHub Pages is still updating. Leave this tab open a bit longer, or reload it manually once the deployment finishes.',
+        setPublishDeploymentNote(
+          `GitHub Pages is still updating ${repo}. Leave this tab open a bit longer, then use Open Published Game once the new version is live.`,
         );
         publishNavigationPollTimerRef.current = null;
         return;
@@ -1070,19 +1024,24 @@ export function CloudAccountPanel({
       try {
         const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(repo, csrf, publishToken));
         if (publishNavigationPollVersionRef.current !== version) return;
-        if (check.ok && check.deploymentStatus === 'built' && check.currentPublishLive === true) {
-          publishNavigationPollTimerRef.current = null;
-          navigatePublishedWindow(publishWindow, url, publishedAtMs);
-          return;
+        if (check.ok && check.deploymentStatus === 'built') {
+          const liveViaServer = check.currentPublishLive === true;
+          const liveViaBrowser = liveViaServer ? false : (await fetchPublishedTokenFromBrowser(url)) === publishToken;
+          if (publishNavigationPollVersionRef.current !== version) return;
+          if (liveViaServer || liveViaBrowser) {
+            publishNavigationPollTimerRef.current = null;
+            setPublishedGameReady({ url, publishedAtMs });
+            setPublishDeploymentNote(`Repository ${repo} is live at ${url}`);
+            return;
+          }
         }
       } catch {
         // Keep polling; transient GitHub/API hiccups should not strand the publish flow.
       }
 
       elapsedMs += GITHUB_PAGES_PUBLISH_POLL_MS;
-      renderPendingPublishWindow(
-        publishWindow,
-        'GitHub Pages is still publishing or propagating the new version. This tab will open it automatically when this exact publish is live.',
+      setPublishDeploymentNote(
+        `GitHub Pages is still publishing or propagating ${repo}. Open Published Game will appear when this exact publish is live.`,
       );
       if (typeof window === 'undefined') return;
       publishNavigationPollTimerRef.current = window.setTimeout(() => {
@@ -1096,15 +1055,16 @@ export function CloudAccountPanel({
     }, GITHUB_PAGES_PUBLISH_POLL_MS);
   };
 
-  const handlePublish = async (publishWindow: PublishWindowLike | null) => {
+  const handlePublish = async () => {
     if (!user) return;
     setBusy(true);
     setPublishBusyLabel('Saving project to cloud…');
     setPublishDeploymentNote('');
     setPublishInlineError('');
+    setPublishedGameReady(null);
+    clearPublishNavigationPoll();
     let publishedUrl: string | null = null;
     let publishedAtMs: number | null = null;
-    let deploymentStatus: 'built' | 'building' | 'queued' | 'configured' | null = null;
     let publishedRepo: string | null = null;
     let publishedToken: string | null = null;
     try {
@@ -1126,11 +1086,7 @@ export function CloudAccountPanel({
         return;
       }
       setPublishBusyLabel('Configuring GitHub Pages…');
-      setPublishDeploymentNote(
-        result.deploymentStatus === 'built'
-          ? `Repository ${result.repo} is live at ${result.url}`
-          : `GitHub Pages accepted the deployment for ${result.repo}. If the URL is not live yet, wait about a minute and reload.`,
-      );
+      setPublishDeploymentNote(`GitHub Pages accepted the deployment for ${result.repo}. Open Published Game will appear when the new version is live.`);
       publishedAtMs = Date.now();
       if (user?.id) {
         void projectPersistence.saveLastPublishInfo(user.id, { url: result.url, publishedAtMs });
@@ -1143,13 +1099,10 @@ export function CloudAccountPanel({
       );
       publishedUrl = result.url;
       publishedRepo = result.repo;
-      deploymentStatus = result.deploymentStatus;
       publishedToken = result.publishToken;
     } finally {
-      if (publishedUrl && publishedAtMs != null && deploymentStatus && publishedRepo && publishedToken) {
-        waitForPublishedRoute(publishWindow, publishedRepo, publishedUrl, publishedAtMs, deploymentStatus, publishedToken);
-      } else {
-        closePendingPublishWindow(publishWindow);
+      if (publishedUrl && publishedAtMs != null && publishedRepo && publishedToken) {
+        waitForPublishedRoute(publishedRepo, publishedUrl, publishedAtMs, publishedToken);
       }
       setBusy(false);
       setPublishBusyLabel(null);
@@ -1158,8 +1111,12 @@ export function CloudAccountPanel({
   };
 
   const handlePublishConfirmClick = () => {
-    const publishWindow = openPendingPublishWindow();
-    void handlePublish(publishWindow);
+    void handlePublish();
+  };
+
+  const handleOpenPublishedGame = () => {
+    if (!publishedGameReady) return;
+    openPublishedWindow(publishedGameReady.url, publishedGameReady.publishedAtMs);
   };
 
   const loadConflictProject = (project: ProjectSpec, sourceLabel: string) => {
@@ -1569,6 +1526,19 @@ export function CloudAccountPanel({
                     {publishHelpText}
                   </div>
                 </div>
+                {publishedGameReady ? (
+                  <div className="cloud-row">
+                    <button
+                      className="button primary"
+                      type="button"
+                      data-testid="cloud-publish-open-button"
+                      disabled={busy}
+                      onClick={handleOpenPublishedGame}
+                    >
+                      Open Published Game
+                    </button>
+                  </div>
+                ) : null}
                 {publishBusyLabel ? (
                   <div className="cloud-row">
                     <div className="cloud-publish-status" data-testid="cloud-publish-progress" role="status" aria-live="polite">
