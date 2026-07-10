@@ -1106,7 +1106,6 @@ export function CloudAccountPanel({
       }
       setBusy(false);
       setPublishBusyLabel(null);
-      setShowPublishConfirm(false);
     }
   };
 
@@ -1117,6 +1116,7 @@ export function CloudAccountPanel({
   const handleOpenPublishedGame = () => {
     if (!publishedGameReady) return;
     openPublishedWindow(publishedGameReady.url, publishedGameReady.publishedAtMs);
+    setShowPublishConfirm(false);
   };
 
   const loadConflictProject = (project: ProjectSpec, sourceLabel: string) => {
@@ -1596,6 +1596,11 @@ export function CloudAccountPanel({
                 ? `GitHub Pages is already configured${publishCheck.deploymentStatus ? ` (${publishCheck.deploymentStatus})` : ''}.`
                 : 'GitHub Pages will be configured automatically during publish.'}
             </div>
+            {publishHelpText ? (
+              <div className="cloud-help" data-testid="publish-confirm-help">
+                {publishHelpText}
+              </div>
+            ) : null}
             {publishBusyLabel ? (
               <div className="cloud-publish-status" data-testid="cloud-publish-progress" role="status" aria-live="polite">
                 <div className="cloud-publish-progress-bar" aria-hidden="true" />
@@ -1604,11 +1609,23 @@ export function CloudAccountPanel({
             ) : null}
             <div className="cloud-row">
               <button className="button" type="button" onClick={() => setShowPublishConfirm(false)}>
-                Cancel
+                {publishedGameReady ? 'Close' : 'Cancel'}
               </button>
-              <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={handlePublishConfirmClick}>
-                {busy ? 'Publishing…' : publishCheck.routeExists ? 'Overwrite route and publish' : publishCheck.exists ? 'Update repository' : 'Create repo and publish'}
-              </button>
+              {publishedGameReady ? (
+                <button
+                  className="button primary"
+                  type="button"
+                  data-testid="cloud-publish-open-button"
+                  disabled={busy}
+                  onClick={handleOpenPublishedGame}
+                >
+                  Open Published Game
+                </button>
+              ) : (
+                <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={handlePublishConfirmClick}>
+                  {busy ? 'Publishing…' : publishCheck.routeExists ? 'Overwrite route and publish' : publishCheck.exists ? 'Update repository' : 'Create repo and publish'}
+                </button>
+              )}
             </div>
           </div>
         </div>

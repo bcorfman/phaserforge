@@ -1514,7 +1514,7 @@ describe('CloudAccountPanel publish gating', () => {
 
       expect(openSpy).not.toHaveBeenCalled();
       expect(api.publishToGithubPages).toHaveBeenCalledTimes(1);
-      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeFalsy();
+      expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeFalsy();
 
       await act(async () => {
         resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'built', publishToken: 'token-1' });
@@ -1525,9 +1525,9 @@ describe('CloudAccountPanel publish gating', () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
 
-      const openButton = document.querySelector('[data-testid="cloud-publish-open-button"]') as HTMLButtonElement | null;
+      const openButton = document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]') as HTMLButtonElement | null;
       expect(openButton?.textContent).toContain('Open Published Game');
-      expect(document.querySelector('[data-testid="cloud-publish-pages-help"]')?.textContent).toContain('Repository zoof is live at https://x');
+      expect(document.querySelector('[data-testid="publish-confirm-help"]')?.textContent).toContain('Repository zoof is live at https://x');
       expect(openSpy).not.toHaveBeenCalled();
 
       await act(async () => {
@@ -1606,8 +1606,8 @@ describe('CloudAccountPanel publish gating', () => {
       });
       await flushEffects();
 
-      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeFalsy();
-      expect(document.querySelector('[data-testid="cloud-publish-pages-help"]')?.textContent).toContain(
+      expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeFalsy();
+      expect(document.querySelector('[data-testid="publish-confirm-help"]')?.textContent).toContain(
         'Open Published Game will appear when the new version is live.',
       );
 
@@ -1615,13 +1615,13 @@ describe('CloudAccountPanel publish gating', () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
       expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
-      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeFalsy();
+      expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeFalsy();
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
       expect(api.checkGithubPagesTarget).toHaveBeenCalledTimes(3);
-      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeTruthy();
+      expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeTruthy();
     } finally {
       view.cleanup();
     }
@@ -1707,7 +1707,7 @@ describe('CloudAccountPanel publish gating', () => {
       });
 
       expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
-      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeTruthy();
+      expect(document.querySelector('[data-testid="publish-confirm-modal"] [data-testid="cloud-publish-open-button"]')).toBeTruthy();
     } finally {
       if (originalFetch === undefined) {
         delete (globalThis as any).fetch;
