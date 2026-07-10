@@ -989,8 +989,13 @@ export function CloudAccountPanel({
       onError(message);
       return;
     }
+    clearPublishNavigationPoll();
     setBusy(true);
+    setPublishCheck(null);
+    setPublishedGameReady(null);
+    setPublishWaitingForLive(false);
     setPublishInlineError('');
+    setPublishDeploymentNote('');
     setPublishBusyLabel('Checking repository availability…');
     const info = await ensurePublishInfo();
     if (!info.ok) {
