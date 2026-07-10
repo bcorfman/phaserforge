@@ -70,6 +70,15 @@ function buildPublishProbeJson(publishMarker: string): string {
   return JSON.stringify({ publishMarker, generatedAt: new Date().toISOString() }, null, 2);
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function extractPublishMarkerFromHtml(html: string): string | null {
   const metaMatch = /<meta\s+name=["']phaserforge-publish-marker["']\s+content=["']([^"']+)["']/i.exec(html);
   if (metaMatch?.[1]?.trim()) return metaMatch[1].trim();
@@ -259,18 +268,19 @@ async function readPublishableDistFiles(): Promise<Array<{ relPath: string; byte
   return files;
 }
 
-function buildPlayIndexHtml(distIndexHtml: string, publishMarker: string): string {
+function buildPlayIndexHtml(distIndexHtml: string, publishMarker: string, gameTitle: string): string {
   const meta = `<meta name="phaserforge-mode" content="play" />`;
   const publishMeta = `<meta name="phaserforge-publish-marker" content="${publishMarker}" />`;
   const boot = `<script>window.__PHASER_FORGE_PLAY_YAML_URL = './game.yaml';window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(publishMarker)};</script>`;
+  const title = `<title>${escapeHtml(gameTitle)}</title>`;
   if (distIndexHtml.includes('name="phaserforge-mode"')) return distIndexHtml;
   if (distIndexHtml.includes('</title>')) {
-    return distIndexHtml.replace('</title>', `</title>\n  ${meta}\n  ${publishMeta}\n  ${boot}`);
+    return distIndexHtml.replace(/<title>.*?<\/title>/is, title).replace('</title>', `</title>\n  ${meta}\n  ${publishMeta}\n  ${boot}`);
   }
   if (distIndexHtml.includes('</head>')) {
-    return distIndexHtml.replace('</head>', `  ${meta}\n  ${publishMeta}\n  ${boot}\n</head>`);
+    return distIndexHtml.replace('</head>', `  ${title}\n  ${meta}\n  ${publishMeta}\n  ${boot}\n</head>`);
   }
-  return `${meta}\n${publishMeta}\n${boot}\n${distIndexHtml}`;
+  return `${title}\n${meta}\n${publishMeta}\n${boot}\n${distIndexHtml}`;
 }
 
 function buildPagesWorkflowYaml(): string {
@@ -664,7 +674,7 @@ export async function publishGameToGithubPages(
   if (!indexEntry) return { ok: false, error: 'dist_missing' };
 
   const publishMarker = createPublishMarker();
-  const playIndex = buildPlayIndexHtml(Buffer.from(indexEntry.bytes).toString('utf8'), publishMarker);
+  const playIndex = buildPlayIndexHtml(Buffer.from(indexEntry.bytes).toString('utf8'), publishMarker, game.title);
   const publishableProject = await materializeProjectForPublish(repositories, userId, game.project);
   if (!publishableProject) return { ok: false, error: 'cloud_asset_missing' };
   const yamlNormalized = serializeProjectToYaml(publishableProject.project);
