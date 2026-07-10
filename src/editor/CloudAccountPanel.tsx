@@ -219,6 +219,7 @@ export function CloudAccountPanel({
   const [publishBusyLabel, setPublishBusyLabel] = useState<string | null>(null);
   const [publishDeploymentNote, setPublishDeploymentNote] = useState('');
   const [publishInlineError, setPublishInlineError] = useState('');
+  const [publishWaitingForLive, setPublishWaitingForLive] = useState(false);
   const [cloudGameId, setCloudGameId] = useState<string | null>(null);
   const [cloudGameLookupResolved, setCloudGameLookupResolved] = useState(false);
   const [cloudLinkVerificationPending, setCloudLinkVerificationPending] = useState(false);
@@ -595,6 +596,7 @@ export function CloudAccountPanel({
 
   useEffect(() => {
     setPublishedGameReady(null);
+    setPublishWaitingForLive(false);
     clearPublishNavigationPoll();
   }, [state.project.id]);
 
@@ -742,6 +744,8 @@ export function CloudAccountPanel({
       setShowPublishConfirm(false);
       setShowGithubConfirm(null);
       setPublishedGameReady(null);
+      setPublishWaitingForLive(false);
+      setPublishBusyLabel(null);
       setWorkspaceConflict(null);
       setCloudGameId(null);
       setCloudLinkVerificationPending(false);
@@ -766,6 +770,8 @@ export function CloudAccountPanel({
       setPublishCheck(null);
       setShowPublishConfirm(false);
       setPublishedGameReady(null);
+      setPublishWaitingForLive(false);
+      setPublishBusyLabel(null);
       onStatus('Disconnected GitHub');
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to disconnect GitHub');
@@ -1008,6 +1014,8 @@ export function CloudAccountPanel({
 
   const waitForPublishedRoute = (repo: string, url: string, publishedAtMs: number, publishToken: string) => {
     clearPublishNavigationPoll();
+    setPublishWaitingForLive(true);
+    setPublishBusyLabel('Waiting for GitHub Pages to go live…');
     const version = ++publishNavigationPollVersionRef.current;
     let elapsedMs = 0;
 
@@ -1017,6 +1025,7 @@ export function CloudAccountPanel({
         setPublishDeploymentNote(
           `GitHub Pages is still updating ${repo}. Leave this tab open a bit longer, then use Open Published Game once the new version is live.`,
         );
+        setPublishBusyLabel('Still waiting for GitHub Pages to go live…');
         publishNavigationPollTimerRef.current = null;
         return;
       }
@@ -1030,6 +1039,8 @@ export function CloudAccountPanel({
           if (publishNavigationPollVersionRef.current !== version) return;
           if (liveViaServer || liveViaBrowser) {
             publishNavigationPollTimerRef.current = null;
+            setPublishWaitingForLive(false);
+            setPublishBusyLabel(null);
             setPublishedGameReady({ url, publishedAtMs });
             setPublishDeploymentNote(`Repository ${repo} is live at ${url}`);
             return;
@@ -1043,6 +1054,7 @@ export function CloudAccountPanel({
       setPublishDeploymentNote(
         `GitHub Pages is still publishing or propagating ${repo}. Open Published Game will appear when this exact publish is live.`,
       );
+      setPublishBusyLabel('Waiting for GitHub Pages to go live…');
       if (typeof window === 'undefined') return;
       publishNavigationPollTimerRef.current = window.setTimeout(() => {
         void poll();
@@ -1062,6 +1074,7 @@ export function CloudAccountPanel({
     setPublishDeploymentNote('');
     setPublishInlineError('');
     setPublishedGameReady(null);
+    setPublishWaitingForLive(false);
     clearPublishNavigationPoll();
     let publishedUrl: string | null = null;
     let publishedAtMs: number | null = null;
@@ -1105,7 +1118,9 @@ export function CloudAccountPanel({
         waitForPublishedRoute(publishedRepo, publishedUrl, publishedAtMs, publishedToken);
       }
       setBusy(false);
-      setPublishBusyLabel(null);
+      if (!publishedUrl || publishedAtMs == null || !publishedRepo || !publishedToken) {
+        setPublishBusyLabel(null);
+      }
     }
   };
 
@@ -1577,9 +1592,6 @@ export function CloudAccountPanel({
           <div className="modal-card">
             <div className="workspace-conflict-header">
               <div className="workspace-conflict-title">Publish to GitHub Pages</div>
-              <button className="button button-compact" type="button" onClick={() => setShowPublishConfirm(false)}>
-                Close
-              </button>
             </div>
             <div className="cloud-help">
               Target: <span className="mono">{publishCheck.url}</span>
@@ -1609,7 +1621,7 @@ export function CloudAccountPanel({
             ) : null}
             <div className="cloud-row">
               <button className="button" type="button" onClick={() => setShowPublishConfirm(false)}>
-                {publishedGameReady ? 'Close' : 'Cancel'}
+                Cancel
               </button>
               {publishedGameReady ? (
                 <button
@@ -1622,7 +1634,13 @@ export function CloudAccountPanel({
                   Open Published Game
                 </button>
               ) : (
-                <button className="button primary" type="button" data-testid="publish-confirm-submit" disabled={busy} onClick={handlePublishConfirmClick}>
+                <button
+                  className="button primary"
+                  type="button"
+                  data-testid="publish-confirm-submit"
+                  disabled={busy || publishWaitingForLive}
+                  onClick={handlePublishConfirmClick}
+                >
                   {busy ? 'Publishing…' : publishCheck.routeExists ? 'Overwrite route and publish' : publishCheck.exists ? 'Update repository' : 'Create repo and publish'}
                 </button>
               )}
