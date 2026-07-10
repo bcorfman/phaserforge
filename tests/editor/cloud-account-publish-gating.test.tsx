@@ -1440,7 +1440,7 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
-  it('opens the publish tab from the confirm click and navigates it after publish completes', async () => {
+  it('shows an open button after publish is live and only opens the game when clicked', async () => {
     vi.useFakeTimers();
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
     api.getGithubPagesPublishInfo.mockResolvedValue({
@@ -1461,24 +1461,7 @@ describe('CloudAccountPanel publish gating', () => {
         }),
     );
 
-    const popup = {
-      closed: false,
-      close: vi.fn(() => {
-        popup.closed = true;
-      }),
-      location: {
-        href: '',
-        replace: vi.fn((value: string) => {
-          popup.location.href = value;
-        }),
-      },
-      document: {
-        title: '',
-        body: { textContent: '' },
-      },
-      opener: window,
-    } as unknown as Window;
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => popup);
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
     function Harness() {
       const [state, setState] = React.useState<any>({
@@ -1529,9 +1512,9 @@ describe('CloudAccountPanel publish gating', () => {
       });
       await flushEffects();
 
-      expect(openSpy).toHaveBeenCalledWith('', '_blank');
+      expect(openSpy).not.toHaveBeenCalled();
       expect(api.publishToGithubPages).toHaveBeenCalledTimes(1);
-      expect(popup.location.replace).not.toHaveBeenCalled();
+      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeFalsy();
 
       await act(async () => {
         resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'built', publishToken: 'token-1' });
@@ -1542,15 +1525,24 @@ describe('CloudAccountPanel publish gating', () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
 
-      expect(popup.location.replace).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/x\/\?pf_publish=\d+$/));
-      expect(popup.close).not.toHaveBeenCalled();
+      const openButton = document.querySelector('[data-testid="cloud-publish-open-button"]') as HTMLButtonElement | null;
+      expect(openButton?.textContent).toContain('Open Published Game');
+      expect(document.querySelector('[data-testid="cloud-publish-pages-help"]')?.textContent).toContain('Repository zoof is live at https://x');
+      expect(openSpy).not.toHaveBeenCalled();
+
+      await act(async () => {
+        openButton?.click();
+        await Promise.resolve();
+      });
+
+      expect(openSpy).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/x\/\?pf_publish=\d+$/), '_blank', 'noopener,noreferrer');
     } finally {
       openSpy.mockRestore();
       view.cleanup();
     }
   });
 
-  it('waits for GitHub Pages to report built before navigating the publish tab', async () => {
+  it('waits for GitHub Pages to report built before showing the open button', async () => {
     vi.useFakeTimers();
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
     api.getGithubPagesPublishInfo.mockResolvedValue({
@@ -1565,24 +1557,101 @@ describe('CloudAccountPanel publish gating', () => {
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'building', currentPublishLive: false })
       .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built', currentPublishLive: true });
 
-    const popup = {
-      closed: false,
-      close: vi.fn(() => {
-        popup.closed = true;
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRepo: 'zoof',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[data-testid="cloud-publish-pages-button"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+      await flushEffects();
+      await act(async () => {
+        (view.container.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+
+      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeFalsy();
+      expect(document.querySelector('[data-testid="cloud-publish-pages-help"]')?.textContent).toContain(
+        'Open Published Game will appear when the new version is live.',
+      );
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
+      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeFalsy();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(api.checkGithubPagesTarget).toHaveBeenCalledTimes(3);
+      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeTruthy();
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('shows the open button when the browser verifies the published token even if the check response does not mark it live', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValue({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+    });
+    api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
+    api.publishToGithubPages.mockResolvedValueOnce({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishToken: 'token-1' });
+    api.checkGithubPagesTarget
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null, currentPublishLive: null })
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built', currentPublishLive: null });
+
+    const originalFetch = globalThis.fetch;
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('https://x/phaserforge-publish.json?')) {
+          return new Response(JSON.stringify({ publishToken: 'token-1' }), { status: 200 });
+        }
+        throw new Error(`Unhandled fetch ${url}`);
       }),
-      location: {
-        href: '',
-        replace: vi.fn((value: string) => {
-          popup.location.href = value;
-        }),
-      },
-      document: {
-        title: '',
-        body: { textContent: '' },
-      },
-      opener: window,
-    } as unknown as Window;
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => popup);
+    });
 
     function Harness() {
       const [state, setState] = React.useState<any>({
@@ -1633,23 +1702,18 @@ describe('CloudAccountPanel publish gating', () => {
       });
       await flushEffects();
 
-      expect(openSpy).toHaveBeenCalledWith('', '_blank');
-      expect(popup.location.replace).not.toHaveBeenCalled();
-      expect(popup.document.body.textContent).toContain('Waiting for the new version to go live');
-
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
+
       expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(2, 'zoof', 'csrf', 'token-1');
-      expect(popup.location.replace).not.toHaveBeenCalled();
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(5000);
-      });
-      expect(api.checkGithubPagesTarget).toHaveBeenCalledTimes(3);
-      expect(popup.location.replace).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/x\/\?pf_publish=\d+$/));
+      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeTruthy();
     } finally {
-      openSpy.mockRestore();
+      if (originalFetch === undefined) {
+        delete (globalThis as any).fetch;
+      } else {
+        Object.defineProperty(globalThis, 'fetch', { configurable: true, value: originalFetch });
+      }
       view.cleanup();
     }
   });
@@ -1730,7 +1794,7 @@ describe('CloudAccountPanel publish gating', () => {
     });
     api.checkGithubPagesTarget
       .mockResolvedValueOnce({ ok: false, error: 'csrf_required' })
-      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null });
+      .mockResolvedValueOnce({ ok: true, url: 'https://x', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null, currentPublishLive: null });
 
     const onError = vi.fn();
 
@@ -1775,6 +1839,7 @@ describe('CloudAccountPanel publish gating', () => {
         await Promise.resolve();
       });
       await flushEffects();
+      await flushEffects();
 
       expect(api.fetchCsrfToken).toHaveBeenCalledTimes(2);
       expect(api.checkGithubPagesTarget).toHaveBeenNthCalledWith(1, 'patterndemo', 'stale-csrf');
@@ -1793,13 +1858,14 @@ describe('CloudAccountPanel publish gating', () => {
       login: 'bcorfman',
       pagesBaseUrl: 'https://bcorfman.github.io/',
     });
-    api.checkGithubPagesTarget.mockResolvedValueOnce({
+    api.checkGithubPagesTarget.mockResolvedValue({
       ok: true,
       url: 'https://bcorfman.github.io/zoof/',
       exists: false,
       routeExists: true,
       pagesConfigured: false,
       deploymentStatus: null,
+      currentPublishLive: null,
     });
 
     function Harness() {
