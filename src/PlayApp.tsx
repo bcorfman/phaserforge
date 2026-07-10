@@ -31,6 +31,7 @@ export default function PlayApp() {
   const [project, setProject] = useState<ProjectSpec | null>(null);
   const [sceneId, setSceneId] = useState<string | null>(null);
   const [sceneReady, setSceneReady] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,9 +71,9 @@ export default function PlayApp() {
   }, [project, sceneId]);
 
   useEffect(() => {
-    if (!sceneReady || !project || !sceneId) return;
+    if (!hasStarted || !sceneReady || !project || !sceneId) return;
     EventBus.emit('runtime:load-project', project, sceneId, 'play');
-  }, [sceneReady, project, sceneId]);
+  }, [hasStarted, sceneReady, project, sceneId]);
 
   useEffect(() => {
     const handleReady = () => setSceneReady(true);
@@ -111,7 +112,17 @@ export default function PlayApp() {
     <div className="play-root" data-testid="play-root">
       <AudioDebugOverlay />
       <div className="play-frame" data-testid="play-frame" style={world ? { width: world.width, height: world.height } : undefined}>
-        <PhaserGame currentActiveScene={() => setSceneReady(true)} />
+        {hasStarted ? <PhaserGame currentActiveScene={() => setSceneReady(true)} /> : null}
+        {!hasStarted ? (
+          <button
+            className="play-start-gate"
+            data-testid="play-start-gate"
+            type="button"
+            onClick={() => setHasStarted(true)}
+          >
+            Click to Start
+          </button>
+        ) : null}
       </div>
     </div>
   );

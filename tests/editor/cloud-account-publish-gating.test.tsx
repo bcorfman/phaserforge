@@ -1428,7 +1428,7 @@ describe('CloudAccountPanel publish gating', () => {
       await flushEffects();
 
       expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Uploading files and workflow to GitHub');
-      expect(document.querySelector('[data-testid="publish-confirm-submit"]')?.textContent).toContain('Publishing');
+      expect(document.querySelector('[data-testid="publish-confirm-submit"]')).toBeFalsy();
 
       await act(async () => {
         resolvePublish?.({ ok: true, url: 'https://x', repo: 'zoof', repoCreated: true, deploymentStatus: 'queued', publishMarker: 'marker-1' });
@@ -1437,7 +1437,7 @@ describe('CloudAccountPanel publish gating', () => {
       await flushEffects();
 
       expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Waiting for GitHub Pages to go live');
-      expect((document.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement | null)?.disabled).toBe(true);
+      expect(document.querySelector('[data-testid="publish-confirm-submit"]')).toBeFalsy();
     } finally {
       view.cleanup();
     }
@@ -1526,7 +1526,7 @@ describe('CloudAccountPanel publish gating', () => {
       });
       await flushEffects();
       expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Waiting for GitHub Pages to go live');
-      expect((document.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement | null)?.disabled).toBe(true);
+      expect(document.querySelector('[data-testid="publish-confirm-submit"]')).toBeFalsy();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
@@ -1617,7 +1617,7 @@ describe('CloudAccountPanel publish gating', () => {
         'Open Published Game will appear when the new version is live.',
       );
       expect(document.querySelector('[data-testid="cloud-publish-progress"]')?.textContent).toContain('Waiting for GitHub Pages to go live');
-      expect((document.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement | null)?.disabled).toBe(true);
+      expect(document.querySelector('[data-testid="publish-confirm-submit"]')).toBeFalsy();
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);

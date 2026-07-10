@@ -780,6 +780,24 @@ html[data-theme='dark'] .phaser-frame {
   box-shadow: var(--shadow);
 }
 
+.play-start-gate {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: min(100vw, 20rem);
+  min-height: min(100vh, 12rem);
+  padding: 0;
+  border: 0;
+  background: #000;
+  color: #fff;
+  font: inherit;
+  font-size: 36pt;
+  cursor: pointer;
+}
+
 .play-loading,
 .play-error {
   width: min(32rem, 92vw);
