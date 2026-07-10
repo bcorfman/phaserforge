@@ -13,7 +13,7 @@ This walkthrough recreates the `Pattern Demo` scene in PhaserForge. It assumes y
 ## Before You Start
 
 - Open PhaserForge and sign in if needed.
-- If you are continuing from older work, reset to a new empty scene from the Project Tree in the upper left. Click `Manage -> Create New`.
+- If you have other work going, reset to a new empty scene from the Project Tree in the upper left. Click `Manage -> Create New`.
 - Stay in the same signed-in project flow you established during cloud account setup.
 - Set the scene world size to `800 x 600` and then the `Fit` button to recenter and enlarge the viewport before you begin placing ships.
 
