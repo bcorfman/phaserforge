@@ -1633,7 +1633,7 @@ export function CloudAccountPanel({
                 >
                   Open Published Game
                 </button>
-              ) : (
+              ) : !busy && !publishWaitingForLive ? (
                 <button
                   className="button primary"
                   type="button"
@@ -1643,7 +1643,7 @@ export function CloudAccountPanel({
                 >
                   {busy ? 'Publishing…' : publishCheck.routeExists ? 'Overwrite route and publish' : publishCheck.exists ? 'Update repository' : 'Create repo and publish'}
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
