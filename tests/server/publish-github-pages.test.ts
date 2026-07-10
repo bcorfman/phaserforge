@@ -287,6 +287,7 @@ describe('publish github pages', () => {
     const indexHtml = blobBodies
       .map((blob) => Buffer.from(blob.content, 'base64').toString('utf8'))
       .find((content) => content.includes('<div id="root"></div>'));
+    expect(indexHtml).toContain('<title>Game One</title>');
     expect(indexHtml).toContain('<meta name="phaserforge-mode" content="play" />');
     expect(indexHtml).toContain(`window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(res.body.publishMarker)};`);
     expect(indexHtml).toContain(`<meta name="phaserforge-publish-marker" content="${res.body.publishMarker}" />`);
