@@ -62,15 +62,15 @@ async function routeExists(url: string): Promise<boolean> {
   }
 }
 
-function createPublishToken(): string {
-  return `pf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+function createPublishMarker(): string {
+  return `publish-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function buildPublishProbeJson(publishToken: string): string {
-  return JSON.stringify({ publishToken, generatedAt: new Date().toISOString() }, null, 2);
+function buildPublishProbeJson(publishMarker: string): string {
+  return JSON.stringify({ publishMarker, generatedAt: new Date().toISOString() }, null, 2);
 }
 
-async function fetchPublishedToken(url: string): Promise<string | null> {
+async function fetchPublishedMarker(url: string): Promise<string | null> {
   try {
     const probeUrl = new URL(PAGES_PUBLISH_PROBE_PATH, url);
     probeUrl.searchParams.set('pf_check', String(Date.now()));
@@ -81,8 +81,8 @@ async function fetchPublishedToken(url: string): Promise<string | null> {
       redirect: 'follow',
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as { publishToken?: unknown };
-    return typeof json.publishToken === 'string' && json.publishToken.trim() ? json.publishToken : null;
+    const json = (await res.json()) as { publishMarker?: unknown };
+    return typeof json.publishMarker === 'string' && json.publishMarker.trim() ? json.publishMarker : null;
   } catch {
     return null;
   }
@@ -567,7 +567,7 @@ export async function checkGithubPagesTarget(
   repositories: Repositories,
   userId: string,
   repo: string,
-  publishToken?: string,
+  publishMarker?: string,
 ): Promise<
   Ok<{ url: string; exists: boolean; routeExists: boolean; pagesConfigured: boolean; deploymentStatus: string | null; currentPublishLive: boolean | null }>
   | Err<'github_not_linked' | 'github_token_missing' | 'github_repo_permission_required' | 'github_failed'>
@@ -581,7 +581,7 @@ export async function checkGithubPagesTarget(
   const normalizedRepo = normalizeRepoName(repo);
   const url = pagesUrlFor(info.login, normalizedRepo);
   const publicRouteExists = await routeExists(url);
-  const currentPublishLive = publishToken ? (await fetchPublishedToken(url)) === publishToken : null;
+  const currentPublishLive = publishMarker ? (await fetchPublishedMarker(url)) === publishMarker : null;
   const repoRes = await getRepo(accessToken, info.login, normalizedRepo);
   if (!repoRes.ok) {
     if (repoRes.status === 404) {
@@ -618,7 +618,7 @@ export async function publishGameToGithubPages(
   userId: string,
   input: { gameId: string; repo: string },
 ): Promise<
-  Ok<{ url: string; repo: string; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; repoCreated: boolean; publishToken: string }>
+  Ok<{ url: string; repo: string; deploymentStatus: 'built' | 'building' | 'queued' | 'configured'; repoCreated: boolean; publishMarker: string }>
   | Err<PublishError>
 > {
   const info = await resolveGithubToken(repositories, userId);
@@ -654,12 +654,12 @@ export async function publishGameToGithubPages(
   const publishableProject = await materializeProjectForPublish(repositories, userId, game.project);
   if (!publishableProject) return { ok: false, error: 'cloud_asset_missing' };
   const yamlNormalized = serializeProjectToYaml(publishableProject.project);
-  const publishToken = createPublishToken();
+  const publishMarker = createPublishMarker();
   const files: Array<{ path: string; bytes: Uint8Array }> = [
     { path: PAGES_WORKFLOW_PATH, bytes: Buffer.from(buildPagesWorkflowYaml(), 'utf8') },
     { path: 'index.html', bytes: Buffer.from(playIndex, 'utf8') },
     { path: 'game.yaml', bytes: Buffer.from(yamlNormalized, 'utf8') },
-    { path: PAGES_PUBLISH_PROBE_PATH, bytes: Buffer.from(buildPublishProbeJson(publishToken), 'utf8') },
+    { path: PAGES_PUBLISH_PROBE_PATH, bytes: Buffer.from(buildPublishProbeJson(publishMarker), 'utf8') },
   ];
 
   for (const file of distFiles) {
@@ -687,6 +687,6 @@ export async function publishGameToGithubPages(
     repo: normalizedRepo,
     repoCreated: !ensuredRepo.existed,
     deploymentStatus: deployment.deploymentStatus,
-    publishToken,
+    publishMarker,
   };
 }

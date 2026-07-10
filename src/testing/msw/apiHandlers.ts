@@ -87,7 +87,7 @@ export function createCloudAuthHandlers(options: {
         repo: string;
         repoCreated: boolean;
         deploymentStatus: 'built' | 'building' | 'queued' | 'configured';
-        publishToken?: string;
+        publishMarker?: string;
       }
     | { ok: false; error: string; url?: string };
 }) {

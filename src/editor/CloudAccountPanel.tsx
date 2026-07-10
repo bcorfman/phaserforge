@@ -128,7 +128,7 @@ const GITHUB_PAGES_PUBLISH_POLL_MS = 5000;
 const GITHUB_PAGES_PUBLISH_MAX_WAIT_MS = 120000;
 const PAGES_PUBLISH_PROBE_PATH = 'phaserforge-publish.json';
 
-async function fetchPublishedTokenFromBrowser(url: string): Promise<string | null> {
+async function fetchPublishedMarkerFromBrowser(url: string): Promise<string | null> {
   try {
     const probeUrl = new URL(PAGES_PUBLISH_PROBE_PATH, url);
     probeUrl.searchParams.set('pf_check', String(Date.now()));
@@ -138,8 +138,8 @@ async function fetchPublishedTokenFromBrowser(url: string): Promise<string | nul
       headers: { 'cache-control': 'no-cache, no-store, max-age=0', pragma: 'no-cache' },
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as { publishToken?: unknown };
-    return typeof json.publishToken === 'string' && json.publishToken.trim() ? json.publishToken : null;
+    const json = (await res.json()) as { publishMarker?: unknown };
+    return typeof json.publishMarker === 'string' && json.publishMarker.trim() ? json.publishMarker : null;
   } catch {
     return null;
   }
@@ -1012,7 +1012,7 @@ export function CloudAccountPanel({
     }
   };
 
-  const waitForPublishedRoute = (repo: string, url: string, publishedAtMs: number, publishToken: string) => {
+  const waitForPublishedRoute = (repo: string, url: string, publishedAtMs: number, publishMarker: string) => {
     clearPublishNavigationPoll();
     setPublishWaitingForLive(true);
     setPublishBusyLabel('Waiting for GitHub Pages to go live…');
@@ -1031,11 +1031,11 @@ export function CloudAccountPanel({
       }
 
       try {
-        const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(repo, csrf, publishToken));
+        const check = await runWithCsrfResultRetry((csrf) => checkGithubPagesTarget(repo, csrf, publishMarker));
         if (publishNavigationPollVersionRef.current !== version) return;
         if (check.ok) {
           const liveViaServer = check.currentPublishLive === true;
-          const liveViaBrowser = liveViaServer ? false : (await fetchPublishedTokenFromBrowser(url)) === publishToken;
+          const liveViaBrowser = liveViaServer ? false : (await fetchPublishedMarkerFromBrowser(url)) === publishMarker;
           if (publishNavigationPollVersionRef.current !== version) return;
           if (liveViaServer || liveViaBrowser) {
             publishNavigationPollTimerRef.current = null;
@@ -1079,7 +1079,7 @@ export function CloudAccountPanel({
     let publishedUrl: string | null = null;
     let publishedAtMs: number | null = null;
     let publishedRepo: string | null = null;
-    let publishedToken: string | null = null;
+    let publishedMarker: string | null = null;
     try {
       const gameId = await ensureCloudGameSaved();
       if (!gameId) return;
@@ -1112,13 +1112,13 @@ export function CloudAccountPanel({
       );
       publishedUrl = result.url;
       publishedRepo = result.repo;
-      publishedToken = result.publishToken;
+      publishedMarker = result.publishMarker;
     } finally {
-      if (publishedUrl && publishedAtMs != null && publishedRepo && publishedToken) {
-        waitForPublishedRoute(publishedRepo, publishedUrl, publishedAtMs, publishedToken);
+      if (publishedUrl && publishedAtMs != null && publishedRepo && publishedMarker) {
+        waitForPublishedRoute(publishedRepo, publishedUrl, publishedAtMs, publishedMarker);
       }
       setBusy(false);
-      if (!publishedUrl || publishedAtMs == null || !publishedRepo || !publishedToken) {
+      if (!publishedUrl || publishedAtMs == null || !publishedRepo || !publishedMarker) {
         setPublishBusyLabel(null);
       }
     }
