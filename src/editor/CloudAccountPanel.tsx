@@ -126,20 +126,25 @@ function mapPublishError(error: string): string {
 
 const GITHUB_PAGES_PUBLISH_POLL_MS = 5000;
 const GITHUB_PAGES_PUBLISH_MAX_WAIT_MS = 120000;
-const PAGES_PUBLISH_PROBE_PATH = 'phaserforge-publish.json';
+
+function extractPublishMarkerFromHtml(html: string): string | null {
+  const metaMatch = /<meta\s+name=["']phaserforge-publish-marker["']\s+content=["']([^"']+)["']/i.exec(html);
+  if (metaMatch?.[1]?.trim()) return metaMatch[1].trim();
+  const scriptMatch = /window\.__PHASER_FORGE_PUBLISH_MARKER\s*=\s*["']([^"']+)["']/i.exec(html);
+  return scriptMatch?.[1]?.trim() || null;
+}
 
 async function fetchPublishedMarkerFromBrowser(url: string): Promise<string | null> {
   try {
-    const probeUrl = new URL(PAGES_PUBLISH_PROBE_PATH, url);
-    probeUrl.searchParams.set('pf_check', String(Date.now()));
-    const res = await fetch(probeUrl.toString(), {
+    const pageUrl = new URL(url);
+    pageUrl.searchParams.set('pf_check', String(Date.now()));
+    const res = await fetch(pageUrl.toString(), {
       method: 'GET',
       cache: 'no-store',
       headers: { 'cache-control': 'no-cache, no-store, max-age=0', pragma: 'no-cache' },
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as { publishMarker?: unknown };
-    return typeof json.publishMarker === 'string' && json.publishMarker.trim() ? json.publishMarker : null;
+    return extractPublishMarkerFromHtml(await res.text());
   } catch {
     return null;
   }
@@ -1035,15 +1040,20 @@ export function CloudAccountPanel({
         if (publishNavigationPollVersionRef.current !== version) return;
         if (check.ok) {
           const liveViaServer = check.currentPublishLive === true;
-          const liveViaBrowser = liveViaServer ? false : (await fetchPublishedMarkerFromBrowser(url)) === publishMarker;
+          const liveViaBrowser = (await fetchPublishedMarkerFromBrowser(url)) === publishMarker;
           if (publishNavigationPollVersionRef.current !== version) return;
-          if (liveViaServer || liveViaBrowser) {
+          if (liveViaBrowser) {
             publishNavigationPollTimerRef.current = null;
             setPublishWaitingForLive(false);
             setPublishBusyLabel(null);
             setPublishedGameReady({ url, publishedAtMs });
             setPublishDeploymentNote(`Repository ${repo} is live at ${url}`);
             return;
+          }
+          if (liveViaServer) {
+            setPublishDeploymentNote(
+              `GitHub Pages is still propagating ${repo}. The new page html is not live yet, so Open Published Game will appear once this exact publish is visible.`,
+            );
           }
         }
       } catch {
@@ -1633,7 +1643,7 @@ export function CloudAccountPanel({
                 >
                   Open Published Game
                 </button>
-              ) : !busy && !publishWaitingForLive ? (
+              ) : !busy && !publishWaitingForLive && !publishBusyLabel ? (
                 <button
                   className="button primary"
                   type="button"

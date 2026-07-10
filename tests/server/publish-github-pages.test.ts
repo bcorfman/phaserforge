@@ -189,12 +189,14 @@ describe('publish github pages', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
-        if (url === 'https://alice.github.io/zoof/') {
-          expect(init?.method).toBe('HEAD');
-          return new Response('', { status: 200 });
-        }
-        if (url.startsWith('https://alice.github.io/zoof/phaserforge-publish.json?')) {
-          return new Response(JSON.stringify({ publishMarker: 'current-marker' }), { status: 200 });
+        if (url.startsWith('https://alice.github.io/zoof/')) {
+          if ((init?.method ?? 'GET') === 'HEAD') {
+            return new Response('', { status: 200 });
+          }
+          return new Response(
+            '<!doctype html><html><head><meta name="phaserforge-publish-marker" content="current-marker"></head><body></body></html>',
+            { status: 200 },
+          );
         }
         if (url === 'https://api.github.com/repos/alice/zoof') {
           return new Response(JSON.stringify({ name: 'zoof', full_name: 'alice/zoof', default_branch: 'main' }), { status: 200 });
@@ -221,6 +223,73 @@ describe('publish github pages', () => {
       deploymentStatus: 'built',
       currentPublishLive: true,
     });
+  });
+
+  it('publish injects play-mode boot metadata and the exact publish marker into index.html', async () => {
+    const { app, repositories } = makeApp();
+    const agent = request.agent(app);
+    const { userId, csrf } = await signup(agent);
+    await linkGithub(repositories, userId);
+    await addGame(repositories, userId);
+
+    const blobBodies: Array<{ content: string; encoding: string }> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === 'https://api.github.com/repos/alice/zoof') {
+          if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
+        }
+        if (url === 'https://api.github.com/user/repos') {
+          return new Response(JSON.stringify({ name: 'zoof', full_name: 'alice/zoof', default_branch: 'main' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/pages') {
+          if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
+          return new Response(JSON.stringify({ html_url: 'https://alice.github.io/zoof' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/ref/heads/main') {
+          return new Response(JSON.stringify({ object: { sha: 'basecommit' } }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/commits/basecommit') {
+          return new Response(JSON.stringify({ sha: 'basecommit', tree: { sha: 'basetree' } }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/blobs') {
+          blobBodies.push(JSON.parse(String(init?.body)));
+          return new Response(JSON.stringify({ sha: `blob-${blobBodies.length}` }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/trees') {
+          return new Response(JSON.stringify({ sha: 'newtree' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/commits') {
+          return new Response(JSON.stringify({ sha: 'newcommit' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/refs/heads/main') {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        if (url.includes('https://api.github.com/repos/alice/zoof/actions/runs?')) {
+          return new Response(
+            JSON.stringify({
+              workflow_runs: [{ head_sha: 'newcommit', status: 'queued', conclusion: null }],
+            }),
+            { status: 200 },
+          );
+        }
+        throw new Error(`Unhandled fetch ${url}`);
+      }) as any,
+    );
+
+    const res = await agent
+      .post('/api/v1/publish/github-pages')
+      .set('x-csrf-token', csrf)
+      .send({ gameId: 'g1', repo: 'zoof' })
+      .expect(200);
+
+    const indexHtml = blobBodies
+      .map((blob) => Buffer.from(blob.content, 'base64').toString('utf8'))
+      .find((content) => content.includes('<div id="root"></div>'));
+    expect(indexHtml).toContain('<meta name="phaserforge-mode" content="play" />');
+    expect(indexHtml).toContain(`window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(res.body.publishMarker)};`);
+    expect(indexHtml).toContain(`<meta name="phaserforge-publish-marker" content="${res.body.publishMarker}" />`);
   });
 
   it('publish creates a repo, configures Pages, and commits the game in one commit', async () => {
@@ -489,7 +558,7 @@ describe('publish github pages', () => {
 
     const yamlBlob = decodedBlobs
       .map((bytes) => bytes.toString('utf8'))
-      .find((content) => content.includes('game.yaml') || content.includes('initialSceneId'));
+      .find((content) => content.includes('initialSceneId:') && !content.includes('<!doctype html>'));
     expect(yamlBlob).toContain('kind: path');
     expect(yamlBlob).toContain('path: assets/cloud/theme.mp3');
     expect(yamlBlob).not.toContain('kind: cloud');
