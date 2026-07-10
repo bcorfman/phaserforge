@@ -225,6 +225,7 @@ export function CloudAccountPanel({
   const [publishDeploymentNote, setPublishDeploymentNote] = useState('');
   const [publishInlineError, setPublishInlineError] = useState('');
   const [publishWaitingForLive, setPublishWaitingForLive] = useState(false);
+  const [activePublishRepo, setActivePublishRepo] = useState<string | null>(null);
   const [cloudGameId, setCloudGameId] = useState<string | null>(null);
   const [cloudGameLookupResolved, setCloudGameLookupResolved] = useState(false);
   const [cloudLinkVerificationPending, setCloudLinkVerificationPending] = useState(false);
@@ -600,6 +601,20 @@ export function CloudAccountPanel({
   }, [storedPublishRepo, state.project.id]);
 
   useEffect(() => {
+    const trimmedRepo = publishRepoDraft.trim();
+    if (!activePublishRepo || !trimmedRepo || trimmedRepo === activePublishRepo) return;
+    clearPublishNavigationPoll();
+    setPublishCheck(null);
+    setPublishedGameReady(null);
+    setPublishWaitingForLive(false);
+    setPublishBusyLabel(null);
+    setPublishDeploymentNote('');
+    setActivePublishRepo(null);
+    setShowPublishConfirm(false);
+  }, [activePublishRepo, publishRepoDraft]);
+
+  useEffect(() => {
+    setActivePublishRepo(null);
     setPublishedGameReady(null);
     setPublishWaitingForLive(false);
     clearPublishNavigationPoll();
@@ -991,6 +1006,7 @@ export function CloudAccountPanel({
     }
     clearPublishNavigationPoll();
     setBusy(true);
+    setActivePublishRepo(repo);
     setPublishCheck(null);
     setPublishedGameReady(null);
     setPublishWaitingForLive(false);
@@ -1014,6 +1030,7 @@ export function CloudAccountPanel({
         onError(message);
         return;
       }
+      setActivePublishRepo(repo);
       setPublishCheck(check);
       setShowPublishConfirm(true);
     } finally {
@@ -1024,6 +1041,7 @@ export function CloudAccountPanel({
 
   const waitForPublishedRoute = (repo: string, url: string, publishedAtMs: number, publishMarker: string) => {
     clearPublishNavigationPoll();
+    setActivePublishRepo(repo);
     setPublishWaitingForLive(true);
     setPublishBusyLabel('Waiting for GitHub Pages to go live…');
     const version = ++publishNavigationPollVersionRef.current;
