@@ -310,13 +310,12 @@ describe('publish github pages', () => {
       .map((blob) => Buffer.from(blob.content, 'base64').toString('utf8'))
       .find((content) => content.includes('Deploy PhaserForge game to GitHub Pages'));
     expect(workflowBlob).toContain('uses: actions/configure-pages@v6');
-    expect(workflowBlob).toContain('uses: actions/upload-artifact@v5');
-    expect(workflowBlob).toContain('name: github-pages');
-    expect(workflowBlob).toContain('path: github-pages.tar.gz');
-    expect(workflowBlob).toContain('tar --directory .pages-artifact -cf - . | gzip -9 > github-pages.tar.gz');
+    expect(workflowBlob).toContain('uses: actions/upload-pages-artifact@v5');
+    expect(workflowBlob).toContain('path: .pages-artifact');
     expect(workflowBlob).toContain('uses: actions/deploy-pages@v5');
     expect(workflowBlob).toContain('[ "$entry" != ".pages-artifact" ]');
     expect(workflowBlob).not.toContain('actions/upload-pages-artifact@v4');
+    expect(workflowBlob).not.toContain('uses: actions/upload-artifact@v5');
     expect(workflowBlob).not.toContain('FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true');
   });
 
