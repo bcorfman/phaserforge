@@ -186,7 +186,7 @@ export function CloudAccountPanel({
   onStatus,
   onError,
 }: {
-  state: Pick<EditorState, 'project' | 'syncMode'>;
+  state: Pick<EditorState, 'initialized' | 'project' | 'syncMode'>;
   activeCloudGameId?: string | null;
   dispatch: Dispatch<EditorAction>;
   onLoadYaml: (yaml: string, sourceLabel: string) => void;
@@ -196,6 +196,7 @@ export function CloudAccountPanel({
   onStatus: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const editorInitialized = state.initialized ?? true;
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [user, setUser] = useState<CloudAccountUser>(cachedCloudAccountUser ?? null);
   const [authResolved, setAuthResolved] = useState(cachedCloudAccountUser !== undefined);
@@ -835,6 +836,7 @@ export function CloudAccountPanel({
       pendingTitle: pendingAutosaveRef.current?.title ?? null,
       ...buildProjectDebugDetails(),
     });
+    if (!editorInitialized) return;
     if (!pendingAutosaveRef.current || autosaveInFlightRef.current) return;
     clearAutosaveTimer();
     void flushCloudAutosave();
@@ -928,8 +930,9 @@ export function CloudAccountPanel({
     if (workspaceConflict) {
       clearAutosaveTimer();
     }
-    if (!authResolved || !user || !cloudGameLookupResolved || cloudLinkVerificationPending || !conflictCheckComplete || workspaceConflict) {
+    if (!editorInitialized || !authResolved || !user || !cloudGameLookupResolved || cloudLinkVerificationPending || !conflictCheckComplete || workspaceConflict) {
       appendPersistenceDebugEntry('cloud:autosave-gate-blocked', {
+        editorInitialized,
         authResolved,
         hasUser: Boolean(user),
         cloudGameLookupResolved,
@@ -961,7 +964,7 @@ export function CloudAccountPanel({
     return () => {
       clearAutosaveTimer();
     };
-  }, [authResolved, cloudGameLookupResolved, cloudLinkVerificationPending, conflictCheckComplete, state.project, user, workspaceConflict]);
+  }, [editorInitialized, authResolved, cloudGameLookupResolved, cloudLinkVerificationPending, conflictCheckComplete, state.project, user, workspaceConflict]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

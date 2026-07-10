@@ -63,6 +63,7 @@ import { CloudAccountPanel, __resetCloudAccountPanelAuthCacheForTests } from '..
 
 function baseState(): any {
   return {
+    initialized: true,
     syncMode: 'online',
     project: { assets: { images: {}, spriteSheets: {}, fonts: {} }, audio: { sounds: {} } },
   };
@@ -213,6 +214,41 @@ describe('CloudAccountPanel publish gating', () => {
         'csrf',
       );
       expect(onError).not.toHaveBeenCalled();
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('does not autosave a placeholder project before the editor finishes hydrating', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const project = createEmptyProject();
+    project.id = 'project-startup-placeholder';
+    project.title = 'Untitled Project';
+
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ initialized: false, syncMode: 'online', project }}
+        dispatch={vi.fn() as any}
+        onLoadYaml={() => {}}
+        onCloudGameLinked={vi.fn()}
+        onStatus={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+
+    try {
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      await flushEffects();
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(api.createGame).not.toHaveBeenCalled();
+      expect(api.updateGame).not.toHaveBeenCalled();
     } finally {
       view.cleanup();
     }
