@@ -1983,6 +1983,120 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
+  it('clears stale published-route state as soon as the repository draft changes', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
+    api.getGithubPagesPublishInfo.mockResolvedValue({
+      ok: true,
+      login: 'bcorfman',
+      pagesBaseUrl: 'https://bcorfman.github.io/',
+    });
+    api.createGame.mockResolvedValueOnce({ game: { id: 'g1', title: 'Pattern demo', created_at: 'c', updated_at: 'u' } });
+    api.publishToGithubPages.mockResolvedValueOnce({
+      ok: true,
+      url: 'https://bcorfman.github.io/zoof/',
+      repo: 'zoof',
+      repoCreated: true,
+      deploymentStatus: 'queued',
+      publishMarker: 'marker-1',
+    });
+    api.checkGithubPagesTarget
+      .mockResolvedValueOnce({ ok: true, url: 'https://bcorfman.github.io/zoof/', exists: false, routeExists: false, pagesConfigured: false, deploymentStatus: null, currentPublishLive: null })
+      .mockResolvedValueOnce({ ok: true, url: 'https://bcorfman.github.io/zoof/', exists: true, routeExists: true, pagesConfigured: true, deploymentStatus: 'built', currentPublishLive: true });
+
+    const originalFetch = globalThis.fetch;
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('https://bcorfman.github.io/zoof/?pf_check=')) {
+          return new Response(
+            '<!doctype html><html><head><meta name="phaserforge-publish-marker" content="marker-1"></head><body></body></html>',
+            { status: 200 },
+          );
+        }
+        throw new Error(`Unhandled fetch ${url}`);
+      }),
+    });
+
+    function Harness() {
+      const [state, setState] = React.useState<any>({
+        project: {
+          id: 'p1',
+          title: 'Pattern demo',
+          publishGithubPagesRepo: 'zoof',
+          assets: { images: {}, spriteSheets: {}, fonts: {} },
+          audio: { sounds: {} },
+        },
+      });
+      return (
+        <CloudAccountPanel
+          state={state}
+          dispatch={(action) => {
+            if (action.type !== 'set-project-metadata') return;
+            setState((current: any) => ({
+              ...current,
+              project: {
+                ...current.project,
+                ...(typeof action.title === 'string' ? { title: action.title } : {}),
+                ...(typeof action.publishGithubPagesRepo === 'string'
+                  ? { publishGithubPagesRepo: action.publishGithubPagesRepo }
+                  : {}),
+              },
+            }));
+          }}
+          onLoadYaml={() => {}}
+          onStatus={() => {}}
+          onError={() => {}}
+        />
+      );
+    }
+
+    const view = renderIntoDom(<Harness />);
+    try {
+      await flushEffects();
+      await flushEffects();
+      await act(async () => {
+        (document.querySelector('[data-testid="cloud-publish-pages-button"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+      await act(async () => {
+        (view.container.querySelector('[data-testid="publish-confirm-submit"]') as HTMLButtonElement).click();
+        await Promise.resolve();
+      });
+      await flushEffects();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      await flushEffects();
+
+      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')?.textContent).toContain('Open Published Game');
+
+      const routeInput = document.querySelector('[aria-label="Publish repository"]') as HTMLInputElement | null;
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+        if (setter) setter.call(routeInput, 'zoof2');
+        else routeInput!.value = 'zoof2';
+        routeInput!.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        routeInput!.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        await Promise.resolve();
+      });
+      await flushEffects();
+
+      expect(document.querySelector('[data-testid="cloud-publish-open-button"]')).toBeFalsy();
+      expect(document.querySelector('[data-testid="publish-confirm-help"]')?.textContent ?? '').not.toContain('Repository zoof is live');
+      expect(document.querySelector('[data-testid="publish-confirm-modal"]')).toBeFalsy();
+    } finally {
+      if (originalFetch === undefined) {
+        delete (globalThis as any).fetch;
+      } else {
+        Object.defineProperty(globalThis, 'fetch', { configurable: true, value: originalFetch });
+      }
+      view.cleanup();
+    }
+  });
+
   it('keeps a deployment note visible after publish succeeds', async () => {
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'a@b.c' } });
     api.getGithubPagesPublishInfo.mockResolvedValue({
