@@ -687,16 +687,23 @@ async function bootStudio(page: Page, options?: { forceNavigate?: boolean }): Pr
 type CloudFlushMarker = {
   successCount: number;
   lastSuccessTimestamp: string | null;
+  lastErrorTimestamp: string | null;
 };
 
 async function getCloudFlushMarker(page: Page): Promise<CloudFlushMarker> {
   return page.evaluate(() => {
     const entries = (window as any).__PHASER_FORGE_PERSISTENCE_DEBUG__?.read?.() ?? [];
     const successEntries = entries.filter((entry: { event?: string }) => entry.event === 'cloud:autosave-flush-success');
+    const errorEntries = entries.filter((entry: { event?: string }) =>
+      entry.event === 'cloud:autosave-flush-error'
+      || entry.event === 'editor-store:save-active-error'
+      || entry.event === 'project-persistence:save-active-project-record-error');
     const lastSuccess = successEntries.at(-1) as { timestamp?: string } | undefined;
+    const lastError = errorEntries.at(-1) as { timestamp?: string } | undefined;
     return {
       successCount: successEntries.length,
       lastSuccessTimestamp: typeof lastSuccess?.timestamp === 'string' ? lastSuccess.timestamp : null,
+      lastErrorTimestamp: typeof lastError?.timestamp === 'string' ? lastError.timestamp : null,
     };
   });
 }
@@ -729,7 +736,7 @@ async function waitForCloudPersistence(page: Page, label: string, previousMarker
   if (!USE_LIVE_CLOUD) return previousMarker;
 
   const readCloudStatus = async () =>
-    page.evaluate(async () => {
+    page.evaluate(async ({ previousErrorTimestamp }) => {
       const debugEntries = (window as any).__PHASER_FORGE_PERSISTENCE_DEBUG__?.read?.() ?? [];
       const openDb = () =>
         new Promise<IDBDatabase>((resolve, reject) => {
@@ -758,12 +765,20 @@ async function waitForCloudPersistence(page: Page, label: string, previousMarker
             || entry.event === 'editor-store:save-active-error'
             || entry.event === 'project-persistence:save-active-project-record-error'
           )
+          .filter((entry: { timestamp?: string }) =>
+            previousErrorTimestamp == null
+            || (typeof entry.timestamp === 'string' && entry.timestamp > previousErrorTimestamp)
+          )
           .map((entry: { event?: string }) => entry.event ?? '(unknown)'),
         recentErrorDetails: debugEntries
           .filter((entry: { event?: string }) =>
             entry.event === 'cloud:autosave-flush-error'
             || entry.event === 'editor-store:save-active-error'
             || entry.event === 'project-persistence:save-active-project-record-error'
+          )
+          .filter((entry: { timestamp?: string }) =>
+            previousErrorTimestamp == null
+            || (typeof entry.timestamp === 'string' && entry.timestamp > previousErrorTimestamp)
           )
           .slice(-5)
           .map((entry: { event?: string; details?: unknown }) => ({
@@ -773,7 +788,7 @@ async function waitForCloudPersistence(page: Page, label: string, previousMarker
         syncStatus: project?.syncStatus ?? null,
         cloudProjectId: project?.cloudProjectId ?? null,
       };
-    });
+    }, { previousErrorTimestamp: previousMarker.lastErrorTimestamp });
 
   try {
     await expect.poll(readCloudStatus, {
