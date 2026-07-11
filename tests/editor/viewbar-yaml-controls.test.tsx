@@ -132,4 +132,40 @@ describe('ViewbarYamlControls', () => {
       expiresAt: 1_700_000_004_000,
     });
   });
+
+  it('shows the persisted filename label without shifting the save buttons', () => {
+    yamlControlsStore.state.project = sampleProject;
+    yamlPickerState.setLabel('level-01.yaml');
+
+    render(<ViewbarYamlControls />);
+
+    expect(screen.getByTestId('yaml-file-label').textContent).toBe('level-01.yaml');
+    expect(screen.queryByTestId('yaml-file-label-hidden')).toBeNull();
+  });
+
+  it('hides the filename label until a filename exists', () => {
+    yamlControlsStore.state.project = sampleProject;
+
+    render(<ViewbarYamlControls />);
+
+    expect(screen.queryByTestId('yaml-file-label')).toBeNull();
+    expect(screen.getByTestId('yaml-file-label-hidden')).not.toBeNull();
+  });
+
+  it('stores the chosen filename immediately after first save-as so it is visible for later saves', async () => {
+    yamlControlsStore.state.project = sampleProject;
+    const handle = { id: 'save-handle', name: 'first-save.yaml' };
+    yamlIoMocks.exportYamlToDisk.mockResolvedValue({ kind: 'saved', handle, label: 'first-save.yaml' });
+
+    render(<ViewbarYamlControls />);
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('yaml-save-button'));
+
+    expect(yamlIoMocks.exportYamlToDisk).toHaveBeenCalledWith(
+      serializeProjectToYaml(sampleProject),
+      expect.objectContaining({ suggestedName: 'scene.yaml', startIn: undefined }),
+    );
+    expect(yamlPickerState.setHandle).toHaveBeenCalledWith(handle);
+    expect(yamlPickerState.setLabel).toHaveBeenCalledWith('first-save.yaml');
+  });
 });
