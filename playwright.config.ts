@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-type E2EProjectName = 'chromium' | 'firefox' | 'webkit' | 'msedge';
+type E2EProjectName = 'chromium' | 'chrome' | 'firefox' | 'webkit' | 'msedge';
 type EnvLike = Record<string, string | undefined>;
 
 const E2E_PREVIEW_COMMAND =
@@ -79,6 +79,14 @@ export default defineConfig({
         return {
           name,
           use: { ...devices['Desktop Chrome'] },
+        };
+      case 'chrome':
+        return {
+          name,
+          use: {
+            ...devices['Desktop Chrome'],
+            channel: 'chrome',
+          },
         };
       case 'firefox':
         return {
