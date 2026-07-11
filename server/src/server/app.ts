@@ -18,7 +18,7 @@ function corsAllowlistMiddleware(origins: string[]) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token, Cache-Control, Pragma');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     }
 
