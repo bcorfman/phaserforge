@@ -942,13 +942,13 @@ function AppShell() {
                   Fit
                 </button>
                 <button
-                  aria-label="Reset zoom"
+                  aria-label="Set zoom to 100%"
                   className="button"
                   data-testid="reset-zoom-button"
                   type="button"
                   onClick={() => EventBus.emit('scene-reset-zoom')}
                 >
-                  Reset
+                  1:1
                 </button>
                 <button
                   aria-label="Zoom out"

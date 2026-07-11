@@ -2099,7 +2099,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private resetZoom(): void {
-    this.fitView();
+    this.applyZoom(1);
   }
 
   private fitView(): void {
