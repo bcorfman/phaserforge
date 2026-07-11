@@ -20,6 +20,11 @@ export function resolveE2EWebServerConfig(env: EnvLike): { command: string; port
   };
 }
 
+export function resolveE2EBaseUrl(env: EnvLike): string {
+  const explicit = env.PW_BASE_URL?.trim();
+  return explicit && explicit.length > 0 ? explicit : 'http://127.0.0.1:4173';
+}
+
 export function resolveE2EProjectNames(env: EnvLike): E2EProjectName[] {
   const explicitProjects = env.PW_PROJECTS?.split(',')
     .map((value) => value.trim())
@@ -62,7 +67,7 @@ export default defineConfig({
   workers: process.env.PW_WORKERS ? parseInt(process.env.PW_WORKERS) : 3,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: resolveE2EBaseUrl(process.env),
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
