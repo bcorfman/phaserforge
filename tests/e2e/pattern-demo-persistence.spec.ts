@@ -674,11 +674,18 @@ async function getCloudFlushSuccessCount(page: Page): Promise<number> {
   });
 }
 
+async function getRecentPersistenceEvents(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const entries = (window as any).__PHASER_FORGE_PERSISTENCE_DEBUG__?.read?.() ?? [];
+    return entries.slice(-12).map((entry: { event?: string }) => entry.event ?? '(unknown)');
+  });
+}
+
 async function waitForCloudPersistence(page: Page, label: string, previousSuccessCount: number): Promise<number> {
   if (!USE_LIVE_CLOUD) return previousSuccessCount;
 
-  await expect.poll(async () => {
-    const status = await page.evaluate(async () => {
+  const readCloudStatus = async () =>
+    page.evaluate(async () => {
       const debugEntries = (window as any).__PHASER_FORGE_PERSISTENCE_DEBUG__?.read?.() ?? [];
       const openDb = () =>
         new Promise<IDBDatabase>((resolve, reject) => {
@@ -701,24 +708,44 @@ async function waitForCloudPersistence(page: Page, label: string, previousSucces
       });
       return {
         successCount: debugEntries.filter((entry: { event?: string }) => entry.event === 'cloud:autosave-flush-success').length,
-        hasError: debugEntries.some((entry: { event?: string }) =>
-          entry.event === 'cloud:autosave-flush-error'
-          || entry.event === 'editor-store:save-active-error'
-          || entry.event === 'project-persistence:save-active-project-record-error'
-        ),
+        errorEvents: debugEntries
+          .filter((entry: { event?: string }) =>
+            entry.event === 'cloud:autosave-flush-error'
+            || entry.event === 'editor-store:save-active-error'
+            || entry.event === 'project-persistence:save-active-project-record-error'
+          )
+          .map((entry: { event?: string }) => entry.event ?? '(unknown)'),
         syncStatus: project?.syncStatus ?? null,
         cloudProjectId: project?.cloudProjectId ?? null,
       };
     });
-    return status;
-  }, { timeout: 30000 }).toMatchObject({
-    successCount: expect.any(Number),
-    hasError: false,
-    syncStatus: 'cloud',
-    cloudProjectId: expect.any(String),
-  });
 
-  await expect.poll(async () => await getCloudFlushSuccessCount(page), { timeout: 30000 }).toBeGreaterThan(previousSuccessCount);
+  try {
+    await expect.poll(readCloudStatus, {
+      timeout: 30000,
+      message: `[cloud:${label}] waiting for active project to become cloud-backed without persistence errors`,
+    }).toMatchObject({
+      successCount: expect.any(Number),
+      errorEvents: [],
+      syncStatus: 'cloud',
+      cloudProjectId: expect.any(String),
+    });
+
+    await expect.poll(async () => await getCloudFlushSuccessCount(page), {
+      timeout: 30000,
+      message: `[cloud:${label}] waiting for a new cloud autosave flush success`,
+    }).toBeGreaterThan(previousSuccessCount);
+  } catch (error) {
+    const recentEvents = await getRecentPersistenceEvents(page);
+    const cloudStatus = await readCloudStatus();
+    throw new Error(
+      `[cloud:${label}] persistence failed.\n`
+      + `recent events: ${recentEvents.join(' -> ')}\n`
+      + `status: ${JSON.stringify(cloudStatus)}\n`
+      + `cause: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
   const nextCount = await getCloudFlushSuccessCount(page);
   expectNoBrowserErrors(trackErrors(page), `${label} cloud autosave`);
   return nextCount;
