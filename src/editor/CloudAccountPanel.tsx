@@ -106,7 +106,8 @@ function mapGithubAuthError(error: string): string {
 }
 
 function mapPublishError(error: string): string {
-  switch (error) {
+  const code = error.replace(/\s+\[\d{3}\s+[A-Z]+\s+\/api\/v1\/[^\]]+\]$/, '');
+  switch (code) {
     case 'github_repo_permission_required':
       return 'GitHub denied repository access. Reconnect GitHub and ensure this account can create repositories.';
     case 'github_workflow_permission_required':
