@@ -106,7 +106,7 @@ export async function gotoStudio(page: Page, options?: { forceNavigate?: boolean
 
   const bootOnce = async () => {
     // Explicit timeouts make failures deterministic (instead of hanging until the overall test timeout).
-    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: NAVIGATE_TIMEOUT_MS });
+    await page.goto('./', { waitUntil: 'domcontentloaded', timeout: NAVIGATE_TIMEOUT_MS });
     await page.waitForFunction(() => Boolean(window.__PHASER_FORGE_TEST__?.isEnabled), { timeout: APP_BOOT_TIMEOUT_MS });
     await expect(page.getByTestId('app-root')).toBeVisible({ timeout: APP_BOOT_TIMEOUT_MS });
   };
