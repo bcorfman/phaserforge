@@ -250,7 +250,7 @@ export function CloudAccountPanel({
 
   const CLOUD_AUTOSAVE_DEBOUNCE_MS = 1000;
   const CLOUD_AUTOSAVE_RETRY_MS = 5000;
-  const resolvedCloudGameId = cloudGameIdRef.current ?? cloudGameId ?? null;
+  const resolvedCloudGameId = activeCloudGameId ?? cloudGameIdRef.current ?? cloudGameId ?? null;
 
   const clearPublishNavigationPoll = () => {
     publishNavigationPollVersionRef.current += 1;
