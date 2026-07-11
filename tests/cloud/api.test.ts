@@ -67,6 +67,20 @@ describe('cloud api', () => {
     );
   });
 
+  it('includes endpoint details for unrecognized cloud save errors', async () => {
+    vi.resetModules();
+    delete process.env.VITE_API_BASE_URL;
+    const { updateGame } = await import('../../src/cloud/api');
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ error: 'internal_error' }), { status: 500, headers: { 'content-type': 'application/json' } }),
+    );
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    await expect(updateGame('g1', { project: createEmptyProject() }, 'csrf')).rejects.toThrow(
+      'internal_error [500 PUT /api/v1/games/g1]',
+    );
+  });
+
   it('uploadEmbeddedAsset posts the embedded payload with csrf', async () => {
     vi.resetModules();
     delete process.env.VITE_API_BASE_URL;
