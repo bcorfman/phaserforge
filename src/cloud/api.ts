@@ -41,6 +41,7 @@ async function readJson(res: Response): Promise<Json> {
 
 async function api<T extends Json>(path: string, init: RequestInit = {}): Promise<T> {
   const url = resolveApiUrl(path);
+  const method = init.method ?? 'GET';
   const res = await fetch(url, {
     credentials: 'include',
     ...init,
@@ -54,7 +55,11 @@ async function api<T extends Json>(path: string, init: RequestInit = {}): Promis
   if (!res.ok) {
     const errorVal = (json as unknown as { error?: unknown })?.error;
     const error = typeof errorVal === 'string' ? errorVal : `http_${res.status}`;
-    throw new Error(mapApiError(error));
+    const mapped = mapApiError(error);
+    if (mapped !== error) {
+      throw new Error(mapped);
+    }
+    throw new Error(`${mapped} [${res.status} ${method} ${path}]`);
   }
   return json;
 }
