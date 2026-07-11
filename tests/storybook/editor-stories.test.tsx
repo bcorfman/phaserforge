@@ -87,8 +87,7 @@ describe('storybook interaction stories', () => {
   });
 
   it('runs the YAML picker sync stories', async () => {
-    await renderStoryAndPlay(composedYamlStories.OpenAndSaveSharePickerHandle as any);
-    await renderStoryAndPlay(composedYamlStories.SaveExistingHandle as any);
+    await renderStoryAndPlay(composedYamlStories.ImportAndExportSharePickerStartLocation as any);
     expect(true).toBe(true);
   });
 
