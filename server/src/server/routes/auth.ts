@@ -21,6 +21,10 @@ export function authRouter(settings: Settings, repositories: Repositories) {
 
   router.get('/csrf', (req, res) => {
     const csrfToken = randomToken(24);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     res.cookie(settings.csrfCookieName, csrfToken, {
       httpOnly: false,
       secure: cookiePolicy.secure,

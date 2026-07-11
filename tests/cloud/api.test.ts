@@ -9,6 +9,9 @@ describe('cloud api', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       expect(String(input)).toBe('/api/v1/auth/csrf');
       expect(init?.credentials).toBe('include');
+      expect(init?.cache).toBe('no-store');
+      expect((init?.headers as any)['cache-control']).toBe('no-store');
+      expect((init?.headers as any).pragma).toBe('no-cache');
       return new Response(JSON.stringify({ csrfToken: 't' }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock as any);
@@ -24,6 +27,7 @@ describe('cloud api', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       expect(String(input)).toBe('https://example.test/api/v1/auth/csrf');
       expect(init?.credentials).toBe('include');
+      expect(init?.cache).toBe('no-store');
       return new Response(JSON.stringify({ csrfToken: 't2' }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock as any);

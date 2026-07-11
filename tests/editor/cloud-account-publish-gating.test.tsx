@@ -219,6 +219,85 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
+  it('refreshes csrf and retries autosave when the cached token is stale', async () => {
+    vi.useFakeTimers();
+    api.fetchCsrfToken.mockReset();
+    api.fetchCsrfToken.mockResolvedValueOnce('stale-csrf').mockResolvedValueOnce('fresh-csrf');
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+
+    api.updateGame
+      .mockRejectedValueOnce(new Error('csrf_required [403 PUT /api/v1/games/g-1]'))
+      .mockResolvedValueOnce({ game: { id: 'g-1', title: 'Pattern Demo 2', created_at: 'c', updated_at: 'u' } });
+
+    const dispatch = vi.fn();
+    const onStatus = vi.fn();
+    const onError = vi.fn();
+    const view = renderIntoDom(
+      <CloudAccountPanel
+        state={{ project }}
+        activeCloudGameId="g-1"
+        dispatch={dispatch as any}
+        onLoadYaml={() => {}}
+        onStatus={onStatus}
+        onError={onError}
+      />
+    );
+
+    try {
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      api.updateGame.mockClear();
+
+      const edited = structuredClone(project);
+      edited.title = 'Pattern Demo 2';
+
+      act(() => {
+        view.root.render(
+          <CloudAccountPanel
+            state={{ project: edited }}
+            activeCloudGameId="g-1"
+            dispatch={dispatch as any}
+            onLoadYaml={() => {}}
+            onStatus={onStatus}
+            onError={onError}
+          />
+        );
+      });
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(api.fetchCsrfToken).toHaveBeenCalledTimes(2);
+      expect(api.updateGame).toHaveBeenNthCalledWith(
+        1,
+        'g-1',
+        expect.objectContaining({
+          title: 'Pattern Demo 2',
+          project: expect.objectContaining({ title: 'Pattern Demo 2' }),
+        }),
+        'stale-csrf',
+      );
+      expect(api.updateGame).toHaveBeenNthCalledWith(
+        2,
+        'g-1',
+        expect.objectContaining({
+          title: 'Pattern Demo 2',
+          project: expect.objectContaining({ title: 'Pattern Demo 2' }),
+        }),
+        'fresh-csrf',
+      );
+      expect(onError).not.toHaveBeenCalledWith(expect.stringContaining('csrf_required'));
+    } finally {
+      view.cleanup();
+    }
+  });
+
   it('does not autosave a placeholder project before the editor finishes hydrating', async () => {
     vi.useFakeTimers();
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
