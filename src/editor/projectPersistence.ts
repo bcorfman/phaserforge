@@ -92,6 +92,7 @@ type PersistenceSnapshot = {
   localProjects: StoredProjectRecord[];
   workspace: WorkspaceStateRecord;
   preferences: PreferencesRecord | null;
+  restoreWarnings?: string[];
 };
 
 type LegacyStorageReader = Pick<Storage, 'getItem'>;
@@ -106,6 +107,19 @@ const defaultWorkspace = (): WorkspaceStateRecord => ({
   activeProjectId: null,
   syncMode: 'online',
 });
+
+const STORED_PROJECT_ORIGINS = new Set<StoredProjectOrigin>(['anonymous', 'cloud-cache', 'local-only']);
+const STORED_PROJECT_SYNC_STATUSES = new Set<StoredProjectSyncStatus>(['local', 'cloud', 'unsynced']);
+const STORED_THEME_MODES = new Set<StoredThemeMode>(['system', 'light', 'dark']);
+const STARTUP_MODES = new Set<StartupMode>(['new_empty_scene']);
+const PROJECT_SYNC_MODES = new Set<ProjectSyncMode>(['online', 'offline']);
+
+class StoredProjectRecordValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StoredProjectRecordValidationError';
+  }
+}
 
 function getLegacyStorageReader(): LegacyStorageReader {
   if (typeof window === 'undefined') return EMPTY_LEGACY_STORAGE_READER;
@@ -152,6 +166,149 @@ function mergeWorkspaceState(
   patch: Partial<WorkspaceStateRecord> | ((current: WorkspaceStateRecord) => WorkspaceStateRecord),
 ): WorkspaceStateRecord {
   return typeof patch === 'function' ? patch(base) : { ...base, ...patch };
+}
+
+function describeRuntimeValue(value: unknown): string {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function assertStoredProjectRecord(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new StoredProjectRecordValidationError(message);
+}
+
+function validateOptionalArrayField(value: unknown, fieldName: string, context: string): void {
+  if (value === undefined) return;
+  assertStoredProjectRecord(Array.isArray(value), `${context}: ${fieldName} must be an array or omitted, got ${describeRuntimeValue(value)}`);
+}
+
+function parseFiniteNumber(value: unknown, context: string, fieldName: string): number {
+  assertStoredProjectRecord(typeof value === 'number' && Number.isFinite(value), `${context}: ${fieldName} must be a finite number`);
+  return value;
+}
+
+function parseOptionalFiniteNumber(value: unknown, context: string, fieldName: string): number | undefined {
+  if (value === undefined) return undefined;
+  return parseFiniteNumber(value, context, fieldName);
+}
+
+function parseViewState(raw: unknown, context: string): ViewState {
+  assertStoredProjectRecord(raw && typeof raw === 'object' && !Array.isArray(raw), `${context}: view state must be an object, got ${describeRuntimeValue(raw)}`);
+  const candidate = raw as Record<string, unknown>;
+  return {
+    zoom: parseFiniteNumber(candidate.zoom, context, 'zoom'),
+    scrollX: parseFiniteNumber(candidate.scrollX, context, 'scrollX'),
+    scrollY: parseFiniteNumber(candidate.scrollY, context, 'scrollY'),
+    ...(candidate.viewportWidth !== undefined ? { viewportWidth: parseFiniteNumber(candidate.viewportWidth, context, 'viewportWidth') } : {}),
+    ...(candidate.viewportHeight !== undefined ? { viewportHeight: parseFiniteNumber(candidate.viewportHeight, context, 'viewportHeight') } : {}),
+  };
+}
+
+function parseWorkspaceStateRecord(raw: unknown, context: string): WorkspaceStateRecord {
+  if (raw == null) return defaultWorkspace();
+  assertStoredProjectRecord(raw && typeof raw === 'object' && !Array.isArray(raw), `${context}: workspace state must be an object, got ${describeRuntimeValue(raw)}`);
+  const candidate = raw as Record<string, unknown>;
+  assertStoredProjectRecord(candidate.activeProjectId === null || typeof candidate.activeProjectId === 'string', `${context}: activeProjectId must be a string or null`);
+  assertStoredProjectRecord(typeof candidate.syncMode === 'string' && PROJECT_SYNC_MODES.has(candidate.syncMode as ProjectSyncMode), `${context}: syncMode must be one of ${Array.from(PROJECT_SYNC_MODES).join(', ')}`);
+  let viewStateByProject: Record<string, ViewState> | undefined;
+  if (candidate.viewStateByProject !== undefined) {
+    assertStoredProjectRecord(candidate.viewStateByProject && typeof candidate.viewStateByProject === 'object' && !Array.isArray(candidate.viewStateByProject), `${context}: viewStateByProject must be an object when present`);
+    viewStateByProject = {};
+    for (const [projectId, viewState] of Object.entries(candidate.viewStateByProject as Record<string, unknown>)) {
+      assertStoredProjectRecord(projectId.length > 0, `${context}: viewStateByProject keys must be non-empty strings`);
+      viewStateByProject[projectId] = parseViewState(viewState, `${context}: viewStateByProject.${projectId}`);
+    }
+  }
+  return {
+    activeProjectId: candidate.activeProjectId as string | null,
+    syncMode: candidate.syncMode as ProjectSyncMode,
+    ...(candidate.leftPaneWidth !== undefined ? { leftPaneWidth: parseOptionalFiniteNumber(candidate.leftPaneWidth, context, 'leftPaneWidth') } : {}),
+    ...(candidate.rightPaneWidth !== undefined ? { rightPaneWidth: parseOptionalFiniteNumber(candidate.rightPaneWidth, context, 'rightPaneWidth') } : {}),
+    ...(candidate.assetsDockHeight !== undefined ? { assetsDockHeight: parseOptionalFiniteNumber(candidate.assetsDockHeight, context, 'assetsDockHeight') } : {}),
+    ...(viewStateByProject !== undefined ? { viewStateByProject } : {}),
+  };
+}
+
+function parseLatestActiveSnapshotRecord(raw: unknown, context: string): LatestActiveProjectSnapshotRecord | null {
+  if (raw == null) return null;
+  assertStoredProjectRecord(raw && typeof raw === 'object' && !Array.isArray(raw), `${context}: latest active snapshot must be an object, got ${describeRuntimeValue(raw)}`);
+  const candidate = raw as Record<string, unknown>;
+  assertStoredProjectRecord(typeof candidate.recordId === 'string' && candidate.recordId.length > 0, `${context}: recordId must be a non-empty string`);
+  assertStoredProjectRecord(typeof candidate.syncMode === 'string' && PROJECT_SYNC_MODES.has(candidate.syncMode as ProjectSyncMode), `${context}: syncMode must be one of ${Array.from(PROJECT_SYNC_MODES).join(', ')}`);
+  assertStoredProjectRecord(typeof candidate.updatedAt === 'string' && candidate.updatedAt.length > 0, `${context}: updatedAt must be a non-empty string`);
+  assertStoredProjectRecord(typeof candidate.savedAt === 'string' && candidate.savedAt.length > 0, `${context}: savedAt must be a non-empty string`);
+  return {
+    recordId: candidate.recordId as string,
+    updatedAt: candidate.updatedAt as string,
+    syncMode: candidate.syncMode as ProjectSyncMode,
+    savedAt: candidate.savedAt as string,
+  };
+}
+
+function parsePreferencesRecord(raw: unknown, context: string): PreferencesRecord | null {
+  if (raw == null) return null;
+  assertStoredProjectRecord(raw && typeof raw === 'object' && !Array.isArray(raw), `${context}: preferences must be an object, got ${describeRuntimeValue(raw)}`);
+  const candidate = raw as Record<string, unknown>;
+  assertStoredProjectRecord(typeof candidate.startupMode === 'string' && STARTUP_MODES.has(candidate.startupMode as StartupMode), `${context}: startupMode must be one of ${Array.from(STARTUP_MODES).join(', ')}`);
+  assertStoredProjectRecord(typeof candidate.themeMode === 'string' && STORED_THEME_MODES.has(candidate.themeMode as StoredThemeMode), `${context}: themeMode must be one of ${Array.from(STORED_THEME_MODES).join(', ')}`);
+  assertStoredProjectRecord(typeof candidate.showHitboxOverlay === 'boolean', `${context}: showHitboxOverlay must be a boolean`);
+  const uiScale = parseFiniteNumber(candidate.uiScale, context, 'uiScale');
+  return {
+    startupMode: candidate.startupMode as StartupMode,
+    themeMode: candidate.themeMode as StoredThemeMode,
+    uiScale,
+    showHitboxOverlay: candidate.showHitboxOverlay as boolean,
+    ...(candidate.assetsDockShowThumbnails !== undefined
+      ? (() => {
+        assertStoredProjectRecord(typeof candidate.assetsDockShowThumbnails === 'boolean', `${context}: assetsDockShowThumbnails must be a boolean when present`);
+        return { assetsDockShowThumbnails: candidate.assetsDockShowThumbnails as boolean };
+      })()
+      : {}),
+    ...(candidate.inspectorFoldouts !== undefined ? { inspectorFoldouts: normalizeBooleanMap(candidate.inspectorFoldouts) ?? {} } : {}),
+    ...(candidate.pinnedActionTypes !== undefined ? { pinnedActionTypes: normalizeStringList(candidate.pinnedActionTypes) ?? [] } : {}),
+    ...(candidate.pinnedPatternIds !== undefined ? { pinnedPatternIds: normalizeStringList(candidate.pinnedPatternIds) ?? [] } : {}),
+    ...(candidate.lastPublishByUserId !== undefined ? { lastPublishByUserId: normalizeLastPublishMap(candidate.lastPublishByUserId) ?? {} } : {}),
+  };
+}
+
+function buildStoredProjectRecordBase(raw: unknown, context: string): Omit<StoredProjectRecord, 'project'> & { project?: ProjectSpec } {
+  assertStoredProjectRecord(raw && typeof raw === 'object', `${context}: stored project record must be an object, got ${describeRuntimeValue(raw)}`);
+  const candidate = raw as Record<string, unknown>;
+  assertStoredProjectRecord(typeof candidate.id === 'string' && candidate.id.length > 0, `${context}: id must be a non-empty string`);
+  assertStoredProjectRecord(typeof candidate.projectId === 'string' && candidate.projectId.length > 0, `${context}: projectId must be a non-empty string`);
+  assertStoredProjectRecord(typeof candidate.title === 'string', `${context}: title must be a string`);
+  assertStoredProjectRecord(typeof candidate.updatedAt === 'string' && candidate.updatedAt.length > 0, `${context}: updatedAt must be a non-empty string`);
+  assertStoredProjectRecord(typeof candidate.sceneCount === 'number' && Number.isFinite(candidate.sceneCount), `${context}: sceneCount must be a finite number`);
+  assertStoredProjectRecord(typeof candidate.origin === 'string' && STORED_PROJECT_ORIGINS.has(candidate.origin as StoredProjectOrigin), `${context}: origin must be one of ${Array.from(STORED_PROJECT_ORIGINS).join(', ')}`);
+  assertStoredProjectRecord(typeof candidate.syncStatus === 'string' && STORED_PROJECT_SYNC_STATUSES.has(candidate.syncStatus as StoredProjectSyncStatus), `${context}: syncStatus must be one of ${Array.from(STORED_PROJECT_SYNC_STATUSES).join(', ')}`);
+  if (candidate.cloudProjectId !== undefined) {
+    assertStoredProjectRecord(typeof candidate.cloudProjectId === 'string' && candidate.cloudProjectId.length > 0, `${context}: cloudProjectId must be a non-empty string when present`);
+  }
+  if (candidate.yaml !== undefined) {
+    assertStoredProjectRecord(typeof candidate.yaml === 'string' && candidate.yaml.length > 0, `${context}: yaml must be a non-empty string when present`);
+  }
+  validateOptionalArrayField(candidate.revisions, 'revisions', context);
+  validateOptionalArrayField(candidate.archivedRevisions, 'archivedRevisions', context);
+  validateOptionalArrayField(candidate.historyEvents, 'historyEvents', context);
+  validateOptionalArrayField(candidate.archivedHistoryEvents, 'archivedHistoryEvents', context);
+
+  return {
+    id: candidate.id,
+    projectId: candidate.projectId,
+    title: candidate.title,
+    updatedAt: candidate.updatedAt,
+    sceneCount: candidate.sceneCount,
+    origin: candidate.origin as StoredProjectOrigin,
+    syncStatus: candidate.syncStatus as StoredProjectSyncStatus,
+    ...(candidate.cloudProjectId !== undefined ? { cloudProjectId: candidate.cloudProjectId as string } : {}),
+    ...(candidate.yaml !== undefined ? { yaml: candidate.yaml as string } : {}),
+    ...(candidate.revisions !== undefined ? { revisions: candidate.revisions as ProjectRevisionRecord[] } : {}),
+    ...(candidate.archivedRevisions !== undefined ? { archivedRevisions: candidate.archivedRevisions as ProjectRevisionRecord[] } : {}),
+    ...(candidate.historyEvents !== undefined ? { historyEvents: candidate.historyEvents as ProjectHistoryEvent[] } : {}),
+    ...(candidate.archivedHistoryEvents !== undefined ? { archivedHistoryEvents: candidate.archivedHistoryEvents as ProjectHistoryEvent[] } : {}),
+    ...('project' in candidate ? { project: candidate.project as ProjectSpec | undefined } : {}),
+  };
 }
 
 function openDb(): Promise<IDBDatabase | null> {
@@ -339,7 +496,10 @@ function getValidProjectOrNull(project: ProjectSpec | undefined): ProjectSpec | 
   }
 }
 
-function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectRecord {
+function hydrateStoredProjectRecord(
+  record: Omit<StoredProjectRecord, 'project'> & { project?: ProjectSpec },
+  context: string,
+): StoredProjectRecord {
   const validProject = getValidProjectOrNull(record.project);
   if (validProject) {
     return {
@@ -355,48 +515,57 @@ function hydrateStoredProjectRecord(record: StoredProjectRecord): StoredProjectR
     };
   }
   if (Array.isArray(record.revisions) && record.revisions.length > 0) {
-    const latestProject = materializeProjectRevision(record.revisions, record.revisions[0].id);
-    const validLatestProject = getValidProjectOrNull(latestProject ?? undefined);
-    if (validLatestProject) {
+    try {
+      const latestProject = materializeProjectRevision(record.revisions, record.revisions[0].id);
+      const validLatestProject = getValidProjectOrNull(latestProject ?? undefined);
+      if (validLatestProject) {
+        return {
+          ...record,
+          project: validLatestProject,
+          revisions: normalizeStoredProjectRevisions(validLatestProject, record.revisions),
+          archivedRevisions: normalizeStoredProjectRevisions(validLatestProject, record.archivedRevisions, {
+            fallbackToCurrentProject: false,
+            enforceLatestMatchesProject: false,
+          }),
+          historyEvents: record.historyEvents ?? [],
+          archivedHistoryEvents: record.archivedHistoryEvents ?? [],
+        };
+      }
+    } catch (error) {
+      throw new StoredProjectRecordValidationError(
+        `${context}: revisions could not be materialized (${error instanceof Error ? error.message : 'unknown error'})`,
+      );
+    }
+  }
+  if (record.yaml) {
+    try {
+      const project = parseProjectYaml(record.yaml);
+      validateProjectSpec(project);
       return {
         ...record,
-        project: validLatestProject,
-        revisions: normalizeStoredProjectRevisions(validLatestProject, record.revisions),
-        archivedRevisions: normalizeStoredProjectRevisions(validLatestProject, record.archivedRevisions, {
+        project,
+        revisions: normalizeStoredProjectRevisions(project, record.revisions),
+        archivedRevisions: normalizeStoredProjectRevisions(project, record.archivedRevisions, {
           fallbackToCurrentProject: false,
           enforceLatestMatchesProject: false,
         }),
         historyEvents: record.historyEvents ?? [],
         archivedHistoryEvents: record.archivedHistoryEvents ?? [],
       };
+    } catch (error) {
+      throw new StoredProjectRecordValidationError(
+        `${context}: yaml could not be parsed into a valid project (${error instanceof Error ? error.message : 'unknown error'})`,
+      );
     }
   }
-  if (record.yaml) {
-    const project = parseProjectYaml(record.yaml);
-    return {
-      ...record,
-      project,
-      revisions: normalizeStoredProjectRevisions(project, record.revisions),
-      archivedRevisions: normalizeStoredProjectRevisions(project, record.archivedRevisions, {
-        fallbackToCurrentProject: false,
-        enforceLatestMatchesProject: false,
-      }),
-      historyEvents: record.historyEvents ?? [],
-      archivedHistoryEvents: record.archivedHistoryEvents ?? [],
-    };
-  }
-  const project = createEmptyProject();
-  return {
-    ...record,
-    project,
-    revisions: normalizeStoredProjectRevisions(project, record.revisions),
-    archivedRevisions: normalizeStoredProjectRevisions(project, record.archivedRevisions, {
-      fallbackToCurrentProject: false,
-      enforceLatestMatchesProject: false,
-    }),
-    historyEvents: record.historyEvents ?? [],
-    archivedHistoryEvents: record.archivedHistoryEvents ?? [],
-  };
+  throw new StoredProjectRecordValidationError(
+    `${context}: missing a valid project payload, materializable revisions, and YAML fallback`,
+  );
+}
+
+function parseStoredProjectRecord(raw: unknown, context: string): StoredProjectRecord {
+  const record = buildStoredProjectRecordBase(raw, context);
+  return hydrateStoredProjectRecord(record, context);
 }
 
 function dehydrateStoredProjectRecord(record: StoredProjectRecord): PersistedProjectRecord {
@@ -405,21 +574,55 @@ function dehydrateStoredProjectRecord(record: StoredProjectRecord): PersistedPro
 }
 
 function validateStoredProjectRecordForPersistence(record: StoredProjectRecord): void {
+  const context = `save project record ${record.id}`;
+  buildStoredProjectRecordBase(record, context);
   validateProjectSpec(record.project);
+  const expectedSceneCount = Object.keys(record.project.scenes ?? {}).length;
+  assertStoredProjectRecord(record.sceneCount === expectedSceneCount, `${context}: sceneCount ${record.sceneCount} does not match project scene count ${expectedSceneCount}`);
 }
 
-async function readAllProjects(db: IDBDatabase): Promise<StoredProjectRecord[]> {
+async function readAllProjects(db: IDBDatabase): Promise<{ records: StoredProjectRecord[]; warnings: string[] }> {
   const tx = db.transaction(PROJECTS_STORE, 'readonly');
   const rows = await requestValue(tx.objectStore(PROJECTS_STORE).getAll());
   await txComplete(tx);
-  return Array.isArray(rows) ? (rows as StoredProjectRecord[]).map(hydrateStoredProjectRecord) : [];
+  const warnings: string[] = [];
+  const records: StoredProjectRecord[] = [];
+  for (const [index, row] of (Array.isArray(rows) ? rows : []).entries()) {
+    const fallbackRecordId = row && typeof row === 'object' && typeof (row as { id?: unknown }).id === 'string'
+      ? (row as { id: string }).id
+      : `index:${index}`;
+    const context = `stored project record ${fallbackRecordId}`;
+    try {
+      records.push(parseStoredProjectRecord(row, context));
+    } catch (error) {
+      const warning = error instanceof Error ? error.message : `${context}: unknown validation error`;
+      warnings.push(warning);
+      appendPersistenceDebugEntry('project-persistence:invalid-stored-project-record', {
+        context,
+        warning,
+      });
+    }
+  }
+  return { records, warnings };
 }
 
-async function readWorkspace(db: IDBDatabase): Promise<WorkspaceStateRecord> {
+async function readWorkspace(db: IDBDatabase): Promise<{ workspace: WorkspaceStateRecord; warnings: string[] }> {
   const tx = db.transaction(WORKSPACE_STORE, 'readonly');
   const workspace = await requestValue(tx.objectStore(WORKSPACE_STORE).get(WORKSPACE_KEY));
   await txComplete(tx);
-  return (workspace as WorkspaceStateRecord | undefined) ?? defaultWorkspace();
+  try {
+    return {
+      workspace: parseWorkspaceStateRecord(workspace, 'workspace state'),
+      warnings: [],
+    };
+  } catch (error) {
+    const warning = error instanceof Error ? error.message : 'workspace state: unknown validation error';
+    appendPersistenceDebugEntry('project-persistence:invalid-workspace-state', { warning });
+    return {
+      workspace: defaultWorkspace(),
+      warnings: [warning],
+    };
+  }
 }
 
 async function readWorkspaceBackup(db: IDBDatabase): Promise<WorkspaceBackupRecord | null> {
@@ -444,26 +647,42 @@ async function readWorkspaceBackup(db: IDBDatabase): Promise<WorkspaceBackupReco
   return null;
 }
 
-async function readLatestActiveSnapshot(db: IDBDatabase): Promise<LatestActiveProjectSnapshotRecord | null> {
+async function readLatestActiveSnapshot(db: IDBDatabase): Promise<{ snapshot: LatestActiveProjectSnapshotRecord | null; warnings: string[] }> {
   const tx = db.transaction(WORKSPACE_STORE, 'readonly');
   const snapshot = await requestValue(tx.objectStore(WORKSPACE_STORE).get(ACTIVE_PROJECT_SNAPSHOT_KEY));
   await txComplete(tx);
-  if (!snapshot || typeof snapshot !== 'object') return null;
-  const raw = snapshot as Partial<LatestActiveProjectSnapshotRecord>;
-  if (typeof raw.recordId !== 'string' || typeof raw.syncMode !== 'string') return null;
-  return {
-    recordId: raw.recordId,
-    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : '',
-    syncMode: raw.syncMode as ProjectSyncMode,
-    savedAt: typeof raw.savedAt === 'string' ? raw.savedAt : new Date().toISOString(),
-  };
+  try {
+    return {
+      snapshot: parseLatestActiveSnapshotRecord(snapshot, 'latest active snapshot'),
+      warnings: [],
+    };
+  } catch (error) {
+    const warning = error instanceof Error ? error.message : 'latest active snapshot: unknown validation error';
+    appendPersistenceDebugEntry('project-persistence:invalid-latest-active-snapshot', { warning });
+    return {
+      snapshot: null,
+      warnings: [warning],
+    };
+  }
 }
 
-async function readPreferences(db: IDBDatabase): Promise<PreferencesRecord | null> {
+async function readPreferences(db: IDBDatabase): Promise<{ preferences: PreferencesRecord | null; warnings: string[] }> {
   const tx = db.transaction(PREFERENCES_STORE, 'readonly');
   const preferences = await requestValue(tx.objectStore(PREFERENCES_STORE).get(PREFERENCES_KEY));
   await txComplete(tx);
-  return (preferences as PreferencesRecord | undefined) ?? null;
+  try {
+    return {
+      preferences: parsePreferencesRecord(preferences, 'preferences'),
+      warnings: [],
+    };
+  } catch (error) {
+    const warning = error instanceof Error ? error.message : 'preferences: unknown validation error';
+    appendPersistenceDebugEntry('project-persistence:invalid-preferences', { warning });
+    return {
+      preferences: null,
+      warnings: [warning],
+    };
+  }
 }
 
 async function migrateLegacyStorage(db: IDBDatabase): Promise<void> {
@@ -501,15 +720,26 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
       localProjects: [],
       workspace: defaultWorkspace(),
       preferences: buildPreferencesFromLegacy(getLegacyStorageReader()),
+      restoreWarnings: [],
     };
   }
   await migrateLegacyStorage(db);
-  const [storedProjects, storedWorkspace, preferences, latestActiveSnapshot] = await Promise.all([
+  const [storedProjectResult, storedWorkspaceResult, preferencesResult, latestActiveSnapshotResult] = await Promise.all([
     readAllProjects(db),
     readWorkspace(db),
     readPreferences(db),
     readLatestActiveSnapshot(db),
   ]);
+  const storedProjects = storedProjectResult.records;
+  const storedWorkspace = storedWorkspaceResult.workspace;
+  const preferences = preferencesResult.preferences;
+  const latestActiveSnapshot = latestActiveSnapshotResult.snapshot;
+  const restoreWarnings = [
+    ...storedProjectResult.warnings,
+    ...storedWorkspaceResult.warnings,
+    ...preferencesResult.warnings,
+    ...latestActiveSnapshotResult.warnings,
+  ];
   appendPersistenceDebugEntry('restore:workspace-state-loaded', {
     activeProjectId: storedWorkspace.activeProjectId,
     syncMode: storedWorkspace.syncMode,
@@ -612,7 +842,7 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
     syncMode: workspace.syncMode,
     activeProject: activeProject ? summarizeRecordForDebug(activeProject) : null,
   });
-  return { localProjects, workspace, preferences };
+  return { localProjects, workspace, preferences, restoreWarnings };
 }
 
 async function upsertProjectRecord(record: StoredProjectRecord): Promise<void> {
@@ -625,6 +855,7 @@ async function upsertProjectRecord(record: StoredProjectRecord): Promise<void> {
 }
 
 async function writeLatestActiveSnapshot(snapshot: LatestActiveProjectSnapshotRecord): Promise<void> {
+  parseLatestActiveSnapshotRecord(snapshot, `save latest active snapshot ${snapshot.recordId}`);
   const db = await openDb();
   if (!db) return;
   const tx = db.transaction(WORKSPACE_STORE, 'readwrite');
@@ -659,27 +890,30 @@ async function writeProjectRecordAndWorkspace(record: StoredProjectRecord, works
 }
 
 async function writeWorkspace(workspace: WorkspaceStateRecord): Promise<void> {
-  writeJsonStorageRecord(WORKSPACE_BOOT_CACHE_KEY, workspace);
+  const validatedWorkspace = parseWorkspaceStateRecord(workspace, 'save workspace state');
+  writeJsonStorageRecord(WORKSPACE_BOOT_CACHE_KEY, validatedWorkspace);
   const db = await openDb();
   if (!db) return;
   const tx = db.transaction(WORKSPACE_STORE, 'readwrite');
-  tx.objectStore(WORKSPACE_STORE).put(workspace, WORKSPACE_KEY);
+  tx.objectStore(WORKSPACE_STORE).put(validatedWorkspace, WORKSPACE_KEY);
   await txComplete(tx);
 }
 
 async function writePreferences(preferences: PreferencesRecord): Promise<void> {
-  writeJsonStorageRecord(PREFERENCES_BOOT_CACHE_KEY, preferences);
+  const validatedPreferences = parsePreferencesRecord(preferences, 'save preferences');
+  if (!validatedPreferences) throw new StoredProjectRecordValidationError('save preferences: preferences must not be null');
+  writeJsonStorageRecord(PREFERENCES_BOOT_CACHE_KEY, validatedPreferences);
   const db = await openDb();
   if (!db) return;
   const tx = db.transaction(PREFERENCES_STORE, 'readwrite');
-  tx.objectStore(PREFERENCES_STORE).put(preferences, PREFERENCES_KEY);
+  tx.objectStore(PREFERENCES_STORE).put(validatedPreferences, PREFERENCES_KEY);
   await txComplete(tx);
 }
 
 async function readPreferencesRecord(): Promise<PreferencesRecord | null> {
   const db = await openDb();
   if (!db) return buildPreferencesFromLegacy(getLegacyStorageReader());
-  return readPreferences(db);
+  return (await readPreferences(db)).preferences;
 }
 
 async function updatePreferencesRecord(
@@ -699,21 +933,21 @@ async function getProjectRecord(projectId: string): Promise<StoredProjectRecord 
   const tx = db.transaction(PROJECTS_STORE, 'readonly');
   const record = await requestValue(tx.objectStore(PROJECTS_STORE).get(projectId));
   await txComplete(tx);
-  return record ? hydrateStoredProjectRecord(record as StoredProjectRecord) : null;
+  return record ? parseStoredProjectRecord(record, `stored project record ${projectId}`) : null;
 }
 
 async function getWorkspaceState(options?: { awaitPendingWrites?: boolean }): Promise<WorkspaceStateRecord> {
   if (options?.awaitPendingWrites) await workspaceMutationQueue.drain();
   const db = await openDb();
   if (!db) return defaultWorkspace();
-  return readWorkspace(db);
+  return (await readWorkspace(db)).workspace;
 }
 
 async function getLatestActiveSnapshotRecord(options?: { awaitPendingWrites?: boolean }): Promise<LatestActiveProjectSnapshotRecord | null> {
   if (options?.awaitPendingWrites) await latestActiveSnapshotMutationQueue.drain();
   const db = await openDb();
   if (!db) return null;
-  return readLatestActiveSnapshot(db);
+  return (await readLatestActiveSnapshot(db)).snapshot;
 }
 
 async function updateWorkspaceState(
@@ -766,6 +1000,7 @@ function selectBestBootstrapProject(records: StoredProjectRecord[]): StoredProje
 }
 
 function summarizeRecordForRestoreCandidate(record: StoredProjectRecord) {
+  const scenes = Object.values(record.project.scenes ?? {});
   return {
     recordId: record.id,
     projectId: record.projectId,
@@ -775,9 +1010,13 @@ function summarizeRecordForRestoreCandidate(record: StoredProjectRecord) {
     syncStatus: record.syncStatus,
     cloudProjectId: record.cloudProjectId ?? null,
     revisionCount: record.revisions?.length ?? 0,
-    sceneCount: Object.keys(record.project.scenes ?? {}).length,
-    entityCount: Object.values(record.project.scenes ?? {}).reduce(
+    sceneCount: scenes.length,
+    entityCount: scenes.reduce(
       (total, scene) => total + Object.keys(scene.entities ?? {}).length,
+      0,
+    ),
+    textEntityCount: scenes.reduce(
+      (total, scene) => total + Object.values(scene.entities ?? {}).filter((entity) => typeof (entity as { text?: unknown }).text === 'string').length,
       0,
     ),
     isPlaceholder: isPlaceholderProjectRecord(record),
@@ -788,6 +1027,7 @@ function summarizeRecordForDebug(
   record: Pick<StoredProjectRecord, 'cloudProjectId' | 'id' | 'origin' | 'project' | 'projectId' | 'revisions' | 'syncStatus' | 'title' | 'updatedAt' | 'yaml'>,
 ) {
   const yaml = record.yaml ?? serializeProjectToYaml(record.project);
+  const scenes = Object.values(record.project.scenes ?? {});
   return {
     recordId: record.id,
     projectId: record.projectId,
@@ -797,6 +1037,15 @@ function summarizeRecordForDebug(
     syncStatus: record.syncStatus,
     cloudProjectId: record.cloudProjectId ?? null,
     revisionCount: record.revisions?.length ?? 0,
+    sceneCount: scenes.length,
+    entityCount: scenes.reduce(
+      (total, scene) => total + Object.keys(scene.entities ?? {}).length,
+      0,
+    ),
+    textEntityCount: scenes.reduce(
+      (total, scene) => total + Object.values(scene.entities ?? {}).filter((entity) => typeof (entity as { text?: unknown }).text === 'string').length,
+      0,
+    ),
     ...summarizeYamlForDebug(yaml),
   };
 }
@@ -813,6 +1062,7 @@ export const projectPersistence = {
         localProjects: [buildStoredProjectRecord(project)],
         workspace: { activeProjectId: project.id, syncMode: 'online' },
         preferences: null,
+        restoreWarnings: [],
       };
     }
     return loadIndexedDbSnapshot();
@@ -913,7 +1163,15 @@ export const projectPersistence = {
   },
 
   readCachedWorkspaceStateRecord(): WorkspaceStateRecord | null {
-    return readJsonStorageRecord<WorkspaceStateRecord>(WORKSPACE_BOOT_CACHE_KEY);
+    const cached = readJsonStorageRecord<unknown>(WORKSPACE_BOOT_CACHE_KEY);
+    try {
+      return cached == null ? null : parseWorkspaceStateRecord(cached, 'workspace boot cache');
+    } catch (error) {
+      appendPersistenceDebugEntry('project-persistence:invalid-workspace-boot-cache', {
+        warning: error instanceof Error ? error.message : 'workspace boot cache: unknown validation error',
+      });
+      return null;
+    }
   },
 
   writeCachedWorkspaceStateRecord(
@@ -926,8 +1184,16 @@ export const projectPersistence = {
   },
 
   readCachedPreferencesRecord(): PreferencesRecord | null {
-    const cached = readJsonStorageRecord<PreferencesRecord>(PREFERENCES_BOOT_CACHE_KEY);
-    return cached ?? buildPreferencesFromLegacy(getLegacyStorageReader());
+    const cached = readJsonStorageRecord<unknown>(PREFERENCES_BOOT_CACHE_KEY);
+    try {
+      const parsed = parsePreferencesRecord(cached, 'preferences boot cache');
+      return parsed ?? buildPreferencesFromLegacy(getLegacyStorageReader());
+    } catch (error) {
+      appendPersistenceDebugEntry('project-persistence:invalid-preferences-boot-cache', {
+        warning: error instanceof Error ? error.message : 'preferences boot cache: unknown validation error',
+      });
+      return buildPreferencesFromLegacy(getLegacyStorageReader());
+    }
   },
 
   async loadPreferencesRecord(): Promise<PreferencesRecord | null> {

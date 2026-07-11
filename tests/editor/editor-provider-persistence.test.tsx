@@ -3,8 +3,11 @@ import React, { useEffect } from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEMO_PACK_ASSET_MANIFEST } from '../../src/editor/demoPackAssets';
+import { createEmptyProject } from '../../src/model/emptyProject';
+import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 
 const persistenceSpies = vi.hoisted(() => ({
+  load: vi.fn(),
   saveActiveProjectRecord: vi.fn(async () => []),
   saveProjectRecordImmediately: vi.fn(async () => undefined),
 }));
@@ -25,15 +28,17 @@ vi.mock('../../src/editor/projectPersistence', async () => {
   project.id = 'project-1';
   project.title = 'Untitled Project';
   const record = actual.buildStoredProjectRecord(project, { id: project.id });
+  persistenceSpies.load.mockImplementation(async () => ({
+    localProjects: [record],
+    workspace: { activeProjectId: project.id, syncMode: 'online' as const },
+    preferences: null,
+    restoreWarnings: [],
+  }));
   return {
     ...actual,
     projectPersistence: {
       ...actual.projectPersistence,
-      load: vi.fn(async () => ({
-        localProjects: [record],
-        workspace: { activeProjectId: project.id, syncMode: 'online' as const },
-        preferences: null,
-      })),
+      load: persistenceSpies.load,
       saveActiveProjectRecord: persistenceSpies.saveActiveProjectRecord,
       saveProjectRecordImmediately: persistenceSpies.saveProjectRecordImmediately,
       loadWorkspaceStateRecord: vi.fn(async () => ({ activeProjectId: project.id, syncMode: 'online' as const })),
@@ -95,6 +100,7 @@ function StatusMessageHarness({ onStatus }: { onStatus: (value: string | undefin
 
 describe('EditorProvider persistence', () => {
   beforeEach(() => {
+    persistenceSpies.load.mockClear();
     persistenceSpies.saveActiveProjectRecord.mockClear();
     persistenceSpies.saveProjectRecordImmediately.mockClear();
   });
@@ -188,6 +194,34 @@ describe('EditorProvider persistence', () => {
     await waitFor(() => {
       expect(onStatus).toHaveBeenCalledWith(
         'Autosave blocked: initialSceneId references unknown scene scene-1. Your last valid saved version was preserved.'
+      );
+    });
+  });
+
+  it('surfaces a restore warning when invalid stored project rows are skipped during hydration', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Untitled Project';
+    const record = buildStoredProjectRecord(project, { id: project.id });
+    persistenceSpies.load.mockResolvedValueOnce({
+      localProjects: [record],
+      workspace: { activeProjectId: 'project-1', syncMode: 'online' as const },
+      preferences: null,
+      restoreWarnings: [
+        'stored project record project-invalid: revisions must be an array or omitted, got null',
+      ],
+    } as any);
+    const onStatus = vi.fn();
+
+    render(
+      <EditorProvider>
+        <StatusMessageHarness onStatus={onStatus} />
+      </EditorProvider>
+    );
+
+    await waitFor(() => {
+      expect(onStatus).toHaveBeenCalledWith(
+        'Restore warning: stored project record project-invalid: revisions must be an array or omitted, got null'
       );
     });
   });
