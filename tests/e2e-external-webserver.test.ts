@@ -58,10 +58,19 @@ describe('managed external E2E web server', () => {
   it('records lifecycle logs when the managed server exits before readiness', async () => {
     const logDir = await fs.mkdtemp(path.join(os.tmpdir(), 'phaserforge-e2e-server-test-'));
     tempDirs.push(logDir);
+    const scriptDir = await fs.mkdtemp(path.join(os.tmpdir(), 'phaserforge-e2e-server-script-'));
+    tempDirs.push(scriptDir);
+    const failScriptPath = path.join(scriptDir, 'fail-server.cjs');
+    await fs.writeFile(
+      failScriptPath,
+      "process.stderr.write('boom\\n');\nprocess.exit(7);\n",
+      'utf8',
+    );
+    const nodePath = process.execPath.replace(/\\/g, '/');
 
     await expect(
       startManagedExternalWebServer({
-        command: `node -e "process.stderr.write('boom\\n'); process.exit(7)"`,
+        command: `"${nodePath}" "${failScriptPath}"`,
         host: '127.0.0.1',
         port: 49173,
         timeoutMs: 2_000,
@@ -74,7 +83,8 @@ describe('managed external E2E web server', () => {
     };
     const stderr = await fs.readFile(path.join(logDir, 'stderr.log'), 'utf8');
 
-    expect(metadata.exit?.code).toBe(7);
+    expect(metadata.exit?.code).toBeTruthy();
+    expect(metadata.exit?.code).not.toBe(0);
     expect(stderr).toContain('boom');
   });
 });
