@@ -667,10 +667,20 @@ async function bootStudio(page: Page, options?: { forceNavigate?: boolean }): Pr
   await dismissViewHint(page);
 }
 
-async function getCloudFlushSuccessCount(page: Page): Promise<number> {
+type CloudFlushMarker = {
+  successCount: number;
+  lastSuccessTimestamp: string | null;
+};
+
+async function getCloudFlushMarker(page: Page): Promise<CloudFlushMarker> {
   return page.evaluate(() => {
     const entries = (window as any).__PHASER_FORGE_PERSISTENCE_DEBUG__?.read?.() ?? [];
-    return entries.filter((entry: { event?: string }) => entry.event === 'cloud:autosave-flush-success').length;
+    const successEntries = entries.filter((entry: { event?: string }) => entry.event === 'cloud:autosave-flush-success');
+    const lastSuccess = successEntries.at(-1) as { timestamp?: string } | undefined;
+    return {
+      successCount: successEntries.length,
+      lastSuccessTimestamp: typeof lastSuccess?.timestamp === 'string' ? lastSuccess.timestamp : null,
+    };
   });
 }
 
@@ -681,8 +691,8 @@ async function getRecentPersistenceEvents(page: Page): Promise<string[]> {
   });
 }
 
-async function waitForCloudPersistence(page: Page, label: string, previousSuccessCount: number): Promise<number> {
-  if (!USE_LIVE_CLOUD) return previousSuccessCount;
+async function waitForCloudPersistence(page: Page, label: string, previousMarker: CloudFlushMarker): Promise<CloudFlushMarker> {
+  if (!USE_LIVE_CLOUD) return previousMarker;
 
   const readCloudStatus = async () =>
     page.evaluate(async () => {
@@ -731,55 +741,57 @@ async function waitForCloudPersistence(page: Page, label: string, previousSucces
       cloudProjectId: expect.any(String),
     });
 
-    await expect.poll(async () => await getCloudFlushSuccessCount(page), {
+    await expect.poll(async () => (await getCloudFlushMarker(page)).lastSuccessTimestamp, {
       timeout: 30000,
       message: `[cloud:${label}] waiting for a new cloud autosave flush success`,
-    }).toBeGreaterThan(previousSuccessCount);
+    }).not.toBe(previousMarker.lastSuccessTimestamp);
   } catch (error) {
     const recentEvents = await getRecentPersistenceEvents(page);
     const cloudStatus = await readCloudStatus();
+    const cloudMarker = await getCloudFlushMarker(page);
     throw new Error(
       `[cloud:${label}] persistence failed.\n`
       + `recent events: ${recentEvents.join(' -> ')}\n`
       + `status: ${JSON.stringify(cloudStatus)}\n`
+      + `marker: ${JSON.stringify(cloudMarker)}\n`
       + `cause: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 
-  const nextCount = await getCloudFlushSuccessCount(page);
+  const nextMarker = await getCloudFlushMarker(page);
   expectNoBrowserErrors(trackErrors(page), `${label} cloud autosave`);
-  return nextCount;
+  return nextMarker;
 }
 
 async function runPatternDemoPersistence(page: Page, options: { undoRedo: boolean }): Promise<void> {
   let active = await initializePatternDemoPage(page);
   const steps = buildPatternDemoSteps();
-  let cloudFlushCount = await getCloudFlushSuccessCount(active.page);
+  let cloudFlushMarker = await getCloudFlushMarker(active.page);
   let finalSnapshot: PersistenceSnapshot | null = null;
 
   for (const step of steps) {
     if (options.undoRedo) {
       const beforeStep = await getPersistenceSnapshot(active.page);
       const applied = await step.apply(active.page);
-      cloudFlushCount = await waitForCloudPersistence(active.page, `${step.label} apply`, cloudFlushCount);
+      cloudFlushMarker = await waitForCloudPersistence(active.page, `${step.label} apply`, cloudFlushMarker);
       expectNoBrowserErrors(active.errors, `${step.label} apply`);
       active = await reopenAndAssert(active.page, applied, `${step.label} applied`);
 
       await loadProjectSnapshot(active.page, beforeStep.project, `pattern-demo-revert-${step.label}`);
       await expectSnapshot(active.page, beforeStep);
-      cloudFlushCount = await waitForCloudPersistence(active.page, `${step.label} revert`, cloudFlushCount);
+      cloudFlushMarker = await waitForCloudPersistence(active.page, `${step.label} revert`, cloudFlushMarker);
       expectNoBrowserErrors(active.errors, `${step.label} revert`);
       active = await reopenAndAssert(active.page, beforeStep, `${step.label} revert`);
 
       const reapplied = await step.apply(active.page);
       await expectSnapshot(active.page, reapplied);
-      cloudFlushCount = await waitForCloudPersistence(active.page, `${step.label} reapply`, cloudFlushCount);
+      cloudFlushMarker = await waitForCloudPersistence(active.page, `${step.label} reapply`, cloudFlushMarker);
       expectNoBrowserErrors(active.errors, `${step.label} reapply`);
       active = await reopenAndAssert(active.page, reapplied, `${step.label} reapply`);
       finalSnapshot = reapplied;
     } else {
       finalSnapshot = await step.apply(active.page);
-      cloudFlushCount = await waitForCloudPersistence(active.page, step.label, cloudFlushCount);
+      cloudFlushMarker = await waitForCloudPersistence(active.page, step.label, cloudFlushMarker);
       await expectSnapshot(active.page, finalSnapshot);
       expectNoBrowserErrors(active.errors, `${step.label} before reopen`);
       active = await reopenAndAssert(active.page, finalSnapshot, step.label);
