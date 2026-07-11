@@ -1148,6 +1148,161 @@ describe('projectPersistence steady-state storage', () => {
     expect(Object.keys(restored?.project.scenes?.[project.initialSceneId]?.entities ?? {})).toEqual(['player']);
   });
 
+  it('skips an invalid stored project row and reports a restore warning instead of hydrating an empty fallback project', async () => {
+    const validProject = createEmptyProject();
+    validProject.id = 'project-valid';
+    validProject.title = 'Pattern Demo';
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put({
+          id: 'project-invalid',
+          projectId: 'project-invalid',
+          title: 'Broken Draft',
+          updatedAt: '2026-07-10T23:00:00.000Z',
+          sceneCount: 1,
+          origin: 'local-only',
+          syncStatus: 'local',
+          revisions: null,
+        });
+        tx.objectStore('projects').put(buildStoredProjectRecord(validProject, {
+          id: validProject.id,
+          updatedAt: '2026-07-10T23:01:00.000Z',
+        }));
+        tx.objectStore('workspaceState').put({
+          activeProjectId: validProject.id,
+          syncMode: 'online',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.localProjects.map((record) => record.id)).toEqual(['project-valid']);
+    expect(snapshot.restoreWarnings).toEqual([
+      expect.stringContaining('stored project record project-invalid'),
+    ]);
+    expect(snapshot.restoreWarnings?.[0]).toContain('revisions must be an array or omitted, got null');
+  });
+
+  it('falls back to default workspace state and reports a restore warning when workspace state is invalid', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(buildStoredProjectRecord(project, {
+          id: project.id,
+          updatedAt: '2026-07-10T23:01:00.000Z',
+        }));
+        tx.objectStore('workspaceState').put({
+          activeProjectId: 42,
+          syncMode: 'cloud',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.workspace).toEqual({
+      activeProjectId: 'project-1',
+      syncMode: 'online',
+    });
+    expect(snapshot.restoreWarnings).toEqual(expect.arrayContaining([
+      expect.stringContaining('workspace state: activeProjectId must be a string or null'),
+    ]));
+  });
+
+  it('ignores an invalid latest active snapshot and reports a restore warning', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+
+    await seedPersistenceRecords({
+      projectRecord: buildStoredProjectRecord(project, {
+        id: project.id,
+        updatedAt: '2026-06-22T12:00:10.000Z',
+      }),
+    });
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('workspaceState').put({
+          recordId: '',
+          updatedAt: '',
+          syncMode: 'cloud',
+          savedAt: '',
+        }, 'latestActiveSnapshot');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.workspace.activeProjectId).toBe('project-1');
+    expect(snapshot.restoreWarnings).toEqual(expect.arrayContaining([
+      expect.stringContaining('latest active snapshot: recordId must be a non-empty string'),
+    ]));
+  });
+
+  it('drops invalid preferences during restore and reports a warning', async () => {
+    const project = createEmptyProject();
+    project.id = 'project-1';
+    project.title = 'Pattern Demo';
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState', 'preferences'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(buildStoredProjectRecord(project, {
+          id: project.id,
+        }));
+        tx.objectStore('workspaceState').put({
+          activeProjectId: project.id,
+          syncMode: 'online',
+        }, 'workspace');
+        tx.objectStore('preferences').put({
+          startupMode: 'old_mode',
+          themeMode: 'teal',
+          uiScale: 'big',
+          showHitboxOverlay: 'yes',
+        }, 'preferences');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.preferences).toBeNull();
+    expect(snapshot.restoreWarnings).toEqual(expect.arrayContaining([
+      expect.stringContaining('preferences: startupMode must be one of new_empty_scene'),
+    ]));
+  });
+
   it('rejects persisting an invalid active project head and preserves the last valid stored row', async () => {
     const project = createEmptyProject();
     project.id = 'project-1';
@@ -1252,6 +1407,15 @@ describe('projectPersistence steady-state storage', () => {
     });
   });
 
+  it('ignores invalid synchronous workspace boot cache entries', async () => {
+    window.localStorage.setItem('phaserforge.workspaceBootCache.v1', JSON.stringify({
+      activeProjectId: 42,
+      syncMode: 'cloud',
+    }));
+
+    expect(projectPersistence.readCachedWorkspaceStateRecord?.()).toBeNull();
+  });
+
   it('updates the synchronous preferences boot cache when preferences change', async () => {
     await projectPersistence.savePreferences({
       startupMode: 'new_empty_scene',
@@ -1266,5 +1430,16 @@ describe('projectPersistence steady-state storage', () => {
       uiScale: 1.1,
       showHitboxOverlay: false,
     });
+  });
+
+  it('ignores invalid synchronous preferences boot cache entries', async () => {
+    window.localStorage.setItem('phaserforge.preferencesBootCache.v1', JSON.stringify({
+      startupMode: 'old_mode',
+      themeMode: 'teal',
+      uiScale: 'big',
+      showHitboxOverlay: 'yes',
+    }));
+
+    expect(projectPersistence.readCachedPreferencesRecord?.()).toBeNull();
   });
 });
