@@ -895,6 +895,7 @@ export function CloudAccountPanel({
         project: pending.project,
         cloudGameId: existingCloudGameId,
       });
+      dispatch({ type: 'set-error', error: undefined });
       lastAutosavedSignatureRef.current = pending.signature;
       appendPersistenceDebugEntry('cloud:autosave-flush-success', {
         ...buildProjectDebugDetails(),
