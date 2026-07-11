@@ -583,30 +583,6 @@ textarea:focus-visible {
   justify-self: center;
 }
 
-.viewbar-yaml-group {
-  position: relative;
-}
-
-.viewbar-yaml-file-label {
-  position: absolute;
-  top: 50%;
-  right: calc(100% + 0.55rem);
-  transform: translateY(-50%);
-  width: 12rem;
-  text-align: right;
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
-}
-
-.viewbar-yaml-file-label-hidden {
-  visibility: hidden;
-}
-
 .section-title,
 .panel-title,
 .section-subtitle {

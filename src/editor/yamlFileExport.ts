@@ -6,7 +6,7 @@ function getSaveFilePicker(): FilePickerLike | null {
   return typeof picker === 'function' ? (picker as FilePickerLike) : null;
 }
 
-export type YamlExportResult = { kind: 'saved'; handle: any; label: string } | { kind: 'downloaded' };
+export type YamlExportResult = { kind: 'saved'; handle: any } | { kind: 'downloaded' };
 
 export async function exportYamlToDisk(
   yaml: string,
@@ -31,8 +31,7 @@ export async function exportYamlToDisk(
     const writable = await handle.createWritable();
     await writable.write(yaml);
     await writable.close();
-    const label = typeof handle?.name === 'string' && handle.name.trim().length > 0 ? handle.name : suggestedName;
-    return { kind: 'saved', handle, label };
+    return { kind: 'saved', handle };
   }
 
   if (typeof document === 'undefined') throw new Error('Document unavailable for download fallback');
