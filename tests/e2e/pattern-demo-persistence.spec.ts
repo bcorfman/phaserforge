@@ -651,7 +651,7 @@ async function initializePatternDemoPage(page: Page): Promise<{ page: Page; erro
 }
 
 async function gotoStudioWithoutDefaultApiStub(page: Page): Promise<void> {
-  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+  await page.goto('./', { waitUntil: 'domcontentloaded', timeout: 10000 });
   await page.waitForFunction(() => Boolean(window.__PHASER_FORGE_TEST__?.isEnabled), { timeout: 10000 });
   await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 10000 });
   await waitForSceneReady(page);
