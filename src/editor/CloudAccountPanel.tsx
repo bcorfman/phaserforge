@@ -125,6 +125,10 @@ function mapPublishError(error: string): string {
   }
 }
 
+function errorCodeOf(error: string): string {
+  return error.replace(/\s+\[\d{3}\s+[A-Z]+\s+\/api\/v1\/[^\]]+\]$/, '');
+}
+
 const GITHUB_PAGES_PUBLISH_POLL_MS = 5000;
 const GITHUB_PAGES_PUBLISH_MAX_WAIT_MS = 120000;
 
@@ -669,14 +673,14 @@ export function CloudAccountPanel({
       return await fn(await ensureCsrf());
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
-      if (message !== 'csrf_required') throw err;
+      if (errorCodeOf(message) !== 'csrf_required') throw err;
       return await fn(await ensureCsrf({ forceRefresh: true }));
     }
   };
 
   const runWithCsrfResultRetry = async <T extends { ok: boolean; error?: string },>(fn: (csrf: string) => Promise<T>): Promise<T> => {
     const first = await fn(await ensureCsrf());
-    if (first.ok || first.error !== 'csrf_required') return first;
+    if (first.ok || errorCodeOf(first.error ?? '') !== 'csrf_required') return first;
     return await fn(await ensureCsrf({ forceRefresh: true }));
   };
 
@@ -697,7 +701,7 @@ export function CloudAccountPanel({
         return cloudGameId;
       } catch (err) {
         const message = err instanceof Error ? err.message : '';
-        if (message !== 'not_found') throw err;
+        if (errorCodeOf(message) !== 'not_found') throw err;
       }
     }
 
@@ -724,8 +728,8 @@ export function CloudAccountPanel({
       onStatus(`Signed in as ${res.user.email}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Signup failed';
-      if (msg === 'invite_required') onError('Invite required to sign up.');
-      else if (msg === 'invite_invalid') onError('Invite code is invalid or expired.');
+      if (errorCodeOf(msg) === 'invite_required') onError('Invite required to sign up.');
+      else if (errorCodeOf(msg) === 'invite_invalid') onError('Invite code is invalid or expired.');
       else onError(msg);
     } finally {
       setBusy(false);
