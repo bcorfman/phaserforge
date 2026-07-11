@@ -61,6 +61,26 @@ describe('auth', () => {
     expect(res.headers['surrogate-control']).toBe('no-store');
   });
 
+  it('allows hosted csrf preflight headers used by the GitHub Pages app', async () => {
+    const { app } = makeApp({
+      frontendBaseUrl: 'https://bcorfman.github.io/phaserforge',
+      publicBaseUrl: 'https://phaseractions-studio-production.up.railway.app',
+      corsAllowOrigins: ['https://bcorfman.github.io'],
+    });
+
+    const res = await request(app)
+      .options('/api/v1/auth/csrf')
+      .set('Origin', 'https://bcorfman.github.io')
+      .set('Access-Control-Request-Method', 'GET')
+      .set('Access-Control-Request-Headers', 'cache-control,pragma')
+      .expect(204);
+
+    expect(res.headers['access-control-allow-origin']).toBe('https://bcorfman.github.io');
+    expect(res.headers['access-control-allow-credentials']).toBe('true');
+    expect(res.headers['access-control-allow-headers']).toContain('Cache-Control');
+    expect(res.headers['access-control-allow-headers']).toContain('Pragma');
+  });
+
   it('signs up and returns session cookie', async () => {
     const { app } = makeApp();
     const agent = request.agent(app);
