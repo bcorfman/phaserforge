@@ -199,9 +199,17 @@ async function startManagedExternalWebServer({
   let consecutiveProbeFailures = 0;
   let rejectUnexpectedExit;
   let exitPersistPromise = Promise.resolve();
+  let exitRecorded = false;
   const unexpectedExit = new Promise((_, reject) => {
     rejectUnexpectedExit = reject;
   });
+
+  const recordExit = (code, signal) => {
+    if (exitRecorded) return exitPersistPromise;
+    exitRecorded = true;
+    exitPersistPromise = lifecycle.markExit(code ?? null, signal ?? null);
+    return exitPersistPromise;
+  };
 
   const cleanup = () => {
     settled = true;
@@ -224,7 +232,7 @@ async function startManagedExternalWebServer({
       `Managed E2E web server exited ${phase} (code=${code ?? 'null'}, signal=${signal ?? 'null'})`,
       logDir,
     );
-    exitPersistPromise = lifecycle.markExit(code ?? null, signal ?? null);
+    recordExit(code, signal);
     rejectUnexpectedExit(exitError);
     stdout.end();
     stderr.end();
@@ -236,6 +244,9 @@ async function startManagedExternalWebServer({
       unexpectedExit,
     ]);
   } catch (error) {
+    if (child.exitCode != null || child.signalCode != null) {
+      await recordExit(child.exitCode, child.signalCode);
+    }
     cleanup();
     await exitPersistPromise;
     await lifecycle.waitForPendingWrites();
