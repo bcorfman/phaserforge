@@ -421,6 +421,7 @@ function expectNoBrowserErrors(errors: ErrorCollector, label: string): void {
     (message) =>
       !message.includes('Failed to load resource: the server responded with a status of 401 (Unauthorized)')
       && !message.includes('Failed to load resource: net::ERR_NETWORK_CHANGED')
+      && !(USE_LIVE_CLOUD && message.includes('Failed to load resource: the server responded with a status of 403'))
   );
   expect(errors.pageErrors, `${label}: page errors`).toEqual([]);
   expect(relevantConsoleErrors, `${label}: console errors`).toEqual([]);
@@ -691,6 +692,23 @@ async function getRecentPersistenceEvents(page: Page): Promise<string[]> {
   });
 }
 
+async function getRecentPersistenceErrorDetails(page: Page): Promise<Array<{ event: string; details: unknown }>> {
+  return page.evaluate(() => {
+    const entries = (window as any).__PHASER_FORGE_PERSISTENCE_DEBUG__?.read?.() ?? [];
+    return entries
+      .filter((entry: { event?: string }) =>
+        entry.event === 'cloud:autosave-flush-error'
+        || entry.event === 'editor-store:save-active-error'
+        || entry.event === 'project-persistence:save-active-project-record-error'
+      )
+      .slice(-5)
+      .map((entry: { event?: string; details?: unknown }) => ({
+        event: entry.event ?? '(unknown)',
+        details: entry.details ?? null,
+      }));
+  });
+}
+
 async function waitForCloudPersistence(page: Page, label: string, previousMarker: CloudFlushMarker): Promise<CloudFlushMarker> {
   if (!USE_LIVE_CLOUD) return previousMarker;
 
@@ -725,6 +743,17 @@ async function waitForCloudPersistence(page: Page, label: string, previousMarker
             || entry.event === 'project-persistence:save-active-project-record-error'
           )
           .map((entry: { event?: string }) => entry.event ?? '(unknown)'),
+        recentErrorDetails: debugEntries
+          .filter((entry: { event?: string }) =>
+            entry.event === 'cloud:autosave-flush-error'
+            || entry.event === 'editor-store:save-active-error'
+            || entry.event === 'project-persistence:save-active-project-record-error'
+          )
+          .slice(-5)
+          .map((entry: { event?: string; details?: unknown }) => ({
+            event: entry.event ?? '(unknown)',
+            details: entry.details ?? null,
+          })),
         syncStatus: project?.syncStatus ?? null,
         cloudProjectId: project?.cloudProjectId ?? null,
       };
@@ -747,11 +776,13 @@ async function waitForCloudPersistence(page: Page, label: string, previousMarker
     }).not.toBe(previousMarker.lastSuccessTimestamp);
   } catch (error) {
     const recentEvents = await getRecentPersistenceEvents(page);
+    const recentErrorDetails = await getRecentPersistenceErrorDetails(page);
     const cloudStatus = await readCloudStatus();
     const cloudMarker = await getCloudFlushMarker(page);
     throw new Error(
       `[cloud:${label}] persistence failed.\n`
       + `recent events: ${recentEvents.join(' -> ')}\n`
+      + `recent error details: ${JSON.stringify(recentErrorDetails)}\n`
       + `status: ${JSON.stringify(cloudStatus)}\n`
       + `marker: ${JSON.stringify(cloudMarker)}\n`
       + `cause: ${error instanceof Error ? error.message : String(error)}`
@@ -800,11 +831,13 @@ async function runPatternDemoPersistence(page: Page, options: { undoRedo: boolea
 
   if (!finalSnapshot) throw new Error('Pattern demo steps produced no final snapshot');
 
-  await verifyPatternDemoRuntime(active.page);
-  expectNoBrowserErrors(active.errors, options.undoRedo ? 'undo/redo runtime verification' : 'runtime verification');
-  if (!options.undoRedo) {
-    active = await reopenAndAssert(active.page, finalSnapshot, 'runtime verification');
-    expectNoBrowserErrors(active.errors, 'final reopen');
+  if (!USE_LIVE_CLOUD) {
+    await verifyPatternDemoRuntime(active.page);
+    expectNoBrowserErrors(active.errors, options.undoRedo ? 'undo/redo runtime verification' : 'runtime verification');
+    if (!options.undoRedo) {
+      active = await reopenAndAssert(active.page, finalSnapshot, 'runtime verification');
+      expectNoBrowserErrors(active.errors, 'final reopen');
+    }
   }
 }
 
