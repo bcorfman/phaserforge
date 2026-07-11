@@ -46,7 +46,7 @@ test('creates a text entity, edits it, and round-trips via YAML @critical', asyn
   await expect(page.getByTestId('entity-text-content')).toBeVisible();
   await page.getByTestId('entity-text-content').fill('Hello\nWorld');
 
-  await page.getByTestId('yaml-save-as-button').click();
+  await page.getByTestId('yaml-export-button').click();
   await expect.poll(async () => page.evaluate(() => (window as any).__TEXT_ENTITY_YAML_SAVE__?.saved?.length ?? 0)).toBe(1);
   const savedYaml = await page.evaluate(() => (window as any).__TEXT_ENTITY_YAML_SAVE__?.saved?.[0] ?? null);
   expect(typeof savedYaml).toBe('string');
