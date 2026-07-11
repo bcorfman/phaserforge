@@ -13,6 +13,7 @@ import {
   seedProject,
   waitForSceneReady,
 } from './helpers';
+import { getPatternDemoCloudLiveConfigError } from './patternDemoPersistenceCloudConfig';
 
 test.describe.configure({ timeout: 300_000 });
 
@@ -20,6 +21,10 @@ const PERSISTENCE_TARGET = process.env.PATTERN_DEMO_PERSISTENCE_TARGET ?? 'local
 const USE_LIVE_CLOUD = PERSISTENCE_TARGET === 'cloud-live';
 const CLOUD_STORAGE_STATE = process.env.PATTERN_DEMO_CLOUD_STORAGE_STATE;
 const CLOUD_MANUAL_LOGIN = process.env.PATTERN_DEMO_CLOUD_MANUAL_LOGIN === '1';
+const CLOUD_LIVE_CONFIG_ERROR = getPatternDemoCloudLiveConfigError({
+  persistenceTarget: PERSISTENCE_TARGET,
+  baseUrl: process.env.PW_BASE_URL,
+});
 
 if (CLOUD_STORAGE_STATE) {
   test.use({ storageState: CLOUD_STORAGE_STATE });
@@ -620,6 +625,9 @@ async function verifyPatternDemoRuntime(page: Page): Promise<void> {
 
 async function initializePatternDemoPage(page: Page): Promise<{ page: Page; errors: ErrorCollector }> {
   if (USE_LIVE_CLOUD) {
+    if (CLOUD_LIVE_CONFIG_ERROR) {
+      throw new Error(CLOUD_LIVE_CONFIG_ERROR);
+    }
     await page.addInitScript(() => {
       try {
         window.localStorage.setItem('phaserforge.debugPersistence.v1', '1');
