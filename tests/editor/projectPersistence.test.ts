@@ -1148,7 +1148,7 @@ describe('projectPersistence steady-state storage', () => {
     expect(Object.keys(restored?.project.scenes?.[project.initialSceneId]?.entities ?? {})).toEqual(['player']);
   });
 
-  it('skips an invalid stored project row and reports a restore warning instead of hydrating an empty fallback project', async () => {
+  it('silently prunes an invalid stored project row when restore can continue with a valid active project', async () => {
     const validProject = createEmptyProject();
     validProject.id = 'project-valid';
     validProject.title = 'Pattern Demo';
@@ -1186,10 +1186,54 @@ describe('projectPersistence steady-state storage', () => {
     const snapshot = await projectPersistence.load();
 
     expect(snapshot.localProjects.map((record) => record.id)).toEqual(['project-valid']);
+    expect(snapshot.restoreWarnings).toEqual([]);
+    await expect(readStoredProjectRecord('project-invalid')).resolves.toBeUndefined();
+  });
+
+  it('reports a restore warning when the active project points at an invalid stored row', async () => {
+    const validProject = createEmptyProject();
+    validProject.id = 'project-valid';
+    validProject.title = 'Pattern Demo';
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put({
+          id: 'project-invalid',
+          projectId: 'project-invalid',
+          title: 'Broken Draft',
+          updatedAt: '2026-07-10T23:00:00.000Z',
+          sceneCount: 1,
+          origin: 'local-only',
+          syncStatus: 'local',
+          revisions: null,
+        });
+        tx.objectStore('projects').put(buildStoredProjectRecord(validProject, {
+          id: validProject.id,
+          updatedAt: '2026-07-10T23:01:00.000Z',
+        }));
+        tx.objectStore('workspaceState').put({
+          activeProjectId: 'project-invalid',
+          syncMode: 'online',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.localProjects.map((record) => record.id)).toEqual(['project-valid']);
+    expect(snapshot.workspace.activeProjectId).toBe('project-valid');
     expect(snapshot.restoreWarnings).toEqual([
       expect.stringContaining('stored project record project-invalid'),
     ]);
     expect(snapshot.restoreWarnings?.[0]).toContain('revisions must be an array or omitted, got null');
+    await expect(readStoredProjectRecord('project-invalid')).resolves.toBeUndefined();
   });
 
   it('falls back to default workspace state and reports a restore warning when workspace state is invalid', async () => {

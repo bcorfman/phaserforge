@@ -581,12 +581,15 @@ function validateStoredProjectRecordForPersistence(record: StoredProjectRecord):
   assertStoredProjectRecord(record.sceneCount === expectedSceneCount, `${context}: sceneCount ${record.sceneCount} does not match project scene count ${expectedSceneCount}`);
 }
 
-async function readAllProjects(db: IDBDatabase): Promise<{ records: StoredProjectRecord[]; warnings: string[] }> {
-  const tx = db.transaction(PROJECTS_STORE, 'readonly');
-  const rows = await requestValue(tx.objectStore(PROJECTS_STORE).getAll());
-  await txComplete(tx);
+async function readAllProjects(
+  db: IDBDatabase,
+): Promise<{ records: StoredProjectRecord[]; warnings: string[]; invalidRecordIds: string[] }> {
+  const tx = db.transaction(PROJECTS_STORE, 'readwrite');
+  const store = tx.objectStore(PROJECTS_STORE);
+  const rows = await requestValue(store.getAll());
   const warnings: string[] = [];
   const records: StoredProjectRecord[] = [];
+  const invalidRecordIds: string[] = [];
   for (const [index, row] of (Array.isArray(rows) ? rows : []).entries()) {
     const fallbackRecordId = row && typeof row === 'object' && typeof (row as { id?: unknown }).id === 'string'
       ? (row as { id: string }).id
@@ -597,13 +600,18 @@ async function readAllProjects(db: IDBDatabase): Promise<{ records: StoredProjec
     } catch (error) {
       const warning = error instanceof Error ? error.message : `${context}: unknown validation error`;
       warnings.push(warning);
+      if (fallbackRecordId !== `index:${index}`) {
+        invalidRecordIds.push(fallbackRecordId);
+        store.delete(fallbackRecordId);
+      }
       appendPersistenceDebugEntry('project-persistence:invalid-stored-project-record', {
         context,
         warning,
       });
     }
   }
-  return { records, warnings };
+  await txComplete(tx);
+  return { records, warnings, invalidRecordIds };
 }
 
 async function readWorkspace(db: IDBDatabase): Promise<{ workspace: WorkspaceStateRecord; warnings: string[] }> {
@@ -734,8 +742,22 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
   const storedWorkspace = storedWorkspaceResult.workspace;
   const preferences = preferencesResult.preferences;
   const latestActiveSnapshot = latestActiveSnapshotResult.snapshot;
+  const blockingInvalidProjectRecordIds = new Set(
+    storedProjectResult.invalidRecordIds.filter((recordId) => (
+      recordId === storedWorkspace.activeProjectId
+      || recordId === latestActiveSnapshot?.recordId
+      || storedProjects.length === 0
+    )),
+  );
+  const projectRestoreWarnings = storedProjectResult.warnings.filter((warning) => (
+    blockingInvalidProjectRecordIds.size === 0
+      ? false
+      : storedProjectResult.invalidRecordIds.some((recordId) => (
+        blockingInvalidProjectRecordIds.has(recordId) && warning.includes(recordId)
+      ))
+  ));
   const restoreWarnings = [
-    ...storedProjectResult.warnings,
+    ...projectRestoreWarnings,
     ...storedWorkspaceResult.warnings,
     ...preferencesResult.warnings,
     ...latestActiveSnapshotResult.warnings,
