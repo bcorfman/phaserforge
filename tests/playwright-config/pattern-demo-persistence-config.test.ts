@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getPatternDemoCloudLiveConfigError } from './patternDemoPersistenceCloudConfig';
+import { getPatternDemoCloudLiveConfigError } from '../e2e/patternDemoPersistenceCloudConfig';
 
 describe('pattern demo cloud-live config', () => {
   it('allows local mode without a hosted base URL', () => {
