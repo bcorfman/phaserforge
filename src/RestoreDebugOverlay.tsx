@@ -15,10 +15,40 @@ const RESTORE_DEBUG_EVENTS = new Set([
   'restore:project-dispatched',
   'editor-store:initialize-record-selection',
   'project-persistence:create-local-project',
+  'project-persistence:set-active-project',
+  'project-persistence:save-project-record-start',
+  'project-persistence:save-project-record-success',
+  'project-persistence:save-active-project-record-start',
+  'project-persistence:save-active-project-record-success',
+  'editor-store:save-active-start',
+  'editor-store:save-active-success',
+  'editor-store:pagehide',
+  'editor-store:visibility-hidden',
+  'cloud:autosave-gate-blocked',
+  'cloud:autosave-scheduled',
+  'cloud:autosave-flush-start',
+  'cloud:autosave-flush-success',
+  'cloud:autosave-flush-error',
+  'cloud:pagehide-flush',
+  'cloud:visibility-hidden-flush',
+  'cloud:flush-pending-autosave-now',
+  'cloud:stale-cloud-game-link-cleared',
+  'cloud:stale-cloud-game-link-recreated',
 ]);
+
+const RESTORE_DEBUG_EVENT_PREFIXES = [
+  'restore:',
+  'project-persistence:',
+  'editor-store:',
+  'cloud:',
+];
 
 function isRestoreDebugEnabled(): boolean {
   return isDebugUrlFlagEnabled('restoreDebug');
+}
+
+function isRestoreDebugAllEnabled(): boolean {
+  return isDebugUrlFlagEnabled('restoreDebugAll');
 }
 
 function formatEntryDetails(entry: PersistenceDebugEntry): string {
@@ -37,7 +67,12 @@ function formatTimestamp(timestamp: string): string {
 }
 
 function readRestoreDebugEntries(): PersistenceDebugEntry[] {
-  return readPersistenceDebugEntries().filter((entry) => RESTORE_DEBUG_EVENTS.has(entry.event));
+  const entries = readPersistenceDebugEntries();
+  if (isRestoreDebugAllEnabled()) return entries;
+  return entries.filter((entry) => (
+    RESTORE_DEBUG_EVENTS.has(entry.event)
+    || RESTORE_DEBUG_EVENT_PREFIXES.some((prefix) => entry.event.startsWith(prefix))
+  ));
 }
 
 export function RestoreDebugOverlay(): JSX.Element | null {
@@ -54,7 +89,7 @@ export function RestoreDebugOverlay(): JSX.Element | null {
 
   if (!enabled) return null;
 
-  const recentEntries = entries.slice(-8).reverse();
+  const recentEntries = entries.slice(-20).reverse();
 
   return (
     <>
@@ -103,6 +138,7 @@ export function RestoreDebugOverlay(): JSX.Element | null {
       >
         <div style={{ fontWeight: 700, marginBottom: 6 }}>Restore Debug</div>
         <div>urlFlag: true</div>
+        <div>allEvents: {String(isRestoreDebugAllEnabled())}</div>
         <div>persistenceDebugEnabled: {String(isPersistenceDebugEnabled())}</div>
         <div>matchingEvents: {entries.length}</div>
         {recentEntries.length === 0 ? (

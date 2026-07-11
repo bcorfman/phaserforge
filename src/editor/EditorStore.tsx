@@ -215,7 +215,7 @@ export type ImportedEntityDraft = {
 };
 
 export type EditorAction =
-  | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; syncMode: ProjectSyncMode; registry: EditorRegistryConfig }
+  | { type: 'initialize'; project: ProjectSpec; currentSceneId: Id; startupMode: StartupMode; themeMode: ThemeMode; uiScale: number; showHitboxOverlay: boolean; syncMode: ProjectSyncMode; registry: EditorRegistryConfig; statusMessage?: string; statusExpiresAt?: number }
   | { type: 'set-sync-mode'; syncMode: ProjectSyncMode }
   | { type: 'reset-project' }
   | { type: 'set-project-metadata'; title?: string; publishTitle?: string; publishGithubPagesRepo?: string; pixelsPerUnit?: number; renderMode?: 'pixel-art' | 'smooth-2d' }
@@ -2272,8 +2272,8 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
           history: { past: [], future: [], pending: undefined },
           dirty: false,
           error: undefined,
-          statusMessage: undefined,
-          statusExpiresAt: undefined,
+          statusMessage: action.statusMessage,
+          statusExpiresAt: action.statusExpiresAt,
           startupMode: action.startupMode,
           themeMode: action.themeMode,
           uiScale: coerceUiScale(String(action.uiScale), DEFAULT_UI_SCALE),
@@ -4744,6 +4744,15 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   };
 
   const summarizeActiveProjectForDebug = (project: ProjectSpec, record: StoredProjectRecord, trigger: string, syncMode: ProjectSyncMode) => ({
+    sceneCount: Object.keys(project.scenes ?? {}).length,
+    entityCount: Object.values(project.scenes ?? {}).reduce(
+      (total, scene) => total + Object.keys(scene.entities ?? {}).length,
+      0,
+    ),
+    textEntityCount: Object.values(project.scenes ?? {}).reduce(
+      (total, scene) => total + Object.values(scene.entities ?? {}).filter((entity) => typeof (entity as { text?: unknown }).text === 'string').length,
+      0,
+    ),
     trigger,
     syncMode,
     projectId: project.id,
@@ -4777,6 +4786,13 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const buildRestoreWarningStatus = (warnings: string[] | undefined): string | undefined => {
+    if (!warnings || warnings.length === 0) return undefined;
+    const [firstWarning] = warnings;
+    const suffix = warnings.length > 1 ? ` (${warnings.length} issues total)` : '';
+    return `Restore warning: ${firstWarning}${suffix}`;
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -4788,6 +4804,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       const storedThemeMode = snapshot.preferences?.themeMode ?? 'system';
       const storedUiScale = snapshot.preferences?.uiScale ?? DEFAULT_UI_SCALE;
       const storedShowHitboxOverlay = snapshot.preferences?.showHitboxOverlay ?? true;
+      const restoreWarningStatus = buildRestoreWarningStatus(snapshot.restoreWarnings);
       const matchedActiveRecord = snapshot.localProjects.find((record) => record.id === snapshot.workspace.activeProjectId) ?? null;
       const firstLocalRecord = snapshot.localProjects[0] ?? null;
       const initialRecord = matchedActiveRecord
@@ -4845,6 +4862,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         showHitboxOverlay: storedShowHitboxOverlay,
         syncMode: snapshot.workspace.syncMode,
         registry,
+        statusMessage: restoreWarningStatus,
+        statusExpiresAt: restoreWarningStatus ? Date.now() + 9000 : undefined,
       });
     };
 
