@@ -65,7 +65,13 @@ async function api<T extends Json>(path: string, init: RequestInit = {}): Promis
 }
 
 export async function fetchCsrfToken(): Promise<string> {
-  const json = await api<{ csrfToken: string }>('/api/v1/auth/csrf');
+  const json = await api<{ csrfToken: string }>('/api/v1/auth/csrf', {
+    cache: 'no-store',
+    headers: {
+      'cache-control': 'no-store',
+      pragma: 'no-cache',
+    },
+  });
   if (typeof json.csrfToken !== 'string') throw new Error('invalid_csrf_response');
   return json.csrfToken;
 }

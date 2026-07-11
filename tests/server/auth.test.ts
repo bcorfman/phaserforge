@@ -51,6 +51,16 @@ describe('auth', () => {
     await request(app).get('/api/v1/health').expect(200).expect({ status: 'ok' });
   });
 
+  it('serves csrf responses with no-store cache headers', async () => {
+    const { app } = makeApp();
+    const res = await request(app).get('/api/v1/auth/csrf').expect(200);
+
+    expect(res.headers['cache-control']).toContain('no-store');
+    expect(res.headers.pragma).toBe('no-cache');
+    expect(res.headers.expires).toBe('0');
+    expect(res.headers['surrogate-control']).toBe('no-store');
+  });
+
   it('signs up and returns session cookie', async () => {
     const { app } = makeApp();
     const agent = request.agent(app);
