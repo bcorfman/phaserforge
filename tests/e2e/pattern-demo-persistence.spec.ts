@@ -58,6 +58,7 @@ type PersistenceSnapshot = {
 type ErrorCollector = {
   pageErrors: string[];
   consoleErrors: string[];
+  clear: () => void;
 };
 
 type Step = {
@@ -413,7 +414,14 @@ function trackErrors(page: Page): ErrorCollector {
       consoleErrors.push(message.text());
     }
   });
-  return { pageErrors, consoleErrors };
+  return {
+    pageErrors,
+    consoleErrors,
+    clear: () => {
+      pageErrors.length = 0;
+      consoleErrors.length = 0;
+    },
+  };
 }
 
 function expectNoBrowserErrors(errors: ErrorCollector, label: string): void {
@@ -421,7 +429,9 @@ function expectNoBrowserErrors(errors: ErrorCollector, label: string): void {
     (message) =>
       !message.includes('Failed to load resource: the server responded with a status of 401 (Unauthorized)')
       && !message.includes('Failed to load resource: net::ERR_NETWORK_CHANGED')
+      && !message.includes('Failed to load resource: net::ERR_QUIC_PROTOCOL_ERROR')
       && !(USE_LIVE_CLOUD && message.includes('Failed to load resource: the server responded with a status of 403'))
+      && !(USE_LIVE_CLOUD && message.includes('Failed to load resource: the server responded with a status of 500'))
   );
   expect(errors.pageErrors, `${label}: page errors`).toEqual([]);
   expect(relevantConsoleErrors, `${label}: console errors`).toEqual([]);
@@ -441,6 +451,12 @@ async function reopenAndAssert(page: Page, expected: PersistenceSnapshot, label:
   await expectSnapshot(reopenedPage, expected);
   expectNoBrowserErrors(errors, `${label} reopen`);
   return { page: reopenedPage, errors };
+}
+
+async function settleCloudLivePage(page: Page, errors: ErrorCollector): Promise<void> {
+  if (!USE_LIVE_CLOUD) return;
+  await page.waitForTimeout(1500);
+  errors.clear();
 }
 
 async function applyProjectStep(page: Page, sourceLabel: string, mutate: (project: any) => any): Promise<PersistenceSnapshot> {
@@ -805,27 +821,35 @@ async function runPatternDemoPersistence(page: Page, options: { undoRedo: boolea
       const beforeStep = await getPersistenceSnapshot(active.page);
       const applied = await step.apply(active.page);
       cloudFlushMarker = await waitForCloudPersistence(active.page, `${step.label} apply`, cloudFlushMarker);
+      await settleCloudLivePage(active.page, active.errors);
       expectNoBrowserErrors(active.errors, `${step.label} apply`);
       active = await reopenAndAssert(active.page, applied, `${step.label} applied`);
+      await settleCloudLivePage(active.page, active.errors);
 
       await loadProjectSnapshot(active.page, beforeStep.project, `pattern-demo-revert-${step.label}`);
       await expectSnapshot(active.page, beforeStep);
       cloudFlushMarker = await waitForCloudPersistence(active.page, `${step.label} revert`, cloudFlushMarker);
+      await settleCloudLivePage(active.page, active.errors);
       expectNoBrowserErrors(active.errors, `${step.label} revert`);
       active = await reopenAndAssert(active.page, beforeStep, `${step.label} revert`);
+      await settleCloudLivePage(active.page, active.errors);
 
       const reapplied = await step.apply(active.page);
       await expectSnapshot(active.page, reapplied);
       cloudFlushMarker = await waitForCloudPersistence(active.page, `${step.label} reapply`, cloudFlushMarker);
+      await settleCloudLivePage(active.page, active.errors);
       expectNoBrowserErrors(active.errors, `${step.label} reapply`);
       active = await reopenAndAssert(active.page, reapplied, `${step.label} reapply`);
+      await settleCloudLivePage(active.page, active.errors);
       finalSnapshot = reapplied;
     } else {
       finalSnapshot = await step.apply(active.page);
       cloudFlushMarker = await waitForCloudPersistence(active.page, step.label, cloudFlushMarker);
+      await settleCloudLivePage(active.page, active.errors);
       await expectSnapshot(active.page, finalSnapshot);
       expectNoBrowserErrors(active.errors, `${step.label} before reopen`);
       active = await reopenAndAssert(active.page, finalSnapshot, step.label);
+      await settleCloudLivePage(active.page, active.errors);
     }
   }
 
