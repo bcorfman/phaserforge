@@ -327,6 +327,7 @@ export function CloudAccountPanel({
   }, [activeCloudGameId, state.project?.id]);
 
   useEffect(() => {
+    cloudGameIdRef.current = activeCloudGameId ?? null;
     setCloudGameId(activeCloudGameId ?? null);
     setCloudGameLookupResolved(true);
   }, [activeCloudGameId]);
@@ -816,7 +817,7 @@ export function CloudAccountPanel({
     return await saveProjectToCloud({
       title,
       project,
-      cloudGameId,
+      cloudGameId: resolvedCloudGameId,
     });
   };
 
@@ -882,7 +883,7 @@ export function CloudAccountPanel({
     const pendingYaml = serializeProjectToYaml(pending.project);
     const pendingYamlSummary = summarizeYamlForDebug(pendingYaml);
     try {
-      const existingCloudGameId = cloudGameIdRef.current;
+      const existingCloudGameId = resolvedCloudGameId;
       appendPersistenceDebugEntry('cloud:autosave-flush-start', {
         ...buildProjectDebugDetails(),
         pendingProjectId: pending.projectId,

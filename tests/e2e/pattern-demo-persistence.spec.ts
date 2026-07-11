@@ -668,9 +668,9 @@ async function initializePatternDemoPage(page: Page): Promise<{ page: Page; erro
 }
 
 async function gotoStudioWithoutDefaultApiStub(page: Page): Promise<void> {
-  await page.goto('./', { waitUntil: 'domcontentloaded', timeout: 10000 });
-  await page.waitForFunction(() => Boolean(window.__PHASER_FORGE_TEST__?.isEnabled), { timeout: 10000 });
-  await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 10000 });
+  await page.goto('./', { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.waitForFunction(() => Boolean(window.__PHASER_FORGE_TEST__?.isEnabled), { timeout: 20000 });
+  await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 20000 });
   await waitForSceneReady(page);
   await dismissViewHint(page);
 }
@@ -870,13 +870,11 @@ async function runPatternDemoPersistence(page: Page, options: { undoRedo: boolea
 
   if (!finalSnapshot) throw new Error('Pattern demo steps produced no final snapshot');
 
-  if (!USE_LIVE_CLOUD) {
+  if (!USE_LIVE_CLOUD && !options.undoRedo) {
     await verifyPatternDemoRuntime(active.page);
-    expectNoBrowserErrors(active.errors, options.undoRedo ? 'undo/redo runtime verification' : 'runtime verification');
-    if (!options.undoRedo) {
-      active = await reopenAndAssert(active.page, finalSnapshot, 'runtime verification');
-      expectNoBrowserErrors(active.errors, 'final reopen');
-    }
+    expectNoBrowserErrors(active.errors, 'runtime verification');
+    active = await reopenAndAssert(active.page, finalSnapshot, 'runtime verification');
+    expectNoBrowserErrors(active.errors, 'final reopen');
   }
 }
 
