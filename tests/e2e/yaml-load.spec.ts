@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('Open YAML (viewbar) opens a picker, loads the chosen file, and shows a status label @smoke @browser', async ({ page }) => {
+test('Import YAML (viewbar) opens a picker, loads the chosen file, and shows a status label @smoke @browser', async ({ page }) => {
   await page.addInitScript(() => {
     // Force the `<input type=file>` picker path for this test.
     (window as any).showOpenFilePicker = undefined;
@@ -25,7 +25,7 @@ test('Open YAML (viewbar) opens a picker, loads the chosen file, and shows a sta
   await gotoStudio(page);
   await dismissViewHint(page);
 
-  await page.getByTestId('yaml-open-button').click();
+  await page.getByTestId('yaml-import-button').click();
   await expect(page.getByTestId('yaml-open-file-input')).toHaveCount(1);
 
   const fixtureName = 'fixture.yaml';

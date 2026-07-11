@@ -4,7 +4,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import { sampleProject } from '../model/sampleProject';
 import { ViewbarYamlControlsView } from './ViewbarYamlControls';
-import { setYamlFileHandle, setYamlFileSourceLabel, setYamlPickerStartIn } from './yamlPickerState';
+import { setYamlPickerStartIn } from './yamlPickerState';
 
 function YamlControlsStoryHarness() {
   const [project, setProject] = useState<any>(sampleProject);
@@ -28,11 +28,9 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const OpenAndSaveSharePickerHandle: Story = {
+export const ImportAndExportSharePickerStartLocation: Story = {
   play: async ({ canvasElement }) => {
     setYamlPickerStartIn(undefined);
-    setYamlFileHandle(undefined);
-    setYamlFileSourceLabel(undefined);
     const openHandle: any = {
       getFile: async () => new File(['id: picked'], 'picked.yaml', { type: 'application/x-yaml' }),
     };
@@ -53,9 +51,9 @@ export const OpenAndSaveSharePickerHandle: Story = {
       return saveHandle;
     };
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByTestId('yaml-open-button'));
-    await userEvent.click(canvas.getByTestId('yaml-save-as-button'));
-    await userEvent.click(canvas.getByTestId('yaml-open-button'));
+    await userEvent.click(canvas.getByTestId('yaml-import-button'));
+    await userEvent.click(canvas.getByTestId('yaml-export-button'));
+    await userEvent.click(canvas.getByTestId('yaml-import-button'));
 
     await waitFor(() => {
       const testState = (window as any).__YAML_PICKER_STORY__;
@@ -64,36 +62,5 @@ export const OpenAndSaveSharePickerHandle: Story = {
       expect(testState.saveCalls[0]?.startIn).toBe(testState.openHandle);
       expect(testState.openCalls[1]?.startIn).toBe(testState.saveHandle);
     });
-  },
-};
-
-export const SaveExistingHandle: Story = {
-  play: async ({ canvasElement }) => {
-    const writes: string[] = [];
-    const saveHandle: any = {
-      createWritable: async () => ({
-        write: async (text: string) => writes.push(text),
-        close: async () => {},
-      }),
-    };
-    setYamlPickerStartIn(undefined);
-    setYamlFileHandle(saveHandle);
-    setYamlFileSourceLabel('scene.yaml');
-    (window as any).__YAML_STORY_STATE__ = { dispatchCalls: [] };
-    (window as any).__YAML_SAVE_STORY__ = { writes, saveHandle };
-    (window as any).showSaveFilePicker = async () => saveHandle;
-    (window as any).showOpenFilePicker = undefined;
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByTestId('yaml-save-button'));
-    await waitFor(() => {
-      expect((window as any).__YAML_SAVE_STORY__.writes.length).toBe(1);
-    });
-    expect((window as any).__YAML_STORY_STATE__.dispatchCalls).toEqual(
-      expect.arrayContaining([
-        { type: 'set-error', error: undefined },
-        { type: 'mark-saved' },
-        expect.objectContaining({ type: 'set-status', message: 'Saved YAML: scene.yaml' }),
-      ]),
-    );
   },
 };
