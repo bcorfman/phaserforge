@@ -13,6 +13,7 @@ type ViewbarYamlControlsViewProps = {
 
 export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlControlsViewProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const yamlFileLabel = getYamlFileSourceLabel();
 
   const openFromPicker = async () => {
     dispatch({ type: 'set-error', error: undefined });
@@ -95,11 +96,14 @@ export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlContro
   const saveAs = async () => {
     dispatch({ type: 'set-error', error: undefined });
     try {
-      const result = await exportYamlToDisk(serializeProjectToYaml(project), { startIn: getYamlPickerStartIn() });
+      const result = await exportYamlToDisk(serializeProjectToYaml(project), {
+        suggestedName: yamlFileLabel ?? 'scene.yaml',
+        startIn: getYamlPickerStartIn(),
+      });
       if (result.kind === 'saved') {
         setYamlPickerStartIn(result.handle);
         setYamlFileHandle(result.handle);
-        setYamlFileSourceLabel(getYamlFileSourceLabel() ?? 'scene.yaml');
+        setYamlFileSourceLabel(result.label);
         dispatch({ type: 'mark-saved' });
         dispatch({ type: 'set-status', message: 'Saved YAML', expiresAt: Date.now() + 4000 });
       } else {
@@ -115,7 +119,16 @@ export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlContro
 
   return (
     <div className="viewbar-yaml" role="toolbar" aria-label="YAML file actions">
-      <div className="viewbar-group">
+      <div className="viewbar-group viewbar-yaml-group">
+        {yamlFileLabel ? (
+          <span className="viewbar-yaml-file-label" data-testid="yaml-file-label" title={yamlFileLabel}>
+            {yamlFileLabel}
+          </span>
+        ) : (
+          <span className="viewbar-yaml-file-label viewbar-yaml-file-label-hidden" data-testid="yaml-file-label-hidden" aria-hidden="true">
+            scene.yaml
+          </span>
+        )}
         <button className="button" type="button" data-testid="yaml-open-button" onClick={() => void openFromPicker()}>
           Open YAML…
         </button>
