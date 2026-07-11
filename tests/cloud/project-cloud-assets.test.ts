@@ -4,7 +4,7 @@ import { createEmptyProject } from '../../src/model/emptyProject';
 import { prepareProjectForCloudSave } from '../../src/cloud/projectCloudAssets';
 
 describe('prepareProjectForCloudSave', () => {
-  it('uploads embedded and path assets and rewrites them to cloud refs', async () => {
+  it('uploads embedded assets and preserves bundled path assets', async () => {
     const project = createEmptyProject();
     project.assets.images.hero = {
       id: 'hero',
@@ -37,10 +37,6 @@ describe('prepareProjectForCloudSave', () => {
       },
     } as any;
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      blob: async () => new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'font/woff2' }),
-    } as Response);
     const upload = vi.fn(async (source: any) => ({
       kind: 'cloud' as const,
       assetId: `asset-${source.originalName}`,
@@ -50,8 +46,7 @@ describe('prepareProjectForCloudSave', () => {
 
     const prepared = await prepareProjectForCloudSave(project, upload);
 
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(upload).toHaveBeenCalledTimes(3);
+    expect(upload).toHaveBeenCalledTimes(2);
     expect(prepared).not.toBe(project);
     expect(prepared.assets.images.hero.source).toEqual({
       kind: 'cloud',
@@ -66,13 +61,11 @@ describe('prepareProjectForCloudSave', () => {
       mimeType: 'audio/mpeg',
     });
     expect(prepared.assets.fonts.arcade.source).toEqual({
-      kind: 'cloud',
-      assetId: 'asset-arcade.woff2',
+      kind: 'path',
+      path: 'assets/demo-pack/fonts/arcade.woff2',
       originalName: 'arcade.woff2',
       mimeType: 'font/woff2',
     });
-
-    fetchSpy.mockRestore();
   });
 
   it('reuses cached uploads for identical embedded sources', async () => {
@@ -101,7 +94,7 @@ describe('prepareProjectForCloudSave', () => {
     expect(cache.get(shared.dataUrl)).toEqual(prepared.audio.sounds.theme.source);
   });
 
-  it('reuses cached uploads for identical path sources', async () => {
+  it('preserves identical path sources without uploading them', async () => {
     const project = createEmptyProject();
     const shared = {
       kind: 'path',
@@ -112,10 +105,6 @@ describe('prepareProjectForCloudSave', () => {
     project.audio.sounds.theme = { id: 'theme', source: shared } as any;
     project.audio.sounds.theme2 = { id: 'theme2', source: shared } as any;
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      blob: async () => new Blob([new Uint8Array([9, 9, 9])], { type: 'audio/mpeg' }),
-    } as Response);
     const cache = new Map<string, any>();
     const upload = vi.fn(async () => ({
       kind: 'cloud' as const,
@@ -126,11 +115,9 @@ describe('prepareProjectForCloudSave', () => {
 
     const prepared = await prepareProjectForCloudSave(project, upload, cache);
 
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(upload).toHaveBeenCalledTimes(1);
-    expect(prepared.audio.sounds.theme.source).toEqual(prepared.audio.sounds.theme2.source);
-    expect(cache.get(shared.path)).toEqual(prepared.audio.sounds.theme.source);
-
-    fetchSpy.mockRestore();
+    expect(upload).not.toHaveBeenCalled();
+    expect(prepared.audio.sounds.theme.source).toEqual(shared);
+    expect(prepared.audio.sounds.theme2.source).toEqual(shared);
+    expect(cache.size).toBe(0);
   });
 });
