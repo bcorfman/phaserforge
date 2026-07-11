@@ -43,6 +43,52 @@ Success check:
 
 <p align="center"><em>Figure 3. Assets Dock after importing the Demo Pack assets.</em></p>
 
+## Add the Text Labels
+
+1. In the left sidebar, under Scene Graph, click the "+ Add" button beside Text. 
+
+   - **NOTE:** This will create one text entity called 't'. 
+
+2. Rough-place the text entity (i.e., drag it) in the upper-left corner of the viewport (light blue) rectangle.
+
+3. Hit the F2 key and rename the text entity to "Wave"
+
+4. Hit the F3 key and type in "Wave" as the text property of the highlighted entity. 
+
+   - **NOTE:** you should see the text change for the entity in the Canvas.
+
+5. Repeat steps 1-4 for each of the sprites in the top and bottom rows until you have named labels spread out over each row.
+
+   - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
+   - bottom row: `Spiral`, `Bounce`, `Patrol`
+
+6. Drag-select the top-row labels, and in the popup Selection Bar, use `Layout …`:
+
+   - Under Arrange Items, click `Distribute X`.
+   - Under Align Selection, click `Center X`.
+   - Under Advanced, level the ships with `Match top edges`
+   - Under Position Selection, type `120` under `Y`, then click `Set Y`. 
+   - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
+
+7. Click a blank space somewhere in the canvas to deselect the top-row sprites.
+
+8. Drag-select the bottom-row labels, and in the popup Selection Bar, use `Layout …`. 
+
+   - Under Arrange Items, click `Distribute X`.
+   - Under Align Selection, click `Center X`.
+   - Under Advanced, level the ships with `Match top edges`
+   - Under Position Selection, type `340` under `Y`, then click `Set Y`. 
+   - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
+
+<img src="../assets/screenshots/playwright/ships-and-titles.png" alt="Ships and titles lined up"  style="display: block; margin: 0 auto; width: 910px; max-width: 100%; height: auto;" />
+
+<p align="center"><em>Figure 8. Ships and titles lined up - success check.</em></p>
+
+Success check:
+- Each ship has one readable label above it.
+- Labels are visually aligned with the ships.
+
+
 ## Create the Sprites
 
 1. In the Assets Dock under Images, scroll down to find the image labeled "ship_sidesA". 
@@ -111,52 +157,6 @@ Success check:
 Success check:
 - The four top-row ships are equally spaced and centered, and sit on same `Y = 200` baseline.
 - The three bottom-row ships are equally spaced and centered, and sit on same `Y = 420` baseline.
-
-## Add the Text Labels
-
-1. In the left sidebar, under Scene Graph, click the "+ Add" button beside Text. 
-
-   - **NOTE:** This will create one text entity called 't'. 
-
-2. Hit the F2 key and rename the text entity to "Wave"
-
-3. Rough-place the text entity (i.e., drag it) over top of the Wave sprite (the leftmost of the top row of sprites).
-
-4. Hit the F3 key and type in "Wave" as the text property of the highlighted entity. 
-
-   - **NOTE:** you should see the text change for the entity in the Canvas.
-
-5. Repeat steps 1-4 for each of the sprites in the top and bottom rows until you have named labels over each of the ship sprites.
-
-   - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
-   - bottom row: `Spiral`, `Bounce`, `Patrol`
-   - **NOTE:** You may be tempted to use Alt-Drag to duplicate the text entities as you did earlier with the ship sprites, but duplicating the text entities also copies their name and text as well, so this can quickly get confusing. Using "+ Add" is the better approach in this scenario.
-
-6. Drag-select the top-row labels, and in the popup Selection Bar, use `Layout …`:
-
-   - Under Arrange Items, click `Distribute X`.
-   - Under Align Selection, click `Center X`.
-   - Under Advanced, level the ships with `Match top edges`
-   - Under Position Selection, type `120` under `Y`, then click `Set Y`. 
-   - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
-
-7. Click a blank space somewhere in the canvas to deselect the top-row sprites.
-
-8. Drag-select the bottom-row labels, and in the popup Selection Bar, use `Layout …`. 
-
-   - Under Arrange Items, click `Distribute X`.
-   - Under Align Selection, click `Center X`.
-   - Under Advanced, level the ships with `Match top edges`
-   - Under Position Selection, type `340` under `Y`, then click `Set Y`. 
-   - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
-
-<img src="../assets/screenshots/playwright/ships-and-titles.png" alt="Ships and titles lined up"  style="display: block; margin: 0 auto; width: 910px; max-width: 100%; height: auto;" />
-
-<p align="center"><em>Figure 8. Ships and titles lined up - success check.</em></p>
-
-Success check:
-- Each ship has one readable label above it.
-- Labels are visually aligned with the ships.
 
 ## Attach the Movement Patterns
 
@@ -324,6 +324,7 @@ Success check:
       - Switch `Bounds` edit mode to `Center/Span`
       - Set `± X Span = 50`
       - Set `± Y Span = 60`
+       
         **NOTE:** You will see the bounding box around the ship expand, indicating the bounce area.
       - Click the Back arrow in the properties panel to return to the Actions list.
 
@@ -350,6 +351,7 @@ Success check:
       - Switch `Bounds` edit mode to `Min/Max`
       - Set `Min Y = 400`
       - Set `Max Y = 500`
+      
         **NOTE:** You will see the bounding box around the ship expand, indicating the patrol bounds.
 
 <img src="../assets/screenshots/playwright/patrol-bounds-panel.png" alt="Patrol bounds panel" style="display: block; margin: 0 auto; width: 460px; max-width: 100%; height: auto;" />
