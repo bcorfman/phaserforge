@@ -2,8 +2,8 @@ import { useRef } from 'react';
 import { serializeProjectToYaml } from '../model/serialization';
 import { useEditorStore } from './EditorStore';
 import { exportYamlToDisk } from './yamlFileExport';
-import { getYamlFileHandle, getYamlFileSourceLabel, getYamlPickerStartIn, setYamlFileHandle, setYamlFileSourceLabel, setYamlPickerStartIn } from './yamlPickerState';
-import { getOpenFilePicker, readFileHandleText, writeTextToHandle } from './yamlFileHandles';
+import { getYamlPickerStartIn, setYamlPickerStartIn } from './yamlPickerState';
+import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
 import { appendPersistenceDebugEntry } from '../util/persistenceDebug';
 
 type ViewbarYamlControlsViewProps = {
@@ -13,9 +13,8 @@ type ViewbarYamlControlsViewProps = {
 
 export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlControlsViewProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const yamlFileLabel = getYamlFileSourceLabel();
 
-  const openFromPicker = async () => {
+  const importFromPicker = async () => {
     dispatch({ type: 'set-error', error: undefined });
 
     const picker = getOpenFilePicker();
@@ -35,16 +34,14 @@ export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlContro
           ],
           ...(getYamlPickerStartIn() ? { startIn: getYamlPickerStartIn() } : {}),
         });
-          const handle = handles?.[0];
-          if (handle) {
-            setYamlPickerStartIn(handle);
-            setYamlFileHandle(handle);
-            const { text, label } = await readFileHandleText(handle);
-            setYamlFileSourceLabel(label);
-            appendPersistenceDebugEntry('viewbar:load-yaml-text-dispatch', { sourceLabel: label });
-            dispatch({ type: 'load-yaml-text', text, sourceLabel: label });
-            return;
-          }
+        const handle = handles?.[0];
+        if (handle) {
+          setYamlPickerStartIn(handle);
+          const { text, label } = await readFileHandleText(handle);
+          appendPersistenceDebugEntry('viewbar:load-yaml-text-dispatch', { sourceLabel: label });
+          dispatch({ type: 'load-yaml-text', text, sourceLabel: label });
+          return;
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         // Fall back to <input type=file>.
@@ -68,8 +65,6 @@ export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlContro
     if (!file) return;
     try {
       const text = await file.text();
-      setYamlFileHandle(undefined);
-      setYamlFileSourceLabel(file.name ?? 'picked file');
       appendPersistenceDebugEntry('viewbar:load-yaml-text-dispatch', { sourceLabel: file.name ?? 'picked file' });
       dispatch({ type: 'load-yaml-text', text, sourceLabel: file.name ?? 'picked file' });
     } catch (err) {
@@ -77,40 +72,21 @@ export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlContro
     }
   };
 
-  const saveToSameFile = async () => {
-    dispatch({ type: 'set-error', error: undefined });
-    const handle = getYamlFileHandle();
-    if (!handle) {
-      await saveAs();
-      return;
-    }
-    try {
-      await writeTextToHandle(handle, serializeProjectToYaml(project));
-      dispatch({ type: 'mark-saved' });
-      dispatch({ type: 'set-status', message: `Saved YAML: ${getYamlFileSourceLabel() ?? 'file'}`, expiresAt: Date.now() + 4000 });
-    } catch (err) {
-      dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to save YAML' });
-    }
-  };
-
-  const saveAs = async () => {
+  const exportYaml = async () => {
     dispatch({ type: 'set-error', error: undefined });
     try {
       const result = await exportYamlToDisk(serializeProjectToYaml(project), {
-        suggestedName: yamlFileLabel ?? 'scene.yaml',
+        suggestedName: 'scene.yaml',
         startIn: getYamlPickerStartIn(),
       });
       if (result.kind === 'saved') {
         setYamlPickerStartIn(result.handle);
-        setYamlFileHandle(result.handle);
-        setYamlFileSourceLabel(result.label);
         dispatch({ type: 'mark-saved' });
         dispatch({ type: 'set-status', message: 'Saved YAML', expiresAt: Date.now() + 4000 });
-      } else {
-        setYamlFileHandle(undefined);
-        dispatch({ type: 'mark-saved' });
-        dispatch({ type: 'set-status', message: 'Downloaded YAML', expiresAt: Date.now() + 4000 });
+        return;
       }
+      dispatch({ type: 'mark-saved' });
+      dispatch({ type: 'set-status', message: 'Downloaded YAML', expiresAt: Date.now() + 4000 });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       dispatch({ type: 'set-error', error: err instanceof Error ? err.message : 'Failed to save YAML' });
@@ -119,24 +95,12 @@ export function ViewbarYamlControlsView({ project, dispatch }: ViewbarYamlContro
 
   return (
     <div className="viewbar-yaml" role="toolbar" aria-label="YAML file actions">
-      <div className="viewbar-group viewbar-yaml-group">
-        {yamlFileLabel ? (
-          <span className="viewbar-yaml-file-label" data-testid="yaml-file-label" title={yamlFileLabel}>
-            {yamlFileLabel}
-          </span>
-        ) : (
-          <span className="viewbar-yaml-file-label viewbar-yaml-file-label-hidden" data-testid="yaml-file-label-hidden" aria-hidden="true">
-            scene.yaml
-          </span>
-        )}
-        <button className="button" type="button" data-testid="yaml-open-button" onClick={() => void openFromPicker()}>
-          Open YAML…
+      <div className="viewbar-group">
+        <button className="button" type="button" data-testid="yaml-import-button" onClick={() => void importFromPicker()}>
+          Import YAML…
         </button>
-        <button className="button" type="button" data-testid="yaml-save-button" onClick={() => void saveToSameFile()}>
-          Save YAML
-        </button>
-        <button className="button" type="button" data-testid="yaml-save-as-button" onClick={() => void saveAs()}>
-          Save YAML As…
+        <button className="button" type="button" data-testid="yaml-export-button" onClick={() => void exportYaml()}>
+          Export YAML…
         </button>
       </div>
 
