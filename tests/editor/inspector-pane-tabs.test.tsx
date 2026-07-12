@@ -3,6 +3,26 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 
+const eventBusSpy = vi.hoisted(() => {
+  const listeners = new Map<string, Set<(...args: any[]) => void>>();
+  return {
+    emit(event: string, ...args: any[]) {
+      listeners.get(event)?.forEach((listener) => listener(...args));
+    },
+    on(event: string, listener: (...args: any[]) => void) {
+      const handlers = listeners.get(event) ?? new Set();
+      handlers.add(listener);
+      listeners.set(event, handlers);
+    },
+    off(event: string, listener: (...args: any[]) => void) {
+      listeners.get(event)?.delete(listener);
+    },
+    reset() {
+      listeners.clear();
+    },
+  };
+});
+
 const inspectorPaneStore = vi.hoisted(() => ({
   state: { id: 'state' },
   dispatch: vi.fn(),
@@ -27,6 +47,10 @@ vi.mock('../../src/editor/EditorStore', () => ({
 
 vi.mock('../../src/editor/Inspector', () => ({
   Inspector: () => <div data-testid="mock-inspector">Inspector body</div>,
+}));
+
+vi.mock('../../src/phaser/EventBus', () => ({
+  EventBus: eventBusSpy,
 }));
 
 vi.mock('../../src/editor/CloudAccountPanel', () => ({
@@ -64,6 +88,7 @@ describe('InspectorPane tabs', () => {
     cloudPanelSpy.onError = undefined;
     cloudPanelSpy.cachedUser = undefined;
     cloudPanelSpy.resolveUser.mockReset();
+    eventBusSpy.reset();
   });
 
   it('hides cloud tab controls on localhost and renders the inspector', () => {
@@ -211,5 +236,23 @@ describe('InspectorPane tabs', () => {
 
     expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(false);
     expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(true);
+  });
+
+  it('switches back to Inspector when text editing is requested from the canvas', () => {
+    (globalThis as { location?: { hostname: string } }).location = { hostname: 'phaserforge.app' };
+    cloudPanelSpy.cachedUser = { id: 'u1', email: 'alice@example.com' };
+
+    render(<InspectorPane />);
+
+    fireEvent.click(screen.getByTestId('inspector-pane-tab-cloud'));
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(false);
+    expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(true);
+
+    act(() => {
+      eventBusSpy.emit('focus-text-entity-content', 'entity-1');
+    });
+
+    expect(screen.getByTestId('inspector-pane-panel-inspector').hidden).toBe(false);
+    expect(screen.getByTestId('inspector-pane-panel-cloud').hidden).toBe(true);
   });
 });
