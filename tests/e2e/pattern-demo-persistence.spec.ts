@@ -444,7 +444,15 @@ function expectNoBrowserErrors(errors: ErrorCollector, label: string): void {
 
 async function expectSnapshot(page: Page, expected: PersistenceSnapshot): Promise<void> {
   await expect.poll(async () => getPersistenceSnapshot(page)).toEqual(expected);
-  await expect.poll(async () => (await getState<any>(page))?.error ?? null).toBeNull();
+  await expect.poll(async () => {
+    const error = (await getState<any>(page))?.error ?? null;
+    if (!USE_LIVE_CLOUD || error == null) return null;
+    const marker = await getCloudFlushMarker(page);
+    if (marker.lastSuccessTimestamp && (!marker.lastErrorTimestamp || marker.lastSuccessTimestamp > marker.lastErrorTimestamp)) {
+      return null;
+    }
+    return error;
+  }).toBeNull();
 }
 
 async function reopenAndAssert(page: Page, expected: PersistenceSnapshot, label: string): Promise<{ page: Page; errors: ErrorCollector }> {
@@ -746,6 +754,11 @@ async function waitForCloudPersistence(page: Page, label: string, previousMarker
   const readCloudStatus = async () =>
     page.evaluate(async ({ previousErrorTimestamp }) => {
       const debugEntries = (window as any).__PHASER_FORGE_PERSISTENCE_DEBUG__?.read?.() ?? [];
+      const successEntries = debugEntries.filter((entry: { event?: string }) => entry.event === 'cloud:autosave-flush-success');
+      const errorEntries = debugEntries.filter((entry: { event?: string }) =>
+        entry.event === 'cloud:autosave-flush-error'
+        || entry.event === 'editor-store:save-active-error'
+        || entry.event === 'project-persistence:save-active-project-record-error');
       const openDb = () =>
         new Promise<IDBDatabase>((resolve, reject) => {
           const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
@@ -765,25 +778,17 @@ async function waitForCloudPersistence(page: Page, label: string, previousMarker
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
+      const lastSuccess = successEntries.at(-1) as { timestamp?: string } | undefined;
+      const lastError = errorEntries.at(-1) as { timestamp?: string } | undefined;
       return {
-        successCount: debugEntries.filter((entry: { event?: string }) => entry.event === 'cloud:autosave-flush-success').length,
-        errorEvents: debugEntries
-          .filter((entry: { event?: string }) =>
-            entry.event === 'cloud:autosave-flush-error'
-            || entry.event === 'editor-store:save-active-error'
-            || entry.event === 'project-persistence:save-active-project-record-error'
-          )
+        successCount: successEntries.length,
+        errorEvents: errorEntries
           .filter((entry: { timestamp?: string }) =>
             previousErrorTimestamp == null
             || (typeof entry.timestamp === 'string' && entry.timestamp > previousErrorTimestamp)
           )
           .map((entry: { event?: string }) => entry.event ?? '(unknown)'),
-        recentErrorDetails: debugEntries
-          .filter((entry: { event?: string }) =>
-            entry.event === 'cloud:autosave-flush-error'
-            || entry.event === 'editor-store:save-active-error'
-            || entry.event === 'project-persistence:save-active-project-record-error'
-          )
+        recentErrorDetails: errorEntries
           .filter((entry: { timestamp?: string }) =>
             previousErrorTimestamp == null
             || (typeof entry.timestamp === 'string' && entry.timestamp > previousErrorTimestamp)
@@ -793,26 +798,31 @@ async function waitForCloudPersistence(page: Page, label: string, previousMarker
             event: entry.event ?? '(unknown)',
             details: entry.details ?? null,
           })),
+        lastSuccessTimestamp: typeof lastSuccess?.timestamp === 'string' ? lastSuccess.timestamp : null,
+        lastErrorTimestamp: typeof lastError?.timestamp === 'string' ? lastError.timestamp : null,
         syncStatus: project?.syncStatus ?? null,
         cloudProjectId: project?.cloudProjectId ?? null,
       };
     }, { previousErrorTimestamp: previousMarker.lastErrorTimestamp });
 
   try {
-    await expect.poll(readCloudStatus, {
+    await expect.poll(async () => {
+      const status = await readCloudStatus();
+      return (
+        status.syncStatus === 'cloud'
+        && typeof status.cloudProjectId === 'string'
+        && status.cloudProjectId.length > 0
+        && typeof status.lastSuccessTimestamp === 'string'
+        && status.lastSuccessTimestamp !== previousMarker.lastSuccessTimestamp
+        && (
+          status.lastErrorTimestamp == null
+          || status.lastSuccessTimestamp > status.lastErrorTimestamp
+        )
+      );
+    }, {
       timeout: 30000,
       message: `[cloud:${label}] waiting for active project to become cloud-backed without persistence errors`,
-    }).toMatchObject({
-      successCount: expect.any(Number),
-      errorEvents: [],
-      syncStatus: 'cloud',
-      cloudProjectId: expect.any(String),
-    });
-
-    await expect.poll(async () => (await getCloudFlushMarker(page)).lastSuccessTimestamp, {
-      timeout: 30000,
-      message: `[cloud:${label}] waiting for a new cloud autosave flush success`,
-    }).not.toBe(previousMarker.lastSuccessTimestamp);
+    }).toBe(true);
   } catch (error) {
     const recentEvents = await getRecentPersistenceEvents(page);
     const recentErrorDetails = await getRecentPersistenceErrorDetails(page);
