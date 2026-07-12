@@ -63,6 +63,7 @@ type PersistenceSnapshot = {
 type ErrorCollector = {
   pageErrors: string[];
   consoleErrors: string[];
+  httpErrors: string[];
   clear: () => void;
 };
 
@@ -411,34 +412,53 @@ async function getPersistenceSnapshot(page: Page): Promise<PersistenceSnapshot> 
 function trackErrors(page: Page): ErrorCollector {
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
+  const httpErrors: string[] = [];
   page.on('pageerror', (error) => {
     pageErrors.push(error.message);
   });
   page.on('console', (message) => {
     if (message.type() === 'error') {
-      consoleErrors.push(message.text());
+      const location = message.location();
+      const source = location.url ? ` [${location.url}:${location.lineNumber}:${location.columnNumber}]` : '';
+      consoleErrors.push(`${message.text()}${source}`);
     }
+  });
+  page.on('response', (response) => {
+    const status = response.status();
+    if (status < 400) return;
+    const request = response.request();
+    httpErrors.push(`${status} ${request.method()} ${response.url()}`);
   });
   return {
     pageErrors,
     consoleErrors,
+    httpErrors,
     clear: () => {
       pageErrors.length = 0;
       consoleErrors.length = 0;
+      httpErrors.length = 0;
     },
   };
 }
 
 function expectNoBrowserErrors(errors: ErrorCollector, label: string): void {
+  const relevantHttpErrors = errors.httpErrors.filter(
+    (message) =>
+      !message.startsWith('401 ')
+      && !(USE_LIVE_CLOUD && message.startsWith('403 '))
+      && !(USE_LIVE_CLOUD && message.startsWith('500 '))
+  );
   const relevantConsoleErrors = errors.consoleErrors.filter(
     (message) =>
       !message.includes('Failed to load resource: the server responded with a status of 401 (Unauthorized)')
+      && !(message.includes('Failed to load resource: the server responded with a status of 400') && relevantHttpErrors.length > 0)
       && !message.includes('Failed to load resource: net::ERR_NETWORK_CHANGED')
       && !message.includes('Failed to load resource: net::ERR_QUIC_PROTOCOL_ERROR')
       && !(USE_LIVE_CLOUD && message.includes('Failed to load resource: the server responded with a status of 403'))
       && !(USE_LIVE_CLOUD && message.includes('Failed to load resource: the server responded with a status of 500'))
   );
   expect(errors.pageErrors, `${label}: page errors`).toEqual([]);
+  expect(relevantHttpErrors, `${label}: http errors`).toEqual([]);
   expect(relevantConsoleErrors, `${label}: console errors`).toEqual([]);
 }
 
