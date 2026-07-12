@@ -399,6 +399,16 @@ test('assigns a group MoveUntil action to imported sprites and runs it in play m
   await page.getByTestId('event-add-open').click();
   await page.getByTestId('action-library-add-MoveUntil').click();
   await page.getByTestId('attachment-velocity-x-input').fill('120');
+  // Commit validated numeric inputs before switching modes.
+  await page.getByTestId('attachment-name-input').click();
+
+  await expect.poll(async () => {
+    const state = await getState<{ scene: { attachments: Record<string, { target: { type: string; groupId?: string }; presetId: string; params?: Record<string, unknown> }> } }>(page);
+    const created = Object.values(state.scene.attachments).find(
+      (att) => att.target.type === 'group' && att.presetId === 'MoveUntil'
+    );
+    return created ? Number(created.params?.velocityX ?? 0) : null;
+  }).toBe(120);
 
   const firstMemberId = await page.evaluate(() => {
     const state = window.__PHASER_FORGE_TEST__?.getState() as { scene: { groups: Record<string, { name?: string; members: string[] }> } } | null;
