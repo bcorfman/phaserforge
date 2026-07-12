@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { EventBus } from '../phaser/EventBus';
 import { useEditorStore } from './EditorStore';
 import { Inspector } from './Inspector';
 import {
@@ -142,6 +143,19 @@ export function InspectorPane() {
     if (!hasWorkspaceConflict) return;
     setTab('cloud');
   }, [cloudEnabled, hasWorkspaceConflict]);
+
+  useEffect(() => {
+    if (!cloudEnabled) return;
+
+    const handleFocusTextEntityContent = () => {
+      setTab('inspector');
+    };
+
+    EventBus.on('focus-text-entity-content', handleFocusTextEntityContent);
+    return () => {
+      EventBus.off('focus-text-entity-content', handleFocusTextEntityContent);
+    };
+  }, [cloudEnabled]);
 
   useEffect(() => {
     if (!state.initialized) return;
