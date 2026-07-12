@@ -1,5 +1,4 @@
 import type { PrismaClient } from '@prisma/client';
-import { serializeProjectToYaml } from '../../../../src/model/serialization';
 
 import type {
   AssetRepository,
@@ -255,13 +254,11 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
       }));
     },
     async create(game) {
-      const yaml = serializeProjectToYaml(game.project);
       const row = await prisma.game.create({
         data: {
           id: game.id,
           userId: game.userId,
           title: game.title,
-          yaml,
           project: game.project as any,
           createdAt: new Date(game.createdAt),
           updatedAt: new Date(game.updatedAt),
@@ -289,12 +286,10 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
       };
     },
     async updateForUser(id, userId, patch) {
-      const yaml = patch.project ? serializeProjectToYaml(patch.project) : undefined;
       const row = await prisma.game.updateMany({
         where: { id, userId },
         data: {
           ...(typeof patch.title === 'string' ? { title: patch.title } : {}),
-          ...(typeof yaml === 'string' ? { yaml } : {}),
           ...(patch.project ? { project: patch.project as any } : {}),
           updatedAt: new Date(patch.updatedAt),
         } as any,
