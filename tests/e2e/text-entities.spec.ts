@@ -63,7 +63,10 @@ test('creates a text entity, edits it, and round-trips via YAML @critical', asyn
 });
 
 test('F3 focuses text content and supports live preview with Enter commit / Escape revert @smoke', async ({ page }) => {
-  await gotoStudio(page);
+  await page.evaluate(() => {
+    window.sessionStorage.setItem('phaserforge.testForceCloudEnabled.v1', '1');
+  });
+  await gotoStudio(page, { forceNavigate: true });
   await dismissViewHint(page);
 
   const initial = await getState<any>(page);
@@ -74,8 +77,14 @@ test('F3 focuses text content and supports live preview with Enter commit / Esca
   const entityId = created.selection?.id as string;
   const originalValue = created.scene?.entities?.[entityId]?.text?.value as string;
 
+  await page.getByTestId('inspector-pane-tab-cloud').click();
+  await expect(page.getByTestId('inspector-pane-panel-cloud')).toBeVisible();
+  await expect(page.getByTestId('inspector-pane-panel-inspector')).toBeHidden();
+
   await page.keyboard.press('F3');
 
+  await expect(page.getByTestId('inspector-pane-panel-inspector')).toBeVisible();
+  await expect(page.getByTestId('inspector-pane-panel-cloud')).toBeHidden();
   const textInput = page.getByTestId('entity-text-content');
   await expect(textInput).toBeFocused();
   await expect.poll(async () => textInput.evaluate((node) => {
