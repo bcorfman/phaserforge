@@ -298,6 +298,88 @@ describe('CloudAccountPanel publish gating', () => {
     }
   });
 
+  it('clears a transient cloud autosave error after the retry succeeds', async () => {
+    vi.useFakeTimers();
+    api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
+
+    const initialProject = createEmptyProject();
+    initialProject.id = 'project-1';
+    initialProject.title = 'Pattern Demo';
+
+    api.updateGame
+      .mockRejectedValueOnce(new Error('internal_error [500 PUT /api/v1/games/g-1]'))
+      .mockResolvedValueOnce({ updated_at: 'u2' });
+
+    const onStatus = vi.fn();
+
+    function Harness({ project }: { project: any }) {
+      const [state, setState] = React.useState<any>({
+        initialized: true,
+        syncMode: 'online',
+        project: structuredClone(project),
+        error: undefined,
+      });
+
+      React.useEffect(() => {
+        setState((current: any) => ({ ...current, project: structuredClone(project) }));
+      }, [project]);
+
+      const dispatch = React.useCallback((action: any) => {
+        setState((current: any) => {
+          if (action.type === 'set-error') {
+            return { ...current, error: action.error };
+          }
+          return current;
+        });
+      }, []);
+
+      return (
+        <div>
+          <div data-testid="error-state">{state.error ?? ''}</div>
+          <CloudAccountPanel
+            state={state}
+            activeCloudGameId="g-1"
+            dispatch={dispatch as any}
+            onLoadYaml={() => {}}
+            onStatus={onStatus}
+            onError={(message) => dispatch({ type: 'set-error', error: message })}
+          />
+        </div>
+      );
+    }
+
+    const view = renderIntoDom(<Harness project={initialProject} />);
+    try {
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      api.updateGame.mockClear();
+
+      const edited = structuredClone(initialProject);
+      edited.title = 'Pattern Demo 2';
+
+      act(() => {
+        view.root.render(<Harness project={edited} />);
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+
+      expect(api.updateGame).toHaveBeenCalledTimes(1);
+      expect(view.container.querySelector('[data-testid="error-state"]')?.textContent).toContain('internal_error');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+
+      expect(api.updateGame).toHaveBeenCalledTimes(2);
+      expect(view.container.querySelector('[data-testid="error-state"]')?.textContent).toBe('');
+    } finally {
+      view.cleanup();
+    }
+  });
+
   it('does not autosave a placeholder project before the editor finishes hydrating', async () => {
     vi.useFakeTimers();
     api.me.mockResolvedValueOnce({ user: { id: 'u1', email: 'dev@example.com' } });
