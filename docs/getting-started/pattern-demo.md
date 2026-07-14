@@ -82,18 +82,18 @@ Success check:
 
 10. Drag-select the bottom-row labels, and in the popup Selection Bar, use `Layout …`.
 
-   - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and click `Apply Spacing X`.
-   - Under Advanced, level the labels with `Match top edges`.
-   - Under Position Selection, type `340` under `Y`, then click `Set Y`.
-   - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
+    - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and click `Apply Spacing X`.
+    - Under Advanced, level the labels with `Match top edges`.
+    - Under Position Selection, type `340` under `Y`, then click `Set Y`.
+    - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 <img src="../assets/screenshots/playwright/titles-lined-up.png" alt="Titles lined up"  style="display: block; margin: 0 auto; width: 910px; max-width: 100%; height: auto;" />
 
 <p align="center"><em>Figure 5. Titles lined up - success check.</em></p>
 
 Success check:
-- There is one top row with four labels
-- There is one bottom row with three labels.
+   - There is one top row with four labels
+   - There is one bottom row with three labels.
 
 
 ## Create the Sprites
@@ -145,7 +145,7 @@ Success check:
 <p align="center"><em>Figure 8. Layout popover for spacing and set-position operations.</em></p>
 
 1. For the top row, drag-select the top four ships and click the `Layout…` button to change their positions as a group:
-   - **NOTE:** A Layout pop-up window will appear.
+   **NOTE:** A Layout pop-up window will appear.
    - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and hit `Apply Spacing X`
    - Under Align Selection, center the ships with `Center X`
    - Under Advanced, level the ships with `Match top edges`
@@ -164,8 +164,8 @@ Success check:
 <p align="center"><em>Figure 9. Ships and titles lined up - success check.</em></p>
 
 Success check:
-- The four top-row ships are equally spaced and centered below their labels, and sit on same `Y = 200` baseline.
-- The three bottom-row ships are equally spaced and centered below their labels, and sit on same `Y = 420` baseline.
+  - The four top-row ships are equally spaced and centered below their labels, and sit on same `Y = 200` baseline.
+  - The three bottom-row ships are equally spaced and centered below their labels, and sit on same `Y = 420` baseline.
 
 ## Attach the Movement Patterns
 
