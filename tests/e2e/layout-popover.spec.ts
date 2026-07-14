@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getEntityWorldRect, getState, gotoStudio, seedSampleScene, tapWorld, waitForSampleScene } from './helpers';
+import { dismissViewHint, dispatchAction, getEntityWorldRect, getState, gotoStudio, resetScene, seedSampleScene, tapWorld, waitForSampleScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await seedSampleScene(page);
@@ -30,6 +30,30 @@ test('Layout popover applies fixed spacing by centers @critical', async ({ page 
     if (!e1 || !e2) return null;
     return Math.round(e2.x - e1.x);
   }).toBe(64);
+});
+
+test('Layout popover distributes selected item centers between endpoints @critical', async ({ page }) => {
+  await resetScene(page);
+
+  const createdIds: string[] = [];
+  for (const at of [{ x: 100, y: 100 }, { x: 180, y: 100 }, { x: 300, y: 100 }]) {
+    await dispatchAction(page, { type: 'create-text-entity', at });
+    const state = await getState<any>(page);
+    if (state.selection?.kind !== 'entity') throw new Error('Expected created text entity to be selected');
+    createdIds.push(state.selection.id);
+  }
+
+  await dispatchAction(page, { type: 'select', selection: { kind: 'entities', ids: createdIds } });
+
+  const layoutButton = page.getByTestId('canvas-layout-button');
+  await layoutButton.focus();
+  await layoutButton.press('Enter');
+  await page.getByTestId('layout-distribute-x').click();
+
+  await expect.poll(async () => {
+    const state = await getState<any>(page);
+    return createdIds.map((id) => state.scene?.entities?.[id]?.x ?? null);
+  }).toEqual([100, 200, 300]);
 });
 
 test.describe('Layout popover viewport reachability', () => {

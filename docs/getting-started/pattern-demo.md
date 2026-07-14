@@ -54,7 +54,7 @@ Success check:
 
    **NOTE:** This will create one text entity called 't'. 
 
-2. Rough-place the text entity (i.e., drag it) in the upper-left corner of the viewport (light blue) rectangle.
+2. Rough-place the text entity (i.e., drag it) near where the top-left label will go.
 
 3. Hit the F2 key and rename the text entity to "Wave"
 
@@ -62,27 +62,29 @@ Success check:
 
    **NOTE:** you should see the text change for the entity in the Canvas.
 
-5. Repeat steps 1-4 for each of the sprites in the top and bottom rows until you have named labels spread out over each row.
+5. Repeat steps 1-4 for each of the sprites in the top and bottom rows until you have named labels spread out from left to right in each row.
 
    - top row: `Wave`, `Zigzag`, `Figure-8`, `Orbit`
    - bottom row: `Spiral`, `Bounce`, `Patrol`
 
-6. Drag-select the top-row labels, and in the popup Selection Bar, use `Layout …`:
+6. Select the `Wave` label. In the Inspector's Transform panel, set `X = 130` and `Y = 120`. This anchors the label row to the same center point the first top-row ship will use later.
 
-   - Under Arrange Items, click `Distribute X`.
-   - Under Align Selection, click `Center X`.
-   - Under Advanced, level the ships with `Match top edges`
-   - Under Position Selection, type `120` under `Y`, then click `Set Y`. 
+7. Drag-select the top-row labels, and in the popup Selection Bar, use `Layout …`:
+
+   - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and click `Apply Spacing X`.
+   - Under Advanced, level the labels with `Match top edges`.
+   - Under Position Selection, type `120` under `Y`, then click `Set Y`.
    - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
-7. Click a blank space somewhere in the canvas to deselect the top-row sprites.
+8. Click a blank space somewhere in the canvas to deselect the top-row labels.
 
-8. Drag-select the bottom-row labels, and in the popup Selection Bar, use `Layout …`. 
+9. Select the `Spiral` label. In the Inspector's Transform panel, set `X = 220` and `Y = 340`. This anchors the bottom label row to the same center point the first bottom-row ship will use later.
 
-   - Under Arrange Items, click `Distribute X`.
-   - Under Align Selection, click `Center X`.
-   - Under Advanced, level the ships with `Match top edges`
-   - Under Position Selection, type `340` under `Y`, then click `Set Y`. 
+10. Drag-select the bottom-row labels, and in the popup Selection Bar, use `Layout …`.
+
+   - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and click `Apply Spacing X`.
+   - Under Advanced, level the labels with `Match top edges`.
+   - Under Position Selection, type `340` under `Y`, then click `Set Y`.
    - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 <img src="../assets/screenshots/playwright/titles-lined-up.png" alt="Titles lined up"  style="display: block; margin: 0 auto; width: 910px; max-width: 100%; height: auto;" />
