@@ -20,6 +20,7 @@ Use `.plans/archive/` only for historical context after checking current tests, 
 - `arcadeactions/` is reference-only. Do not modify it.
 - Do not change the default Playwright worker count from `3` in `playwright.config.ts`.
 - Tests and implementation are the latest ground truth. `.repo-memory/` holds compact durable rules. Top-level `.plans/` holds the small active workflow/proposal surface.
+- Favor live derived data over persisted flags/counts when the source data is already loaded and the calculation is cheap; use stored metadata only when loading the full source would be meaningfully expensive.
 
 ## Verification
 

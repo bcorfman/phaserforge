@@ -1,7 +1,7 @@
 import type { ProjectSpec } from '../model/types';
 
 export type AuthUser = { id: string; email: string };
-export type CloudGameMeta = { id: string; title: string; created_at: string; updated_at: string };
+export type CloudGameMeta = { id: string; title: string; created_at: string; updated_at: string; scene_count?: number };
 export type CloudGame = CloudGameMeta & { project: ProjectSpec };
 
 type Json = Record<string, unknown>;

@@ -3,11 +3,23 @@ import React, { useEffect } from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEMO_PACK_ASSET_MANIFEST } from '../../src/editor/demoPackAssets';
-import { createEmptyProject } from '../../src/model/emptyProject';
+import { createEmptyGameScene, createEmptyProject } from '../../src/model/emptyProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
+
+const cloudApi = vi.hoisted(() => ({
+  me: vi.fn(async () => {
+    throw new Error('not_signed_in');
+  }),
+  listGames: vi.fn(async () => ({ games: [] })),
+  getGame: vi.fn(async () => {
+    throw new Error('not_found');
+  }),
+}));
 
 const persistenceSpies = vi.hoisted(() => ({
   load: vi.fn(),
+  loadProjectById: vi.fn(),
+  saveProjectRecord: vi.fn(async () => []),
   saveActiveProjectRecord: vi.fn(async () => []),
   saveProjectRecordImmediately: vi.fn(async () => undefined),
 }));
@@ -43,13 +55,16 @@ vi.mock('../../src/editor/projectPersistence', async () => {
       saveProjectRecordImmediately: persistenceSpies.saveProjectRecordImmediately,
       loadWorkspaceStateRecord: vi.fn(async () => ({ activeProjectId: project.id, syncMode: 'online' as const })),
       loadPreferencesRecord: vi.fn(async () => null),
-      loadProjectById: vi.fn(async () => record),
+      loadProjectById: persistenceSpies.loadProjectById,
+      saveProjectRecord: persistenceSpies.saveProjectRecord,
       loadViewState: vi.fn(async () => null),
       loadLastPublishInfo: vi.fn(async () => null),
       refreshCloudProjects: vi.fn(async () => []),
     },
   };
 });
+
+vi.mock('../../src/cloud/api', () => cloudApi);
 
 import { EditorProvider, useEditorStore } from '../../src/editor/EditorStore';
 
@@ -101,8 +116,16 @@ function StatusMessageHarness({ onStatus }: { onStatus: (value: string | undefin
 describe('EditorProvider persistence', () => {
   beforeEach(() => {
     persistenceSpies.load.mockClear();
+    persistenceSpies.loadProjectById.mockClear();
+    persistenceSpies.saveProjectRecord.mockClear();
     persistenceSpies.saveActiveProjectRecord.mockClear();
     persistenceSpies.saveProjectRecordImmediately.mockClear();
+    cloudApi.me.mockReset();
+    cloudApi.listGames.mockReset();
+    cloudApi.getGame.mockReset();
+    cloudApi.me.mockRejectedValue(new Error('not_signed_in'));
+    cloudApi.listGames.mockResolvedValue({ games: [] });
+    cloudApi.getGame.mockRejectedValue(new Error('not_found'));
   });
 
   afterEach(() => {
@@ -176,6 +199,50 @@ describe('EditorProvider persistence', () => {
     expect(latestRecord?.revisions?.[0]?.historyEventIds).toEqual(
       expect.arrayContaining(latestRecord.historyEvents.map((event: any) => event.id))
     );
+  });
+
+  it('refreshes stale cloud project cache scene counts from fetched cloud projects', async () => {
+    const cloudProject = createEmptyProject();
+    cloudProject.id = 'project-pattern';
+    cloudProject.title = 'Pattern Demo';
+    cloudProject.scenes['scene-2'] = createEmptyGameScene('scene-2');
+    cloudApi.me.mockResolvedValue({ user: { id: 'u1', email: 'dev@example.com' } });
+    cloudApi.listGames.mockResolvedValue({
+      games: [{
+        id: 'g-pattern',
+        title: 'Pattern Demo',
+        created_at: '2026-07-12T16:43:00.000Z',
+        updated_at: '2026-07-12T16:43:00.000Z',
+        scene_count: 0,
+      }],
+    });
+    cloudApi.getGame.mockResolvedValue({
+      game: {
+        id: 'g-pattern',
+        title: 'Pattern Demo',
+        created_at: '2026-07-12T16:43:00.000Z',
+        updated_at: '2026-07-12T16:43:00.000Z',
+        project: cloudProject,
+      },
+    });
+
+    render(
+      <EditorProvider>
+        <StatusMessageHarness onStatus={() => {}} />
+      </EditorProvider>
+    );
+
+    await waitFor(() => {
+      expect(cloudApi.getGame).toHaveBeenCalledWith('g-pattern');
+    });
+    await waitFor(() => {
+      expect(persistenceSpies.saveProjectRecord).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'cloud:g-pattern',
+        cloudProjectId: 'g-pattern',
+        origin: 'cloud-cache',
+        sceneCount: 2,
+      }));
+    });
   });
 
   it('surfaces a status warning when durable autosave rejects an invalid project head', async () => {
