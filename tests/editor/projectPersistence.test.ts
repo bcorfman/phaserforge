@@ -1018,6 +1018,69 @@ describe('projectPersistence steady-state storage', () => {
     expect(snapshot.localProjects[0]?.title).toBe('Pattern Demo');
   });
 
+  it('prefers the newest cached head for the same cloud project over a stale workspace active row', async () => {
+    const staleProject = createEmptyProject();
+    staleProject.id = 'project-pattern-demo';
+    staleProject.title = 'Pattern Demo';
+    staleProject.scenes[staleProject.initialSceneId].entities.title = {
+      id: 'title',
+      x: 64,
+      y: 48,
+      width: 120,
+      height: 20,
+      text: 'Pattern Demo',
+    } as any;
+
+    const latestProject = structuredClone(staleProject);
+    latestProject.scenes[latestProject.initialSceneId].entities.player = {
+      id: 'player',
+      x: 128,
+      y: 128,
+      width: 16,
+      height: 16,
+    } as any;
+
+    const db = await openPersistenceDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'workspaceState'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('projects').put(buildStoredProjectRecord(staleProject, {
+          id: 'project-pattern-demo',
+          updatedAt: '2026-07-14T02:30:00.000Z',
+          origin: 'local-only',
+          syncStatus: 'cloud',
+          cloudProjectId: 'game-pattern-demo',
+        }));
+        tx.objectStore('projects').put(buildStoredProjectRecord(latestProject, {
+          id: 'cloud:game-pattern-demo',
+          updatedAt: '2026-07-14T03:30:00.000Z',
+          origin: 'cloud-cache',
+          syncStatus: 'cloud',
+          cloudProjectId: 'game-pattern-demo',
+        }));
+        tx.objectStore('workspaceState').put({
+          activeProjectId: 'project-pattern-demo',
+          syncMode: 'online',
+        }, 'workspace');
+        tx.objectStore('workspaceState').put('1', 'legacyMigrated');
+      });
+    } finally {
+      db.close();
+    }
+
+    const snapshot = await projectPersistence.load();
+
+    expect(snapshot.workspace.activeProjectId).toBe('cloud:game-pattern-demo');
+    expect(snapshot.localProjects[0]?.id).toBe('cloud:game-pattern-demo');
+    expect(snapshot.localProjects[0]?.updatedAt).toBe('2026-07-14T03:30:00.000Z');
+    expect(Object.keys(snapshot.localProjects[0]?.project.scenes[latestProject.initialSceneId]?.entities ?? {})).toEqual([
+      'title',
+      'player',
+    ]);
+  });
+
   it('falls back to the newest meaningful stored project when active markers are missing', async () => {
     const blankProject = createEmptyProject();
     blankProject.id = 'project-blank';

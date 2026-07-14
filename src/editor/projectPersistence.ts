@@ -788,7 +788,11 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
     candidates: localProjects.map(summarizeRecordForRestoreCandidate),
   });
   let workspace = storedWorkspace;
-  let activeProjectSelectionSource: 'latest-active-snapshot' | 'workspace-active-project' | 'none' = 'none';
+  let activeProjectSelectionSource:
+    | 'latest-active-snapshot'
+    | 'workspace-active-project'
+    | 'newest-cloud-project-head'
+    | 'none' = 'none';
   if (latestActiveSnapshot) {
     const existingIndex = localProjects.findIndex((record) => record.id === latestActiveSnapshot.recordId);
     const snapshotRecord = existingIndex >= 0 ? localProjects[existingIndex] : null;
@@ -824,6 +828,20 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
       };
       activeProjectSelectionSource = 'latest-active-snapshot';
     }
+  }
+  const workspaceActiveProject = localProjects.find((record) => record.id === workspace.activeProjectId) ?? null;
+  const newestCloudProjectHead = selectNewestCloudProjectHead(localProjects, workspaceActiveProject);
+  if (newestCloudProjectHead && newestCloudProjectHead.id !== workspace.activeProjectId) {
+    const newestIndex = localProjects.findIndex((record) => record.id === newestCloudProjectHead.id);
+    if (newestIndex > 0) {
+      localProjects.splice(newestIndex, 1);
+      localProjects.unshift(newestCloudProjectHead);
+    }
+    workspace = {
+      ...workspace,
+      activeProjectId: newestCloudProjectHead.id,
+    };
+    activeProjectSelectionSource = 'newest-cloud-project-head';
   }
   if (workspace.activeProjectId && activeProjectSelectionSource === 'none') {
     activeProjectSelectionSource = 'workspace-active-project';
@@ -1019,6 +1037,22 @@ function selectBestBootstrapProject(records: StoredProjectRecord[]): StoredProje
 
     return left.id.localeCompare(right.id);
   })[0] ?? null;
+}
+
+function selectNewestCloudProjectHead(
+  records: StoredProjectRecord[],
+  activeRecord: StoredProjectRecord | null,
+): StoredProjectRecord | null {
+  if (!activeRecord?.cloudProjectId) return null;
+  if (isPlaceholderProjectRecord(activeRecord)) return null;
+  const activeUpdatedAtMs = projectRecordUpdatedAtMs(activeRecord);
+  const candidates = records.filter((record) => (
+    record.cloudProjectId === activeRecord.cloudProjectId
+    && !isPlaceholderProjectRecord(record)
+    && projectRecordUpdatedAtMs(record) > activeUpdatedAtMs
+  ));
+  if (candidates.length === 0) return null;
+  return selectBestBootstrapProject(candidates);
 }
 
 function summarizeRecordForRestoreCandidate(record: StoredProjectRecord) {
