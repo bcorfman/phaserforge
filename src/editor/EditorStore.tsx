@@ -53,7 +53,7 @@ import { buildDefaultDraftParams, type FormationDraftSpec, type FormationTemplat
 import { measureTextEntityPixels, resolveTextEntityDefaults, resolveTextFontFamily } from './textEntity';
 import { allocDuplicateName } from './duplicateNaming';
 import { type ProjectSyncMode, type StoredProjectRecord, buildStoredProjectRecord, projectPersistence } from './projectPersistence';
-import type { ProjectLibraryEntry } from './projectLibrary';
+import { buildCloudProjectLibraryEntry, buildStoredProjectLibraryEntry, countProjectScenes, type ProjectLibraryEntry } from './projectLibrary';
 import type { DemoPackAssetManifestEntry } from './demoPackAssets';
 import { getGame, listGames, me } from '../cloud/api';
 import {
@@ -4682,16 +4682,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   latestStateRef.current = state;
   latestActiveProjectIdRef.current = activeProjectId;
 
-  const mapStoredProject = (record: StoredProjectRecord): ProjectLibraryEntry => ({
-    id: record.id,
-    projectId: record.projectId,
-    title: record.title,
-    updatedAt: record.updatedAt,
-    sceneCount: record.sceneCount,
-    source: record.origin === 'cloud-cache' || Boolean(record.cloudProjectId) ? 'cloud' : 'local',
-    status: record.syncStatus,
+  const mapStoredProject = (record: StoredProjectRecord): ProjectLibraryEntry => buildStoredProjectLibraryEntry({
+    record,
     isCurrent: record.id === activeProjectId,
-    cloudProjectId: record.cloudProjectId,
   });
 
   const buildActiveProjectRecordSnapshot = (
@@ -5001,17 +4994,33 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     try {
       await me();
       const response = await listGames();
-      setCloudProjects(response.games.map((game) => ({
-        id: game.id,
-        projectId: game.id,
-        title: game.title?.trim() || 'Untitled Project',
-        updatedAt: game.updated_at,
-        sceneCount: 0,
-        source: 'cloud',
-        status: 'cloud',
+      const hydratedGames = await Promise.all(response.games.map(async (game) => {
+        try {
+          const cloud = await getGame(game.id);
+          if (!cloud?.game?.project) return game;
+          const existingCache = await projectPersistence.loadProjectById(`cloud:${cloud.game.id}`);
+          const cacheRecord = buildStoredProjectRecord(cloud.game.project, {
+            id: `cloud:${cloud.game.id}`,
+            updatedAt: cloud.game.updated_at,
+            origin: 'cloud-cache',
+            syncStatus: state.syncMode === 'offline' ? 'unsynced' : 'cloud',
+            cloudProjectId: cloud.game.id,
+            revisions: existingCache?.revisions,
+            archivedRevisions: existingCache?.archivedRevisions,
+            historyEvents: existingCache?.historyEvents,
+            archivedHistoryEvents: existingCache?.archivedHistoryEvents,
+          });
+          await projectPersistence.saveProjectRecord(cacheRecord);
+          return cloud.game;
+        } catch {
+          return game;
+        }
+      }));
+      setCloudProjects(hydratedGames.map((game) => buildCloudProjectLibraryEntry({
+        game,
         isCurrent: Boolean(activeRecordRef.current?.cloudProjectId && activeRecordRef.current.cloudProjectId === game.id),
-        cloudProjectId: game.id,
       })));
+      setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
     } catch {
       setCloudProjects([]);
     }
@@ -5035,6 +5044,15 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'set-sync-mode', syncMode: nextSyncMode });
       await projectPersistence.setActiveProject(local.id, nextSyncMode);
       setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
+      if (local.cloudProjectId) {
+        setCloudProjects((projects) => projects.map((entry) => (
+          entry.cloudProjectId === local.cloudProjectId
+            ? { ...entry, sceneCount: countProjectScenes(local.project), isCurrent: true }
+            : { ...entry, isCurrent: false }
+        )));
+      } else {
+        setCloudProjects((projects) => projects.map((entry) => ({ ...entry, isCurrent: false })));
+      }
       return;
     }
 
@@ -5057,6 +5075,11 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'set-sync-mode', syncMode: 'online' });
     await projectPersistence.setActiveProject(cacheRecord.id, 'online');
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
+    setCloudProjects((projects) => projects.map((entry) => (
+      entry.cloudProjectId === cacheRecord.cloudProjectId
+        ? { ...entry, sceneCount: countProjectScenes(cacheRecord.project), isCurrent: true }
+        : { ...entry, isCurrent: false }
+    )));
   };
 
   const createProject = async () => {
