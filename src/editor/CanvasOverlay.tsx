@@ -83,6 +83,7 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
   const selectedEntityIds = useMemo(() => getSelectedEntityIds(state.selection), [state.selection]);
   const selectedGroupId = state.selection.kind === 'group' ? state.selection.id : undefined;
   const multiSelectionIds = state.selection.kind === 'entities' ? state.selection.ids : [];
+  const canDistributeSelection = multiSelectionIds.length >= 3;
   const sceneWorld = getSceneWorld(scene);
   const hasEntitySelection = state.selection.kind === 'entity' || state.selection.kind === 'entities';
   const entityToGroupId = useMemo(() => {
@@ -683,8 +684,26 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
           <div className="canvas-selection-menu-section">
             <div className="canvas-selection-menu-heading">Arrange items</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-              <button className={layoutActionButtonClassName} data-testid="layout-distribute-x" type="button" onClick={() => applyLayoutPositions(distributeCenters(gatherLayoutItems(multiSelectionIds), 'x'))}>Distribute X</button>
-              <button className={layoutActionButtonClassName} data-testid="layout-distribute-y" type="button" onClick={() => applyLayoutPositions(distributeCenters(gatherLayoutItems(multiSelectionIds), 'y'))}>Distribute Y</button>
+              <button
+                className={layoutActionButtonClassName}
+                data-testid="layout-distribute-x"
+                type="button"
+                disabled={!canDistributeSelection}
+                title={canDistributeSelection ? undefined : 'Select at least 3 items'}
+                onClick={() => applyLayoutPositions(distributeCenters(gatherLayoutItems(multiSelectionIds), 'x'))}
+              >
+                Distribute X
+              </button>
+              <button
+                className={layoutActionButtonClassName}
+                data-testid="layout-distribute-y"
+                type="button"
+                disabled={!canDistributeSelection}
+                title={canDistributeSelection ? undefined : 'Select at least 3 items'}
+                onClick={() => applyLayoutPositions(distributeCenters(gatherLayoutItems(multiSelectionIds), 'y'))}
+              >
+                Distribute Y
+              </button>
             </div>
 
             <div className="canvas-selection-menu-heading" style={{ marginTop: 10 }}>Spacing</div>
