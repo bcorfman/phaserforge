@@ -657,4 +657,66 @@ describe('publish github pages', () => {
       .find((content) => content.includes('initialSceneId'));
     expect(yamlBlob).toContain('path: assets/demo-pack/audio/Simulacra-chosic.com_.mp3');
   });
+
+  it('publish rejects repo path-backed audio when the file is only a Git LFS pointer', async () => {
+    const { app, repositories } = makeApp();
+    const agent = request.agent(app);
+    const { userId, csrf } = await signup(agent);
+    await linkGithub(repositories, userId);
+    await addGame(repositories, userId);
+
+    const game = await repositories.games.findByIdForUser('g1', userId);
+    if (!game) throw new Error('expected game');
+    game.project.audio.sounds.theme = {
+      id: 'theme',
+      source: {
+        kind: 'path',
+        path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+        originalName: 'Simulacra-chosic.com_.mp3',
+        mimeType: 'audio/mpeg',
+      },
+    } as any;
+    game.project.scenes.s1.music = { assetId: 'theme', loop: true, volume: 0.8 };
+    await repositories.games.updateForUser('g1', userId, {
+      project: game.project,
+      updatedAt: '2026-06-04T01:00:00.000Z',
+    });
+
+    await fs.mkdir(path.join(tempDir, 'assets', 'demo-pack', 'audio'), { recursive: true });
+    await fs.writeFile(
+      path.join(tempDir, 'assets', 'demo-pack', 'audio', 'Simulacra-chosic.com_.mp3'),
+      [
+        'version https://git-lfs.github.com/spec/v1',
+        'oid sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'size 12345',
+        '',
+      ].join('\n'),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === 'https://api.github.com/repos/alice/zoof') {
+          if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
+        }
+        if (url === 'https://api.github.com/user/repos') {
+          return new Response(JSON.stringify({ name: 'zoof', full_name: 'alice/zoof', default_branch: 'main' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/pages') {
+          if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
+          return new Response(JSON.stringify({ html_url: 'https://alice.github.io/zoof' }), { status: 201 });
+        }
+        throw new Error(`Unhandled fetch ${url}`);
+      }) as any,
+    );
+
+    const res = await agent
+      .post('/api/v1/publish/github-pages')
+      .set('x-csrf-token', csrf)
+      .send({ gameId: 'g1', repo: 'zoof' })
+      .expect(400);
+
+    expect(res.body).toEqual({ error: 'cloud_asset_missing' });
+  });
 });
