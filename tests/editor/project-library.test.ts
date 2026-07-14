@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildProjectPickerModel, type ProjectLibraryEntry } from '../../src/editor/projectLibrary';
+import {
+  buildCloudProjectLibraryEntry,
+  buildProjectPickerModel,
+  buildStoredProjectLibraryEntry,
+  type ProjectLibraryEntry,
+} from '../../src/editor/projectLibrary';
+import { createEmptyGameScene, createEmptyProject } from '../../src/model/emptyProject';
 
 function entry(overrides: Partial<ProjectLibraryEntry> = {}): ProjectLibraryEntry {
   return {
@@ -16,6 +22,66 @@ function entry(overrides: Partial<ProjectLibraryEntry> = {}): ProjectLibraryEntr
 }
 
 describe('projectLibrary helpers', () => {
+  it('uses live cloud project scenes ahead of metadata scene counts', () => {
+    const project = createEmptyProject();
+    project.scenes['scene-2'] = createEmptyGameScene('scene-2');
+    const entry = buildCloudProjectLibraryEntry({
+      game: {
+        id: 'game-pattern',
+        title: 'Pattern Demo',
+        created_at: '2026-07-12T16:43:00.000Z',
+        updated_at: '2026-07-12T16:43:00.000Z',
+        scene_count: 1,
+        project,
+      },
+      isCurrent: true,
+    });
+
+    expect(entry).toEqual({
+      id: 'game-pattern',
+      projectId: 'game-pattern',
+      title: 'Pattern Demo',
+      updatedAt: '2026-07-12T16:43:00.000Z',
+      sceneCount: 2,
+      source: 'cloud',
+      status: 'cloud',
+      isCurrent: true,
+      cloudProjectId: 'game-pattern',
+    });
+  });
+
+  it('uses cloud metadata scene counts only when no project is loaded', () => {
+    expect(buildCloudProjectLibraryEntry({
+      game: {
+        id: 'game-metadata',
+        title: 'Metadata Only',
+        created_at: '2026-07-12T16:43:00.000Z',
+        updated_at: '2026-07-12T16:44:00.000Z',
+        scene_count: 3,
+      },
+      isCurrent: false,
+    }).sceneCount).toBe(3);
+  });
+
+  it('uses live stored project scenes ahead of persisted scene counts', () => {
+    const project = createEmptyProject();
+    project.scenes['scene-2'] = createEmptyGameScene('scene-2');
+
+    expect(buildStoredProjectLibraryEntry({
+      record: {
+        id: 'local-pattern',
+        projectId: 'project-pattern',
+        title: 'Pattern Demo',
+        project,
+        updatedAt: '2026-07-12T16:44:00.000Z',
+        sceneCount: 0,
+        origin: 'local-only',
+        syncStatus: 'local',
+      },
+      isCurrent: true,
+    }).sceneCount).toBe(2);
+  });
+
   it('sorts recent projects by most recently updated first', () => {
     const model = buildProjectPickerModel({
       localProjects: [
