@@ -1,3 +1,7 @@
+import type { CloudGameMeta } from '../cloud/api';
+import type { ProjectSpec } from '../model/types';
+import type { StoredProjectRecord } from './projectPersistence';
+
 export type ProjectPickerFilter = 'recent' | 'cloud' | 'local' | 'templates';
 export type ProjectEntrySource = 'local' | 'cloud';
 export type ProjectEntryStatus = 'local' | 'cloud' | 'unsynced';
@@ -24,6 +28,60 @@ export function formatProjectTimestamp(value: string): string {
     hour: 'numeric',
     minute: '2-digit',
   });
+}
+
+export function countProjectScenes(project: ProjectSpec): number {
+  return Object.keys(project.scenes ?? {}).length;
+}
+
+function resolveCloudGameSceneCount(game: CloudGameMeta & { project?: ProjectSpec }): number {
+  if (game.project) {
+    return countProjectScenes(game.project);
+  }
+  if (typeof game.scene_count === 'number' && Number.isFinite(game.scene_count)) {
+    return Math.max(0, Math.floor(game.scene_count));
+  }
+  return 0;
+}
+
+export function buildCloudProjectLibraryEntry({
+  game,
+  isCurrent,
+}: {
+  game: CloudGameMeta & { project?: ProjectSpec };
+  isCurrent: boolean;
+}): ProjectLibraryEntry {
+  return {
+    id: game.id,
+    projectId: game.id,
+    title: game.title?.trim() || 'Untitled Project',
+    updatedAt: game.updated_at,
+    sceneCount: resolveCloudGameSceneCount(game),
+    source: 'cloud',
+    status: 'cloud',
+    isCurrent,
+    cloudProjectId: game.id,
+  };
+}
+
+export function buildStoredProjectLibraryEntry({
+  record,
+  isCurrent,
+}: {
+  record: StoredProjectRecord;
+  isCurrent: boolean;
+}): ProjectLibraryEntry {
+  return {
+    id: record.id,
+    projectId: record.projectId,
+    title: record.title,
+    updatedAt: record.updatedAt,
+    sceneCount: countProjectScenes(record.project),
+    source: record.origin === 'cloud-cache' || Boolean(record.cloudProjectId) ? 'cloud' : 'local',
+    status: record.syncStatus,
+    isCurrent,
+    cloudProjectId: record.cloudProjectId,
+  };
 }
 
 export function buildProjectPickerModel({
