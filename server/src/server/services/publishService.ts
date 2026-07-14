@@ -144,6 +144,12 @@ function decodeEmbeddedDataUrl(dataUrl: string): Uint8Array | null {
   }
 }
 
+function isGitLfsPointer(bytes: Uint8Array): boolean {
+  const prefix = 'version https://git-lfs.github.com/spec/v1';
+  if (bytes.length < prefix.length) return false;
+  return Buffer.from(bytes.subarray(0, prefix.length)).toString('utf8') === prefix;
+}
+
 async function materializeProjectForPublish(
   repositories: Repositories,
   userId: string,
@@ -179,6 +185,7 @@ async function materializeProjectForPublish(
       if (!copiedPathSources.has(relPath)) {
         try {
           const bytes = new Uint8Array(await fs.readFile(absPath));
+          if (isGitLfsPointer(bytes)) return null;
           files.push({ path: relPath, bytes });
           copiedPathSources.add(relPath);
         } catch {
@@ -190,12 +197,14 @@ async function materializeProjectForPublish(
     if (source.kind === 'embedded') {
       const bytes = decodeEmbeddedDataUrl(source.dataUrl);
       if (!bytes) return null;
+      if (isGitLfsPointer(bytes)) return null;
       const relPath = allocatePath(source, fallbackBase);
       files.push({ path: relPath, bytes });
       return { kind: 'path', path: relPath, ...(source.originalName ? { originalName: source.originalName } : {}), ...(source.mimeType ? { mimeType: source.mimeType } : {}) };
     }
     const asset = await repositories.assets.findByIdForUser(source.assetId, userId);
     if (!asset) return null;
+    if (isGitLfsPointer(asset.bytes)) return null;
     const relPath = allocatePath(
       { kind: 'cloud', assetId: source.assetId, originalName: source.originalName ?? asset.originalName ?? undefined, mimeType: source.mimeType ?? asset.mimeType ?? undefined },
       fallbackBase,

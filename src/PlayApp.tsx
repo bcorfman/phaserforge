@@ -24,6 +24,21 @@ function readYamlUrl(): string | null {
   return typeof globalVal === 'string' && globalVal.trim().length > 0 ? globalVal.trim() : null;
 }
 
+function unlockAudioFromStartGesture(): void {
+  const game = (window as any).__phaserGame;
+  const sound = game?.sound;
+  try {
+    sound?.unlock?.();
+  } catch {
+    // ignore
+  }
+  try {
+    void sound?.context?.resume?.();
+  } catch {
+    // ignore
+  }
+}
+
 export default function PlayApp() {
   const gameId = useMemo(() => readPlayGameId(), []);
   const yamlUrl = useMemo(() => readYamlUrl(), []);
@@ -112,13 +127,16 @@ export default function PlayApp() {
     <div className="play-root" data-testid="play-root">
       <AudioDebugOverlay />
       <div className="play-frame" data-testid="play-frame" style={world ? { width: world.width, height: world.height } : undefined}>
-        {hasStarted ? <PhaserGame currentActiveScene={() => setSceneReady(true)} /> : null}
+        <PhaserGame currentActiveScene={() => setSceneReady(true)} />
         {!hasStarted ? (
           <button
             className="play-start-gate"
             data-testid="play-start-gate"
             type="button"
-            onClick={() => setHasStarted(true)}
+            onClick={() => {
+              unlockAudioFromStartGesture();
+              setHasStarted(true);
+            }}
           >
             Click to Start
           </button>
