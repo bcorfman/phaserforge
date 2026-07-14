@@ -173,6 +173,41 @@ describe('EntityList keyboard shortcuts', () => {
     expect(document.activeElement).toBe(container.querySelector('[data-testid="ungrouped-entity-entity2"]'));
   });
 
+  it('F2 enters rename mode for a selected sprite when focus is outside the scene graph', async () => {
+    const project = {
+      ...sampleProject,
+      scenes: {
+        ...sampleProject.scenes,
+        [sampleProject.initialSceneId]: {
+          ...(sampleProject.scenes[sampleProject.initialSceneId] as any),
+          entities: {
+            ...(sampleProject.scenes[sampleProject.initialSceneId] as any).entities,
+            entity: { id: 'entity', name: 'entity', x: 10, y: 10, width: 10, height: 10 },
+          },
+        },
+      },
+    };
+
+    const { container, root, props } = renderEntityList({
+      project: project as any,
+      scene: project.scenes[sampleProject.initialSceneId] as any,
+      selection: { kind: 'entity', id: 'entity' } as any,
+    });
+
+    await React.act(async () => {
+      root.render(<EntityListView {...props} />);
+    });
+
+    await React.act(async () => {
+      document.body.focus();
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+    });
+
+    const input = container.querySelector('[data-testid="rename-entity-input-entity"]') as HTMLInputElement | null;
+    expect(input).not.toBeNull();
+    expect(input?.value).toBe('entity');
+  });
+
   it('F2 enters rename mode for a selected trigger zone when its row is focused', async () => {
     const project = {
       ...sampleProject,

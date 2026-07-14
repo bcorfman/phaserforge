@@ -562,9 +562,7 @@ export function EntityListView({
       if (event.defaultPrevented) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
 
-      const root = rootRef.current;
       const active = globalThis.document?.activeElement;
-      if (!root || !(active instanceof Node) || !root.contains(active)) return;
 
       if (active instanceof HTMLElement) {
         if (active.closest('input, textarea, [contenteditable="true"]')) return;
@@ -626,6 +624,9 @@ export function EntityListView({
         }
         return;
       }
+
+      const root = rootRef.current;
+      if (!root || !(active instanceof Node) || !root.contains(active)) return;
 
       if (event.key === 'ArrowUp') {
         if (selection.kind === 'entity') stepSelection(ungroupedIds, selection.id as any, -1, 'entity');
