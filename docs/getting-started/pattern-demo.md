@@ -27,8 +27,8 @@ This walkthrough recreates the `Pattern Demo` scene in PhaserForge. It assumes y
 <p align="center"><em>Figure 2. World Size dimensions (in pixels).</em></p>
 
 Success check:
-- The canvas is empty and the scene graph does not show leftover sprites or formations.
-- The World Size is `800 x 600`, as shown in the Viewport panel (Figure 2), and the viewport is centered in the canvas. 
+  - The canvas is empty and the scene graph does not show leftover sprites or formations.
+  - The World Size is `800 x 600`, as shown in the Viewport panel (Figure 2), and the viewport is centered in the canvas. 
 
 ## Import the Demo Pack Assets 
 
@@ -92,8 +92,8 @@ Success check:
 <p align="center"><em>Figure 5. Titles lined up - success check.</em></p>
 
 Success check:
-   - There is one top row with four labels
-   - There is one bottom row with three labels.
+  - There is one top row with four labels
+  - There is one bottom row with three labels.
 
 
 ## Create the Sprites
