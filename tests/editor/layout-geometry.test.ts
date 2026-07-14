@@ -28,7 +28,7 @@ describe('layoutGeometry', () => {
   it('distributes centers between endpoints', () => {
     const items = [
       { id: 'a', x: 0, y: 0, rect: rect(0, 0, 10, 10) },
-      { id: 'b', x: 50, y: 0, rect: rect(50, 0, 10, 10) },
+      { id: 'b', x: 20, y: 0, rect: rect(20, 0, 10, 10) },
       { id: 'c', x: 100, y: 0, rect: rect(100, 0, 10, 10) },
     ];
     const distributed = distributeCenters(items, 'x');
