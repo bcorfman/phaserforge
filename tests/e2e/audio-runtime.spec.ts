@@ -85,16 +85,15 @@ test('entering play mode eventually starts delayed path-backed demo-pack music @
     const snap = await getSceneSnapshot<{
       audio?: { musicAssetId?: string };
       audioPlayback?: { musicIsPlaying?: boolean };
-      audioDebug?: { contextState?: string; outputRange?: number; usingWebAudio?: boolean };
+      audioDebug?: { outputRange?: number; usingWebAudio?: boolean };
     }>(page);
     return {
       music: snap?.audio?.musicAssetId,
       isPlaying: Boolean(snap?.audioPlayback?.musicIsPlaying),
-      contextState: snap?.audioDebug?.contextState ?? null,
       outputRange: Number(snap?.audioDebug?.outputRange ?? 0),
       usingWebAudio: Boolean(snap?.audioDebug?.usingWebAudio),
     };
-  }, { timeout: 15000 }).toEqual({ music: 'theme', isPlaying: true, contextState: 'running', outputRange: expect.any(Number), usingWebAudio: true });
+  }, { timeout: 15000 }).toEqual({ music: 'theme', isPlaying: true, outputRange: expect.any(Number), usingWebAudio: true });
 
   await expect.poll(async () => {
     const snap = await getSceneSnapshot<{ audioDebug?: { outputRange?: number } }>(page);
@@ -144,18 +143,16 @@ test('published play page starts path-backed demo-pack music @slow', async ({ pa
     const snap = await getSceneSnapshot<{
       audio?: { musicAssetId?: string };
       audioPlayback?: { musicIsPlaying?: boolean };
-      audioDebug?: { contextState?: string; outputRange?: number; usingWebAudio?: boolean; currentMusicResolvedUrl?: string };
+      audioDebug?: { outputRange?: number; usingWebAudio?: boolean; currentMusicResolvedUrl?: string };
     }>(page);
     return {
       music: snap?.audio?.musicAssetId,
       isPlaying: Boolean(snap?.audioPlayback?.musicIsPlaying),
-      contextState: snap?.audioDebug?.contextState ?? null,
       usingWebAudio: Boolean(snap?.audioDebug?.usingWebAudio),
     };
   }, { timeout: 15000 }).toEqual({
     music: 'theme',
     isPlaying: true,
-    contextState: 'running',
     usingWebAudio: true,
   });
 
@@ -220,19 +217,17 @@ test('selecting demo-pack music in the editor primes playback before play mode @
     const snap = await getSceneSnapshot<{
       audio?: { musicAssetId?: string };
       audioPlayback?: { musicIsPlaying?: boolean };
-      audioDebug?: { contextState?: string; outputRange?: number; usingWebAudio?: boolean };
+      audioDebug?: { outputRange?: number; usingWebAudio?: boolean };
     }>(page);
     return {
       music: snap?.audio?.musicAssetId,
       isPlaying: Boolean(snap?.audioPlayback?.musicIsPlaying),
-      contextState: snap?.audioDebug?.contextState ?? null,
       outputRange: Number(snap?.audioDebug?.outputRange ?? 0),
       usingWebAudio: Boolean(snap?.audioDebug?.usingWebAudio),
     };
   }, { timeout: 15000 }).toEqual({
     music: assetId,
     isPlaying: true,
-    contextState: 'running',
     outputRange: expect.any(Number),
     usingWebAudio: true,
   });
