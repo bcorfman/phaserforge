@@ -153,9 +153,9 @@ function ensureBridge(): void {
     setMode(mode: 'edit' | 'play') {
       const current = appStateGetter?.()?.mode;
       if (!current || current === mode) return;
-      // In case the handler triggers async state updates, keep this as a single toggle
-      // and let tests poll `getState()` / `getSceneSnapshot()` for completion.
-      toggleModeHandler?.();
+      // Programmatic mode changes should follow the state-driven runtime sync path.
+      // The UI handler may perform browser gesture work, such as WebAudio unlock.
+      actionDispatcher?.({ type: 'toggle-mode' });
     },
     isSceneReady() {
       const scene = getSceneBridge();
