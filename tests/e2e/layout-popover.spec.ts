@@ -41,18 +41,26 @@ test('Layout popover distributes selected item centers between endpoints @critic
     let createdId: string | null = null;
     await expect.poll(async () => {
       const state = await getState<any>(page);
-      createdId = state.selection?.kind === 'entity' ? state.selection.id : null;
+      createdId = state.selection?.kind === 'entity' && !createdIds.includes(state.selection.id)
+        ? state.selection.id
+        : null;
       return createdId;
     }).not.toBeNull();
     createdIds.push(createdId!);
   }
 
   await dispatchAction(page, { type: 'select', selection: { kind: 'entities', ids: createdIds } });
+  await expect.poll(async () => {
+    const state = await getState<any>(page);
+    return state.selection?.kind === 'entities' ? state.selection.ids : [];
+  }).toEqual(createdIds);
 
   const layoutButton = page.getByTestId('canvas-layout-button');
   await layoutButton.focus();
   await layoutButton.press('Enter');
-  await page.getByTestId('layout-distribute-x').click();
+  const distributeX = page.getByTestId('layout-distribute-x');
+  await expect(distributeX).toBeEnabled();
+  await distributeX.click();
 
   await expect.poll(async () => {
     const state = await getState<any>(page);
