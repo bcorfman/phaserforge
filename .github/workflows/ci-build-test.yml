@@ -36,7 +36,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
 
       - name: Install
         run: npm ci
@@ -61,7 +60,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
 
       - name: Install
         run: npm ci
@@ -86,7 +84,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
 
       - name: Install
         run: npm ci
@@ -111,7 +108,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
 
       - name: Install
         run: npm ci
