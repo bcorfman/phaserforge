@@ -176,6 +176,49 @@ describe('BasicAudioService', () => {
     expect(sound.isPlaying).toBe(true);
   });
 
+  it('retries intended music after an asynchronous audio context resume', async () => {
+    const sound = new FakeSound();
+    let resumeCalls = 0;
+    let finishResume: (() => void) | undefined;
+    const context = {
+      state: 'suspended',
+      resume() {
+        resumeCalls += 1;
+        return new Promise<void>((resolve) => {
+          finishResume = () => {
+            context.state = 'running';
+            resolve();
+          };
+        });
+      },
+    };
+    const manager: SoundManagerLike = {
+      add() {
+        if (context.state === 'suspended') throw new Error('audio context is suspended');
+        return sound;
+      },
+      removeByKey() {},
+      context,
+    } as SoundManagerLike & { context: typeof context };
+
+    const svc = new BasicAudioService(manager, (id) => `audio:${id}`);
+    const project = { audio: { sounds: { a: { id: 'a', source: { kind: 'embedded', dataUrl: 'data:audio/mp3;base64,AAAA', originalName: 'a.mp3', mimeType: 'audio/mpeg' } } } } } as any;
+
+    svc.applySceneAudio({ music: { assetId: 'a', loop: true, volume: 1, fadeMs: 0 } } as any, project);
+
+    expect(resumeCalls).toBe(1);
+    expect(svc.getSnapshot()).toEqual({ musicAssetId: 'a', ambienceAssetIds: [] });
+    expect(sound.isPlaying).toBe(false);
+
+    finishResume?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const playback = (svc as any).getDebugPlayback?.();
+    expect(playback?.musicIsPlaying).toBe(true);
+    expect(sound.isPlaying).toBe(true);
+  });
+
   it('retries ambience playback when the first attempt fails', () => {
     let shouldThrow = true;
     const sounds = new Map<string, FakeSound>();
