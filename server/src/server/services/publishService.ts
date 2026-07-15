@@ -42,6 +42,9 @@ type WorkflowRunsResponse = {
 const GITHUB_API_VERSION = '2022-11-28';
 const PAGES_WORKFLOW_PATH = '.github/workflows/deploy-phaserforge-pages.yml';
 const PAGES_PUBLISH_PROBE_PATH = 'phaserforge-publish.json';
+const REPOSITORY_ASSET_BASE_URL =
+  process.env.PHASERFORGE_REPOSITORY_ASSET_BASE_URL?.trim()
+  || 'https://media.githubusercontent.com/media/bcorfman/phaserforge/main/';
 
 function normalizeRepoName(repo: string): string {
   return repo.trim();
@@ -150,6 +153,27 @@ function isGitLfsPointer(bytes: Uint8Array): boolean {
   return Buffer.from(bytes.subarray(0, prefix.length)).toString('utf8') === prefix;
 }
 
+function repositoryAssetUrl(relPath: string): string {
+  const encodedPath = relPath
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+  return new URL(encodedPath, REPOSITORY_ASSET_BASE_URL).toString();
+}
+
+async function fetchRepositoryAssetBytes(relPath: string): Promise<Uint8Array | null> {
+  if (!relPath.startsWith('assets/demo-pack/')) return null;
+  try {
+    const res = await fetch(repositoryAssetUrl(relPath));
+    if (!res.ok) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (isGitLfsPointer(bytes)) return null;
+    return bytes;
+  } catch {
+    return null;
+  }
+}
+
 async function materializeProjectForPublish(
   repositories: Repositories,
   userId: string,
@@ -183,14 +207,16 @@ async function materializeProjectForPublish(
         return source;
       }
       if (!copiedPathSources.has(relPath)) {
+        let bytes: Uint8Array | null = null;
         try {
-          const bytes = new Uint8Array(await fs.readFile(absPath));
-          if (isGitLfsPointer(bytes)) return null;
-          files.push({ path: relPath, bytes });
-          copiedPathSources.add(relPath);
+          const localBytes = new Uint8Array(await fs.readFile(absPath));
+          bytes = isGitLfsPointer(localBytes) ? await fetchRepositoryAssetBytes(relPath) : localBytes;
         } catch {
-          return null;
+          bytes = await fetchRepositoryAssetBytes(relPath);
         }
+        if (!bytes) return null;
+        files.push({ path: relPath, bytes });
+        copiedPathSources.add(relPath);
       }
       return source;
     }
