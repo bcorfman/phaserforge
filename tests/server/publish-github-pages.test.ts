@@ -658,7 +658,7 @@ describe('publish github pages', () => {
     expect(yamlBlob).toContain('path: assets/demo-pack/audio/Simulacra-chosic.com_.mp3');
   });
 
-  it('publish rejects repo path-backed audio when the file is only a Git LFS pointer', async () => {
+  it('publish fetches repo path-backed demo-pack audio when the local file is only a Git LFS pointer', async () => {
     const { app, repositories } = makeApp();
     const agent = request.agent(app);
     const { userId, csrf } = await signup(agent);
@@ -693,10 +693,15 @@ describe('publish github pages', () => {
       ].join('\n'),
     );
 
+    const treeBodies: any[] = [];
+    const blobBodies: Array<{ content: string; encoding: string }> = [];
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
+        if (url === 'https://media.githubusercontent.com/media/bcorfman/phaserforge/main/assets/demo-pack/audio/Simulacra-chosic.com_.mp3') {
+          return new Response(Buffer.from('REALDEMOAUDIO'), { status: 200 });
+        }
         if (url === 'https://api.github.com/repos/alice/zoof') {
           if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
         }
@@ -707,16 +712,49 @@ describe('publish github pages', () => {
           if (!init?.method || init.method === 'GET') return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 });
           return new Response(JSON.stringify({ html_url: 'https://alice.github.io/zoof' }), { status: 201 });
         }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/ref/heads/main') {
+          return new Response(JSON.stringify({ object: { sha: 'basecommit' } }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/commits/basecommit') {
+          return new Response(JSON.stringify({ sha: 'basecommit', tree: { sha: 'basetree' } }), { status: 200 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/blobs') {
+          blobBodies.push(JSON.parse(String(init?.body)));
+          return new Response(JSON.stringify({ sha: `blob-${blobBodies.length}` }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/trees') {
+          treeBodies.push(JSON.parse(String(init?.body)));
+          return new Response(JSON.stringify({ sha: 'newtree' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/commits') {
+          return new Response(JSON.stringify({ sha: 'newcommit' }), { status: 201 });
+        }
+        if (url === 'https://api.github.com/repos/alice/zoof/git/refs/heads/main') {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        if (url.includes('https://api.github.com/repos/alice/zoof/actions/runs?')) {
+          return new Response(
+            JSON.stringify({
+              workflow_runs: [{ head_sha: 'newcommit', status: 'queued', conclusion: null }],
+            }),
+            { status: 200 },
+          );
+        }
         throw new Error(`Unhandled fetch ${url}`);
       }) as any,
     );
 
-    const res = await agent
+    await agent
       .post('/api/v1/publish/github-pages')
       .set('x-csrf-token', csrf)
       .send({ gameId: 'g1', repo: 'zoof' })
-      .expect(400);
+      .expect(200);
 
-    expect(res.body).toEqual({ error: 'cloud_asset_missing' });
+    expect(treeBodies).toHaveLength(1);
+    expect(treeBodies[0].tree.some((entry: any) => entry.path === 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3')).toBe(true);
+    const audioBlob = blobBodies
+      .map((blob) => Buffer.from(blob.content, 'base64'))
+      .find((bytes) => bytes.toString('utf8') === 'REALDEMOAUDIO');
+    expect(audioBlob).toBeDefined();
   });
 });
