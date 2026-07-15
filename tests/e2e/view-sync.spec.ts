@@ -35,7 +35,7 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
   expect(editSnapshot.zoom).toBeGreaterThan(editBefore.zoom);
   const editAnchorNormalized = await normalizedEntityPosition(page, 'e1');
 
-  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
+  await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('play');
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
   await expect.poll(async () => (await getSceneSnapshot<{ ready?: boolean }>(page))?.ready).toBe(true);
@@ -43,7 +43,7 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
   const playSnapshot = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number }>(page);
   expect(Math.abs(playSnapshot.zoom - editSnapshot.zoom)).toBeLessThanOrEqual(0.01);
 
-  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('edit'));
+  await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('edit');
   await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('EditorScene');
   await waitForViewportToSettle(page, { stableForMs: 150 });

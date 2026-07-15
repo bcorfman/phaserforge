@@ -265,9 +265,9 @@ function AppShell() {
 
   useEffect(() => {
     if (!sceneReady) return;
-    EventBus.emit('runtime:load-project', displayProject, displaySceneId, state.mode);
+    EventBus.emit('runtime:load-project', displayProject, displaySceneId, appStateRef.current.mode);
     runtimeLoadedRef.current = true;
-  }, [displayProject, displaySceneId, sceneReady, state.mode]);
+  }, [displayProject, displaySceneId, sceneReady]);
 
   useEffect(() => {
     if (!sceneReady || !runtimeLoadedRef.current) return;
