@@ -24,8 +24,15 @@ jobs:
         shard: [1, 2]
         shards: [2]
     steps:
+      - name: Install Git LFS
+        run: |
+          apt-get update
+          apt-get install -y git-lfs
+
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          lfs: true
 
       - name: Setup Node
         uses: actions/setup-node@v6
