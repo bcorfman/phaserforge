@@ -23,7 +23,7 @@ function getSelectedEntityIds(selection: Selection): string[] {
   return [];
 }
 
-export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean }) {
+export function CanvasOverlay({ gridSnapEnabled, onToggleMode }: { gridSnapEnabled: boolean; onToggleMode?: () => void }) {
   const { state, dispatch } = useEditorStore();
   const scene = state.project.scenes[state.currentSceneId];
   const [menuOpen, setMenuOpen] = useState(false);
@@ -553,7 +553,7 @@ export function CanvasOverlay({ gridSnapEnabled }: { gridSnapEnabled: boolean })
           className={`button ${state.mode === 'play' ? 'active' : ''}`}
           data-testid="toggle-mode-button"
           type="button"
-          onClick={() => dispatch({ type: 'toggle-mode' })}
+          onClick={onToggleMode ?? (() => dispatch({ type: 'toggle-mode' }))}
         >
           {state.mode === 'edit' ? 'Play Mode' : 'Edit Mode'}
         </button>

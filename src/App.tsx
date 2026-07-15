@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PhaserGame } from './phaser/PhaserHost';
 import { EventBus, getActiveScene } from './phaser/EventBus';
 import { consumePendingRuntimeRequestedSceneId } from './phaser/pendingRuntimeRequest';
@@ -55,6 +55,7 @@ function AppShell() {
   const [worldHeightDraft, setWorldHeightDraft] = useState('');
   const readyRef = useRef(false);
   const runtimeLoadedRef = useRef(false);
+  const synchronouslyEmittedModeRef = useRef<'edit' | 'play' | null>(null);
   const viewRestoreAttemptedRef = useRef(false);
   const lastViewProjectIdRef = useRef<string | null>(null);
   const layoutHydratedRef = useRef(false);
@@ -176,13 +177,22 @@ function AppShell() {
     };
   }, [dispatch]);
 
+  const toggleMode = useCallback(() => {
+    const nextMode = state.mode === 'edit' ? 'play' : 'edit';
+    if (nextMode === 'play' && sceneReady && runtimeLoadedRef.current) {
+      EventBus.emit('runtime:set-mode', nextMode);
+      synchronouslyEmittedModeRef.current = nextMode;
+    }
+    dispatch({ type: 'toggle-mode' });
+  }, [dispatch, sceneReady, state.mode]);
+
   useEffect(() => {
-    const handler = () => dispatch({ type: 'toggle-mode' });
+    const handler = () => toggleMode();
     registerModeToggleHandler(handler);
     return () => {
       unregisterModeToggleHandler(handler);
     };
-  }, [dispatch]);
+  }, [toggleMode]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -266,6 +276,10 @@ function AppShell() {
 
   useEffect(() => {
     if (!sceneReady || !runtimeLoadedRef.current) return;
+    if (synchronouslyEmittedModeRef.current === state.mode) {
+      synchronouslyEmittedModeRef.current = null;
+      return;
+    }
     EventBus.emit('runtime:set-mode', state.mode);
   }, [sceneReady, state.mode]);
 
@@ -603,7 +617,7 @@ function AppShell() {
     };
 
     const handleToggleMode = () => {
-      dispatch({ type: 'toggle-mode' });
+      toggleMode();
     };
 
     const handleDeleteSelection = () => {
@@ -666,7 +680,7 @@ function AppShell() {
       EventBus.off('canvas-update-bounds', handleCanvasUpdateBounds);
       EventBus.off('formation-draft-center-moved', handleFormationDraftCenterMoved);
     };
-  }, [dispatch, activeScene, state.selection, state.mode, state.formationDraft]);
+  }, [dispatch, activeScene, state.selection, state.mode, state.formationDraft, toggleMode]);
 
   const commitWorldDraft = (dimension: 'width' | 'height', rawOverride?: string) => {
     const raw = rawOverride ?? (dimension === 'width' ? worldWidthDraft : worldHeightDraft);
@@ -1018,7 +1032,7 @@ function AppShell() {
 		            </div>
 		          </section>
 		          <div className="phaser-frame" data-testid="phaser-frame">
-		            <CanvasOverlay gridSnapEnabled={gridSnapEnabled} />
+		            <CanvasOverlay gridSnapEnabled={gridSnapEnabled} onToggleMode={toggleMode} />
 		            {!state.hasSeenViewHint && (
 	              <div className="view-hint" data-testid="view-hint">
 	                <div className="view-hint-title">View Controls</div>
