@@ -1,8 +1,19 @@
 import { expect, test } from '@playwright/test';
 
 const OUTPUT_PATH = process.env.PATTERN_DEMO_CLOUD_STORAGE_STATE_OUTPUT?.trim() || 'playwright/.auth/pattern-demo-cloud.json';
+const CAPTURE_ENABLED = process.env.PATTERN_DEMO_CLOUD_AUTH_CAPTURE === '1';
 
 test('capture cloud auth storage state for hosted PhaserForge', async ({ page }) => {
+  test.skip(!CAPTURE_ENABLED, 'Manual cloud auth storage-state capture is opt-in; set PATTERN_DEMO_CLOUD_AUTH_CAPTURE=1 to run it.');
+
+  await page.addInitScript(() => {
+    try {
+      window.sessionStorage.setItem('phaserforge.testForceCloudEnabled.v1', '1');
+    } catch {
+      // ignore storage bootstrap failures in tests
+    }
+  });
+
   await page.goto('./', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 30000 });
 

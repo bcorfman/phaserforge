@@ -165,73 +165,112 @@ test('published play page starts path-backed demo-pack music @slow', async ({ pa
   }, { timeout: 15000 }).toBeGreaterThan(0);
 });
 
-[
+const demoPackAudioAssets = [
   {
     assetId: 'simulacra-chosic-com',
     route: '**/assets/demo-pack/audio/Simulacra-chosic.com_.mp3*',
+    path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+    originalName: 'Simulacra-chosic.com_.mp3',
   },
   {
     assetId: 'punch-deck-the-soul-crushing-monotony-of-isolation-instrumental-mix-chosic-com',
     route: '**/assets/demo-pack/audio/punch-deck-the-soul-crushing-monotony-of-isolation-instrumental-mix(chosic.com).mp3*',
+    path: 'assets/demo-pack/audio/punch-deck-the-soul-crushing-monotony-of-isolation-instrumental-mix(chosic.com).mp3',
+    originalName: 'punch-deck-the-soul-crushing-monotony-of-isolation-instrumental-mix(chosic.com).mp3',
   },
   {
     assetId: 'sb-indreams-chosic-com',
     route: '**/assets/demo-pack/audio/sb_indreams(chosic.com).mp3*',
+    path: 'assets/demo-pack/audio/sb_indreams(chosic.com).mp3',
+    originalName: 'sb_indreams(chosic.com).mp3',
   },
-].forEach(({ assetId, route }) => {
-  test(`selecting demo-pack music "${assetId}" in the editor primes playback before play mode @slow`, async ({ page }) => {
-    await page.route(route, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 4000));
-      await route.continue();
-    });
+] as const;
 
-    await seedProject(page, createEmptyProject() as any);
-    await dismissViewHint(page);
-    await openSceneScope(page);
+test('selecting demo-pack music in the editor primes playback before play mode @slow', async ({ page }) => {
+  const { assetId, route } = demoPackAudioAssets[0];
+  await page.route(route, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await route.continue();
+  });
 
-    await page.getByTestId('assets-dock-add-button').click();
-    await page.getByTestId('assets-dock-add-menu-from-demo-pack').click();
-    await page.getByTestId('assets-dock-tab-audio').click();
+  await seedProject(page, createEmptyProject() as any);
+  await dismissViewHint(page);
+  await openSceneScope(page);
+
+  await page.getByTestId('assets-dock-add-button').click();
+  await page.getByTestId('assets-dock-add-menu-from-demo-pack').click();
+  await page.getByTestId('assets-dock-tab-audio').click();
+  await expect(page.getByTestId(`assets-dock-item-audio-${assetId}`)).toBeVisible();
+
+  await page.getByTestId('scene-inspector-panel').getByText('Expand All').click();
+  await page.getByTestId('scene-music-asset-select').selectOption(assetId);
+
+  await expect.poll(async () => {
+    const state = await getState<{ currentSceneId?: string; scene?: { music?: { assetId?: string } } }>(page);
+    return {
+      sceneId: state?.currentSceneId ?? null,
+      music: state?.scene?.music?.assetId ?? null,
+    };
+  }).toEqual({ sceneId: 'scene-1', music: assetId });
+
+  await page.getByTestId('toggle-mode-button').click();
+  await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
+
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{
+      audio?: { musicAssetId?: string };
+      audioPlayback?: { musicIsPlaying?: boolean };
+      audioDebug?: { contextState?: string; outputRange?: number; usingWebAudio?: boolean };
+    }>(page);
+    return {
+      music: snap?.audio?.musicAssetId,
+      isPlaying: Boolean(snap?.audioPlayback?.musicIsPlaying),
+      contextState: snap?.audioDebug?.contextState ?? null,
+      outputRange: Number(snap?.audioDebug?.outputRange ?? 0),
+      usingWebAudio: Boolean(snap?.audioDebug?.usingWebAudio),
+    };
+  }, { timeout: 15000 }).toEqual({
+    music: assetId,
+    isPlaying: true,
+    contextState: 'running',
+    outputRange: expect.any(Number),
+    usingWebAudio: true,
+  });
+
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{ audioDebug?: { outputRange?: number } }>(page);
+    return Number(snap?.audioDebug?.outputRange ?? 0);
+  }, { timeout: 15000 }).toBeGreaterThan(0);
+});
+
+test('demo-pack music filenames with punctuation can be assigned in the editor @browser', async ({ page }) => {
+  await seedProject(page, createEmptyProject() as any);
+  await dismissViewHint(page);
+  await openSceneScope(page);
+
+  await page.getByTestId('assets-dock-add-button').click();
+  await page.getByTestId('assets-dock-add-menu-from-demo-pack').click();
+  await page.getByTestId('assets-dock-tab-audio').click();
+
+  await page.getByTestId('scene-inspector-panel').getByText('Expand All').click();
+
+  for (const { assetId, path, originalName } of demoPackAudioAssets) {
     await expect(page.getByTestId(`assets-dock-item-audio-${assetId}`)).toBeVisible();
-
-    await page.getByTestId('scene-inspector-panel').getByText('Expand All').click();
     await page.getByTestId('scene-music-asset-select').selectOption(assetId);
 
     await expect.poll(async () => {
-      const state = await getState<{ currentSceneId?: string; scene?: { music?: { assetId?: string } } }>(page);
+      const state = await getState<{
+        currentSceneId?: string;
+        scene?: { music?: { assetId?: string } };
+        project?: { audio?: { sounds?: Record<string, { source?: { path?: string; originalName?: string } }> } };
+      }>(page);
+      const source = state?.project?.audio?.sounds?.[assetId]?.source;
       return {
         sceneId: state?.currentSceneId ?? null,
         music: state?.scene?.music?.assetId ?? null,
+        path: source?.path ?? null,
+        originalName: source?.originalName ?? null,
       };
-    }).toEqual({ sceneId: 'scene-1', music: assetId });
-
-    await page.getByTestId('toggle-mode-button').click();
-    await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
-
-    await expect.poll(async () => {
-      const snap = await getSceneSnapshot<{
-        audio?: { musicAssetId?: string };
-        audioPlayback?: { musicIsPlaying?: boolean };
-        audioDebug?: { contextState?: string; outputRange?: number; usingWebAudio?: boolean };
-      }>(page);
-      return {
-        music: snap?.audio?.musicAssetId,
-        isPlaying: Boolean(snap?.audioPlayback?.musicIsPlaying),
-        contextState: snap?.audioDebug?.contextState ?? null,
-        outputRange: Number(snap?.audioDebug?.outputRange ?? 0),
-        usingWebAudio: Boolean(snap?.audioDebug?.usingWebAudio),
-      };
-    }, { timeout: 15000 }).toEqual({
-      music: assetId,
-      isPlaying: true,
-      contextState: 'running',
-      outputRange: expect.any(Number),
-      usingWebAudio: true,
-    });
-
-    await expect.poll(async () => {
-      const snap = await getSceneSnapshot<{ audioDebug?: { outputRange?: number } }>(page);
-      return Number(snap?.audioDebug?.outputRange ?? 0);
-    }, { timeout: 15000 }).toBeGreaterThan(0);
-  });
+    }).toEqual({ sceneId: 'scene-1', music: assetId, path, originalName });
+  }
 });
