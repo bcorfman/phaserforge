@@ -65,7 +65,7 @@ export default defineConfig({
   // The editor boots a shared Vite dev server and uses localStorage-backed scene seeding.
   // Running multiple browser workers against that single server has proven flaky in practice.
   workers: process.env.PW_WORKERS ? parseInt(process.env.PW_WORKERS) : 3,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
+  reporter: process.env.CI ? [['github'], ['list'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: resolveE2EBaseUrl(process.env),
     trace: 'on-first-retry',
