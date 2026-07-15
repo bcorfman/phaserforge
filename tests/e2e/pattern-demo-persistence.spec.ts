@@ -3,6 +3,8 @@ import { createEmptyProject } from '../../src/model/emptyProject';
 import { resolveEntityDefaults } from '../../src/model/entityDefaults';
 import { DEMO_PACK_ASSET_MANIFEST } from '../../src/editor/demoPackAssets';
 import { measureTextEntityPixels, resolveTextEntityDefaults } from '../../src/editor/textEntity';
+import { materializeProjectRevision } from '../../src/editor/projectTreeHistory';
+import { fulfillRouteWithTestWav } from './audioTestFixtures';
 import {
   dismissViewHint,
   dispatchAction,
@@ -394,7 +396,7 @@ function buildMusicProject(project: any): any {
     scene.music = {
       assetId: 'sb-indreams-chosic-com',
       loop: true,
-      volume: 0.65,
+      volume: 0,
       fadeMs: 250,
     };
   });
@@ -407,6 +409,47 @@ async function getPersistenceSnapshot(page: Page): Promise<PersistenceSnapshot> 
     currentSceneId: state?.currentSceneId ?? null,
     scene: cloneProject(state?.scene ?? null),
   };
+}
+
+async function getPersistedActiveSnapshot(page: Page, currentSceneId: string | null): Promise<PersistenceSnapshot | null> {
+  if (!currentSceneId) return null;
+  const record = await page.evaluate(async () => {
+    const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+      const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
+    const db = await openDb();
+    const workspace = await new Promise<any>((resolve, reject) => {
+      const tx = db.transaction('workspaceState', 'readonly');
+      const request = tx.objectStore('workspaceState').get('workspace');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    if (!workspace?.activeProjectId) return null;
+    const record = await new Promise<any>((resolve, reject) => {
+      const tx = db.transaction('projects', 'readonly');
+      const request = tx.objectStore('projects').get(workspace.activeProjectId);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return record ?? null;
+  });
+  const project = record?.project
+    ?? (Array.isArray(record?.revisions) && record.revisions[0]?.id
+      ? materializeProjectRevision(record.revisions, record.revisions[0].id)
+      : null);
+  if (!project || !currentSceneId) return null;
+  return {
+    project: cloneProject(project),
+    currentSceneId,
+    scene: cloneProject(project.scenes?.[currentSceneId] ?? null),
+  };
+}
+
+async function expectPersistedSnapshot(page: Page, expected: PersistenceSnapshot): Promise<void> {
+  await expect.poll(async () => getPersistedActiveSnapshot(page, expected.currentSceneId)).toEqual(expected);
 }
 
 function trackErrors(page: Page): ErrorCollector {
@@ -477,6 +520,7 @@ async function expectSnapshot(page: Page, expected: PersistenceSnapshot): Promis
 
 async function reopenAndAssert(page: Page, expected: PersistenceSnapshot, label: string): Promise<{ page: Page; errors: ErrorCollector }> {
   const context = page.context();
+  await expectPersistedSnapshot(page, expected);
   await page.close({ runBeforeUnload: true });
   const reopenedPage = await context.newPage();
   const errors = trackErrors(reopenedPage);
@@ -665,6 +709,10 @@ async function verifyPatternDemoRuntime(page: Page): Promise<void> {
 }
 
 async function initializePatternDemoPage(page: Page): Promise<{ page: Page; errors: ErrorCollector }> {
+  await page.route('**/assets/demo-pack/audio/**', async (route) => {
+    await fulfillRouteWithTestWav(route, { amplitude: 0 });
+  });
+
   if (USE_LIVE_CLOUD) {
     if (CLOUD_LIVE_CONFIG_ERROR) {
       throw new Error(CLOUD_LIVE_CONFIG_ERROR);
