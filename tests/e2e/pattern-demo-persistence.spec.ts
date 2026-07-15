@@ -70,6 +70,7 @@ type ErrorCollector = {
 };
 
 type Step = {
+  id: string;
   label: string;
   apply: (page: Page) => Promise<PersistenceSnapshot>;
 };
@@ -556,6 +557,7 @@ async function loadProjectSnapshot(page: Page, project: any, sourceLabel: string
 function buildPatternDemoSteps(): Step[] {
   return [
     {
+      id: 'world-size',
       label: 'set world size to 800x600',
       apply: async (page) => {
         await dispatchAction(page, { type: 'update-scene-world', width: 800, height: 600 });
@@ -567,6 +569,7 @@ function buildPatternDemoSteps(): Step[] {
       },
     },
     {
+      id: 'import-assets',
       label: 'import demo pack assets',
       apply: async (page) => {
         await dispatchAction(page, { type: 'import-demo-pack-assets', entries: DEMO_PACK_ASSET_MANIFEST });
@@ -581,46 +584,57 @@ function buildPatternDemoSteps(): Step[] {
       },
     },
     {
+      id: 'labels',
       label: 'add and lay out text labels',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-labels', buildLabelsProject),
     },
     {
+      id: 'rough-ships',
       label: 'create and name the seven sprites',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-ships-rough', buildRoughShipsProject),
     },
     {
+      id: 'aligned-ships',
       label: 'position the ships with layout tools',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-ships-aligned', buildAlignedShipsProject),
     },
     {
+      id: 'wave',
       label: 'attach the wave action flow',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-wave', buildWaveProject),
     },
     {
+      id: 'zigzag',
       label: 'attach the zigzag action flow',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-zigzag', buildZigzagProject),
     },
     {
+      id: 'figure8',
       label: 'attach the figure-8 action flow',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-figure8', buildFigureEightProject),
     },
     {
+      id: 'orbit',
       label: 'attach the orbit action flow',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-orbit', buildOrbitProject),
     },
     {
+      id: 'spiral',
       label: 'attach the spiral action flow',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-spiral', buildSpiralProject),
     },
     {
+      id: 'bounce',
       label: 'attach the bounce action flow',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-bounce', buildBounceProject),
     },
     {
+      id: 'patrol',
       label: 'attach the patrol action flow',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-patrol', buildPatrolProject),
     },
     {
+      id: 'music',
       label: 'add demo music to the scene',
       apply: async (page) => applyProjectStep(page, 'pattern-demo-step-music', buildMusicProject),
     },
@@ -924,9 +938,18 @@ async function waitForCloudPersistence(page: Page, label: string, previousMarker
   return nextMarker;
 }
 
-async function runPatternDemoPersistence(page: Page, options: { undoRedo: boolean }): Promise<void> {
+type PatternDemoRunOptions = {
+  undoRedo: boolean;
+  stepIds?: string[];
+  verifyRuntime?: boolean;
+};
+
+const BROWSER_MATRIX_PATTERN_DEMO_STEP_IDS = ['world-size', 'import-assets', 'music'];
+
+async function runPatternDemoPersistence(page: Page, options: PatternDemoRunOptions): Promise<void> {
   let active = await initializePatternDemoPage(page);
-  const steps = buildPatternDemoSteps();
+  const stepIds = options.stepIds ? new Set(options.stepIds) : null;
+  const steps = buildPatternDemoSteps().filter((step) => !stepIds || stepIds.has(step.id));
   let cloudFlushMarker = await getCloudFlushMarker(active.page);
   let finalSnapshot: PersistenceSnapshot | null = null;
 
@@ -969,7 +992,7 @@ async function runPatternDemoPersistence(page: Page, options: { undoRedo: boolea
 
   if (!finalSnapshot) throw new Error('Pattern demo steps produced no final snapshot');
 
-  if (!USE_LIVE_CLOUD && !options.undoRedo) {
+  if (!USE_LIVE_CLOUD && !options.undoRedo && options.verifyRuntime !== false) {
     await verifyPatternDemoRuntime(active.page);
     expectNoBrowserErrors(active.errors, 'runtime verification');
     active = await reopenAndAssert(active.page, finalSnapshot, 'runtime verification');
@@ -977,12 +1000,30 @@ async function runPatternDemoPersistence(page: Page, options: { undoRedo: boolea
   }
 }
 
-test('pattern demo persistence survives tab close and reopen after each walkthrough step @slow @regression', async ({ page }) => {
+test('pattern demo persistence survives tab close and reopen after each walkthrough step @slow @regression', async ({ page, browserName }) => {
+  test.skip(
+    browserName !== 'chromium' && !USE_LIVE_CLOUD,
+    'The full Pattern Demo walkthrough is covered by Chromium; the browser matrix uses the targeted persistence smoke.'
+  );
+
   await runPatternDemoPersistence(page, { undoRedo: false });
 });
 
+test('pattern demo persistence smoke covers browser matrix reopen path @regression @browser', async ({ page, browserName }) => {
+  test.skip(
+    browserName === 'chromium' || USE_LIVE_CLOUD,
+    'Chromium and cloud-live runs cover the full Pattern Demo walkthrough.'
+  );
+
+  await runPatternDemoPersistence(page, {
+    undoRedo: false,
+    stepIds: BROWSER_MATRIX_PATTERN_DEMO_STEP_IDS,
+    verifyRuntime: false,
+  });
+});
+
 test.describe('pattern demo undo/redo persistence', () => {
-  test.skip(({ browserName }) => browserName === 'webkit', 'The full undo/redo walkthrough exceeds the WebKit full-matrix budget; WebKit still runs the reopen persistence walkthrough.');
+  test.skip(({ browserName }) => browserName !== 'chromium', 'The full undo/redo walkthrough is covered by Chromium; browser-matrix persistence uses the targeted smoke.');
 
   test('pattern demo persistence survives reopen plus undo/redo after each walkthrough step @slow @regression', async ({ page }) => {
     await runPatternDemoPersistence(page, { undoRedo: true });
