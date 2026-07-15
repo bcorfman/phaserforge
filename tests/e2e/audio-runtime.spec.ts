@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { dismissViewHint, getSceneSnapshot, getState, openSceneScope, seedProject } from './helpers';
 import { sampleProject } from '../../src/model/sampleProject';
 import { createEmptyProject } from '../../src/model/emptyProject';
+import { serializeProjectToYaml } from '../../src/model/serialization';
 
 test.setTimeout(120000);
 
@@ -94,6 +95,69 @@ test('entering play mode eventually starts delayed path-backed demo-pack music @
       usingWebAudio: Boolean(snap?.audioDebug?.usingWebAudio),
     };
   }, { timeout: 15000 }).toEqual({ music: 'theme', isPlaying: true, contextState: 'running', outputRange: expect.any(Number), usingWebAudio: true });
+
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{ audioDebug?: { outputRange?: number } }>(page);
+    return Number(snap?.audioDebug?.outputRange ?? 0);
+  }, { timeout: 15000 }).toBeGreaterThan(0);
+});
+
+test('published play page starts path-backed demo-pack music @slow', async ({ page }) => {
+  const sceneId = sampleProject.initialSceneId;
+  const project = {
+    ...sampleProject,
+    audio: {
+      sounds: {
+        theme: {
+          id: 'theme',
+          source: {
+            kind: 'path',
+            path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+            originalName: 'Simulacra-chosic.com_.mp3',
+            mimeType: 'audio/mpeg',
+          },
+        },
+      },
+    },
+    scenes: {
+      ...sampleProject.scenes,
+      [sceneId]: {
+        ...sampleProject.scenes[sceneId],
+        music: { assetId: 'theme', loop: true, volume: 0.65, fadeMs: 250 },
+      },
+    },
+  };
+
+  await page.route('**/game.yaml', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/x-yaml',
+      body: serializeProjectToYaml(project as any),
+    });
+  });
+
+  await page.goto('./?yamlUrl=./game.yaml&audioDebug=1');
+  await expect(page.getByTestId('play-start-gate')).toBeVisible();
+  await page.getByTestId('play-start-gate').click();
+
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{
+      audio?: { musicAssetId?: string };
+      audioPlayback?: { musicIsPlaying?: boolean };
+      audioDebug?: { contextState?: string; outputRange?: number; usingWebAudio?: boolean; currentMusicResolvedUrl?: string };
+    }>(page);
+    return {
+      music: snap?.audio?.musicAssetId,
+      isPlaying: Boolean(snap?.audioPlayback?.musicIsPlaying),
+      contextState: snap?.audioDebug?.contextState ?? null,
+      usingWebAudio: Boolean(snap?.audioDebug?.usingWebAudio),
+    };
+  }, { timeout: 15000 }).toEqual({
+    music: 'theme',
+    isPlaying: true,
+    contextState: 'running',
+    usingWebAudio: true,
+  });
 
   await expect.poll(async () => {
     const snap = await getSceneSnapshot<{ audioDebug?: { outputRange?: number } }>(page);
