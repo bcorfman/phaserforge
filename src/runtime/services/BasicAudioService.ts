@@ -43,7 +43,7 @@ export class BasicAudioService implements AudioService {
     private readonly getKey: (assetId: string) => string = (assetId) => `audio:${assetId}`,
   ) {}
 
-  private resumeManagerIfNeeded(): void {
+  private resumeManagerIfNeeded(onResumed?: () => void): void {
     const manager = this.manager as UnlockableSoundManagerLike;
     try {
       manager.unlock?.();
@@ -54,17 +54,24 @@ export class BasicAudioService implements AudioService {
     if (!context?.resume) return;
     if (context.state && context.state !== 'suspended' && context.state !== 'interrupted') return;
     try {
-      void context.resume();
+      const resumeResult = context.resume();
+      if (onResumed && resumeResult && typeof (resumeResult as Promise<unknown>).then === 'function') {
+        void (resumeResult as Promise<unknown>).then(onResumed, () => {});
+      }
     } catch {
       // ignore resume errors
     }
   }
 
   public playMusic(assetId: string, options: { loop?: boolean; volume?: number; fadeMs?: number } = {}): void {
-    this.resumeManagerIfNeeded();
     const loop = options.loop ?? true;
     const volume = clamp01(options.volume ?? 1);
     const fadeMs = Number.isFinite(Number(options.fadeMs)) ? Math.max(0, Number(options.fadeMs)) : 0;
+    this.resumeManagerIfNeeded(() => {
+      const current = this.music;
+      if (current?.assetId !== assetId || current.sound?.isPlaying) return;
+      this.playMusic(assetId, { loop, volume, fadeMs });
+    });
 
     if (this.music?.assetId === assetId) {
       try {
