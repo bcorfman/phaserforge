@@ -75,6 +75,7 @@ describe('PlayApp start gate', () => {
 
   afterEach(() => {
     cleanup();
+    delete (window as any).__phaserGame;
     vi.unstubAllGlobals();
   });
 
@@ -82,7 +83,7 @@ describe('PlayApp start gate', () => {
     render(<PlayApp />);
 
     expect((await screen.findByTestId('play-start-gate')).textContent).toContain('Click to Start');
-    expect(screen.queryByTestId('mock-phaser-game')).toBeNull();
+    expect(await screen.findByTestId('mock-phaser-game')).not.toBeNull();
     expect(eventBus.emit).not.toHaveBeenCalledWith('runtime:load-project', expect.anything(), expect.anything(), 'play');
   });
 
@@ -98,5 +99,22 @@ describe('PlayApp start gate', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('play-start-gate')).toBeNull();
     });
+  });
+
+  it('uses the start click to unlock the mounted Phaser audio context', async () => {
+    const unlock = vi.fn();
+    const resume = vi.fn();
+    (window as any).__phaserGame = {
+      sound: {
+        unlock,
+        context: { resume },
+      },
+    };
+    render(<PlayApp />);
+
+    fireEvent.click(await screen.findByTestId('play-start-gate'));
+
+    expect(unlock).toHaveBeenCalledTimes(1);
+    expect(resume).toHaveBeenCalledTimes(1);
   });
 });
