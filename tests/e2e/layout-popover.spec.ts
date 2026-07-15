@@ -38,9 +38,13 @@ test('Layout popover distributes selected item centers between endpoints @critic
   const createdIds: string[] = [];
   for (const at of [{ x: 100, y: 100 }, { x: 180, y: 100 }, { x: 300, y: 100 }]) {
     await dispatchAction(page, { type: 'create-text-entity', at });
-    const state = await getState<any>(page);
-    if (state.selection?.kind !== 'entity') throw new Error('Expected created text entity to be selected');
-    createdIds.push(state.selection.id);
+    let createdId: string | null = null;
+    await expect.poll(async () => {
+      const state = await getState<any>(page);
+      createdId = state.selection?.kind === 'entity' ? state.selection.id : null;
+      return createdId;
+    }).not.toBeNull();
+    createdIds.push(createdId!);
   }
 
   await dispatchAction(page, { type: 'select', selection: { kind: 'entities', ids: createdIds } });
