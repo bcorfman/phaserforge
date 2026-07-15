@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/v1';
@@ -20,17 +19,13 @@ function pointerAssets() {
   return REQUIRED_ASSETS.filter((assetPath) => isPointer(assetPath));
 }
 
-let pointers = pointerAssets();
+const pointers = pointerAssets();
 if (pointers.length > 0) {
-  try {
-    execFileSync('git', ['lfs', 'pull', '--include', REQUIRED_ASSETS.join(','), '--exclude', ''], { stdio: 'inherit' });
-  } catch (error) {
-    console.error('[phaserforge] Git LFS assets are pointers and `git lfs pull` failed.');
-    throw error;
-  }
-  pointers = pointerAssets();
-}
-
-if (pointers.length > 0) {
-  throw new Error(`[phaserforge] Git LFS assets are still pointers: ${pointers.join(', ')}`);
+  throw new Error(
+    [
+      '[phaserforge] Git LFS assets are pointer files, not playable audio bytes.',
+      `Run \`git lfs pull --include="${REQUIRED_ASSETS.join(',')}"\` before building.`,
+      `Pointer assets: ${pointers.join(', ')}`,
+    ].join('\n'),
+  );
 }
