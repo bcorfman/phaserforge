@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PhaserGame } from './phaser/PhaserHost';
 import { EventBus, getActiveScene } from './phaser/EventBus';
 import { getGame } from './cloud/api';
@@ -47,6 +47,7 @@ export default function PlayApp() {
   const [sceneId, setSceneId] = useState<string | null>(null);
   const [sceneReady, setSceneReady] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const startedProjectRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,10 +86,17 @@ export default function PlayApp() {
     return scene ? getSceneWorld(scene) : null;
   }, [project, sceneId]);
 
-  useEffect(() => {
-    if (!hasStarted || !sceneReady || !project || !sceneId) return;
+  const startProjectIfReady = useCallback(() => {
+    if (startedProjectRef.current || !sceneReady || !project || !sceneId) return false;
+    startedProjectRef.current = true;
     EventBus.emit('runtime:load-project', project, sceneId, 'play');
-  }, [hasStarted, sceneReady, project, sceneId]);
+    return true;
+  }, [project, sceneId, sceneReady]);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+    startProjectIfReady();
+  }, [hasStarted, startProjectIfReady]);
 
   useEffect(() => {
     const handleReady = () => setSceneReady(true);
@@ -133,8 +141,10 @@ export default function PlayApp() {
             className="play-start-gate"
             data-testid="play-start-gate"
             type="button"
+            disabled={!sceneReady}
             onClick={() => {
               unlockAudioFromStartGesture();
+              startProjectIfReady();
               setHasStarted(true);
             }}
           >
