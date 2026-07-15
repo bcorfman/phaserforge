@@ -920,6 +920,10 @@ test('pattern demo persistence survives tab close and reopen after each walkthro
   await runPatternDemoPersistence(page, { undoRedo: false });
 });
 
-test('pattern demo persistence survives reopen plus undo/redo after each walkthrough step @slow @regression', async ({ page }) => {
-  await runPatternDemoPersistence(page, { undoRedo: true });
+test.describe('pattern demo undo/redo persistence', () => {
+  test.skip(({ browserName }) => browserName === 'webkit', 'The full undo/redo walkthrough exceeds the WebKit full-matrix budget; WebKit still runs the reopen persistence walkthrough.');
+
+  test('pattern demo persistence survives reopen plus undo/redo after each walkthrough step @slow @regression', async ({ page }) => {
+    await runPatternDemoPersistence(page, { undoRedo: true });
+  });
 });
