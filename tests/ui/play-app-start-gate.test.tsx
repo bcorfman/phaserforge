@@ -91,7 +91,9 @@ describe('PlayApp start gate', () => {
     render(<PlayApp />);
 
     const startGate = await screen.findByTestId('play-start-gate');
-    expect((startGate as HTMLButtonElement).disabled).toBe(false);
+    await waitFor(() => {
+      expect((startGate as HTMLButtonElement).disabled).toBe(false);
+    });
     fireEvent.click(startGate);
 
     expect(await screen.findByTestId('mock-phaser-game')).not.toBeNull();
@@ -112,7 +114,11 @@ describe('PlayApp start gate', () => {
     };
     render(<PlayApp />);
 
-    fireEvent.click(await screen.findByTestId('play-start-gate'));
+    const startGate = await screen.findByTestId('play-start-gate');
+    await waitFor(() => {
+      expect((startGate as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(startGate);
 
     expect(unlock).toHaveBeenCalledTimes(1);
     expect(resume).toHaveBeenCalledTimes(1);
