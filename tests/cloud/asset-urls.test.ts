@@ -5,7 +5,7 @@ import { inlinePreviewUrlForAssetSource, resolveAssetSourceUrl } from '../../src
 describe('asset URL helpers', () => {
   afterEach(() => {
     vi.restoreAllMocks();
-    delete (window as any).__PHASER_FORGE_PUBLISH_MARKER;
+    vi.unstubAllGlobals();
   });
 
   it('resolves project-relative path assets to usable browser URLs', async () => {
@@ -35,7 +35,7 @@ describe('asset URL helpers', () => {
   });
 
   it('uses literal project paths in published game runtime', async () => {
-    (window as any).__PHASER_FORGE_PUBLISH_MARKER = 'publish-test';
+    vi.stubGlobal('window', { __PHASER_FORGE_PUBLISH_MARKER: 'publish-test' });
 
     const resolvedUrl = await resolveAssetSourceUrl({
       kind: 'path',
