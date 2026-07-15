@@ -90,12 +90,12 @@ describe('PlayApp start gate', () => {
   it('starts the game only after the player clicks the gate', async () => {
     render(<PlayApp />);
 
-    fireEvent.click(await screen.findByTestId('play-start-gate'));
+    const startGate = await screen.findByTestId('play-start-gate');
+    expect((startGate as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(startGate);
 
     expect(await screen.findByTestId('mock-phaser-game')).not.toBeNull();
-    await waitFor(() => {
-      expect(eventBus.emit).toHaveBeenCalledWith('runtime:load-project', project, 'scene-1', 'play');
-    });
+    expect(eventBus.emit).toHaveBeenCalledWith('runtime:load-project', project, 'scene-1', 'play');
     await waitFor(() => {
       expect(screen.queryByTestId('play-start-gate')).toBeNull();
     });
@@ -116,5 +116,7 @@ describe('PlayApp start gate', () => {
 
     expect(unlock).toHaveBeenCalledTimes(1);
     expect(resume).toHaveBeenCalledTimes(1);
+    expect(eventBus.emit).toHaveBeenCalledWith('runtime:load-project', project, 'scene-1', 'play');
+    expect(unlock.mock.invocationCallOrder[0]).toBeLessThan(eventBus.emit.mock.invocationCallOrder[0]);
   });
 });

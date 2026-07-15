@@ -5,6 +5,7 @@ import { inlinePreviewUrlForAssetSource, resolveAssetSourceUrl } from '../../src
 describe('asset URL helpers', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    delete (window as any).__PHASER_FORGE_PUBLISH_MARKER;
   });
 
   it('resolves project-relative path assets to usable browser URLs', async () => {
@@ -31,5 +32,18 @@ describe('asset URL helpers', () => {
     });
 
     expect(resolvedUrl).toContain('Simulacra-chosic.com_.mp3');
+  });
+
+  it('uses literal project paths in published game runtime', async () => {
+    (window as any).__PHASER_FORGE_PUBLISH_MARKER = 'publish-test';
+
+    const resolvedUrl = await resolveAssetSourceUrl({
+      kind: 'path',
+      path: 'assets/demo-pack/audio/Simulacra-chosic.com_.mp3',
+      originalName: 'Simulacra-chosic.com_.mp3',
+      mimeType: 'audio/mpeg',
+    });
+
+    expect(resolvedUrl).toBe('assets/demo-pack/audio/Simulacra-chosic.com_.mp3');
   });
 });
