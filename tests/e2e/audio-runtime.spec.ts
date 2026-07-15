@@ -3,6 +3,7 @@ import { dismissViewHint, getSceneSnapshot, getState, openSceneScope, seedProjec
 import { sampleProject } from '../../src/model/sampleProject';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { serializeProjectToYaml } from '../../src/model/serialization';
+import { fulfillRouteWithTestWav } from './audioTestFixtures';
 
 test.setTimeout(120000);
 
@@ -58,8 +59,7 @@ test('entering play mode applies scene music/ambience (bridge snapshot) @slow', 
 
 test('entering play mode eventually starts delayed path-backed demo-pack music @slow', async ({ page, browserName }) => {
   await page.route('**/assets/demo-pack/audio/Simulacra-chosic.com_.mp3*', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 4000));
-    await route.continue();
+    await fulfillRouteWithTestWav(route, { amplitude: 96, delayMs: 4000 });
   });
 
   const sceneId = sampleProject.initialSceneId;
@@ -111,6 +111,10 @@ test('entering play mode eventually starts delayed path-backed demo-pack music @
 });
 
 test('published play page starts path-backed demo-pack music @slow', async ({ page, browserName }) => {
+  await page.route('**/assets/demo-pack/audio/Simulacra-chosic.com_.mp3*', async (route) => {
+    await fulfillRouteWithTestWav(route, { amplitude: 96 });
+  });
+
   const sceneId = sampleProject.initialSceneId;
   const project = {
     ...sampleProject,
@@ -192,8 +196,7 @@ const demoPackAudioAssets = [
 test('selecting demo-pack music in the editor primes playback before play mode @slow', async ({ page, browserName }) => {
   const { assetId, route } = demoPackAudioAssets[0];
   await page.route(route, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 4000));
-    await route.continue();
+    await fulfillRouteWithTestWav(route, { amplitude: 96, delayMs: 4000 });
   });
 
   await seedProject(page, createEmptyProject() as any);
