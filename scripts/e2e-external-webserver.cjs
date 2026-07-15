@@ -167,7 +167,22 @@ function createLifecycleTracker({ command, host, port, logDir }) {
 }
 
 function createManagedServerError(message, logDir) {
-  return new Error(`${message}. Managed server logs: ${logDir}`);
+  const readTail = (name) => {
+    try {
+      const text = fs.readFileSync(path.join(logDir, name), 'utf8');
+      const lines = text.trimEnd().split(/\r?\n/);
+      return lines.slice(-80).join('\n');
+    } catch {
+      return '';
+    }
+  };
+  const stdoutTail = readTail('stdout.log');
+  const stderrTail = readTail('stderr.log');
+  const detail = [
+    stdoutTail ? `\n--- managed server stdout tail ---\n${stdoutTail}` : '',
+    stderrTail ? `\n--- managed server stderr tail ---\n${stderrTail}` : '',
+  ].join('');
+  return new Error(`${message}. Managed server logs: ${logDir}${detail}`);
 }
 
 async function startManagedExternalWebServer({
