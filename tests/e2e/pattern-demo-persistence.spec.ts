@@ -602,25 +602,38 @@ async function verifyPatternDemoRuntime(page: Page): Promise<void> {
     });
   }
 
-  await page.waitForTimeout(1500);
+  const maxShipMovement = new Map<string, number>();
+  const maxLabelMovement = new Map<string, number>();
+  for (const ship of ALL_SHIPS) {
+    maxShipMovement.set(ship.key, 0);
+    maxLabelMovement.set(ship.key, 0);
+  }
+
+  for (let sample = 0; sample < 10; sample += 1) {
+    await page.waitForTimeout(250);
+    for (const ship of ALL_SHIPS) {
+      const shipRect = await getEntityWorldRect(page, shipEntityId(ship.key));
+      const labelRect = await getEntityWorldRect(page, textEntityId(ship.key));
+      const initialShip = initialShipCenters.get(ship.key)!;
+      const initialLabel = initialLabelCenters.get(ship.key)!;
+      const shipCenter = {
+        x: shipRect.centerX ?? (shipRect.minX + shipRect.maxX) / 2,
+        y: shipRect.centerY ?? (shipRect.minY + shipRect.maxY) / 2,
+      };
+      const labelCenter = {
+        x: labelRect.centerX ?? (labelRect.minX + labelRect.maxX) / 2,
+        y: labelRect.centerY ?? (labelRect.minY + labelRect.maxY) / 2,
+      };
+      const shipMoved = Math.hypot(shipCenter.x - initialShip.x, shipCenter.y - initialShip.y);
+      const labelMoved = Math.hypot(labelCenter.x - initialLabel.x, labelCenter.y - initialLabel.y);
+      maxShipMovement.set(ship.key, Math.max(maxShipMovement.get(ship.key) ?? 0, shipMoved));
+      maxLabelMovement.set(ship.key, Math.max(maxLabelMovement.get(ship.key) ?? 0, labelMoved));
+    }
+  }
 
   for (const ship of ALL_SHIPS) {
-    const shipRect = await getEntityWorldRect(page, shipEntityId(ship.key));
-    const labelRect = await getEntityWorldRect(page, textEntityId(ship.key));
-    const initialShip = initialShipCenters.get(ship.key)!;
-    const initialLabel = initialLabelCenters.get(ship.key)!;
-    const shipCenter = {
-      x: shipRect.centerX ?? (shipRect.minX + shipRect.maxX) / 2,
-      y: shipRect.centerY ?? (shipRect.minY + shipRect.maxY) / 2,
-    };
-    const labelCenter = {
-      x: labelRect.centerX ?? (labelRect.minX + labelRect.maxX) / 2,
-      y: labelRect.centerY ?? (labelRect.minY + labelRect.maxY) / 2,
-    };
-    const shipMoved = Math.hypot(shipCenter.x - initialShip.x, shipCenter.y - initialShip.y);
-    const labelMoved = Math.hypot(labelCenter.x - initialLabel.x, labelCenter.y - initialLabel.y);
-    expect(shipMoved, `${ship.label} should move in play mode`).toBeGreaterThan(1);
-    expect(labelMoved, `${ship.label} label should remain static`).toBeLessThanOrEqual(1);
+    expect(maxShipMovement.get(ship.key) ?? 0, `${ship.label} should move in play mode`).toBeGreaterThan(1);
+    expect(maxLabelMovement.get(ship.key) ?? 0, `${ship.label} label should remain static`).toBeLessThanOrEqual(1);
   }
 
   for (let i = 0; i < 6; i += 1) {

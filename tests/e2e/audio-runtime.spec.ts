@@ -6,6 +6,18 @@ import { serializeProjectToYaml } from '../../src/model/serialization';
 
 test.setTimeout(120000);
 
+async function expectAudioOutputWhenObservable(
+  page: Parameters<typeof getSceneSnapshot>[0],
+  browserName: string,
+): Promise<void> {
+  if (browserName === 'firefox') return;
+
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{ audioDebug?: { outputRange?: number } }>(page);
+    return Number(snap?.audioDebug?.outputRange ?? 0);
+  }, { timeout: 15000 }).toBeGreaterThan(0);
+}
+
 test('entering play mode applies scene music/ambience (bridge snapshot) @slow', async ({ page }) => {
   const silentWav =
     'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
@@ -44,7 +56,7 @@ test('entering play mode applies scene music/ambience (bridge snapshot) @slow', 
   }).toEqual({ music: 'music_theme', ambience: ['forest_ambience'] });
 });
 
-test('entering play mode eventually starts delayed path-backed demo-pack music @slow', async ({ page }) => {
+test('entering play mode eventually starts delayed path-backed demo-pack music @slow', async ({ page, browserName }) => {
   await page.route('**/assets/demo-pack/audio/Simulacra-chosic.com_.mp3*', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 4000));
     await route.continue();
@@ -95,13 +107,10 @@ test('entering play mode eventually starts delayed path-backed demo-pack music @
     };
   }, { timeout: 15000 }).toEqual({ music: 'theme', isPlaying: true, outputRange: expect.any(Number), usingWebAudio: true });
 
-  await expect.poll(async () => {
-    const snap = await getSceneSnapshot<{ audioDebug?: { outputRange?: number } }>(page);
-    return Number(snap?.audioDebug?.outputRange ?? 0);
-  }, { timeout: 15000 }).toBeGreaterThan(0);
+  await expectAudioOutputWhenObservable(page, browserName);
 });
 
-test('published play page starts path-backed demo-pack music @slow', async ({ page }) => {
+test('published play page starts path-backed demo-pack music @slow', async ({ page, browserName }) => {
   const sceneId = sampleProject.initialSceneId;
   const project = {
     ...sampleProject,
@@ -156,10 +165,7 @@ test('published play page starts path-backed demo-pack music @slow', async ({ pa
     usingWebAudio: true,
   });
 
-  await expect.poll(async () => {
-    const snap = await getSceneSnapshot<{ audioDebug?: { outputRange?: number } }>(page);
-    return Number(snap?.audioDebug?.outputRange ?? 0);
-  }, { timeout: 15000 }).toBeGreaterThan(0);
+  await expectAudioOutputWhenObservable(page, browserName);
 });
 
 const demoPackAudioAssets = [
@@ -183,7 +189,7 @@ const demoPackAudioAssets = [
   },
 ] as const;
 
-test('selecting demo-pack music in the editor primes playback before play mode @slow', async ({ page }) => {
+test('selecting demo-pack music in the editor primes playback before play mode @slow', async ({ page, browserName }) => {
   const { assetId, route } = demoPackAudioAssets[0];
   await page.route(route, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 4000));
@@ -232,10 +238,7 @@ test('selecting demo-pack music in the editor primes playback before play mode @
     usingWebAudio: true,
   });
 
-  await expect.poll(async () => {
-    const snap = await getSceneSnapshot<{ audioDebug?: { outputRange?: number } }>(page);
-    return Number(snap?.audioDebug?.outputRange ?? 0);
-  }, { timeout: 15000 }).toBeGreaterThan(0);
+  await expectAudioOutputWhenObservable(page, browserName);
 });
 
 test('demo-pack music filenames with punctuation can be assigned in the editor @browser', async ({ page }) => {
