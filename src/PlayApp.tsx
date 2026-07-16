@@ -54,7 +54,7 @@ export default function PlayApp() {
     const load = async () => {
       try {
         if (yamlUrl) {
-          const res = await fetch(yamlUrl, { credentials: 'omit' });
+          const res = await fetch(yamlUrl, { credentials: 'omit', cache: 'no-store' });
           if (!res.ok) throw new Error(`http_${res.status}`);
           const yamlText = await res.text();
           const parsed = parseProjectYaml(yamlText);
