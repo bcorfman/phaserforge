@@ -83,6 +83,7 @@ describe('PlayApp start gate', () => {
     render(<PlayApp />);
 
     expect((await screen.findByTestId('play-start-gate')).textContent).toContain('Click to Start');
+    expect(fetch).toHaveBeenCalledWith('/game.yaml', { credentials: 'omit', cache: 'no-store' });
     expect(await screen.findByTestId('mock-phaser-game')).not.toBeNull();
     expect(eventBus.emit).not.toHaveBeenCalledWith('runtime:load-project', expect.anything(), expect.anything(), 'play');
   });

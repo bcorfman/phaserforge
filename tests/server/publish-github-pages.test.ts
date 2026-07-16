@@ -289,7 +289,11 @@ describe('publish github pages', () => {
       .find((content) => content.includes('<div id="root"></div>'));
     expect(indexHtml).toContain('<title>Game One</title>');
     expect(indexHtml).toContain('<meta name="phaserforge-mode" content="play" />');
+    expect(indexHtml).toContain(`window.__PHASER_FORGE_PLAY_YAML_URL = ${JSON.stringify(`./game.yaml?pf_publish=${encodeURIComponent(res.body.publishMarker)}`)};`);
     expect(indexHtml).toContain(`window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(res.body.publishMarker)};`);
+    expect(indexHtml).toContain("fetch('./phaserforge-publish.json?pf_check='");
+    expect(indexHtml).toContain("nextUrl.searchParams.set('pf_publish', latest.publishMarker)");
+    expect(indexHtml).toContain('window.location.replace(nextUrl.toString())');
     expect(indexHtml).toContain(`<meta name="phaserforge-publish-marker" content="${res.body.publishMarker}" />`);
   });
 
@@ -547,7 +551,7 @@ describe('publish github pages', () => {
       }) as any,
     );
 
-    await agent
+    const publishRes = await agent
       .post('/api/v1/publish/github-pages')
       .set('x-csrf-token', csrf)
       .send({ gameId: 'g1', repo: 'zoof' })
@@ -561,7 +565,7 @@ describe('publish github pages', () => {
       .map((bytes) => bytes.toString('utf8'))
       .find((content) => content.includes('initialSceneId:') && !content.includes('<!doctype html>'));
     expect(yamlBlob).toContain('kind: path');
-    expect(yamlBlob).toContain('path: assets/cloud/theme.mp3');
+    expect(yamlBlob).toContain(`path: assets/cloud/theme.mp3?pf_publish=${encodeURIComponent(publishRes.body.publishMarker)}`);
     expect(yamlBlob).not.toContain('kind: cloud');
   });
 
