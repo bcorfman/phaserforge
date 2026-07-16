@@ -1,0 +1,302 @@
+{
+  "repo_notes": [
+    {
+      "content": ""
+    }
+  ],
+  "pages": [
+    {
+      "title": "PhaserForge Overview",
+      "purpose": "High-level introduction to PhaserForge written in Phaser 4: what it is, its core philosophy (behavior-as-content), the major subsystems, and how they fit together. Links to all child sections for deeper exploration.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Getting Started & Project Setup",
+      "purpose": "How to clone, install dependencies, configure environment variables, run the dev server, and understand the npm scripts (dev, build, test). Covers Vite config, tsconfig, and the postinstall Prisma generate hook. Also covers the public/ config YAMLs (editor-config.yaml, editor-registry.yaml), the res/ asset directory, the guardrails/ AI agent workflow rules, and the scripts/ utility scripts.",
+      "parent": "PhaserForge Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Architecture Overview",
+      "purpose": "Describes the four-layer architecture: React Editor UI, Phaser Canvas Runtime, YAML Data Model, and Express/Prisma Backend. Explains the EventBus bridge pattern and unidirectional data flow. Links to detailed child sections.",
+      "parent": "PhaserForge Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Data Model",
+      "purpose": "Overview of the YAML-backed project data model: ProjectSpec, GameSceneSpec, EntitySpec, GroupSpec, AttachmentSpec, and related types. Links to child pages for serialization and validation details.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Core Types & Schema",
+      "purpose": "Deep dive into types.ts: ProjectSpec, GameSceneSpec, EntitySpec, GroupSpec, AttachmentSpec, TargetRef, AssetFileSource, InputActionMapSpec, CollisionRuleSpec, SpriteSheetAssetSpec, CounterSpec, CollectionSpec, PatternSpec, and all discriminated unions. Covers the legacy Behaviors/Actions model vs. the modern Attachments model. Also covers the Snippets/Macros legacy migration path to Patterns.",
+      "parent": "Data Model",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Serialization, Migration & Validation",
+      "purpose": "Covers parseProjectYaml, serializeProjectToYaml, migrateSceneSpec, migrateLegacySnippetsAndMacrosToPatterns, and validateSceneSpec. Explains the Parse-Migrate-Validate pipeline, YAML round-trip, and backward-compatibility guarantees.",
+      "parent": "Data Model",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Editor UI",
+      "purpose": "Overview of the React-based editor shell: AppShell layout, pane structure, theming, and global keyboard shortcuts. Links to child pages covering each major UI subsystem.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "EditorStore: State Management",
+      "purpose": "Explains the Redux-style EditorStore reducer, EditorProvider, EditorState shape, HistoryState (undo/redo), persistence to localStorage, and the full list of EditorAction types. Covers pending history, merge keys, and canvas interaction lifecycle.",
+      "parent": "Editor UI",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Entity List & Scene Graph",
+      "purpose": "Covers EntityList, EntityListView, sidebar scope tabs (Scene vs Project), drag-and-drop reordering, multi-select, renaming, and the AssetsDock integration. Explains how the scene graph tree is rendered and navigated. Also covers the Project Revisions pane: delta-based history, checkpoint/delta model, coalescing autosaves, and human-readable revision summaries.",
+      "parent": "Editor UI",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Inspector & Property Editing",
+      "purpose": "Covers the Inspector component, sub-inspectors (entity, group/formation, attachment, trigger zone), ValidatedNumberInput blur-to-commit pattern, BoundsHelperPanel, multi-entity inspector, and the InspectorFoldout pattern. Also covers SceneStatePanel for managing project-level Counters and Collections.",
+      "parent": "Editor UI",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Events Panel & Behavior Authoring",
+      "purpose": "Covers EventsPanel, AttachmentSpec authoring, EventBlockSpec lifecycle, loop templates (intro_then_repeat, repeat_with_cooldown), parallel groups, nested repeats, ActionLibraryDrawer, action pins, and the Patterns system. Covers patternCommands, snippetCommands, macroCommands and the migration from Snippets/Macros to Patterns.",
+      "parent": "Editor UI",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Formations & Group Management",
+      "purpose": "Covers GroupSpec, formation layouts (grid, line, circle, arc, v_formation, diamond), CreateFormationPanel, CreateFormationDraftPanel, groupCommands, formationLayout, dissolve/ungroup, and the layout popover UI.",
+      "parent": "Editor UI",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "YAML File Controls & Persistence",
+      "purpose": "Covers ViewbarYamlControls, the File System Access API integration (open/save/save-as), yamlPickerState, yamlFileHandles, yamlFileExport, dirty flag, source label, and the startIn handle for directory memory.",
+      "parent": "Editor UI",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Phaser Canvas Engine",
+      "purpose": "Overview of the Phaser-side architecture: BootScene, EditorScene, GameScene, PhaserHost, EventBus, and the runtime initialization. Links to child pages for each scene and the canvas interaction system.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Scene Lifecycle: BootScene, EditorScene & GameScene",
+      "purpose": "Deep dive into the three Phaser scenes: BootScene as state machine controller, EditorScene for authoring (marquee selection, formation drafts, hitbox overlays, reference ghosts, camera pan/zoom), and GameScene for runtime execution (physics, spawning, audio).",
+      "parent": "Phaser Canvas Engine",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Canvas Interaction & Geometry",
+      "purpose": "Covers canvasInteraction.ts (DragState, HoverState, computeDragFrameResult, grid snapping, drag threshold), canvasGeometry.ts (hitTestCanvas priority algorithm, getBoundsHandles, calculateBoundsAfterHandleDrag), CanvasOverlay, and popupPositioning.",
+      "parent": "Phaser Canvas Engine",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "EventBus & React-Phaser Bridge",
+      "purpose": "Explains the EventBus singleton, all event names (runtime:load-project, canvas-select, canvas-move-entity, scene-fit-view, etc.), the AppShell synchronization lifecycle, and the formation draft pipeline.",
+      "parent": "Phaser Canvas Engine",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Compiler & Runtime Engine",
+      "purpose": "Overview of the compilation pipeline (spec → CompiledScene) and the runtime execution engine. Links to child pages for the compiler, action system, and runtime services.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Compilation Pipeline",
+      "purpose": "Covers compileScene, compileBehaviors, compileAttachments, opRegistry, the migration/validation pre-pass, entity resolution, parallel group tagging (pargrp: prefix), and the ActionManager lifecycle.",
+      "parent": "Compiler & Runtime Engine",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Action System",
+      "purpose": "Covers the Action base class, ActionManager, and all built-in action types: MoveUntil, MoveXUntil, MoveYUntil, MoveBy, MoveTo, Wait, Repeat, Sequence, Parallel, Call, EmitEvent, InputDrive, InputFire, BlinkUntil, HoldUntil, OrbitPattern, ParametricMotionUntil, TweenUntil, CycleFramesUntil, counter/collection actions (AddToCounter, SetCounter, ClampCounter, AddSelfToCollection, RemoveSelfFromCollection).",
+      "parent": "Compiler & Runtime Engine",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Conditions & Triggers",
+      "purpose": "Covers all Condition types (BoundsHit, ElapsedTime, CounterCompare, InputActionEdge, Instant, Never), TriggerZone system, triggerScripts, collisionScripts, and the updateTriggers heartbeat loop.",
+      "parent": "Compiler & Runtime Engine",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Runtime Services",
+      "purpose": "Covers the RuntimeServices interface and its four implementations: BasicAudioService (music/SFX), BasicCollisionService (overlap detection), BasicInputService (keyboard/mouse/gamepad mapping), and BasicVarsService (counters, collections, variables).",
+      "parent": "Compiler & Runtime Engine",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Layered Runtime: Base Scene & Waves",
+      "purpose": "Explains the Laser Gates model: baseSceneId, persistent base layer, swappable wave scenes, scene.gotoWave(), namespace separation, ghost rendering in edit mode, and the AppShell synchronization for wave transitions.",
+      "parent": "Compiler & Runtime Engine",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Backend & Cloud Services",
+      "purpose": "Overview of the Express backend, Prisma ORM, authentication system, and cloud game storage. Links to child pages for the server architecture and database schema.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Express Server & Authentication",
+      "purpose": "Covers server/src/index.ts entrypoint, Express 5 app setup, authRouter endpoints (CSRF, signup, login, logout, /me, GitHub OAuth), rate limiting, session token hashing, cookie management, requireAuth middleware, and the repository pattern.",
+      "parent": "Backend & Cloud Services",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Database Schema & Prisma ORM",
+      "purpose": "Covers the Prisma schema (User, OAuthAccount, Session, Game, CloudAsset, Invite models), migration workflow, prisma.config.ts, Railway deployment, DATABASE_URL configuration, and the planned Games CRUD API.",
+      "parent": "Backend & Cloud Services",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Cloud Account Panel & Client API",
+      "purpose": "Covers src/cloud/api.ts (fetchCsrfToken, signup, login, logout, me, listGames, createGame, getGame, updateGame), the CloudAccountPanel React component, WorkspaceConflictModal, cloud autosave lifecycle, GitHub OAuth flow, and the planned game-only web player export bundle.",
+      "parent": "Backend & Cloud Services",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Testing Infrastructure",
+      "purpose": "Overview of the three-tier testing strategy: unit tests (Vitest), component tests, and E2E tests (Playwright). Links to child pages for the test bridge and E2E patterns.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "PhaserForgeTestBridge & E2E Helpers",
+      "purpose": "Covers the window.__PHASER_FORGE_TEST__ bridge (getState, getSceneSnapshot, setMode, dispatch, undo/redo, tapWorld, dragWorld, dragBoundsHandle, worldToClient, setPointerWorld, pointerDownEntity), the boot mutex, seedProject/seedSampleScene, and synthetic drag-and-drop for WebKit.",
+      "parent": "Testing Infrastructure",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "CI/CD Pipeline & Playwright Configuration",
+      "purpose": "Covers the GitHub Actions CI workflow (build-test job, sharded E2E matrix, smoke/critical tag filtering, nightly full-suite), the Railway backend deployment workflow (change detection, security checks), Playwright project configuration, and the Dependabot setup.",
+      "parent": "Testing Infrastructure",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}
