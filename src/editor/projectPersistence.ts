@@ -797,25 +797,13 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
     const existingIndex = localProjects.findIndex((record) => record.id === latestActiveSnapshot.recordId);
     const snapshotRecord = existingIndex >= 0 ? localProjects[existingIndex] : null;
     const currentActiveRecord = localProjects.find((record) => record.id === workspace.activeProjectId) ?? null;
-    const snapshotMs = Date.parse(latestActiveSnapshot.updatedAt || latestActiveSnapshot.savedAt);
-    const currentActiveMs = Date.parse(currentActiveRecord?.updatedAt ?? '');
     const snapshotLooksPlaceholder = isPlaceholderProjectRecord(snapshotRecord);
-    const currentActiveLooksPlaceholder = isPlaceholderProjectRecord(currentActiveRecord);
     const currentActiveLooksMeaningful = currentActiveRecord != null && !isPlaceholderProjectRecord(currentActiveRecord);
     const snapshotMatchesWorkspace = latestActiveSnapshot.recordId === workspace.activeProjectId;
-    const workspaceHasExplicitMeaningfulActiveProject =
-      Boolean(workspace.activeProjectId && currentActiveLooksMeaningful);
-    const shouldUseTimestampTiebreak =
-      !(snapshotLooksPlaceholder && currentActiveLooksMeaningful);
     const shouldPreferSnapshot =
-      !currentActiveRecord
-      || !workspace.activeProjectId
-      || snapshotMatchesWorkspace
-      || (!snapshotLooksPlaceholder && currentActiveLooksPlaceholder)
-      || (!workspaceHasExplicitMeaningfulActiveProject && shouldUseTimestampTiebreak && (
-        !Number.isFinite(currentActiveMs)
-        || (Number.isFinite(snapshotMs) && snapshotMs >= currentActiveMs)
-      ));
+      snapshotMatchesWorkspace
+      || !snapshotLooksPlaceholder
+      || !currentActiveLooksMeaningful;
     if (shouldPreferSnapshot && snapshotRecord) {
       if (existingIndex > 0) {
         localProjects.splice(existingIndex, 1);

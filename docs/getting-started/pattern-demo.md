@@ -54,7 +54,7 @@ Success check:
 
    **NOTE:** This will create one text entity called 't'. 
 
-2. Rough-place the text entity (i.e., drag it) near where the top-left label will go.
+2. Rough-place the text entity (i.e., drag it) near the top-left quarter of the viewport.
 
 3. Hit the F2 key and rename the text entity to "Wave"
 
@@ -69,11 +69,18 @@ Success check:
 
 6. Select the `Wave` label. In the Inspector's Transform panel, set `X = 130` and `Y = 120`. This anchors the label row to the same center point the first top-row ship will use later.
 
+<img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up"  style="display: block; margin: 0 auto; width: 498px; max-width: 100%; height: auto;" />
+
+<p align="center"><em>Figure 5. On-canvas selection bar for multi-selection actions.</em></p>
+
+<img src="../assets/screenshots/playwright/layout-popover.png" alt="Layout popover close-up"  style="display: block; margin: 0 auto; width: 345px; max-width: 100%; height: auto;" />
+
+<p align="center"><em>Figure 6. Layout popover for spacing and set-position operations.</em></p>
+
 7. Drag-select the top-row labels, and in the popup Selection Bar, use `Layout …`:
 
    - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and click `Apply Spacing X`.
    - Under Advanced, level the labels with `Match top edges`.
-   - Under Position Selection, type `120` under `Y`, then click `Set Y`.
    - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 8. Click a blank space somewhere in the canvas to deselect the top-row labels.
@@ -84,12 +91,11 @@ Success check:
 
     - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and click `Apply Spacing X`.
     - Under Advanced, level the labels with `Match top edges`.
-    - Under Position Selection, type `340` under `Y`, then click `Set Y`.
     - Click the "Close" button at the bottom of the Layout popup, or just click in a blank area of the canvas to close it.
 
 <img src="../assets/screenshots/playwright/titles-lined-up.png" alt="Titles lined up"  style="display: block; margin: 0 auto; width: 910px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 5. Titles lined up - success check.</em></p>
+<p align="center"><em>Figure 7. Titles lined up - success check.</em></p>
 
 Success check:
   - There is one top row with four labels
@@ -127,7 +133,7 @@ Success check:
 
 <img src="../assets/screenshots/playwright/scene-graph-pattern-demo-sprites.png" alt="Scene graph Sprites list with the seven renamed ships" style="display: block; margin: 0 auto; width: 374px; max-width: 100%; height: auto;" />
 
-<p align="center"><em>Figure 6. Scene graph Sprites list after renaming all seven ships.</em></p>
+<p align="center"><em>Figure 8. Scene graph Sprites list after renaming all seven ships.</em></p>
 
 Success check:
 - You can see seven separate sprite entities in the scene graph.
@@ -136,15 +142,8 @@ Success check:
 
 ## Position the Ships with Selection Tools and Layout
 
-<img src="../assets/screenshots/playwright/canvas-selection-bar.png" alt="Selection bar close-up"  style="display: block; margin: 0 auto; width: 498px; max-width: 100%; height: auto;" />
-
-<p align="center"><em>Figure 7. On-canvas selection bar for multi-selection actions.</em></p>
-
-<img src="../assets/screenshots/playwright/layout-popover.png" alt="Layout popover close-up"  style="display: block; margin: 0 auto; width: 345px; max-width: 100%; height: auto;" />
-
-<p align="center"><em>Figure 8. Layout popover for spacing and set-position operations.</em></p>
-
 1. For the top row, drag-select the top four ships and click the `Layout…` button to change their positions as a group:
+   
    **NOTE:** A Layout pop-up window will appear.
    - Under Spacing, click `Pixels`, then type `180` in the `Spacing X` box, and hit `Apply Spacing X`
    - Under Align Selection, center the ships with `Center X`
@@ -203,7 +202,6 @@ Success check:
 10. Set the `Loop Body` step properties to the following:
     - `Type = Wave`
     - The other defaults are fine.
-11. Click the Back arrow in the properties panel to return to the Actions list.
 
 Success check:
 - Click the `Play Mode` button in the upper right of the canvas to check that the ship moves in a wave pattern.

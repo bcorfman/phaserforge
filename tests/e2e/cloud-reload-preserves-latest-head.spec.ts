@@ -49,8 +49,21 @@ test('cloud-backed active project reload restores the latest IndexedDB head and 
     id: 'cloud:g1',
     projectId: latestProject.id,
   };
+  const olderProject = structuredClone(sampleProject);
+  olderProject.title = 'Older Cloud Game';
+  const olderRecord = {
+    ...buildStoredProjectRecord(olderProject, {
+      id: 'cloud:g-old',
+      updatedAt: staleUpdatedAt,
+      origin: 'cloud-cache',
+      syncStatus: 'cloud',
+      cloudProjectId: 'g-old',
+    }),
+    id: 'cloud:g-old',
+    projectId: olderProject.id,
+  };
 
-  await page.addInitScript(async ({ record }) => {
+  await page.addInitScript(async ({ record, staleRecord }) => {
     const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
       const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
       request.onerror = () => reject(request.error);
@@ -69,14 +82,21 @@ test('cloud-backed active project reload restores the latest IndexedDB head and 
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
       tx.objectStore('projects').put(record);
+      tx.objectStore('projects').put(staleRecord);
       tx.objectStore('workspaceState').put({
-        activeProjectId: 'cloud:g1',
+        activeProjectId: 'cloud:g-old',
         syncMode: 'online',
       }, 'workspace');
+      tx.objectStore('workspaceState').put({
+        recordId: 'cloud:g1',
+        updatedAt: record.updatedAt,
+        syncMode: 'online',
+        savedAt: record.updatedAt,
+      }, 'latestActiveSnapshot');
       tx.objectStore('workspaceState').put('1', 'legacyMigrated');
     });
     window.localStorage.setItem('phaserforge.startupMode.v1', 'new_empty_scene');
-  }, { record: latestRecord });
+  }, { record: latestRecord, staleRecord: olderRecord });
 
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({
