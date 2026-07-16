@@ -972,14 +972,14 @@ describe('projectPersistence steady-state storage', () => {
     expect(snapshot.localProjects[0]?.title).toBe('Recovered Title');
   });
 
-  it('does not let a newer snapshot for a different saved project override the explicit workspace active project', async () => {
+  it('restores the newer durable active snapshot when the workspace pointer still names an older cloud project', async () => {
     const patternDemoProject = createEmptyProject();
     patternDemoProject.id = 'project-pattern-demo';
-    patternDemoProject.title = 'Pattern Demo';
+    patternDemoProject.title = 'Older Cloud Game';
 
     const newerDraftProject = createEmptyProject();
     newerDraftProject.id = 'project-newer-draft';
-    newerDraftProject.title = 'Scratch Draft';
+    newerDraftProject.title = 'Pattern Demo';
 
     const db = await openPersistenceDb();
     try {
@@ -990,10 +990,16 @@ describe('projectPersistence steady-state storage', () => {
         tx.objectStore('projects').put(buildStoredProjectRecord(patternDemoProject, {
           id: patternDemoProject.id,
           updatedAt: '2026-06-22T12:00:00.000Z',
+          origin: 'cloud-cache',
+          syncStatus: 'cloud',
+          cloudProjectId: 'game-older',
         }));
         tx.objectStore('projects').put(buildStoredProjectRecord(newerDraftProject, {
           id: newerDraftProject.id,
           updatedAt: '2026-06-22T12:05:00.000Z',
+          origin: 'cloud-cache',
+          syncStatus: 'cloud',
+          cloudProjectId: 'game-latest',
         }));
         tx.objectStore('workspaceState').put({
           activeProjectId: patternDemoProject.id,
@@ -1013,8 +1019,8 @@ describe('projectPersistence steady-state storage', () => {
 
     const snapshot = await projectPersistence.load();
 
-    expect(snapshot.workspace.activeProjectId).toBe('project-pattern-demo');
-    expect(snapshot.localProjects[0]?.id).toBe('project-pattern-demo');
+    expect(snapshot.workspace.activeProjectId).toBe('project-newer-draft');
+    expect(snapshot.localProjects[0]?.id).toBe('project-newer-draft');
     expect(snapshot.localProjects[0]?.title).toBe('Pattern Demo');
   });
 
