@@ -3,6 +3,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const { spawn } = require('child_process');
+const { finished } = require('stream/promises');
 
 const E2E_VITE_COMMAND = 'npx vite --config vite/config.dev.mjs --host 127.0.0.1 --port 4173';
 const E2E_PREVIEW_COMMAND =
@@ -208,6 +209,10 @@ async function startManagedExternalWebServer({
   await lifecycle.markPid(child.pid ?? null);
   child.stdout?.pipe(stdout);
   child.stderr?.pipe(stderr);
+  const logStreamsFinished = Promise.all([
+    finished(stdout).catch(() => {}),
+    finished(stderr).catch(() => {}),
+  ]);
 
   let settled = false;
   let healthcheckTimer;
@@ -249,8 +254,6 @@ async function startManagedExternalWebServer({
     );
     recordExit(code, signal);
     rejectUnexpectedExit(exitError);
-    stdout.end();
-    stderr.end();
   });
 
   try {
@@ -265,6 +268,9 @@ async function startManagedExternalWebServer({
     cleanup();
     await exitPersistPromise;
     await lifecycle.waitForPendingWrites();
+    if (child.exitCode != null || child.signalCode != null) {
+      await logStreamsFinished;
+    }
     throw error;
   }
 

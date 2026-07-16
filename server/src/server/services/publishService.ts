@@ -178,11 +178,16 @@ async function materializeProjectForPublish(
   repositories: Repositories,
   userId: string,
   project: ProjectSpec,
+  publishMarker: string,
 ): Promise<{ project: ProjectSpec; files: Array<{ path: string; bytes: Uint8Array }> } | null> {
   const nextProject = structuredClone(project);
   const files: Array<{ path: string; bytes: Uint8Array }> = [];
   const usedPaths = new Set<string>();
   const copiedPathSources = new Set<string>();
+  const withPublishVersion = (relPath: string): string => {
+    const separator = relPath.includes('?') ? '&' : '?';
+    return `${relPath}${separator}pf_publish=${encodeURIComponent(publishMarker)}`;
+  };
 
   const allocatePath = (source: AssetFileSource, fallbackBase: string): string => {
     const preferred = sanitizeFilename(source.originalName?.trim() || `${fallbackBase}${extensionFromMimeType(source.mimeType)}`);
@@ -218,7 +223,7 @@ async function materializeProjectForPublish(
         files.push({ path: relPath, bytes });
         copiedPathSources.add(relPath);
       }
-      return source;
+      return { ...source, path: withPublishVersion(relPath) };
     }
     if (source.kind === 'embedded') {
       const bytes = decodeEmbeddedDataUrl(source.dataUrl);
@@ -226,7 +231,7 @@ async function materializeProjectForPublish(
       if (isGitLfsPointer(bytes)) return null;
       const relPath = allocatePath(source, fallbackBase);
       files.push({ path: relPath, bytes });
-      return { kind: 'path', path: relPath, ...(source.originalName ? { originalName: source.originalName } : {}), ...(source.mimeType ? { mimeType: source.mimeType } : {}) };
+      return { kind: 'path', path: withPublishVersion(relPath), ...(source.originalName ? { originalName: source.originalName } : {}), ...(source.mimeType ? { mimeType: source.mimeType } : {}) };
     }
     const asset = await repositories.assets.findByIdForUser(source.assetId, userId);
     if (!asset) return null;
@@ -238,7 +243,7 @@ async function materializeProjectForPublish(
     files.push({ path: relPath, bytes: asset.bytes });
     return {
       kind: 'path',
-      path: relPath,
+      path: withPublishVersion(relPath),
       ...(source.originalName ?? asset.originalName ? { originalName: source.originalName ?? asset.originalName ?? undefined } : {}),
       ...(source.mimeType ?? asset.mimeType ? { mimeType: source.mimeType ?? asset.mimeType ?? undefined } : {}),
     };
@@ -306,7 +311,8 @@ async function readPublishableDistFiles(): Promise<Array<{ relPath: string; byte
 function buildPlayIndexHtml(distIndexHtml: string, publishMarker: string, gameTitle: string): string {
   const meta = `<meta name="phaserforge-mode" content="play" />`;
   const publishMeta = `<meta name="phaserforge-publish-marker" content="${publishMarker}" />`;
-  const boot = `<script>window.__PHASER_FORGE_PLAY_YAML_URL = './game.yaml';window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(publishMarker)};</script>`;
+  const yamlUrl = `./game.yaml?pf_publish=${encodeURIComponent(publishMarker)}`;
+  const boot = `<script>window.__PHASER_FORGE_PLAY_YAML_URL = ${JSON.stringify(yamlUrl)};window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(publishMarker)};(() => { const currentMarker = window.__PHASER_FORGE_PUBLISH_MARKER; fetch('./phaserforge-publish.json?pf_check=' + encodeURIComponent(String(Date.now())), { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((latest) => { if (!latest || typeof latest.publishMarker !== 'string' || latest.publishMarker === currentMarker) return; const nextUrl = new URL(window.location.href); nextUrl.searchParams.set('pf_publish', latest.publishMarker); window.location.replace(nextUrl.toString()); }).catch(() => {}); })();</script>`;
   const title = `<title>${escapeHtml(gameTitle)}</title>`;
   if (distIndexHtml.includes('name="phaserforge-mode"')) return distIndexHtml;
   if (distIndexHtml.includes('</title>')) {
@@ -710,7 +716,7 @@ export async function publishGameToGithubPages(
 
   const publishMarker = createPublishMarker();
   const playIndex = buildPlayIndexHtml(Buffer.from(indexEntry.bytes).toString('utf8'), publishMarker, game.title);
-  const publishableProject = await materializeProjectForPublish(repositories, userId, game.project);
+  const publishableProject = await materializeProjectForPublish(repositories, userId, game.project, publishMarker);
   if (!publishableProject) return { ok: false, error: 'cloud_asset_missing' };
   const yamlNormalized = serializeProjectToYaml(publishableProject.project);
   const files: Array<{ path: string; bytes: Uint8Array }> = [

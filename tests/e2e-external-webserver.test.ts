@@ -63,7 +63,7 @@ describe('managed external E2E web server', () => {
     const failScriptPath = path.join(scriptDir, 'fail-server.cjs');
     await fs.writeFile(
       failScriptPath,
-      "process.stderr.write('boom\\n');\nprocess.exit(7);\n",
+      "process.stderr.write('boom\\n');\nprocess.exitCode = 7;\n",
       'utf8',
     );
     const nodePath = process.execPath.replace(/\\/g, '/');
