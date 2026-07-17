@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { materializeProjectRevision } from '../../src/editor/projectTreeHistory';
 import { createEmptyProject } from '../../src/model/emptyProject';
 import { dismissViewHint, getState, gotoStudio, openProjectScope, seedProject } from './helpers';
 
@@ -109,12 +110,63 @@ async function expectProjectRestored(page: Parameters<typeof test>[0]['page']) {
   });
 }
 
+async function expectProjectPersisted(page: Parameters<typeof test>[0]['page']) {
+  await expect.poll(async () => {
+    const record = await page.evaluate(async () => {
+      const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+        const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+      });
+      const db = await openDb();
+      try {
+        const workspace = await new Promise<any>((resolve, reject) => {
+          const tx = db.transaction('workspaceState', 'readonly');
+          const request = tx.objectStore('workspaceState').get('workspace');
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        const record = await new Promise<any>((resolve, reject) => {
+          const tx = db.transaction('projects', 'readonly');
+          const request = tx.objectStore('projects').get(workspace?.activeProjectId);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        return record ?? null;
+      } finally {
+        db.close();
+      }
+    });
+    const project = record?.project
+      ?? (Array.isArray(record?.revisions) && record.revisions[0]?.id
+        ? materializeProjectRevision(record.revisions, record.revisions[0].id)
+        : null);
+    const scene = project?.scenes?.[project?.initialSceneId];
+    return {
+      recordId: record?.id ?? null,
+      projectId: project?.id ?? null,
+      title: project?.title ?? null,
+      entityCount: Object.keys(scene?.entities ?? {}).length,
+      attachmentCount: Object.keys(scene?.attachments ?? {}).length,
+      bounceBounds: scene?.attachments?.['att-bounce']?.condition?.bounds ?? null,
+    };
+  }).toEqual({
+    recordId: expect.any(String),
+    projectId: 'project-signed-in-bounce',
+    title: 'Pattern Demo',
+    entityCount: 1,
+    attachmentCount: 1,
+    bounceBounds: { minX: 350, maxX: 450, minY: 360, maxY: 480 },
+  });
+}
+
 test('signed-in local project reopens from indexeddb without blanking the scene @regression', async ({ page }) => {
   await stubSignedInCloud(page);
   const project = buildBounceProject();
   await seedProject(page, project as any);
   await dismissViewHint(page);
   await expectProjectRestored(page);
+  await expectProjectPersisted(page);
   await openProjectScope(page);
   await expect(page.getByTestId('project-tree-root-button')).toContainText('Pattern Demo');
 
