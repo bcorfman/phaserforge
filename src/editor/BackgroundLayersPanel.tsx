@@ -5,24 +5,11 @@ import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { getSceneWorld } from './sceneWorld';
 import { ValidatedNumberInput, ValidatedOptionalNumberInput } from './ValidatedNumberInput';
 import { hasDraggedAsset, readDraggedAsset } from './dragAssets';
+import { formatRgbHex, parseRgbHex } from './colorHex';
 
 function clampIndex(value: number, maxExclusive: number): number {
   if (maxExclusive <= 0) return 0;
   return Math.max(0, Math.min(maxExclusive - 1, value));
-}
-
-function parseTintHex(raw: string): number | undefined {
-  const trimmed = raw.trim();
-  if (trimmed.length === 0) return undefined;
-  const normalized = trimmed.startsWith('#') ? trimmed.slice(1) : trimmed;
-  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return undefined;
-  return Number.parseInt(normalized, 16);
-}
-
-function formatTintHex(value: number | undefined): string {
-  if (value == null) return '';
-  const hex = Math.max(0, Math.min(0xffffff, Math.floor(value))).toString(16).padStart(6, '0');
-  return `#${hex}`;
 }
 
 export function BackgroundLayersPanel({
@@ -308,10 +295,10 @@ export function BackgroundLayersBody({
               <input
                 data-testid="background-layer-tint"
                 placeholder="#rrggbb"
-                value={formatTintHex(selectedLayer.tint)}
+                value={formatRgbHex(selectedLayer.tint)}
                 disabled={disabled}
                 onChange={(e) => {
-                  const tint = parseTintHex(e.target.value);
+                  const tint = parseRgbHex(e.target.value);
                   dispatch({ type: 'update-background-layer', index: selectedIndex, patch: { tint } });
                 }}
               />

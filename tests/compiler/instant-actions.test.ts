@@ -53,5 +53,40 @@ describe('instant actions', () => {
     expect(compiled.entities.e1.x).toBe(15);
     expect(compiled.entities.e1.y).toBe(13);
   });
-});
 
+  it('SetProperty sets an allowlisted property from a constant value', () => {
+    const scene = makeScene({
+      id: 'att1',
+      target: { type: 'entity', entityId: 'e1' },
+      enabled: true,
+      order: 0,
+      presetId: 'SetProperty',
+      params: { property: 'tint', valueSource: { kind: 'constant', value: 0x224466 } },
+    } as any);
+
+    const compiled = compileScene(scene);
+    compiled.startAll();
+
+    expect(compiled.entities.e1.tint).toBe(0x224466);
+  });
+
+  it('SetProperty resolves deterministic random ranges per target', () => {
+    const scene = makeScene({
+      id: 'att1',
+      target: { type: 'entity', entityId: 'e1' },
+      enabled: true,
+      order: 0,
+      presetId: 'SetProperty',
+      params: { property: 'x', valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'wrap-seed' } },
+    } as any);
+
+    const first = compileScene(scene);
+    first.startAll();
+    const second = compileScene(scene);
+    second.startAll();
+
+    expect(first.entities.e1.x).toBeGreaterThanOrEqual(0);
+    expect(first.entities.e1.x).toBeLessThanOrEqual(720);
+    expect(first.entities.e1.x).toBe(second.entities.e1.x);
+  });
+});

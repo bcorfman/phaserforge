@@ -841,6 +841,7 @@ export class EditorScene extends Phaser.Scene {
     this.clearScene();
     this.project = project;
     this.mode = mode;
+    this.cameras.main.setBackgroundColor(sceneSpec.backgroundColor ?? 0x0c0f1a);
     applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, project ? getProjectRenderMode(project) : 'pixel-art');
     this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry, vars: this.varsService });
@@ -1468,8 +1469,6 @@ export class EditorScene extends Phaser.Scene {
       const outlineColor = selectedEntity ? 0xffb86b : selectedGroup ? 0x9fe7ff : selectedEntities ? 0xff6b6b : 0x1a2b4a;
       if (sprite instanceof Phaser.GameObjects.Rectangle) {
         sprite.setStrokeStyle(isSelected ? 3 : 2, outlineColor, 1);
-      } else {
-        sprite.setTint(isSelected ? outlineColor : 0xffffff);
       }
     }
   }
@@ -1559,6 +1558,11 @@ export class EditorScene extends Phaser.Scene {
       sprite.setDisplaySize(displayWidth, displayHeight);
       sprite.setFlipX(entity.flipX ?? false);
       sprite.setFlipY(entity.flipY ?? false);
+      if (entity.tint != null) {
+        sprite.setTint(entity.tint);
+      } else {
+        sprite.clearTint();
+      }
       if (asset?.imageType === 'spritesheet' && sprite instanceof Phaser.GameObjects.Sprite) {
         const runtimeFrame = entity.frame;
         const frame = runtimeFrame !== undefined ? runtimeFrame : (asset.frame?.frameKey ?? asset.frame?.frameIndex);

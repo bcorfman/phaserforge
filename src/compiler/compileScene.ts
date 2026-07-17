@@ -45,6 +45,7 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
       originX: resolved.originX,
       originY: resolved.originY,
       alpha: resolved.alpha,
+      tint: resolved.tint,
       visible: resolved.visible,
       depth: resolved.depth,
       flipX: resolved.flipX,

@@ -52,6 +52,7 @@ export function validateProjectSpec(project: ProjectSpec): void {
 }
 
 export function validateSceneSpec(scene: SceneSpec): void {
+  validateSceneAppearance(scene);
   validateEntities(scene);
   validateGroups(scene);
   validateCollisionsAndTriggers(scene);
@@ -59,6 +60,17 @@ export function validateSceneSpec(scene: SceneSpec): void {
   validateActions(scene);
   validateBehaviors(scene);
   detectCycles(scene);
+}
+
+function validateRgbInteger(value: unknown, context: string): void {
+  if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 0xffffff) {
+    throw new Error(`${context} must be an integer RGB value between 0x000000 and 0xFFFFFF`);
+  }
+}
+
+function validateSceneAppearance(scene: SceneSpec): void {
+  const backgroundColor = (scene as any).backgroundColor;
+  if (backgroundColor !== undefined) validateRgbInteger(backgroundColor, 'Scene backgroundColor');
 }
 
 function validateEntities(scene: SceneSpec): void {
@@ -84,6 +96,9 @@ function validateEntities(scene: SceneSpec): void {
     }
     if (resolved.alpha < 0 || resolved.alpha > 1) {
       throw new Error(`Entity ${id} alpha must be between 0 and 1`);
+    }
+    if (entity.tint !== undefined) {
+      validateRgbInteger(entity.tint, `Entity ${id} tint`);
     }
     if (entity.hitbox) {
       validateHitbox(entity.hitbox, resolved, id);
@@ -322,6 +337,7 @@ function validateAttachments(scene: SceneSpec): void {
     }
     if (a.trigger) validateAttachmentTrigger(a.trigger, `Attachment ${id} trigger`);
     if (a.condition) validateInlineCondition(a.condition, `Attachment ${id} condition`);
+    if (a.presetId === 'SetProperty') validateSetPropertyAttachment(a, `Attachment ${id}`);
   }
 
   const attachments = scene.attachments ?? {};
@@ -382,6 +398,43 @@ function validateAttachments(scene: SceneSpec): void {
     visited.add(id);
   };
   for (const id of Object.keys(attachments)) visitAttachment(id);
+}
+
+function validateSetPropertyAttachment(attachment: AttachmentSpec, context: string): void {
+  const property = String((attachment.params as any)?.property ?? '');
+  const propertyTypes: Record<string, 'number' | 'boolean' | 'color'> = {
+    x: 'number',
+    y: 'number',
+    vx: 'number',
+    vy: 'number',
+    alpha: 'number',
+    tint: 'color',
+    visible: 'boolean',
+  };
+  const type = propertyTypes[property];
+  if (!type) throw new Error(`${context} SetProperty property must be x|y|vx|vy|alpha|tint|visible`);
+
+  const source = (attachment.params as any)?.valueSource ?? { kind: 'constant', value: (attachment.params as any)?.value };
+  if (!source || typeof source !== 'object') throw new Error(`${context} valueSource must be an object`);
+  const kind = String((source as any).kind ?? 'constant');
+  if (kind === 'constant') {
+    const value = (source as any).value;
+    if (type === 'boolean' && typeof value !== 'boolean') throw new Error(`${context} valueSource.value must be boolean`);
+    if (type === 'number' && !Number.isFinite(Number(value))) throw new Error(`${context} valueSource.value must be numeric`);
+    if (type === 'color') validateRgbInteger(value, `${context} valueSource.value`);
+    return;
+  }
+  if (kind === 'randomRange') {
+    if (type === 'boolean') throw new Error(`${context} visible does not support randomRange`);
+    if (!Number.isFinite(Number((source as any).min)) || !Number.isFinite(Number((source as any).max))) {
+      throw new Error(`${context} randomRange min/max must be numeric`);
+    }
+    if (typeof (source as any).seed !== 'string' && typeof (source as any).seed !== 'number') {
+      throw new Error(`${context} randomRange seed must be string or number`);
+    }
+    return;
+  }
+  throw new Error(`${context} valueSource.kind must be constant|randomRange`);
 }
 
 function validateActions(scene: SceneSpec): void {

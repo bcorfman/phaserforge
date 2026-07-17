@@ -13,6 +13,7 @@ import {
 } from '../model/formation';
 import { makeGridLayout } from './groupCommands';
 import { type EntitySpec, type Id, type SceneSpec } from '../model/types';
+import { computeFormationDraftPositions, computeFormationDraftTints } from './formationDraft';
 
 export interface GroupGridLayout {
   rows: number;
@@ -210,6 +211,41 @@ export function applyGroupArrangeLayout(
   roundParam('startY');
   roundParam('apexX');
   roundParam('apexY');
+
+  if (arrangeKind === 'scatter') {
+    const members = group.members
+      .map((memberId) => scene.entities[memberId])
+      .filter((member): member is EntitySpec => Boolean(member))
+      .map((member) => ({ ...member }));
+    if (members.length === 0) return scene;
+
+    const positions = computeFormationDraftPositions(
+      { arrangeKind, params: normalizedParams, memberCount: members.length },
+      { width: members[0].width, height: members[0].height }
+    );
+    const tints = computeFormationDraftTints({ arrangeKind, params: normalizedParams, memberCount: members.length });
+    const nextEntities = { ...scene.entities };
+    members.forEach((member, index) => {
+      nextEntities[member.id] = {
+        ...member,
+        x: positions[index]?.x ?? member.x,
+        y: positions[index]?.y ?? member.y,
+        ...(tints ? { tint: tints[index] } : {}),
+      };
+    });
+
+    return {
+      ...scene,
+      entities: nextEntities,
+      groups: {
+        ...scene.groups,
+        [groupId]: {
+          ...group,
+          layout: { type: 'arrange', arrangeKind, params: normalizedParams },
+        },
+      },
+    };
+  }
 
   if (arrangeKind === 'grid') {
     const layout: GroupGridLayout = {

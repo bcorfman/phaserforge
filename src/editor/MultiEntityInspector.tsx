@@ -4,6 +4,7 @@ import type { EntitySpec, SceneSpec, SpriteAssetSpec } from '../model/types';
 import { assetSourceKey } from '../cloud/assetUrls';
 import { InspectorFoldout, useInspectorFoldouts } from './InspectorFoldout';
 import { getCommonResolvedEntityValue, type CommonValue } from './commonEntityValues';
+import { formatRgbHex, parseRgbHex } from './colorHex';
 
 function coerceFiniteNumber(raw: string): number | null {
   const trimmed = raw.trim();
@@ -173,6 +174,7 @@ export function MultiEntityInspector({
   const flipX = getCommonResolvedEntityValue(entities, 'flipX');
   const flipY = getCommonResolvedEntityValue(entities, 'flipY');
   const alpha = getCommonResolvedEntityValue(entities, 'alpha');
+  const tint = getCommonResolvedEntityValue(entities, 'tint');
   const visible = getCommonResolvedEntityValue(entities, 'visible');
   const depth = getCommonResolvedEntityValue(entities, 'depth');
 
@@ -423,6 +425,40 @@ export function MultiEntityInspector({
             onCommit={(next) => patchAll({ depth: next })}
           />
         </label>
+
+        <div className="inspector-grid-2">
+          <label className="field">
+            <span>Tint</span>
+            <input
+              aria-label="Tint"
+              data-testid="entity-tint-picker"
+              type="color"
+              value={tint.kind === 'same' && tint.value != null ? formatRgbHex(tint.value as number) : '#ffffff'}
+              disabled={disabled}
+              onChange={(event) => patchAll({ tint: parseRgbHex(event.target.value) })}
+            />
+          </label>
+          <label className="field">
+            <span>Hex</span>
+            <input
+              aria-label="Tint Hex"
+              data-testid="entity-tint-hex-input"
+              placeholder={tint.kind === 'mixed' ? '(mixed)' : '#rrggbb'}
+              value={tint.kind === 'same' ? formatRgbHex(tint.value as number | undefined) : ''}
+              disabled={disabled}
+              onChange={(event) => patchAll({ tint: parseRgbHex(event.target.value) })}
+            />
+          </label>
+        </div>
+        <button
+          className="button button-compact"
+          type="button"
+          data-testid="entity-tint-clear"
+          disabled={disabled}
+          onClick={() => patchAll({ tint: undefined })}
+        >
+          Clear tint
+        </button>
 
         <label className="field inspector-field-disabled">
           <span>Asset</span>

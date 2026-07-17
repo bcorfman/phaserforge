@@ -20,6 +20,17 @@ arrange:
       - { name: startX, type: number, default: 0 }
       - { name: startY, type: number, default: 0 }
       - { name: spacing, type: number, default: 50 }
+  - type: scatter
+    displayName: Scatter
+    category: formation
+    targetKinds: [group]
+    implemented: true
+    parameters:
+      - { name: minX, type: number, default: 0 }
+      - { name: maxX, type: number, default: 720 }
+      - { name: minY, type: number, default: 0 }
+      - { name: maxY, type: number, default: 1280 }
+      - { name: seed, type: string, default: scatter }
   - type: circle
     displayName: Circle
     category: formation
@@ -264,6 +275,19 @@ actions:
     category: flow
     targetKinds: [entity, group]
     implemented: true
+  - type: SetProperty
+    displayName: Set Property
+    category: state
+    targetKinds: [entity, group]
+    implemented: true
+    propertyTargets:
+      - { key: x, type: number, tweenable: false, affectsBounds: true }
+      - { key: y, type: number, tweenable: false, affectsBounds: true }
+      - { key: tint, type: color, tweenable: false, affectsBounds: false }
+      - { key: alpha, type: number, tweenable: false, affectsBounds: false }
+      - { key: visible, type: boolean, tweenable: false, affectsBounds: false }
+      - { key: vx, type: number, tweenable: false, affectsBounds: false }
+      - { key: vy, type: number, tweenable: false, affectsBounds: false }
   - type: Repeat
     displayName: Repeat
     category: loops
