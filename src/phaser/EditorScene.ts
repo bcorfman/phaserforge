@@ -860,6 +860,7 @@ export class EditorScene extends Phaser.Scene {
     this.clearScene();
     this.project = project;
     this.mode = mode;
+    // In base-scene edit mode the active scene owns the camera background; the reference scene only ghost-renders content.
     this.cameras.main.setBackgroundColor(sceneSpec.backgroundColor ?? 0x0c0f1a);
     applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, project ? getProjectRenderMode(project) : 'pixel-art');
     this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
