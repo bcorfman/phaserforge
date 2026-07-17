@@ -497,8 +497,6 @@ export class GameScene extends Phaser.Scene {
     sceneKey: string;
     compiledSceneId?: string;
     baseCompiledSceneId?: string;
-    cameraBackgroundColor?: number;
-    entityDisplay?: Record<string, { tint?: number; fillColor?: number }>;
     runtimeOps?: {
       hasDrop: boolean;
       lastInvocations: string[];
@@ -657,8 +655,6 @@ export class GameScene extends Phaser.Scene {
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
       ...(this.baseCompiled ? { baseCompiledSceneId: this.baseCompiled.scene.id } : {}),
-      cameraBackgroundColor: (this.cameras.main.backgroundColor as any)?.color,
-      entityDisplay: this.getEntityDisplaySnapshot(),
       runtimeOps: {
         hasDrop: this.opRegistry?.has('drop') ?? false,
         ...this.opRegistry?.getDebugSnapshot(),
@@ -687,6 +683,16 @@ export class GameScene extends Phaser.Scene {
       ...(this.lastSpawnError ? { lastSpawnError: this.lastSpawnError } : {}),
       activeCollisionEventCount,
       activeLastProcessedCollisionEventCount: this.lastProcessedCollisionEventCount,
+    };
+  }
+
+  public getRenderDebugSnapshot(): {
+    cameraBackgroundColor?: number;
+    entityDisplay: Record<string, { tint?: number; fillColor?: number }>;
+  } {
+    return {
+      cameraBackgroundColor: (this.cameras.main.backgroundColor as any)?.color,
+      entityDisplay: this.getEntityDisplaySnapshot(),
     };
   }
 

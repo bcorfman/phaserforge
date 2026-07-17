@@ -492,6 +492,10 @@ export async function getSceneSnapshot<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_FORGE_TEST__?.getSceneSnapshot()) as Promise<T>;
 }
 
+export async function getRenderDebugSnapshot<T = any>(page: Page): Promise<T> {
+  return page.evaluate(() => window.__PHASER_FORGE_TEST__?.getRenderDebugSnapshot()) as Promise<T>;
+}
+
 export async function waitForViewportToSettle(page: Page, options?: { stableForMs?: number; epsilon?: number }): Promise<void> {
   let last: { zoom: number; scrollX: number; scrollY: number } | null = null;
   let stableSince = Date.now();

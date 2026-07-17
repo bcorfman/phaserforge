@@ -39,6 +39,10 @@ export interface SceneBridge {
     worldHeight?: number;
     backgroundLayerCount?: number;
   };
+  getRenderDebugSnapshot?(): {
+    cameraBackgroundColor?: number;
+    entityDisplay: Record<string, { tint?: number; fillColor?: number }>;
+  };
   getEntityWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
   getEntitySpriteWorldRect(id: string): (Rect & { centerX: number; centerY: number }) | null;
   getGroupWorldBounds(id: string): Rect | null;
@@ -165,6 +169,10 @@ function ensureBridge(): void {
     getSceneSnapshot() {
       const scene = getSceneBridge();
       return scene ? clone(scene.getTestSnapshot()) : null;
+    },
+    getRenderDebugSnapshot() {
+      const scene = getSceneBridge();
+      return scene?.getRenderDebugSnapshot ? clone(scene.getRenderDebugSnapshot()) : null;
     },
     getEntityWorldRect(id: string) {
       const scene = getSceneBridge();

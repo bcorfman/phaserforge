@@ -24,6 +24,7 @@ interface PhaserForgeTestBridge {
   setMode(mode: 'edit' | 'play'): void;
   isSceneReady(): boolean;
   getSceneSnapshot(): unknown;
+  getRenderDebugSnapshot(): unknown;
   getEntityWorldRect(id: string): PhaserForgeRect | null;
   getEntitySpriteWorldRect(id: string): PhaserForgeRect | null;
   getGroupWorldBounds(id: string): PhaserForgeRect | null;
