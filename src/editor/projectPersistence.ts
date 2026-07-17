@@ -16,8 +16,9 @@ import { partitionHistoryEventsByRevisionIds, type ProjectHistoryEvent } from '.
 import { createSerializedAsyncQueue } from './serializedAsyncQueue';
 import { appendPersistenceDebugEntry, summarizeYamlForDebug } from '../util/persistenceDebug';
 import type { ViewState } from '../util/viewStateStorage';
+import { getChannelScopedStorageKey } from './deployChannel';
 
-const DB_NAME = 'phaserforge.persistence.v1';
+const DB_NAME = getChannelScopedStorageKey('phaserforge.persistence.v1');
 const DB_VERSION = 1;
 const PROJECTS_STORE = 'projects';
 const WORKSPACE_STORE = 'workspaceState';
@@ -27,8 +28,8 @@ const LEGACY_MIGRATED_KEY = 'legacyMigrated';
 const WORKSPACE_KEY = 'workspace';
 const WORKSPACE_BACKUP_KEY = 'workspaceBackup';
 const PREFERENCES_KEY = 'preferences';
-const WORKSPACE_BOOT_CACHE_KEY = 'phaserforge.workspaceBootCache.v1';
-const PREFERENCES_BOOT_CACHE_KEY = 'phaserforge.preferencesBootCache.v1';
+const WORKSPACE_BOOT_CACHE_KEY = getChannelScopedStorageKey('phaserforge.workspaceBootCache.v1');
+const PREFERENCES_BOOT_CACHE_KEY = getChannelScopedStorageKey('phaserforge.preferencesBootCache.v1');
 
 export type ProjectSyncMode = 'online' | 'offline';
 export type StoredThemeMode = 'system' | 'light' | 'dark';

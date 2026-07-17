@@ -9,6 +9,7 @@ import { projectPersistence } from './projectPersistence';
 import { WorkspaceConflictModal } from './WorkspaceConflictModal';
 import { summarizeYamlWorkspace } from './workspaceSummary';
 import { prepareProjectForCloudSave } from '../cloud/projectCloudAssets';
+import { isCloudPersistenceEnabledForChannel } from './deployChannel';
 
 type CloudAccountUser = { id: string; email: string } | null;
 type CloudPublishInfo = { ok: true; login: string; pagesBaseUrl: string } | { ok: false; error: string };
@@ -201,6 +202,17 @@ export function CloudAccountPanel({
   onStatus: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  if (!isCloudPersistenceEnabledForChannel()) {
+    return (
+      <div className="cloud-panel" data-testid="cloud-panel-disabled">
+        <div className="cloud-section-card">
+          <div className="cloud-section-title">CLOUD WORKSPACE SYNC</div>
+          <div className="cloud-help">Cloud workspace sync is disabled on the development channel.</div>
+        </div>
+      </div>
+    );
+  }
+
   const editorInitialized = state.initialized ?? true;
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [user, setUser] = useState<CloudAccountUser>(cachedCloudAccountUser ?? null);

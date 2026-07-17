@@ -273,6 +273,11 @@ textarea:focus-visible {
   cursor: pointer;
 }
 
+.toolbar-channel-badge {
+  background: rgba(42, 133, 122, 0.18);
+  color: #7be0d0;
+}
+
 .toolbar-sync-badge-offline,
 .badge-warn {
   background: rgba(171, 96, 26, 0.18);
