@@ -423,6 +423,8 @@ export class EditorScene extends Phaser.Scene {
     isActive: boolean;
     sceneKey: string;
     compiledSceneId?: string;
+    cameraBackgroundColor?: number;
+    entityDisplay?: Record<string, { tint?: number; fillColor?: number }>;
     runtimeEvents?: { pendingEvents: number; lastDrainedEventNames: string[] };
     referenceSpriteCount: number;
     zoom: number;
@@ -442,6 +444,8 @@ export class EditorScene extends Phaser.Scene {
       isActive: this.scene.isActive(),
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
+      cameraBackgroundColor: (this.cameras.main.backgroundColor as any)?.color,
+      entityDisplay: this.getEntityDisplaySnapshot(),
       ...(this.compiled?.debug ? { runtimeEvents: { ...this.compiled.debug } } : {}),
       referenceSpriteCount: this.referenceSprites.size,
       zoom: this.currentZoom,
@@ -1555,6 +1559,7 @@ export class EditorScene extends Phaser.Scene {
       sprite.setSize(entity.width, entity.height);
       sprite.setDisplaySize(entity.width, entity.height);
       sprite.setScale((entity.flipX ? -1 : 1) * Math.abs(entity.scaleX ?? 1), (entity.flipY ? -1 : 1) * Math.abs(entity.scaleY ?? 1));
+      sprite.setFillStyle(entity.tint ?? 0x69d2ff, sprite.fillAlpha);
     } else {
       const displayWidth = entity.width * Math.abs(entity.scaleX ?? 1);
       const displayHeight = entity.height * Math.abs(entity.scaleY ?? 1);
@@ -1585,6 +1590,18 @@ export class EditorScene extends Phaser.Scene {
       if (!entity) continue;
       this.applyEntityDisplayProps(sprite, entity, (entity as any).asset, (entity as any).text);
     }
+  }
+
+  private getEntityDisplaySnapshot(): Record<string, { tint?: number; fillColor?: number }> {
+    return Object.fromEntries(
+      [...this.sprites.entries()].map(([id, sprite]) => {
+        const anySprite = sprite as any;
+        return [id, {
+          ...(typeof anySprite.tintTopLeft === 'number' ? { tint: anySprite.tintTopLeft } : {}),
+          ...(typeof anySprite.fillColor === 'number' ? { fillColor: anySprite.fillColor } : {}),
+        }];
+      })
+    );
   }
 
   private getBackgroundTextureKey(assetId: string): string {
