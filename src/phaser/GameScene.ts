@@ -277,6 +277,7 @@ export class GameScene extends Phaser.Scene {
     applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, project ? getProjectRenderMode(project) : 'pixel-art');
     this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
     const sceneSpec = (maybeScene ?? projectOrScene) as GameSceneSpec;
+    // In layered play mode the active scene owns the camera background; the base scene only contributes layers/sprites.
     this.cameras.main.setBackgroundColor(sceneSpec.backgroundColor ?? 0x0c0f1a);
     if (project) {
       this.pendingProject = project;

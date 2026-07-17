@@ -12,6 +12,17 @@ describe('applyProjectTextureFilter', () => {
     expect(setFilter).toHaveBeenCalledWith(1);
   });
 
+  it('keeps nearest filtering independent from sprite tinting', () => {
+    const texture = { setFilter: vi.fn(), tint: 0x224466 };
+    applyProjectTextureFilter({
+      exists: () => true,
+      get: () => texture,
+    }, 'tinted-star', 'pixel-art');
+
+    expect(texture.setFilter).toHaveBeenCalledWith(1);
+    expect(texture.tint).toBe(0x224466);
+  });
+
   it('sets the filter mode to linear for smooth-2d projects', () => {
     const setFilter = vi.fn();
     applyProjectTextureFilter({
