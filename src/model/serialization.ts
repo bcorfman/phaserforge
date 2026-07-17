@@ -3,6 +3,13 @@ import { normalizeProjectPixelsPerUnit, normalizeProjectRenderMode } from './pro
 import { CollisionRuleSpec, GameSceneSpec, ProjectSpec, TriggerZoneSpec } from './types';
 import { migrateSceneSpec } from './migrateScene';
 
+export const PROJECT_SPEC_SNAPSHOT_VERSION = 1;
+
+export type ProjectSpecSnapshot = {
+  version: typeof PROJECT_SPEC_SNAPSHOT_VERSION;
+  project: ProjectSpec;
+};
+
 function coerceRecord<T>(value: unknown): Record<string, T> {
   if (!value || typeof value !== 'object') return {};
   return value as Record<string, T>;
@@ -213,13 +220,12 @@ export function serializeProjectToYaml(project: ProjectSpec): string {
   });
 }
 
-export function parseProjectYaml(text: string): ProjectSpec {
-  const parsed = parse(text);
-  if (!parsed || typeof parsed !== 'object') {
-    throw new Error('Invalid YAML project');
+export function canonicalizeProjectSpec(rawProject: unknown): ProjectSpec {
+  if (!rawProject || typeof rawProject !== 'object') {
+    throw new Error('Invalid project');
   }
 
-  const raw = parsed as any;
+  const raw = rawProject as any;
   const scenesRaw = coerceRecord<any>(raw.scenes);
   const sceneEntries = Object.entries(scenesRaw);
   if (sceneEntries.length === 0) {
@@ -293,4 +299,34 @@ export function parseProjectYaml(text: string): ProjectSpec {
     ...(raw.counters !== undefined ? { counters: coerceRecord(raw.counters) } : {}),
     ...(patterns !== undefined ? { patterns } : {}),
   };
+}
+
+export function createProjectSnapshot(project: ProjectSpec): ProjectSpecSnapshot {
+  return {
+    version: PROJECT_SPEC_SNAPSHOT_VERSION,
+    project: canonicalizeProjectSpec(structuredClone(project)),
+  };
+}
+
+export function parseProjectSnapshot(snapshot: unknown): ProjectSpec {
+  if (!snapshot || typeof snapshot !== 'object') {
+    throw new Error('Invalid project snapshot');
+  }
+  const raw = snapshot as any;
+  if (raw.version !== PROJECT_SPEC_SNAPSHOT_VERSION) {
+    throw new Error(`Unsupported project snapshot version ${String(raw.version)}`);
+  }
+  return canonicalizeProjectSpec(raw.project);
+}
+
+export function serializeProjectSnapshot(project: ProjectSpec): string {
+  return JSON.stringify(createProjectSnapshot(project));
+}
+
+export function parseProjectYaml(text: string): ProjectSpec {
+  const parsed = parse(text);
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Invalid YAML project');
+  }
+  return canonicalizeProjectSpec(parsed);
 }

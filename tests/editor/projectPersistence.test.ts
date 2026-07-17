@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { serializeProjectToYaml } from '../../src/model/serialization';
+import { createProjectSnapshot, serializeProjectToYaml } from '../../src/model/serialization';
 import type { ProjectHistoryEvent } from '../../src/editor/projectHistoryEvents';
 import {
   __pauseActiveProjectRecordPersistenceForTests,
@@ -502,11 +502,50 @@ describe('projectPersistence steady-state storage', () => {
 
     const stored = await readStoredProjectRecord(project.id);
     expect(stored?.project).toBeUndefined();
+    expect(stored?.projectSnapshot).toEqual(createProjectSnapshot(project));
     expect(stored?.revisions).toHaveLength(1);
 
     const restored = await projectPersistence.loadProjectById(project.id);
     expect(restored?.project.title).toBe('Pattern Demo');
     expect(Object.keys(restored?.project.scenes?.[project.initialSceneId]?.entities ?? {})).toEqual(['player']);
+  });
+
+  it('prefers a valid structured project snapshot over stale YAML fallback data', async () => {
+    const structuredProject = createEmptyProject();
+    structuredProject.id = 'project-structured';
+    structuredProject.title = 'Structured Wins';
+    structuredProject.scenes[structuredProject.initialSceneId].entities.player = {
+      id: 'player',
+      x: 64,
+      y: 64,
+      width: 16,
+      height: 16,
+    } as any;
+
+    const staleYamlProject = createEmptyProject();
+    staleYamlProject.id = structuredProject.id;
+    staleYamlProject.title = 'Stale YAML';
+    staleYamlProject.scenes[staleYamlProject.initialSceneId].entities.stale = {
+      id: 'stale',
+      x: 0,
+      y: 0,
+      width: 8,
+      height: 8,
+    } as any;
+
+    const record = buildStoredProjectRecord(structuredProject, {
+      id: structuredProject.id,
+      yaml: serializeProjectToYaml(staleYamlProject),
+      revisions: [],
+    }) as any;
+    delete record.project;
+    record.projectSnapshot = createProjectSnapshot(structuredProject);
+
+    await seedPersistenceRecords({ projectRecord: record });
+
+    const restored = await projectPersistence.loadProjectById(structuredProject.id);
+    expect(restored?.project.title).toBe('Structured Wins');
+    expect(Object.keys(restored?.project.scenes?.[structuredProject.initialSceneId]?.entities ?? {})).toEqual(['player']);
   });
 
   it('can still retain an explicit YAML payload for import-export compatibility', () => {
