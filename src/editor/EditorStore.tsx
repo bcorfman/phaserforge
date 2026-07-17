@@ -71,13 +71,14 @@ import {
 } from './projectHistoryEvents';
 import { appendPersistenceDebugEntry, summarizeProjectLoadForDebug, summarizeYamlForDebug } from '../util/persistenceDebug';
 import { buildGroupTintVariation } from './tintVariation';
+import { getChannelScopedStorageKey, isCloudPersistenceEnabledForChannel } from './deployChannel';
 
-export const SCENE_STORAGE_KEY_V1 = 'phaserforge.sceneYaml.v1';
-export const SCENE_STORAGE_KEY = 'phaserforge.sceneYaml.v2';
-export const STARTUP_MODE_STORAGE_KEY = 'phaserforge.startupMode.v1';
-export const THEME_MODE_STORAGE_KEY = 'phaserforge.themeMode.v1';
-export const UI_SCALE_STORAGE_KEY = 'phaserforge.uiScale.v1';
-export const SHOW_HITBOX_OVERLAY_STORAGE_KEY = 'phaserforge.showHitboxOverlay.v1';
+export const SCENE_STORAGE_KEY_V1 = getChannelScopedStorageKey('phaserforge.sceneYaml.v1');
+export const SCENE_STORAGE_KEY = getChannelScopedStorageKey('phaserforge.sceneYaml.v2');
+export const STARTUP_MODE_STORAGE_KEY = getChannelScopedStorageKey('phaserforge.startupMode.v1');
+export const THEME_MODE_STORAGE_KEY = getChannelScopedStorageKey('phaserforge.themeMode.v1');
+export const UI_SCALE_STORAGE_KEY = getChannelScopedStorageKey('phaserforge.uiScale.v1');
+export const SHOW_HITBOX_OVERLAY_STORAGE_KEY = getChannelScopedStorageKey('phaserforge.showHitboxOverlay.v1');
 export const DEFAULT_UI_SCALE = 0.95;
 
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -5049,7 +5050,13 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     });
   }, [state.initialized, state.showHitboxOverlay, state.startupMode, state.themeMode, state.uiScale]);
 
+  const cloudPersistenceEnabled = isCloudPersistenceEnabledForChannel();
+
   const refreshCloudProjects = async () => {
+    if (!cloudPersistenceEnabled) {
+      setCloudProjects([]);
+      return;
+    }
     try {
       await me();
       const response = await listGames();
@@ -5087,7 +5094,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void refreshCloudProjects();
-  }, []);
+  }, [cloudPersistenceEnabled]);
 
   const openProject = async (projectId: string) => {
     const local = await projectPersistence.loadProjectById(projectId);
@@ -5114,6 +5121,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       }
       return;
     }
+
+    if (!cloudPersistenceEnabled) return;
 
     const cloud = await getGame(projectId);
     if (!cloud?.game?.project) return;
@@ -5169,6 +5178,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   };
 
   const linkActiveProjectToCloudGame = async (gameId: string) => {
+    if (!cloudPersistenceEnabled) return;
     const current = activeRecordRef.current ?? buildStoredProjectRecord(state.project, {
       id: activeProjectId ?? state.project.id,
     });

@@ -7,6 +7,15 @@ on:
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      channel:
+        description: Channel to deploy. Stable is an explicit promotion from trusted main.
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - stable
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -63,17 +72,66 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Build
+      - name: Prepare Pages dist
+        run: rm -rf dist && mkdir -p dist
+
+      - name: Build dev channel
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_PHASERFORGE_DEPLOY_CHANNEL: dev
           VITE_E2E_TEST_BRIDGE: '1'
-        run: npm run build
+        run: npm run build -- --outDir dist/dev
+
+      - name: Build stable channel
+        if: github.event_name == 'workflow_dispatch' && inputs.channel == 'stable'
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_PHASERFORGE_DEPLOY_CHANNEL: stable
+          VITE_E2E_TEST_BRIDGE: '1'
+        run: |
+          npm run build -- --outDir dist/stable
+          node -e "const fs=require('fs'); fs.writeFileSync('dist/stable/version.json', JSON.stringify({ channel: 'stable', commit: process.env.GITHUB_SHA, promotedAt: new Date().toISOString() }, null, 2) + '\n')"
+
+      - name: Preserve current stable channel
+        if: github.event_name != 'workflow_dispatch' || inputs.channel != 'stable'
+        run: |
+          set -euo pipefail
+          pages_root_url="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          pages_stable_url="${pages_root_url}stable/"
+          mkdir -p dist/stable
+          fetch_pages_path() {
+            local url="$1"
+            local target="$2"
+            wget \
+              --recursive \
+              --level=2 \
+              --page-requisites \
+              --no-parent \
+              --no-host-directories \
+              --cut-dirs=1 \
+              --directory-prefix="$target" \
+              "$url"
+          }
+          fetch_pages_path "$pages_stable_url" dist || true
+          if [ ! -f dist/stable/index.html ]; then
+            echo "No existing /stable/ channel found; seeding stable from the currently published root editor."
+            mkdir -p /tmp/phaserforge-pages-root
+            fetch_pages_path "$pages_root_url" /tmp/phaserforge-pages-root
+            cp -a /tmp/phaserforge-pages-root/. dist/stable/
+          fi
+          test -f dist/stable/index.html
 
       - name: Build docs
         run: npm run docs:build
 
       - name: Stage docs under /docs
         run: npm run docs:stage
+
+      - name: Create root redirect
+        run: npm run pages:root
+
+      - name: Verify Pages artifact shape
+        run: npm run pages:verify
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

@@ -32,6 +32,8 @@ describe('Toolbar', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    window.history.pushState({}, '', '/');
     toolbarStore.dispatch.mockReset();
     toolbarStore.state.dirty = false;
     toolbarStore.state.uiScale = 0.95;
@@ -77,6 +79,14 @@ describe('Toolbar', () => {
 
     expect(toolbarStore.persistence.toggleSyncMode).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('project-sync-badge').textContent).toBe('Offline');
+  });
+
+  it('marks dev channel builds without changing stable toolbar chrome', () => {
+    window.history.pushState({}, '', '/phaserforge/dev/');
+
+    render(<Toolbar />);
+
+    expect(screen.getByTestId('deploy-channel-badge').textContent).toBe('Dev');
   });
 
   it('marks the summary copy as single-line on wide layouts', () => {

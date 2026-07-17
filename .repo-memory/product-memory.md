@@ -20,6 +20,7 @@ Compact durable rules that should survive refactors and feature work.
 - The latest valid IndexedDB-backed project head wins over stale cached snapshots or legacy localStorage state.
 - Restore sequencing is a product contract and must remain stable.
 - Project history should preserve user intent across reload/rebuild, not just restoreable state.
+- The public editor should deploy only to explicit stable/development channels: `/stable/` serves the user-safe release, `/dev/` can track active development, and the root must not host an editor build.
 
 ### Serialization and project data
 
