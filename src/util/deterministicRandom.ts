@@ -1,5 +1,12 @@
 export type SeedInput = string | number;
 
+/*
+ * Deterministic authored-random contract:
+ * the same seed, named stream, member identity/index, and normalized parameters
+ * must produce the same generated authoring result across recomputation, reload,
+ * and command replay. Use separate stream names for independent dimensions so
+ * changing one variation source does not reshuffle unrelated authored values.
+ */
 function hashSeed(input: SeedInput): number {
   const text = String(input);
   let hash = 2166136261;
