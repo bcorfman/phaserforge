@@ -13,6 +13,7 @@ import {
   arrangeVFormation,
 } from '../model/formation';
 import { getSceneWorld } from './sceneWorld';
+import { createSeededRandom, makeSeed, normalizeRange, randomFloatInRange, randomIntInRange } from './deterministicRandom';
 
 export type FormationTemplateSource =
   | { kind: 'entity'; entityId: Id }
@@ -25,6 +26,8 @@ export type FormationDraftSpec = {
   params: Record<string, number | string | boolean>;
   memberCount: number;
 };
+
+export type FormationDraftPosition = { x: number; y: number; width: number; height: number };
 
 export function getTemplateDisplayLabel(scene: SceneSpec, project: ProjectSpec, template: FormationTemplateSource): string {
   if (template.kind === 'entity') {
@@ -61,6 +64,7 @@ export function buildDefaultDraftParams(arrangeKind: string, scene: SceneSpec): 
   if (arrangeKind === 'grid') {
     return { rows: 3, cols: 4, spacing: 24, centerX, centerY };
   }
+  if (arrangeKind === 'scatter') return { minX: 0, maxX: world.width, minY: 0, maxY: world.height, seed: makeSeed('scatter') };
   if (arrangeKind === 'line') return { startX: centerX, startY: centerY, spacing: 50 };
   if (arrangeKind === 'circle') return { centerX, centerY, radius: 120 };
   if (arrangeKind === 'v_formation') return { apexX: centerX, apexY: centerY, spacing: 60, direction: 'up' };
@@ -76,7 +80,7 @@ export function buildDefaultDraftParams(arrangeKind: string, scene: SceneSpec): 
 export function computeFormationDraftPositions(
   draft: Pick<FormationDraftSpec, 'arrangeKind' | 'params' | 'memberCount'>,
   templateSize: { width: number; height: number }
-): Array<{ x: number; y: number; width: number; height: number }> {
+): FormationDraftPosition[] {
   const width = Math.max(1, Math.round(Number(templateSize.width ?? 64) || 64));
   const height = Math.max(1, Math.round(Number(templateSize.height ?? 64) || 64));
 
@@ -99,6 +103,20 @@ export function computeFormationDraftPositions(
   const memberCount = Math.max(1, Math.min(200, Math.floor(Number(draft.memberCount ?? 1) || 1)));
   const centerX = Math.round(num('centerX', 0));
   const centerY = Math.round(num('centerY', 0));
+
+  if (draft.arrangeKind === 'scatter') {
+    const xRange = normalizeRange(num('minX', 0), num('maxX', centerX));
+    const yRange = normalizeRange(num('minY', 0), num('maxY', centerY));
+    const seed = String((p as any).seed ?? 'scatter');
+    const randomX = createSeededRandom(seed, 'position-x');
+    const randomY = createSeededRandom(seed, 'position-y');
+    return Array.from({ length: memberCount }, () => ({
+      x: Math.round(randomFloatInRange(randomX, xRange.min, xRange.max)),
+      y: Math.round(randomFloatInRange(randomY, yRange.min, yRange.max)),
+      width,
+      height,
+    }));
+  }
 
   if (draft.arrangeKind === 'grid') {
     const rows = Math.max(1, Math.floor(num('rows', 1)));
@@ -156,3 +174,25 @@ export function computeFormationDraftPositions(
   return members.map((m) => ({ x: Math.round(m.x), y: Math.round(m.y), width, height }));
 }
 
+export function computeFormationDraftTints(
+  draft: Pick<FormationDraftSpec, 'arrangeKind' | 'params' | 'memberCount'>
+): number[] | undefined {
+  const p = draft.params ?? {};
+  if (draft.arrangeKind !== 'scatter' || (p as any).randomTint !== true) return undefined;
+  const memberCount = Math.max(1, Math.min(200, Math.floor(Number(draft.memberCount ?? 1) || 1)));
+  const num = (key: string, fallback: number) => {
+    const raw = (p as any)[key];
+    const parsed = typeof raw === 'number' ? raw : Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+  const seed = String((p as any).seed ?? 'scatter');
+  const randomR = createSeededRandom(seed, 'tint-r');
+  const randomG = createSeededRandom(seed, 'tint-g');
+  const randomB = createSeededRandom(seed, 'tint-b');
+  return Array.from({ length: memberCount }, () => {
+    const r = randomIntInRange(randomR, num('tintMinR', 20), num('tintMaxR', 255));
+    const g = randomIntInRange(randomG, num('tintMinG', 20), num('tintMaxG', 255));
+    const b = randomIntInRange(randomB, num('tintMinB', 20), num('tintMaxB', 255));
+    return (r << 16) | (g << 8) | b;
+  });
+}

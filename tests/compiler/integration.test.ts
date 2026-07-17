@@ -146,6 +146,7 @@ describe('compiler/runtime integration', () => {
     scene.entities.e1.originX = 0.25;
     scene.entities.e1.originY = 0.75;
     scene.entities.e1.alpha = 0.4;
+    scene.entities.e1.tint = 0x224466;
     scene.entities.e1.visible = false;
     scene.entities.e1.depth = 9;
     scene.entities.e1.flipX = true;
@@ -159,6 +160,7 @@ describe('compiler/runtime integration', () => {
     expect(compiled.entities.e1.originX).toBe(0.25);
     expect(compiled.entities.e1.originY).toBe(0.75);
     expect(compiled.entities.e1.alpha).toBe(0.4);
+    expect(compiled.entities.e1.tint).toBe(0x224466);
     expect(compiled.entities.e1.visible).toBe(false);
     expect(compiled.entities.e1.depth).toBe(9);
     expect(compiled.entities.e1.flipX).toBe(true);

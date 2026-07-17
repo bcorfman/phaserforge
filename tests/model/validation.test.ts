@@ -69,6 +69,27 @@ describe('model validation', () => {
     expect(() => validateSceneSpec(scene)).toThrow(/alpha/i);
   });
 
+  it('validates optional entity tint as an RGB integer', () => {
+    const scene = baseScene();
+    scene.entities.e1.tint = 0x123abc;
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+
+    scene.entities.e1.tint = 0x1000000;
+    expect(() => validateSceneSpec(scene)).toThrow(/tint/i);
+
+    scene.entities.e1.tint = 1.5;
+    expect(() => validateSceneSpec(scene)).toThrow(/tint/i);
+  });
+
+  it('validates optional scene backgroundColor as an RGB integer', () => {
+    const scene = baseScene() as any;
+    scene.backgroundColor = 0x000000;
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+
+    scene.backgroundColor = -1;
+    expect(() => validateSceneSpec(scene)).toThrow(/backgroundColor/i);
+  });
+
   it('A9 hitbox must fit within entity dimensions', () => {
     const scene = baseScene();
     scene.entities.e1.hitbox = { x: 2, y: 2, width: 20, height: 20 };
@@ -169,6 +190,31 @@ describe('model validation', () => {
 
     (scene.attachments.r1 as any).children = ['missing'];
     expect(() => validateSceneSpec(scene)).toThrow(/unknown child/i);
+  });
+
+  it('validates SetProperty property and value-source compatibility', () => {
+    const scene = baseScene();
+    scene.behaviors = {};
+    scene.actions = {};
+    scene.conditions = {};
+    scene.attachments = {
+      a1: {
+        id: 'a1',
+        target: { type: 'entity', entityId: 'e1' },
+        presetId: 'SetProperty',
+        params: { property: 'x', valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'wrap' } },
+      } as any,
+      a2: {
+        id: 'a2',
+        target: { type: 'entity', entityId: 'e1' },
+        presetId: 'SetProperty',
+        params: { property: 'tint', valueSource: { kind: 'constant', value: 0x224466 } },
+      } as any,
+    };
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+
+    (scene.attachments.a2 as any).params = { property: 'visible', valueSource: { kind: 'randomRange', min: 0, max: 1, seed: 'bad' } };
+    expect(() => validateSceneSpec(scene)).toThrow(/visible.*randomRange/i);
   });
 
   it('A17 project validation allows cloud and path asset sources', () => {

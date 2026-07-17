@@ -354,6 +354,7 @@ export type EditorAction =
   | { type: 'remove-input-binding'; mapId: Id; actionId: string; index: number }
   | { type: 'set-project-default-input-map'; mapId?: Id }
   | { type: 'set-scene-input'; input: GameSceneSpec['input'] | undefined }
+  | { type: 'set-scene-background-color'; backgroundColor: GameSceneSpec['backgroundColor'] | undefined }
   | { type: 'set-scene-background-layers'; layers: BackgroundLayerSpec[] }
   | { type: 'update-background-layer'; index: number; patch: Partial<BackgroundLayerSpec> }
   | { type: 'move-background-layer'; fromIndex: number; toIndex: number }
@@ -845,10 +846,12 @@ function createGroupFromArrangeTemplate(
       ...arranged,
       groups: {
         ...arranged.groups,
-        [groupId]: {
-          ...arranged.groups[groupId],
-          layout: { type: 'freeform' },
-        },
+        [groupId]: arrangeKind === 'scatter'
+          ? arranged.groups[groupId]
+          : {
+              ...arranged.groups[groupId],
+              layout: { type: 'freeform' },
+            },
       },
     },
     groupId,
@@ -880,6 +883,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'arrange-group-grid':
     case 'arrange-group':
     case 'create-group-from-arrange':
+    case 'commit-formation-draft':
     case 'update-bounds':
     case 'create-group-from-selection':
     case 'ungroup-group':
@@ -928,6 +932,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'remove-input-binding':
     case 'set-project-default-input-map':
     case 'set-scene-input':
+    case 'set-scene-background-color':
     case 'set-scene-background-layers':
     case 'update-background-layer':
     case 'move-background-layer':
@@ -1211,6 +1216,8 @@ function describeEditorAction(stateBefore: EditorState, stateAfter: EditorState,
       return action.mapId ? `Set default input map to ${action.mapId}` : 'Cleared default input map';
     case 'set-scene-input':
       return 'Updated scene input';
+    case 'set-scene-background-color':
+      return action.backgroundColor == null ? 'Reset scene background color' : 'Updated scene background color';
     case 'set-scene-background-layers':
       return 'Updated background layers';
     case 'update-background-layer':
@@ -1379,6 +1386,13 @@ function buildProjectHistoryEventDraftsForAction(
         burstId: `background.layers.set:${stateAfter.currentSceneId}:${actionBurstToken}`,
         scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
         summary: 'Updated background layers',
+      }];
+    case 'set-scene-background-color':
+      return [{
+        kind: 'scene.backgroundColor.set',
+        burstId: `scene.backgroundColor.set:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: action.backgroundColor == null ? 'Reset scene background color' : 'Updated scene background color',
       }];
     case 'update-background-layer':
       return [{
@@ -2735,6 +2749,15 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
     case 'set-scene-background-layers': {
       const scene = getActiveScene(state);
       return withScene(state, { ...scene, backgroundLayers: [...action.layers] }, true);
+    }
+    case 'set-scene-background-color': {
+      const scene = getActiveScene(state);
+      const { backgroundColor: _backgroundColor, ...rest } = scene as any;
+      void _backgroundColor;
+      const nextScene = action.backgroundColor == null
+        ? rest
+        : { ...scene, backgroundColor: action.backgroundColor };
+      return withScene(state, nextScene as GameSceneSpec, true);
     }
     case 'add-audio-asset-from-file': {
       const sounds = state.project.audio?.sounds ?? {};

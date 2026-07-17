@@ -277,6 +277,7 @@ export class GameScene extends Phaser.Scene {
     applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, project ? getProjectRenderMode(project) : 'pixel-art');
     this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
     const sceneSpec = (maybeScene ?? projectOrScene) as GameSceneSpec;
+    this.cameras.main.setBackgroundColor(sceneSpec.backgroundColor ?? 0x0c0f1a);
     if (project) {
       this.pendingProject = project;
       this.pendingSceneSpec = sceneSpec;
@@ -1216,6 +1217,11 @@ export class GameScene extends Phaser.Scene {
       sprite.setDisplaySize(displayWidth, displayHeight);
       sprite.setFlipX(entity.flipX ?? false);
       sprite.setFlipY(entity.flipY ?? false);
+      if (entity.tint != null) {
+        sprite.setTint(entity.tint);
+      } else {
+        sprite.clearTint();
+      }
       if (asset?.imageType === 'spritesheet' && sprite instanceof Phaser.GameObjects.Sprite) {
         const runtimeFrame = entity.frame;
         const frame = runtimeFrame !== undefined ? runtimeFrame : (asset.frame?.frameKey ?? asset.frame?.frameIndex);

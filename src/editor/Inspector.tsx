@@ -26,6 +26,7 @@ import {
   scaleFromDisplayPixels,
   scaleFromPercent,
 } from './spriteSizing';
+import { formatRgbHex, parseRgbHex } from './colorHex';
 
 type ArrangeParameterSpec = { name: string; type?: string };
 
@@ -1086,6 +1087,37 @@ function EntityInspector({
               onCommit={(next) => update({ depth: next })}
             />
           </label>
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Tint</span>
+              <input
+                aria-label="Tint"
+                data-testid="entity-tint-picker"
+                type="color"
+                value={formatRgbHex(resolved.tint ?? 0xffffff)}
+                onChange={(e) => update({ tint: parseRgbHex(e.target.value) })}
+              />
+            </label>
+            <label className="field">
+              <span>Hex</span>
+              <input
+                aria-label="Tint Hex"
+                data-testid="entity-tint-hex-input"
+                placeholder="#rrggbb"
+                value={formatRgbHex(resolved.tint)}
+                onChange={(e) => update({ tint: parseRgbHex(e.target.value) })}
+              />
+            </label>
+          </div>
+          <button
+            className="button button-compact"
+            type="button"
+            data-testid="entity-tint-clear"
+            disabled={resolved.tint == null}
+            onClick={() => update({ tint: undefined })}
+          >
+            Clear tint
+          </button>
           <label className="field">
             <span>Asset</span>
             <select
@@ -1956,6 +1988,7 @@ function AttachmentInspector({
     'PatrolPattern',
     'Wait',
     'Call',
+    'SetProperty',
     'Repeat',
     'BlinkUntil',
     'CallbackUntil',
@@ -2173,6 +2206,10 @@ function AttachmentInspector({
               }
               if (nextType === 'Call') {
                 onUpdate({ ...base, params: { callId: 'callback' } });
+                return;
+              }
+              if (nextType === 'SetProperty') {
+                onUpdate({ ...base, params: { property: 'x', valueSource: { kind: 'constant', value: 0 } } });
                 return;
               }
               if (nextType === 'Repeat') {
@@ -2737,6 +2774,111 @@ function AttachmentInspector({
               />
             </label>
           </div>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'SetProperty' && (
+        <InspectorFoldout
+          title="Set Property"
+          open={foldouts.isOpen('attachment.setproperty', true)}
+          onToggle={() => foldouts.toggle('attachment.setproperty', true)}
+        >
+          <label className="field">
+            <span>Property</span>
+            <select
+              aria-label="Set Property Property"
+              data-testid="attachment-setproperty-property-select"
+              value={String(params.property ?? 'x')}
+              onChange={(e) => {
+                const property = e.target.value;
+                const defaultValue = property === 'visible' ? true : 0;
+                onUpdate({ ...attachment, params: { ...params, property, valueSource: { kind: 'constant', value: defaultValue } } });
+              }}
+            >
+              <option value="x">X</option>
+              <option value="y">Y</option>
+              <option value="tint">Tint</option>
+              <option value="alpha">Alpha</option>
+              <option value="visible">Visible</option>
+              <option value="vx">Velocity X</option>
+              <option value="vy">Velocity Y</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Value</span>
+            <select
+              aria-label="Set Property Value Source"
+              data-testid="attachment-setproperty-value-source-select"
+              value={String((params.valueSource as any)?.kind ?? 'constant')}
+              onChange={(e) => {
+                const kind = e.target.value;
+                if (kind === 'randomRange') {
+                  onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'set-property' } } });
+                  return;
+                }
+                onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'constant', value: params.property === 'visible' ? true : 0 } } });
+              }}
+            >
+              <option value="constant">Constant</option>
+              {String(params.property ?? 'x') !== 'visible' && <option value="randomRange">Random Range</option>}
+            </select>
+          </label>
+
+          {String((params.valueSource as any)?.kind ?? 'constant') === 'randomRange' ? (
+            <>
+              <div className="inspector-grid-2">
+                <label className="field">
+                  <span>Min</span>
+                  <ValidatedNumberInput
+                    aria-label="Set Property Random Min"
+                    data-testid="attachment-setproperty-random-min"
+                    value={Number((params.valueSource as any)?.min ?? 0)}
+                    onCommit={(next) => onUpdate({ ...attachment, params: { ...params, valueSource: { ...(params.valueSource as any), kind: 'randomRange', min: next } } })}
+                  />
+                </label>
+                <label className="field">
+                  <span>Max</span>
+                  <ValidatedNumberInput
+                    aria-label="Set Property Random Max"
+                    data-testid="attachment-setproperty-random-max"
+                    value={Number((params.valueSource as any)?.max ?? 720)}
+                    onCommit={(next) => onUpdate({ ...attachment, params: { ...params, valueSource: { ...(params.valueSource as any), kind: 'randomRange', max: next } } })}
+                  />
+                </label>
+              </div>
+              <label className="field">
+                <span>Seed</span>
+                <input
+                  aria-label="Set Property Seed"
+                  data-testid="attachment-setproperty-seed"
+                  value={String((params.valueSource as any)?.seed ?? '')}
+                  onChange={(e) => onUpdate({ ...attachment, params: { ...params, valueSource: { ...(params.valueSource as any), kind: 'randomRange', seed: e.target.value } } })}
+                />
+              </label>
+            </>
+          ) : String(params.property ?? 'x') === 'visible' ? (
+            <label className="field field-checkbox">
+              <span>Constant</span>
+              <input
+                aria-label="Set Property Constant Boolean"
+                data-testid="attachment-setproperty-constant-boolean"
+                type="checkbox"
+                checked={(params.valueSource as any)?.value !== false}
+                onChange={(e) => onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'constant', value: e.target.checked } } })}
+              />
+            </label>
+          ) : (
+            <label className="field">
+              <span>Constant</span>
+              <ValidatedNumberInput
+                aria-label="Set Property Constant Number"
+                data-testid="attachment-setproperty-constant-number"
+                value={Number((params.valueSource as any)?.value ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'constant', value: next } } })}
+              />
+            </label>
+          )}
         </InspectorFoldout>
       )}
 

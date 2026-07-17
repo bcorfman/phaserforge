@@ -11,6 +11,8 @@ Compact durable rules that should survive refactors and feature work.
 - Editor copy, hints, shortcuts, and gestures must match actual behavior.
 - Pixel-authored geometry such as entity positions, trigger rects, and hitbox rectangles should round to integer pixels unless a field is intentionally continuous.
 - Pixel-art textures should use nearest-neighbor filtering on runtime loads, not just global Phaser config.
+- Authored random layout/variation features should be deterministic from stored seeds and named streams, never from preview-time `Math.random()`.
+- Authored sprite tint should remain independent of editor selection styling; selection affordances should not overwrite the saved tint.
 
 ### Persistence and history
 
