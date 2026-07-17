@@ -30,9 +30,42 @@ const SUPPORTED_PRESETS = new Set([
   'AddToCounter',
   'SetCounter',
   'ClampCounter',
+  'SetProperty',
   'AddSelfToCollection',
   'RemoveSelfFromCollection',
 ]);
+
+const BOUNDS_EVENT_OPTIONS = [
+  ['contact-entered', 'Contact Entered'],
+  ['contact-exited', 'Contact Exited'],
+  ['wrapped', 'Wrapped'],
+  ['bounced', 'Bounced'],
+  ['clamped', 'Clamped'],
+  ['stopped', 'Stopped'],
+] as const;
+
+const BOUNDS_AXIS_OPTIONS = [
+  ['any', 'Any'],
+  ['x', 'X'],
+  ['y', 'Y'],
+] as const;
+
+const BOUNDS_SIDE_OPTIONS = [
+  ['any', 'Any'],
+  ['left', 'Left / Min X'],
+  ['right', 'Right / Max X'],
+  ['top', 'Top / Min Y'],
+  ['bottom', 'Bottom / Max Y'],
+] as const;
+
+const BOUNDS_EVENT_DESCRIPTIONS: Record<string, string> = {
+  'contact-entered': 'Source begins touching or crossing a configured boundary.',
+  'contact-exited': 'Source leaves a tracked boundary contact.',
+  wrapped: 'Wrap relocated the source to the opposite boundary.',
+  bounced: 'Bounce inverted source velocity on the affected axis.',
+  clamped: 'Clamp at Edge corrected source position and blocked outward motion.',
+  stopped: 'Stop corrected source position and zeroed affected velocity.',
+};
 
 function targetsEqual(a: TargetRef, b: TargetRef): boolean {
   if (a.type !== b.type) return false;
@@ -773,6 +806,13 @@ function EventBlockCard({
     }
     const init: Partial<AttachmentSpec> = pendingInsert ? buildInsertInit() : buildDefaultAddInit();
     if (presetId === 'Call') init.condition = { type: 'Instant' } as any;
+    if (presetId === 'SetProperty' && trigger.type === 'bounds') {
+      init.targetMode = 'event-source' as any;
+      init.params = {
+        property: 'x',
+        valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'wrap-x' },
+      } as any;
+    }
     onAddAttachment(presetId, init);
     setDrawerOpen(false);
     setPendingInsert(null);
@@ -812,14 +852,17 @@ function EventBlockCard({
                 else if (type === 'update') onUpdateEventBlock({ ...block, trigger: { type: 'update' } });
                 else if (type === 'visible') onUpdateEventBlock({ ...block, trigger: { type: 'visible', edge: 'shown' } });
                 else if (type === 'event') onUpdateEventBlock({ ...block, trigger: { type: 'event', eventName: triggerEventName || 'Event.Name' } as any });
+                else if (type === 'bounds') onUpdateEventBlock({ ...block, trigger: { type: 'bounds', boundsEvent: 'wrapped', axis: 'any', side: 'any' } as any });
                 else onUpdateEventBlock({ ...block, trigger: { type: 'input_action', actionId: triggerActionId, edge: 'pressed' } });
               }}
+              data-testid={`event-trigger-select-${block.id}`}
             >
               <option value="start">OnSceneStart</option>
               <option value="update">On Update</option>
               <option value="input_action">On Input Action</option>
               <option value="visible">On Visible Changed</option>
               <option value="event">On Event</option>
+              <option value="bounds">Bounds</option>
             </select>
           </label>
         ) : (
@@ -856,6 +899,54 @@ function EventBlockCard({
               ))}
             </datalist>
           </label>
+        ) : !hideEventControls && triggerType === 'bounds' ? (
+          <div>
+            <div className="inspector-grid-2">
+              <label className="field">
+                <span>Event</span>
+                <select
+                  aria-label="Bounds Event"
+                  data-testid={`event-bounds-event-${block.id}`}
+                  value={(trigger as any).boundsEvent ?? 'wrapped'}
+                  onChange={(e) => onUpdateEventBlock({ ...block, trigger: { ...trigger, type: 'bounds', boundsEvent: e.target.value } as any })}
+                >
+                  {BOUNDS_EVENT_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Axis</span>
+                <select
+                  aria-label="Bounds Axis"
+                  data-testid={`event-bounds-axis-${block.id}`}
+                  value={(trigger as any).axis ?? 'any'}
+                  onChange={(e) => onUpdateEventBlock({ ...block, trigger: { ...trigger, type: 'bounds', axis: e.target.value } as any })}
+                >
+                  {BOUNDS_AXIS_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="field">
+              <span>Side</span>
+              <select
+                aria-label="Bounds Side"
+                data-testid={`event-bounds-side-${block.id}`}
+                value={(trigger as any).side ?? 'any'}
+                onChange={(e) => onUpdateEventBlock({ ...block, trigger: { ...trigger, type: 'bounds', side: e.target.value } as any })}
+              >
+                {BOUNDS_SIDE_OPTIONS.map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
+            <div className="inspector-row" data-testid={`event-bounds-description-${block.id}`}>
+              {BOUNDS_EVENT_DESCRIPTIONS[(trigger as any).boundsEvent ?? 'wrapped']}
+            </div>
+            <div className="tag-button" data-testid={`event-bounds-compatibility-${block.id}`}>Compatible with matching Bounds behavior</div>
+          </div>
         ) : !hideEventControls && triggerType === 'visible' ? (
           <label className="field">
             <span>Edge</span>

@@ -497,6 +497,8 @@ export class GameScene extends Phaser.Scene {
     sceneKey: string;
     compiledSceneId?: string;
     baseCompiledSceneId?: string;
+    cameraBackgroundColor?: number;
+    entityDisplay?: Record<string, { tint?: number; fillColor?: number }>;
     runtimeOps?: {
       hasDrop: boolean;
       lastInvocations: string[];
@@ -655,6 +657,8 @@ export class GameScene extends Phaser.Scene {
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
       ...(this.baseCompiled ? { baseCompiledSceneId: this.baseCompiled.scene.id } : {}),
+      cameraBackgroundColor: (this.cameras.main.backgroundColor as any)?.color,
+      entityDisplay: this.getEntityDisplaySnapshot(),
       runtimeOps: {
         hasDrop: this.opRegistry?.has('drop') ?? false,
         ...this.opRegistry?.getDebugSnapshot(),
@@ -1211,6 +1215,7 @@ export class GameScene extends Phaser.Scene {
       sprite.setSize(entity.width, entity.height);
       sprite.setDisplaySize(entity.width, entity.height);
       sprite.setScale((entity.flipX ? -1 : 1) * Math.abs(entity.scaleX ?? 1), (entity.flipY ? -1 : 1) * Math.abs(entity.scaleY ?? 1));
+      sprite.setFillStyle(entity.tint ?? 0x69d2ff, sprite.fillAlpha);
     } else {
       const displayWidth = entity.width * Math.abs(entity.scaleX ?? 1);
       const displayHeight = entity.height * Math.abs(entity.scaleY ?? 1);
@@ -1240,6 +1245,18 @@ export class GameScene extends Phaser.Scene {
     gfx.generateTexture(PLACEHOLDER_TEXTURE_KEY, 1, 1);
     gfx.destroy();
     applyProjectTextureFilter(this.textures as any, PLACEHOLDER_TEXTURE_KEY, this.project ? getProjectRenderMode(this.project) : 'pixel-art');
+  }
+
+  private getEntityDisplaySnapshot(): Record<string, { tint?: number; fillColor?: number }> {
+    return Object.fromEntries(
+      [...this.sprites.entries()].map(([id, sprite]) => {
+        const anySprite = sprite as any;
+        return [id, {
+          ...(typeof anySprite.tintTopLeft === 'number' ? { tint: anySprite.tintTopLeft } : {}),
+          ...(typeof anySprite.fillColor === 'number' ? { fillColor: anySprite.fillColor } : {}),
+        }];
+      })
+    );
   }
 
   private configurePhysicsObject(entityId: string, sprite: PhysicsObject, physicsObjects: Map<string, PhysicsObject>): void {
