@@ -37,6 +37,8 @@
         "docs:screenshots:app": "node --import tsx scripts/docs/capture-docs-screenshots.mjs",
         "docs:screenshots": "npm run docs:screenshots:storybook && npm run docs:screenshots:app",
         "docs:stage": "node scripts/docs/stage-docs-for-pages.mjs",
+        "pages:root": "node scripts/pages/create-root-index.mjs",
+        "pages:verify": "node scripts/pages/verify-pages-artifact.mjs",
         "server:dev": "node --import tsx server/src/index.ts",
         "server:start": "node --import tsx server/src/index.ts",
         "prisma:generate": "prisma generate",
