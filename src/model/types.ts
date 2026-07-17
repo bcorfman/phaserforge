@@ -378,10 +378,13 @@ export interface InlineElapsedTimeConditionSpec {
 }
 
 export interface AttachmentTriggerSpec {
-  type: 'start' | 'update' | 'input_action' | 'visible' | 'event';
+  type: 'start' | 'update' | 'input_action' | 'visible' | 'event' | 'bounds';
   actionId?: string;
   edge?: 'pressed' | 'released' | 'shown' | 'hidden';
   eventName?: string;
+  boundsEvent?: 'contact-entered' | 'contact-exited' | 'wrapped' | 'bounced' | 'clamped' | 'stopped';
+  axis?: 'any' | 'x' | 'y';
+  side?: 'any' | 'left' | 'right' | 'top' | 'bottom';
 }
 
 export interface AttachmentSpec {
@@ -419,6 +422,7 @@ export interface AttachmentSpec {
    * For v1, this will typically match an action `type` like "MoveUntil".
    */
   presetId: string;
+  targetMode?: 'owner' | 'event-source';
   params?: Record<string, number | string | boolean | null>;
   condition?: InlineConditionSpec;
   tag?: string;

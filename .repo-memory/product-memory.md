@@ -23,6 +23,7 @@ Compact durable rules that should survive refactors and feature work.
 
 ### Serialization and project data
 
+- `ProjectSpec` is the canonical project model for editor state, persistence, publish, and runtime compilation. YAML is a supported human-readable import/export and compatibility adapter, not the internal persistence authority or required publishing pipeline.
 - Project serialization should round-trip without semantic drift.
 - Backward compatibility for persisted project data matters unless the task explicitly changes the contract.
 - Legacy project formats should canonicalize into current structures instead of leaking old meanings forward.

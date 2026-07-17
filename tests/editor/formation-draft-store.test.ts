@@ -87,4 +87,88 @@ describe('formation draft workflow', () => {
     const redone = reducer(undone, { type: 'history-redo' } as any);
     expect((redone.project.scenes[redone.currentSceneId] as any).groups['g-stars-blink-1'].members).toHaveLength(80);
   });
+
+  it('authors the stars scatter layout as five deterministic 80-member formations', () => {
+    let state = seededState();
+    const templateBefore = (state.project.scenes[state.currentSceneId] as any).entities.e1;
+    const seeds = ['stars-1', 'stars-2', 'stars-3', 'stars-4', 'stars-5'];
+
+    for (const [index, seed] of seeds.entries()) {
+      state = reducer(state, { type: 'begin-formation-draft', template: { kind: 'entity', entityId: 'e1' } } as any);
+      state = reducer(state, {
+        type: 'update-formation-draft',
+        patch: {
+          name: `Stars Blink ${index + 1}`,
+          arrangeKind: 'scatter',
+          memberCount: 80,
+          params: {
+            minX: 0,
+            maxX: 720,
+            minY: 5,
+            maxY: 1285,
+            seed,
+            randomTint: true,
+            tintMinR: 20,
+            tintMaxR: 255,
+            tintMinG: 20,
+            tintMaxG: 255,
+            tintMinB: 20,
+            tintMaxB: 255,
+          },
+        },
+      } as any);
+      state = reducer(state, { type: 'commit-formation-draft' } as any);
+    }
+
+    const scene: any = state.project.scenes[state.currentSceneId];
+    const groups = seeds.map((_, index) => scene.groups[`g-stars-blink-${index + 1}`]);
+    const memberIds = groups.flatMap((group: any) => group.members);
+    const members = memberIds.map((id: string) => scene.entities[id]);
+
+    expect(groups).toHaveLength(5);
+    expect(memberIds).toHaveLength(400);
+    expect(new Set(memberIds).size).toBe(400);
+    expect(members.every((entity: any) => Number.isInteger(entity.x) && Number.isInteger(entity.y))).toBe(true);
+    expect(members.every((entity: any) => entity.x >= 0 && entity.x <= 720 && entity.y >= 5 && entity.y <= 1285)).toBe(true);
+    expect(groups.map((group: any) => group.layout)).toEqual(seeds.map((seed) => ({
+      type: 'arrange',
+      arrangeKind: 'scatter',
+      params: {
+        minX: 0,
+        maxX: 720,
+        minY: 5,
+        maxY: 1285,
+        seed,
+        randomTint: true,
+        tintMinR: 20,
+        tintMaxR: 255,
+        tintMinG: 20,
+        tintMaxG: 255,
+        tintMinB: 20,
+        tintMaxB: 255,
+      },
+    })));
+    expect(scene.entities.e1).toEqual(templateBefore);
+
+    const replayStarted = reducer(seededState(), { type: 'begin-formation-draft', template: { kind: 'entity', entityId: 'e1' } } as any);
+    const replayUpdated = reducer(replayStarted, {
+      type: 'update-formation-draft',
+      patch: {
+        name: 'Stars Blink 1',
+        arrangeKind: 'scatter',
+        memberCount: 80,
+        params: groups[0].layout.params,
+      },
+    } as any);
+    const replayCommitted = reducer(replayUpdated, { type: 'commit-formation-draft' } as any);
+    const replayScene: any = replayCommitted.project.scenes[replayCommitted.currentSceneId];
+    const replayMembers = replayScene.groups['g-stars-blink-1'].members.map((id: string) => replayScene.entities[id]);
+
+    expect(replayMembers.map((entity: any) => [entity.x, entity.y, entity.tint])).toEqual(
+      groups[0].members.map((id: string) => {
+        const entity = scene.entities[id];
+        return [entity.x, entity.y, entity.tint];
+      })
+    );
+  });
 });

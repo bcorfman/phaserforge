@@ -831,9 +831,8 @@ function createGroupFromArrangeTemplate(
 
   const nextEntities = { ...scene.entities };
   const memberIds: Id[] = [];
-  const createdAt = Date.now();
   for (let index = 0; index < count; index += 1) {
-    const id = `e-form-${createdAt}-${index}`;
+    const id = allocUniqueId(nextEntities, `${groupId}-member`);
     memberIds.push(id);
     nextEntities[id] = resolveEntityDefaults({
       ...templateFields,

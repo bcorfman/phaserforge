@@ -250,6 +250,82 @@ describe('project YAML serialization', () => {
     expect(parsed.scenes['scene-1'].groups.g1.layout).toEqual(project.scenes['scene-1'].groups.g1.layout);
   });
 
+  it('loads older YAML without scene background, entity tint, scatter, event, or value-source fields', () => {
+    const yaml = stringify({
+      id: 'legacy-project',
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
+      audio: { sounds: {} },
+      inputMaps: {},
+      scenes: {
+        'scene-1': {
+          id: 'scene-1',
+          world: { width: 320, height: 240 },
+          entities: {
+            e1: { id: 'e1', x: 10, y: 20, width: 8, height: 8 },
+          },
+          groups: {},
+          attachments: {},
+          behaviors: {},
+          actions: {},
+          conditions: {},
+        },
+      },
+      initialSceneId: 'scene-1',
+    }, { indent: 2, lineWidth: 0, minContentWidth: 0 });
+
+    const parsed = parseProjectYaml(yaml) as any;
+    expect(parsed.scenes['scene-1'].backgroundColor).toBeUndefined();
+    expect(parsed.scenes['scene-1'].entities.e1.tint).toBeUndefined();
+    expect(parsed.scenes['scene-1'].eventBlocks).toBeUndefined();
+    expect(parsed.scenes['scene-1'].attachments).toEqual({});
+
+    const reserialized = serializeProjectToYaml(parsed);
+    expect(reserialized).not.toMatch(/backgroundColor:/);
+    expect(reserialized).not.toMatch(/tint:/);
+    expect(reserialized).not.toMatch(/eventBlocks:/);
+    expect(reserialized).not.toMatch(/valueSource:/);
+  });
+
+  it('round-trips typed Bounds event triggers, event-source target binding, and action value sources', () => {
+    const project = {
+      id: 'project-1',
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
+      audio: { sounds: {} },
+      inputMaps: {},
+      scenes: {
+        'scene-1': {
+          ...sampleScene,
+          eventBlocks: {
+            wrap: {
+              id: 'wrap',
+              target: { type: 'group', groupId: 'g-enemies' },
+              trigger: { type: 'bounds', boundsEvent: 'wrapped', axis: 'y', side: 'bottom' },
+            },
+          },
+          attachments: {
+            rerollX: {
+              id: 'rerollX',
+              target: { type: 'group', groupId: 'g-enemies' },
+              eventId: 'wrap',
+              targetMode: 'event-source',
+              presetId: 'SetProperty',
+              params: { property: 'x', valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'wrap-x' } },
+            },
+          },
+        },
+      },
+      initialSceneId: 'scene-1',
+      patterns: {},
+    } as any;
+
+    const yaml = serializeProjectToYaml(project);
+    expect(yaml).toMatch(/type:\s*bounds/);
+    expect(yaml).toMatch(/boundsEvent:\s*wrapped/);
+    expect(yaml).toMatch(/targetMode:\s*event-source/);
+    expect(yaml).toMatch(/valueSource:/);
+    expect(parseProjectYaml(yaml)).toEqual(project);
+  });
+
   it('round-trips embedded asset path hints for publish and relink flows', () => {
     const project = {
       id: 'project-1',

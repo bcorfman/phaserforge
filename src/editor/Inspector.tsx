@@ -116,6 +116,14 @@ export function Inspector() {
     dispatch({ type: 'update-group', id: next.id, next });
   const updateEntity = (next: EntitySpec) =>
     dispatch({ type: 'update-entity', id: next.id, next });
+  const emitGroupTintPreview = (groupId: Id, draft: TintVariationDraft) => {
+    const selectedIds = selection.kind === 'entities' ? new Set(selection.ids) : undefined;
+    const tints = buildGroupTintVariation(scene, groupId, draft, selectedIds);
+    EventBus.emit('formation-tint-preview-changed', { groupId, tints });
+  };
+  const clearGroupTintPreview = (groupId: Id) => {
+    EventBus.emit('formation-tint-preview-changed', { groupId, tints: undefined });
+  };
 
   let content: ReactNode = null;
 
@@ -225,21 +233,18 @@ export function Inspector() {
           onConvertLayoutArrange={(arrangeKind) => dispatch({ type: 'convert-group-layout-arrange', id: group.id, arrangeKind })}
           variationDraft={tintVariationDraft}
           onVariationDraftChange={(patch) => setTintVariationDraft((draft) => ({ ...draft, ...patch }))}
-          onPreviewTintVariation={() => {
-            const selectedIds = selection.kind === 'entities' ? new Set(selection.ids) : undefined;
-            const tints = buildGroupTintVariation(scene, group.id, tintVariationDraft, selectedIds);
-            EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints });
-          }}
-          onCancelTintVariation={() => EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints: undefined })}
+          onPreviewTintVariation={() => emitGroupTintPreview(group.id, tintVariationDraft)}
+          onCancelTintVariation={() => clearGroupTintPreview(group.id)}
           onApplyTintVariation={() => {
-            EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints: undefined });
+            clearGroupTintPreview(group.id);
             dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...tintVariationDraft } as any);
           }}
           onRerollTintVariation={() => {
             const seed = makeSeed('variation');
-            setTintVariationDraft((draft) => ({ ...draft, seed }));
-            EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints: undefined });
-            dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...tintVariationDraft, seed } as any);
+            const nextDraft = { ...tintVariationDraft, seed };
+            setTintVariationDraft(nextDraft);
+            clearGroupTintPreview(group.id);
+            dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...nextDraft } as any);
           }}
           onUngroup={() => dispatch({ type: 'ungroup-group', id: group.id })}
           onDissolve={() => dispatch({ type: 'dissolve-group', id: group.id })}
