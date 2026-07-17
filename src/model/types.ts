@@ -119,6 +119,7 @@ export interface TriggerZoneSpec {
 }
 
 export interface GameSceneSpec extends SceneSpec {
+  backgroundColor?: number;
   backgroundLayers?: BackgroundLayerSpec[];
   music?: SceneMusicSpec;
   ambience?: SceneAmbienceSpec[];
@@ -253,6 +254,7 @@ export interface EntitySpec {
   originX?: number;
   originY?: number;
   alpha?: number;
+  tint?: number;
   visible?: boolean;
   depth?: number;
   flipX?: boolean;
@@ -572,6 +574,10 @@ export interface AttachmentTemplate {
   tag?: string;
   parentIndex?: number;
 }
+
+export type ValueSourceSpec =
+  | { kind: 'constant'; value: number | boolean }
+  | { kind: 'randomRange'; min: number; max: number; seed: string | number; integer?: boolean };
 
 export interface SnippetSpec {
   id: Id;

@@ -52,6 +52,9 @@ describe('Entity inspector', () => {
     expect(markup).toContain('Alpha');
     expect(markup).toContain('Visible');
     expect(markup).toContain('Depth');
+    expect(markup).toContain('data-testid="entity-tint-picker"');
+    expect(markup).toContain('data-testid="entity-tint-hex-input"');
+    expect(markup).toContain('data-testid="entity-tint-clear"');
     expect(markup).toContain('Authored values update the selected sprite immediately on the canvas.');
   });
 

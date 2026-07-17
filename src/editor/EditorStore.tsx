@@ -70,6 +70,7 @@ import {
   type ProjectHistoryEventDraft,
 } from './projectHistoryEvents';
 import { appendPersistenceDebugEntry, summarizeProjectLoadForDebug, summarizeYamlForDebug } from '../util/persistenceDebug';
+import { buildGroupTintVariation } from './tintVariation';
 
 export const SCENE_STORAGE_KEY_V1 = 'phaserforge.sceneYaml.v1';
 export const SCENE_STORAGE_KEY = 'phaserforge.sceneYaml.v2';
@@ -255,6 +256,18 @@ export type EditorAction =
   | { type: 'update-scene-world'; width: number; height: number }
   | { type: 'update-entity'; id: Id; next: EntitySpec }
   | { type: 'patch-entities'; entityIds: Id[]; patch: Partial<EntitySpec> }
+  | {
+      type: 'apply-group-tint-variation';
+      groupId: Id;
+      scope?: 'all' | 'selection';
+      seed: string;
+      minR: number;
+      maxR: number;
+      minG: number;
+      maxG: number;
+      minB: number;
+      maxB: number;
+    }
   | { type: 'import-entities'; drafts: ImportedEntityDraft[] }
   | { type: 'update-group'; id: Id; next: GroupSpec }
   | { type: 'create-attachment'; target: TargetRef; presetId: string; init?: Partial<AttachmentSpec> }
@@ -354,6 +367,7 @@ export type EditorAction =
   | { type: 'remove-input-binding'; mapId: Id; actionId: string; index: number }
   | { type: 'set-project-default-input-map'; mapId?: Id }
   | { type: 'set-scene-input'; input: GameSceneSpec['input'] | undefined }
+  | { type: 'set-scene-background-color'; backgroundColor: GameSceneSpec['backgroundColor'] | undefined }
   | { type: 'set-scene-background-layers'; layers: BackgroundLayerSpec[] }
   | { type: 'update-background-layer'; index: number; patch: Partial<BackgroundLayerSpec> }
   | { type: 'move-background-layer'; fromIndex: number; toIndex: number }
@@ -845,10 +859,12 @@ function createGroupFromArrangeTemplate(
       ...arranged,
       groups: {
         ...arranged.groups,
-        [groupId]: {
-          ...arranged.groups[groupId],
-          layout: { type: 'freeform' },
-        },
+        [groupId]: arrangeKind === 'scatter'
+          ? arranged.groups[groupId]
+          : {
+              ...arranged.groups[groupId],
+              layout: { type: 'freeform' },
+            },
       },
     },
     groupId,
@@ -863,6 +879,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'reset-project':
     case 'update-entity':
     case 'patch-entities':
+    case 'apply-group-tint-variation':
     case 'import-entities':
     case 'update-group':
     case 'create-attachment':
@@ -880,6 +897,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'arrange-group-grid':
     case 'arrange-group':
     case 'create-group-from-arrange':
+    case 'commit-formation-draft':
     case 'update-bounds':
     case 'create-group-from-selection':
     case 'ungroup-group':
@@ -928,6 +946,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'remove-input-binding':
     case 'set-project-default-input-map':
     case 'set-scene-input':
+    case 'set-scene-background-color':
     case 'set-scene-background-layers':
     case 'update-background-layer':
     case 'move-background-layer':
@@ -1139,6 +1158,8 @@ function describeEditorAction(stateBefore: EditorState, stateAfter: EditorState,
       return 'Updated entity';
     case 'patch-entities':
       return action.entityIds.length === 1 ? 'Updated entity' : `Updated ${action.entityIds.length} entities`;
+    case 'apply-group-tint-variation':
+      return `Randomized tint for ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.groupId)}`;
     case 'update-group':
       return `Updated group ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`;
     case 'duplicate-entities':
@@ -1211,6 +1232,8 @@ function describeEditorAction(stateBefore: EditorState, stateAfter: EditorState,
       return action.mapId ? `Set default input map to ${action.mapId}` : 'Cleared default input map';
     case 'set-scene-input':
       return 'Updated scene input';
+    case 'set-scene-background-color':
+      return action.backgroundColor == null ? 'Reset scene background color' : 'Updated scene background color';
     case 'set-scene-background-layers':
       return 'Updated background layers';
     case 'update-background-layer':
@@ -1379,6 +1402,13 @@ function buildProjectHistoryEventDraftsForAction(
         burstId: `background.layers.set:${stateAfter.currentSceneId}:${actionBurstToken}`,
         scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
         summary: 'Updated background layers',
+      }];
+    case 'set-scene-background-color':
+      return [{
+        kind: 'scene.backgroundColor.set',
+        burstId: `scene.backgroundColor.set:${stateAfter.currentSceneId}:${actionBurstToken}`,
+        scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
+        summary: action.backgroundColor == null ? 'Reset scene background color' : 'Updated scene background color',
       }];
     case 'update-background-layer':
       return [{
@@ -2736,6 +2766,15 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const scene = getActiveScene(state);
       return withScene(state, { ...scene, backgroundLayers: [...action.layers] }, true);
     }
+    case 'set-scene-background-color': {
+      const scene = getActiveScene(state);
+      const { backgroundColor: _backgroundColor, ...rest } = scene as any;
+      void _backgroundColor;
+      const nextScene = action.backgroundColor == null
+        ? rest
+        : { ...scene, backgroundColor: action.backgroundColor };
+      return withScene(state, nextScene as GameSceneSpec, true);
+    }
     case 'add-audio-asset-from-file': {
       const sounds = state.project.audio?.sounds ?? {};
       const base = assetIdBaseFromOriginalName(action.file.originalName, 'sound');
@@ -3619,6 +3658,27 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
 
       if (!changed) return state;
       return withScene(state, { ...scene, entities } as GameSceneSpec, true);
+    }
+    case 'apply-group-tint-variation': {
+      const scene = getActiveScene(state);
+      const group = scene.groups[action.groupId];
+      if (!group) return state;
+      const selectedIds = state.selection.kind === 'entities' ? new Set(state.selection.ids) : undefined;
+      const variation = buildGroupTintVariation(scene, action.groupId, action, selectedIds);
+      const targetIds = Object.keys(variation);
+      if (targetIds.length === 0) return state;
+
+      const entities = { ...scene.entities };
+      let changed = false;
+      for (const id of targetIds) {
+        const entity = entities[id];
+        const tint = variation[id];
+        if (entity.tint === tint) continue;
+        entities[id] = { ...entity, tint };
+        changed = true;
+      }
+      if (!changed) return state;
+      return withScene(state, { ...scene, entities } as GameSceneSpec, true, { kind: 'group', id: action.groupId });
     }
     case 'import-entities':
       return importEntities(state, action.drafts);

@@ -91,6 +91,7 @@ export class EditorScene extends Phaser.Scene {
   private hitboxOverlayGraphics?: Phaser.GameObjects.Graphics;
   private hitboxOverlayLabel?: Phaser.GameObjects.Text;
   private showHitboxOverlay = true;
+  private tintPreviewOverrides = new Map<string, number>();
 
   private getSceneSpec(): SceneSpec {
     return this.compiled?.scene ?? EMPTY_SCENE_SPEC;
@@ -340,6 +341,7 @@ export class EditorScene extends Phaser.Scene {
     EventBus.on('selection-changed', this.handleSelectionChanged, this);
     EventBus.on('hitbox-overlay-changed', this.handleHitboxOverlayChanged, this);
     EventBus.on('formation-draft-changed', this.handleFormationDraftChanged, this);
+    EventBus.on('formation-tint-preview-changed', this.handleFormationTintPreviewChanged, this);
     EventBus.on('canvas-update-bounds', this.updateBounds, this);
     EventBus.on('toggle-grid-snap', this.toggleGridSnap, this);
     EventBus.on('scene-zoom-in', this.zoomIn, this);
@@ -388,6 +390,7 @@ export class EditorScene extends Phaser.Scene {
     EventBus.off('selection-changed', this.handleSelectionChanged, this);
     EventBus.off('hitbox-overlay-changed', this.handleHitboxOverlayChanged, this);
     EventBus.off('formation-draft-changed', this.handleFormationDraftChanged, this);
+    EventBus.off('formation-tint-preview-changed', this.handleFormationTintPreviewChanged, this);
     EventBus.off('canvas-update-bounds', this.updateBounds, this);
     EventBus.off('toggle-grid-snap', this.toggleGridSnap, this);
     EventBus.off('scene-zoom-in', this.zoomIn, this);
@@ -841,6 +844,7 @@ export class EditorScene extends Phaser.Scene {
     this.clearScene();
     this.project = project;
     this.mode = mode;
+    this.cameras.main.setBackgroundColor(sceneSpec.backgroundColor ?? 0x0c0f1a);
     applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, project ? getProjectRenderMode(project) : 'pixel-art');
     this.varsService = new BasicVarsService({ counters: project?.counters, collections: project?.collections });
     this.compiled = compileScene(sceneSpec, { opRegistry: this.opRegistry, vars: this.varsService });
@@ -1468,8 +1472,6 @@ export class EditorScene extends Phaser.Scene {
       const outlineColor = selectedEntity ? 0xffb86b : selectedGroup ? 0x9fe7ff : selectedEntities ? 0xff6b6b : 0x1a2b4a;
       if (sprite instanceof Phaser.GameObjects.Rectangle) {
         sprite.setStrokeStyle(isSelected ? 3 : 2, outlineColor, 1);
-      } else {
-        sprite.setTint(isSelected ? outlineColor : 0xffffff);
       }
     }
   }
@@ -1559,6 +1561,13 @@ export class EditorScene extends Phaser.Scene {
       sprite.setDisplaySize(displayWidth, displayHeight);
       sprite.setFlipX(entity.flipX ?? false);
       sprite.setFlipY(entity.flipY ?? false);
+      const previewTint = this.tintPreviewOverrides.get(entity.id);
+      const tint = previewTint ?? entity.tint;
+      if (tint != null) {
+        sprite.setTint(tint);
+      } else {
+        sprite.clearTint();
+      }
       if (asset?.imageType === 'spritesheet' && sprite instanceof Phaser.GameObjects.Sprite) {
         const runtimeFrame = entity.frame;
         const frame = runtimeFrame !== undefined ? runtimeFrame : (asset.frame?.frameKey ?? asset.frame?.frameIndex);
@@ -1566,6 +1575,15 @@ export class EditorScene extends Phaser.Scene {
           sprite.setFrame(frame);
         }
       }
+    }
+  }
+
+  private handleFormationTintPreviewChanged(payload?: { groupId?: string; tints?: Record<string, number> }): void {
+    this.tintPreviewOverrides = new Map(Object.entries(payload?.tints ?? {}));
+    for (const [id, sprite] of this.sprites.entries()) {
+      const entity = this.compiled?.entities[id];
+      if (!entity) continue;
+      this.applyEntityDisplayProps(sprite, entity, (entity as any).asset, (entity as any).text);
     }
   }
 

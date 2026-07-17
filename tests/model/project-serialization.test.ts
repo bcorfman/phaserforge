@@ -210,6 +210,46 @@ describe('project YAML serialization', () => {
     expect((parsed.scenes as any)['scene-1'].spriteOrder).toEqual(['e2', 'e1']);
   });
 
+  it('round-trips scene backgroundColor, entity tint, and scatter layout params', () => {
+    const project = {
+      id: 'project-1',
+      assets: { images: {}, spriteSheets: {}, fonts: {} },
+      audio: { sounds: {} },
+      inputMaps: {},
+      scenes: {
+        'scene-1': {
+          ...sampleScene,
+          backgroundColor: 0x000000,
+          entities: {
+            ...sampleScene.entities,
+            e1: { ...sampleScene.entities.e1, tint: 0x224466 },
+          },
+          groups: {
+            ...sampleScene.groups,
+            g1: {
+              ...sampleScene.groups.g1,
+              layout: {
+                type: 'arrange',
+                arrangeKind: 'scatter',
+                params: { minX: 0, maxX: 720, minY: 5, maxY: 1285, seed: 'stars-1' },
+              },
+            },
+          },
+        },
+      },
+      initialSceneId: 'scene-1',
+      patterns: {},
+    } as any;
+
+    const yaml = serializeProjectToYaml(project);
+    expect(yaml).toMatch(/\n\s+backgroundColor:\s*0\n/);
+    expect(yaml).toMatch(/\n\s+ tint:\s*2245734\n/);
+    const parsed = parseProjectYaml(yaml) as any;
+    expect(parsed.scenes['scene-1'].backgroundColor).toBe(0x000000);
+    expect(parsed.scenes['scene-1'].entities.e1.tint).toBe(0x224466);
+    expect(parsed.scenes['scene-1'].groups.g1.layout).toEqual(project.scenes['scene-1'].groups.g1.layout);
+  });
+
   it('round-trips embedded asset path hints for publish and relink flows', () => {
     const project = {
       id: 'project-1',

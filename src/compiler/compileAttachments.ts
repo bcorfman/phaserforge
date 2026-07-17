@@ -23,6 +23,7 @@ import { ClampCounter } from '../runtime/actions/ClampCounter';
 import { HoldUntil } from '../runtime/actions/HoldUntil';
 import { RemoveSelfFromCollection } from '../runtime/actions/RemoveSelfFromCollection';
 import { SetCounter } from '../runtime/actions/SetCounter';
+import { SetProperty, type SetPropertyKey, type ValueSource } from '../runtime/actions/SetProperty';
 import { ParametricMotionUntil } from '../runtime/actions/ParametricMotionUntil';
 import { OrbitPattern } from '../runtime/actions/OrbitPattern';
 import { BoundsHit } from '../runtime/conditions/BoundsHit';
@@ -58,6 +59,42 @@ function attachmentEnabled(attachment: AttachmentSpec): boolean {
 
 function stableTargetKey(target: TargetRef): string {
   return target.type === 'entity' ? `entity:${target.entityId}` : `group:${target.groupId}`;
+}
+
+function parseSetPropertyKey(raw: unknown): SetPropertyKey {
+  const key = String(raw ?? 'x');
+  if (key === 'x' || key === 'y' || key === 'tint' || key === 'alpha' || key === 'visible' || key === 'vx' || key === 'vy') return key;
+  return 'x';
+}
+
+function parseValueSource(params: AttachmentSpec['params'] | undefined, property: SetPropertyKey): ValueSource {
+  const valueSource = (params as any)?.valueSource;
+  const valueKind = typeof (params as any)?.valueKind === 'string' ? String((params as any).valueKind) : undefined;
+  const raw = valueSource && typeof valueSource === 'object'
+    ? valueSource
+    : valueKind === 'randomRange'
+      ? { kind: 'randomRange', min: (params as any)?.min, max: (params as any)?.max, seed: (params as any)?.seed, integer: (params as any)?.integer }
+      : { kind: 'constant', value: (params as any)?.value };
+
+  if ((raw as any).kind === 'randomRange') {
+    const min = Number((raw as any).min ?? 0);
+    const max = Number((raw as any).max ?? 0);
+    const seed = typeof (raw as any).seed === 'number' || typeof (raw as any).seed === 'string' ? (raw as any).seed : 'set-property';
+    return {
+      kind: 'randomRange',
+      min: Number.isFinite(min) ? min : 0,
+      max: Number.isFinite(max) ? max : 0,
+      seed,
+      integer: (raw as any).integer === true || property === 'tint' || property === 'visible',
+      stream: property,
+    };
+  }
+
+  if (property === 'visible') {
+    return { kind: 'constant', value: (raw as any).value === true || (raw as any).value === 'true' };
+  }
+  const numeric = Number((raw as any).value ?? 0);
+  return { kind: 'constant', value: Number.isFinite(numeric) ? numeric : 0 };
 }
 
 const PARALLEL_GROUP_TAG_PREFIX = 'pargrp:';
@@ -238,6 +275,12 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
     return new MoveBy(target, { dx: Number.isFinite(dx) ? dx : 0, dy: Number.isFinite(dy) ? dy : 0 });
+  }
+  if (presetId === 'SetProperty') {
+    const property = parseSetPropertyKey(attachment.params?.property);
+    const targetRef = targetOverride ?? attachment.target;
+    const target = resolveTarget(targetRef, ctx.targets);
+    return new SetProperty(target, property, parseValueSource(attachment.params, property));
   }
   if (presetId === 'TweenUntil') {
     const property = String(attachment.params?.property ?? 'x');

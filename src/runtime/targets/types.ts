@@ -12,6 +12,7 @@ export interface RuntimeEntity {
   originX?: number;
   originY?: number;
   alpha?: number;
+  tint?: number;
   visible?: boolean;
   depth?: number;
   flipX?: boolean;

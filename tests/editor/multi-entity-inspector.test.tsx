@@ -64,6 +64,22 @@ describe('MultiEntityInspector', () => {
     const visible = container.querySelector('[data-testid="entity-visible-input"]') as HTMLInputElement | null;
     expect(visible).not.toBeNull();
     expect(visible!.indeterminate).toBe(true);
+
+    const tint = container.querySelector('[data-testid="entity-tint-hex-input"]') as HTMLInputElement | null;
+    expect(tint).not.toBeNull();
+    await React.act(async () => {
+      tint!.focus();
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(tint!, '#224466');
+      tint!.dispatchEvent(new window.Event('input', { bubbles: true }));
+      tint!.dispatchEvent(new window.Event('change', { bubbles: true }));
+    });
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'patch-entities',
+      entityIds: ['a', 'b'],
+      patch: { tint: 0x224466 },
+    });
   });
 
   it('commits the latest typed value when blur happens immediately after editing another field', async () => {

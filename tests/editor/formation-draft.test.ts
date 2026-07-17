@@ -27,4 +27,19 @@ describe('formationDraft', () => {
       { x: 38, y: 20 },
     ]);
   });
+
+  test('scatter draft places integer members inside normalized bounds deterministically', () => {
+    const draft = {
+      arrangeKind: 'scatter',
+      memberCount: 400,
+      params: { minX: 720, maxX: 0, minY: 1285, maxY: 5, seed: 'stars-seed' },
+    };
+    const positions = computeFormationDraftPositions(draft, { width: 3, height: 3 });
+    const again = computeFormationDraftPositions(draft, { width: 3, height: 3 });
+
+    expect(positions).toHaveLength(200);
+    expect(positions).toEqual(again);
+    expect(positions.every((p) => Number.isInteger(p.x) && Number.isInteger(p.y))).toBe(true);
+    expect(positions.every((p) => p.x >= 0 && p.x <= 720 && p.y >= 5 && p.y <= 1285)).toBe(true);
+  });
 });
