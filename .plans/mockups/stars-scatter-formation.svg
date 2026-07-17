@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title desc">
+  <title id="title">Scatter formation draft mockup</title>
+  <desc id="desc">PhaserForge canvas with a live star scatter preview and the existing Create Formation Draft panel extended with scatter bounds, deterministic seed, and random tint.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101827"/><stop offset="1" stop-color="#07101d"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity=".42"/></filter>
+    <style>
+      .ui{font-family:Inter,system-ui,sans-serif}.label{font-size:12px;fill:#9fb1c7}.text{font-size:14px;fill:#e9f1fb}.title{font-size:17px;font-weight:700;fill:#fff}.input{fill:#0c1524;stroke:#30445d;stroke-width:1}.accent{fill:#55c7ee}.note{font-size:13px;fill:#25374d}.call{fill:#eef8fc;stroke:#55bfe5;stroke-width:2}.callline{stroke:#55bfe5;stroke-width:2;fill:none}.star{fill:#fff}
+    </style>
+  </defs>
+  <rect width="1200" height="820" fill="#e9f0f5"/>
+  <rect x="24" y="24" width="850" height="772" rx="12" fill="url(#bg)"/>
+  <text x="48" y="58" class="ui label">SCENE / STARFIELD • 720 × 1280 • 42%</text>
+  <rect x="182" y="82" width="430" height="688" fill="#000" stroke="#354962" stroke-width="2"/>
+  <g opacity=".95">
+    <circle class="star" cx="219" cy="112" r="2"/><circle fill="#ff8ad8" cx="306" cy="142" r="2"/><circle fill="#73f7bf" cx="563" cy="119" r="2"/><circle fill="#82a7ff" cx="458" cy="175" r="2"/><circle fill="#ffe681" cx="260" cy="203" r="2"/><circle fill="#df79ff" cx="519" cy="236" r="2"/><circle fill="#8ef7ff" cx="366" cy="262" r="2"/><circle fill="#ff9b78" cx="586" cy="292" r="2"/><circle fill="#a4ff7d" cx="204" cy="318" r="2"/><circle fill="#86a4ff" cx="428" cy="342" r="2"/><circle fill="#ff70a9" cx="318" cy="379" r="2"/><circle fill="#ecff88" cx="548" cy="405" r="2"/><circle fill="#75e9cf" cx="231" cy="449" r="2"/><circle fill="#d784ff" cx="480" cy="477" r="2"/><circle fill="#ffb073" cx="344" cy="519" r="2"/><circle fill="#79b9ff" cx="578" cy="547" r="2"/><circle fill="#f7ff8b" cx="269" cy="583" r="2"/><circle fill="#81f0a4" cx="439" cy="619" r="2"/><circle fill="#ff7fcb" cx="585" cy="663" r="2"/><circle fill="#9b8cff" cx="210" cy="710" r="2"/>
+  </g>
+  <rect x="586" y="68" width="360" height="680" rx="10" fill="#111c2d" stroke="#40536b" filter="url(#shadow)"/>
+  <g class="ui">
+    <text x="610" y="101" class="title">Create Formation (Draft)</text><text x="610" y="123" class="label">Edits update the real canvas immediately</text>
+    <text x="610" y="153" class="label">Template source</text><rect class="input" x="610" y="162" width="312" height="34" rx="5"/><text x="623" y="184" class="text">Asset: star-white-3px</text><text x="899" y="184" class="text">⌄</text>
+    <text x="610" y="220" class="label">Formation name</text><rect class="input" x="610" y="229" width="312" height="34" rx="5"/><text x="623" y="251" class="text">Stars</text>
+    <text x="610" y="287" class="label">Preset</text><text x="778" y="287" class="label">Count</text><rect class="input" x="610" y="296" width="144" height="34" rx="5"/><text x="623" y="318" class="text">Scatter</text><text x="731" y="318" class="text">⌄</text><rect class="input" x="778" y="296" width="144" height="34" rx="5"/><text x="791" y="318" class="text">400</text>
+    <text x="610" y="358" class="text" font-weight="700">Scatter bounds</text>
+    <text x="610" y="382" class="label">X Min</text><text x="778" y="382" class="label">X Max</text><rect class="input" x="610" y="391" width="144" height="34" rx="5"/><text x="623" y="413" class="text">0</text><rect class="input" x="778" y="391" width="144" height="34" rx="5"/><text x="791" y="413" class="text">720</text>
+    <text x="610" y="449" class="label">Y Min</text><text x="778" y="449" class="label">Y Max</text><rect class="input" x="610" y="458" width="144" height="34" rx="5"/><text x="623" y="480" class="text">5</text><rect class="input" x="778" y="458" width="144" height="34" rx="5"/><text x="791" y="480" class="text">1285</text>
+    <text x="610" y="516" class="label">Seed</text><rect class="input" x="610" y="525" width="210" height="34" rx="5"/><text x="623" y="547" class="text">stars-01</text><rect x="830" y="525" width="92" height="34" rx="5" fill="#20334a" stroke="#41607f"/><text x="849" y="547" class="text">Reroll</text>
+    <rect x="610" y="576" width="312" height="1" fill="#31435a"/><text x="610" y="605" class="text" font-weight="700">⌄  Random tint</text>
+    <text x="610" y="630" class="label">Mode</text><rect class="input" x="610" y="639" width="312" height="34" rx="5"/><text x="623" y="661" class="text">Random RGB</text><text x="899" y="661" class="text">⌄</text>
+    <text x="610" y="697" class="label">Channel Min</text><text x="778" y="697" class="label">Channel Max</text><rect class="input" x="610" y="706" width="144" height="34" rx="5"/><text x="623" y="728" class="text">20</text><rect class="input" x="778" y="706" width="144" height="34" rx="5"/><text x="791" y="728" class="text">255</text>
+  </g>
+  <rect class="call" x="974" y="118" width="202" height="92" rx="8"/><text x="990" y="143" class="ui note" font-weight="700">Existing primary path</text><text x="990" y="165" class="ui note">Scatter is a preset inside</text><text x="990" y="184" class="ui note">the current draft panel.</text><path class="callline" d="M974 169 H940 L897 310"/>
+  <rect class="call" x="963" y="376" width="213" height="112" rx="8"/><text x="979" y="401" class="ui note" font-weight="700">Deterministic preview</text><text x="979" y="423" class="ui note">The seed stabilizes layout</text><text x="979" y="442" class="ui note">and tint. Reroll is the only</text><text x="979" y="461" class="ui note">way to change randomness.</text><path class="callline" d="M963 431 H935 L866 542"/>
+  <rect class="call" x="948" y="616" width="228" height="94" rx="8"/><text x="964" y="641" class="ui note" font-weight="700">Paired controls</text><text x="964" y="663" class="ui note">Min/Max fields retain the</text><text x="964" y="682" class="ui note">editor's two-column contract.</text><path class="callline" d="M948 667 H929 L884 713"/>
+</svg>
