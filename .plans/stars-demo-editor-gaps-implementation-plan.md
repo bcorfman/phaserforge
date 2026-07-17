@@ -128,10 +128,10 @@ This proposal materially extends existing editor workflows and required confirma
   - [x] older YAML with none of the new fields.
 - [x] Add runtime boundary-event tests for upward and downward vertical wrap, horizontal wrap, contact enter/exit, one Wrapped event per crossing, behavior resolution before event dispatch, and the exact member/axis/side in event context.
 - [x] Add compiler/event-router tests showing typed Bounds filters, event-source target binding, event payload/value resolution, and reentrant event policy work independently for group members.
-- [ ] Add editor component tests for control visibility, paired-control layout, defaults, validation, disabling, and dispatched patches shown in the five SVG mockups.
-- [ ] Add Phaser editor/play scene tests proving scene background and entity tint render consistently and that editor selection styling does not destroy the authored tint.
-- [ ] Add a focused E2E stars-authoring test that creates a smaller deterministic fixture through the primary UI—including a Bounds/Wrapped Event Block—then separately seed the five-formation, 400-star project for play-mode behavior/performance assertions.
-- [ ] Add a command-level stars demo integration test, following the `docs/getting-started/pattern-demo.md` / `tests/e2e/pattern-demo-persistence.spec.ts` style, that builds the faithful `stars.py` project through underlying editor commands/project-builder helpers rather than Playwright GUI clicks, then runs the resulting project and verifies the end behavior.
+- [x] Add editor component tests for control visibility, paired-control layout, defaults, validation, disabling, and dispatched patches shown in the five SVG mockups.
+- [x] Add Phaser editor/play scene tests proving scene background and entity tint render consistently and that editor selection styling does not destroy the authored tint.
+- [x] Add a focused E2E stars-authoring test that creates a smaller deterministic fixture through the primary UI—including a Bounds/Wrapped Event Block—then separately seed the five-formation, 400-star project for play-mode behavior/performance assertions.
+- [x] Add a command-level stars demo integration test, following the `docs/getting-started/pattern-demo.md` / `tests/e2e/pattern-demo-persistence.spec.ts` style, that builds the faithful `stars.py` project through underlying editor commands/project-builder helpers rather than Playwright GUI clicks, then runs the resulting project and verifies the end behavior.
 
 ## Phase 2 — Deterministic Random Foundation
 
