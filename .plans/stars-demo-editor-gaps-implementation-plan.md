@@ -118,16 +118,16 @@ This proposal materially extends existing editor workflows and required confirma
 ## Phase 1 — Lock Contracts with Tests First
 
 - [x] Add seeded RNG helper tests for identical-seed stability, different-seed divergence, inclusive integer RGB bounds, finite float ranges, reversed-range normalization, and independent named streams.
-- [ ] Add scatter layout tests for 400 members, integer-pixel authored positions, world/margin bounds, deterministic output, and no mutation of the template entity.
+- [x] Add scatter layout tests for 400 members, integer-pixel authored positions, world/margin bounds, deterministic output, and no mutation of the template entity.
 - [x] Add formation creation/store tests proving that one history transaction creates 80 uniquely identified members, preserves template properties, assigns deterministic tints, records the scatter layout parameters, and remains undoable/redoable as a single user action.
-- [ ] Add serialization, canonicalization, migration, and validation tests for:
-  - optional `GameSceneSpec.backgroundColor`;
-  - optional `EntitySpec.tint`;
-  - scatter layout parameters and seed;
-  - typed Bounds event trigger/filter specs, event-source target binding, and reusable action value sources;
-  - older YAML with none of the new fields.
-- [ ] Add runtime boundary-event tests for upward and downward vertical wrap, horizontal wrap, contact enter/exit, one Wrapped event per crossing, behavior resolution before event dispatch, and the exact member/axis/side in event context.
-- [ ] Add compiler/event-router tests showing typed Bounds filters, event-source target binding, event payload/value resolution, and reentrant event policy work independently for group members.
+- [x] Add serialization, canonicalization, migration, and validation tests for:
+  - [x] optional `GameSceneSpec.backgroundColor`;
+  - [x] optional `EntitySpec.tint`;
+  - [x] scatter layout parameters and seed;
+  - [x] typed Bounds event trigger/filter specs, event-source target binding, and reusable action value sources;
+  - [x] older YAML with none of the new fields.
+- [x] Add runtime boundary-event tests for upward and downward vertical wrap, horizontal wrap, contact enter/exit, one Wrapped event per crossing, behavior resolution before event dispatch, and the exact member/axis/side in event context.
+- [x] Add compiler/event-router tests showing typed Bounds filters, event-source target binding, event payload/value resolution, and reentrant event policy work independently for group members.
 - [ ] Add editor component tests for control visibility, paired-control layout, defaults, validation, disabling, and dispatched patches shown in the five SVG mockups.
 - [ ] Add Phaser editor/play scene tests proving scene background and entity tint render consistently and that editor selection styling does not destroy the authored tint.
 - [ ] Add a focused E2E stars-authoring test that creates a smaller deterministic fixture through the primary UI—including a Bounds/Wrapped Event Block—then separately seed the five-formation, 400-star project for play-mode behavior/performance assertions.
@@ -177,7 +177,7 @@ Mockups: `.plans/mockups/stars-scatter-formation.svg` and `.plans/mockups/stars-
   - deterministic preview and commit using tint-specific PRNG streams.
 - [x] Persist final tints on entities and preserve the seed/settings in the scatter layout parameters only for intentional reapply/reroll; derive member count from `group.members`.
 - [x] Add a `Visual Variations` foldout to the formation inspector for batch random tint after creation, as shown in `.plans/mockups/stars-formation-visual-variations.svg`.
-- [ ] Let the formation operation choose all members or the current member selection, RGB channel Min/Max, and a deterministic seed; Preview must be reversible, Apply/Reroll must be one semantic history transaction, and Cancel must restore the exact prior tints.
+- [x] Let the formation operation choose all members or the current member selection, RGB channel Min/Max, and a deterministic seed; Preview must be reversible, Apply/Reroll must be one semantic history transaction, and Cancel must restore the exact prior tints.
 - [ ] Store final tint values on entities. Keep only the last applied variation recipe when it is needed for intentional Reroll; do not treat that recipe as a replacement for entity tint ground truth.
 - [ ] Reuse the same batch command from the multi-selection inspector rather than implementing a second randomization algorithm or requiring hundreds of individual edits.
 - [ ] Verify pixel-art texture filtering remains nearest-neighbor after tinting.

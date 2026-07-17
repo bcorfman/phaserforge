@@ -117,6 +117,7 @@ function stableTriggerKey(trigger: AttachmentSpec['trigger'] | undefined): strin
   if (trigger.type === 'visible') return `visible:${trigger.edge ?? ''}`;
   if (trigger.type === 'input_action') return `input_action:${trigger.actionId ?? ''}:${trigger.edge ?? ''}`;
   if (trigger.type === 'event') return `event:${trigger.eventName ?? ''}`;
+  if (trigger.type === 'bounds') return `bounds:${trigger.boundsEvent ?? ''}:${trigger.axis ?? 'any'}:${trigger.side ?? 'any'}`;
   return 'start';
 }
 
@@ -126,15 +127,23 @@ export interface CompiledAttachmentScript {
   eventId?: string;
   trigger?: AttachmentSpec['trigger'];
   action: Action;
+  createActionForEvent?: (eventSource?: TargetRef) => Action;
 }
 
-function instantiateInlineCondition(condition: InlineConditionSpec | undefined, ctx: CompileContext) {
+function instantiateInlineCondition(
+  condition: InlineConditionSpec | undefined,
+  ctx: CompileContext,
+  source?: { targetKey: string; eventId?: string }
+) {
   if (!condition) return new Never();
   if (condition.type === 'Instant') return new Instant();
   if (condition.type === 'BoundsHit') {
     return new BoundsHit(condition.bounds, condition.mode, {
       scope: condition.scope,
       behavior: condition.behavior,
+      onEvent: ctx.options?.events?.emitBounds
+        ? (event) => ctx.options?.events?.emitBounds?.(event, source ?? { targetKey: '', eventId: undefined })
+        : undefined,
     });
   }
   if (condition.type === 'ElapsedTime') {
@@ -205,7 +214,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     if (!attachment.condition) return call;
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     return new HoldUntil(call, condition, target);
   }
   if (presetId === 'AddToCounter') {
@@ -259,7 +268,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const velocityY = Number(attachment.params?.velocityY ?? 0);
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     return new MoveUntil(target, { x: velocityX, y: velocityY }, condition);
   }
   if (presetId === 'MoveTo') {
@@ -294,7 +303,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
 
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     return new TweenUntil(target, {
       property,
       from,
@@ -313,7 +322,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const endProgress = Number(attachment.params?.endProgress ?? 1);
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     const durationMs = estimateWaveDurationMs({ length, startProgress, endProgress, velocity });
     const offsetFn = buildWaveOffset({ amplitude, length, startProgress, endProgress });
     return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: false });
@@ -325,7 +334,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const segments = Number(attachment.params?.segments ?? 5);
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     const durationMs = estimateZigzagDurationMs({ width, height, segments, velocity });
     const offsetFn = buildZigzagOffset({ width, height, segments });
     return new ParametricMotionUntil(target, offsetFn, condition, { durationMs, rotateWithPath: false });
@@ -363,7 +372,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const centerMode = attachment.params?.centerMode === 'home' ? 'home' : 'current';
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     // Duration is still used by the inspector defaults / quick usage; runtime action completes after one full orbit.
     const _durationMs = estimateOrbitDurationMs({ radius, velocity });
     return new OrbitPattern(target, { radius, velocity, clockwise, condition, rotateWithPath: true, rotationOffsetDeg: 0, centerMode });
@@ -375,7 +384,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const velocityY = Number(attachment.params?.velocityY ?? 0);
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     if (axis === 'x') return new MoveXUntil(target, velocityX, condition);
     if (axis === 'y') return new MoveYUntil(target, velocityY, condition);
     return new MoveUntil(target, { x: velocityX, y: velocityY }, condition);
@@ -384,14 +393,14 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const velocityX = Number(attachment.params?.velocityX ?? attachment.params?.velocity ?? 0);
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     return new MoveXUntil(target, velocityX, condition);
   }
   if (presetId === 'MoveYUntil') {
     const velocityY = Number(attachment.params?.velocityY ?? attachment.params?.velocity ?? 0);
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     return new MoveYUntil(target, velocityY, condition);
   }
   if (presetId === 'BlinkUntil') {
@@ -399,7 +408,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const startVisible = attachment.params?.startVisible !== false;
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     const onEnterVisible = buildCallback(typeof attachment.params?.onEnterCallId === 'string' ? String(attachment.params.onEnterCallId) : undefined);
     const onExitVisible = buildCallback(typeof attachment.params?.onExitCallId === 'string' ? String(attachment.params.onExitCallId) : undefined);
     return new BlinkUntil(target, { secondsUntilChange, startVisible, condition, onEnterVisible, onExitVisible });
@@ -412,7 +421,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
         : undefined;
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     const callId = typeof attachment.params?.callId === 'string' ? String(attachment.params.callId) : undefined;
     const cb = buildCallback(callId);
     if (!cb) return new Sequence([]);
@@ -424,7 +433,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const direction = directionRaw === -1 || directionRaw === 'backward' ? -1 : 1;
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    const condition = instantiateInlineCondition(attachment.condition, ctx);
+    const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
 
     const frames: Array<string | number> = [];
     if (attachment.params?.framesCsv && typeof attachment.params.framesCsv === 'string') {
@@ -537,7 +546,10 @@ export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetConte
   for (const bucket of byTargetEventAndTrigger.values()) {
     const byId = new Map<string, AttachmentSpec>(bucket.attachments.map((a) => [a.id, a]));
 
-    const compileNode = (attachment: AttachmentSpec): Action => {
+    const targetOverrideFor = (attachment: AttachmentSpec, eventSource?: TargetRef): TargetRef | undefined =>
+      attachment.targetMode === 'event-source' ? eventSource : undefined;
+
+    const compileNode = (attachment: AttachmentSpec, eventSource?: TargetRef): Action => {
       if (attachment.presetId === 'Repeat' && Array.isArray(attachment.children) && attachment.children.length > 0) {
         const countRaw = attachment.params?.count;
         const count = typeof countRaw === 'number' ? countRaw : undefined;
@@ -550,8 +562,10 @@ export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetConte
             if (ao !== bo) return ao - bo;
             return a.id.localeCompare(b.id);
           });
-        return new Repeat(new Sequence(compileSiblings(children)), count);
+        return new Repeat(new Sequence(compileSiblings(children, eventSource)), count);
       }
+      const eventTargetOverride = targetOverrideFor(attachment, eventSource);
+      if (eventTargetOverride) return compileAtomicAttachment(attachment, compileCtx, eventTargetOverride);
       if (attachment.target.type === 'group' && attachment.applyTo === 'members') {
         const group = scene.groups[attachment.target.groupId];
         const members = group?.members ?? [];
@@ -561,7 +575,7 @@ export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetConte
       return compileAtomicAttachment(attachment, compileCtx);
     };
 
-    function compileSiblings(siblings: AttachmentSpec[]): Action[] {
+    function compileSiblings(siblings: AttachmentSpec[], eventSource?: TargetRef): Action[] {
       const byParallelGroupId = new Map<string, AttachmentSpec[]>();
       const ungrouped: AttachmentSpec[] = [];
       for (const step of siblings) {
@@ -608,10 +622,10 @@ export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetConte
       const compiled: Action[] = [];
       for (const row of compiledRows) {
         if (row.kind === 'attachment') {
-          compiled.push(compileNode(row.attachment));
+          compiled.push(compileNode(row.attachment, eventSource));
           continue;
         }
-        compiled.push(new Parallel(row.attachments.map((a) => compileNode(a))));
+        compiled.push(new Parallel(row.attachments.map((a) => compileNode(a, eventSource))));
       }
       return compiled;
     }
@@ -625,7 +639,8 @@ export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetConte
         return a.id.localeCompare(b.id);
       });
 
-    const script: Action = new Sequence(compileSiblings(roots));
+    const createScriptAction = (eventSource?: TargetRef): Action => new Sequence(compileSiblings(roots, eventSource));
+    const script: Action = createScriptAction();
 
     const isDefaultKey = !bucket.eventId && bucket.triggerKey === 'start';
     const key = isDefaultKey ? bucket.targetKey : `${bucket.targetKey}#${bucket.eventId ?? 'event'}#${bucket.triggerKey}`;
@@ -635,6 +650,7 @@ export function compileAttachments(scene: SceneSpec, ctx: { targets: TargetConte
       eventId: bucket.eventId,
       trigger: bucket.trigger,
       action: script,
+      createActionForEvent: createScriptAction,
     });
   }
 

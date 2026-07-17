@@ -217,6 +217,43 @@ describe('model validation', () => {
     expect(() => validateSceneSpec(scene)).toThrow(/visible.*randomRange/i);
   });
 
+  it('validates typed Bounds event triggers and event-source target binding', () => {
+    const scene = baseScene();
+    scene.behaviors = {};
+    scene.actions = {};
+    scene.conditions = {};
+    scene.groups = { g1: { id: 'g1', members: ['e1'], layout: { type: 'freeform' } } };
+    scene.eventBlocks = {
+      ev1: {
+        id: 'ev1',
+        target: { type: 'group', groupId: 'g1' },
+        trigger: { type: 'bounds', boundsEvent: 'wrapped', axis: 'y', side: 'bottom' },
+      } as any,
+    };
+    scene.attachments = {
+      a1: {
+        id: 'a1',
+        target: { type: 'group', groupId: 'g1' },
+        eventId: 'ev1',
+        targetMode: 'event-source',
+        presetId: 'SetProperty',
+        params: { property: 'x', valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'wrap' } },
+      } as any,
+    };
+
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+
+    (scene.eventBlocks.ev1 as any).trigger = { type: 'bounds', boundsEvent: 'teleported', axis: 'y' };
+    expect(() => validateSceneSpec(scene)).toThrow(/boundsEvent/i);
+
+    (scene.eventBlocks.ev1 as any).trigger = { type: 'bounds', boundsEvent: 'wrapped', axis: 'z' };
+    expect(() => validateSceneSpec(scene)).toThrow(/axis/i);
+
+    (scene.eventBlocks.ev1 as any).trigger = { type: 'bounds', boundsEvent: 'wrapped', axis: 'y', side: 'bottom' };
+    (scene.attachments.a1 as any).targetMode = 'script';
+    expect(() => validateSceneSpec(scene)).toThrow(/targetMode/i);
+  });
+
   it('A17 project validation allows cloud and path asset sources', () => {
     const project = createEmptyProject();
     project.assets.images.hero = {

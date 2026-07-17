@@ -286,8 +286,8 @@ function validateInlineCondition(condition: InlineConditionSpec, context: string
 
 function validateAttachmentTrigger(trigger: AttachmentTriggerSpec, context: string): void {
   const type = String((trigger as any).type);
-  if (type !== 'start' && type !== 'update' && type !== 'input_action' && type !== 'visible' && type !== 'event') {
-    throw new Error(`${context} type must be start|update|input_action|visible|event`);
+  if (type !== 'start' && type !== 'update' && type !== 'input_action' && type !== 'visible' && type !== 'event' && type !== 'bounds') {
+    throw new Error(`${context} type must be start|update|input_action|visible|event|bounds`);
   }
   if (type === 'input_action') {
     if (typeof (trigger as any).actionId !== 'string' || (trigger as any).actionId.length === 0) {
@@ -303,6 +303,18 @@ function validateAttachmentTrigger(trigger: AttachmentTriggerSpec, context: stri
   if (type === 'event') {
     if (typeof (trigger as any).eventName !== 'string' || (trigger as any).eventName.length === 0) {
       throw new Error(`${context} eventName must be a non-empty string`);
+    }
+  }
+  if (type === 'bounds') {
+    const boundsEvent = String((trigger as any).boundsEvent ?? '');
+    if (!['contact-entered', 'contact-exited', 'wrapped', 'bounced', 'clamped', 'stopped'].includes(boundsEvent)) {
+      throw new Error(`${context} boundsEvent must be contact-entered|contact-exited|wrapped|bounced|clamped|stopped`);
+    }
+    const axis = String((trigger as any).axis ?? 'any');
+    if (axis !== 'any' && axis !== 'x' && axis !== 'y') throw new Error(`${context} axis must be any|x|y`);
+    const side = String((trigger as any).side ?? 'any');
+    if (side !== 'any' && side !== 'left' && side !== 'right' && side !== 'top' && side !== 'bottom') {
+      throw new Error(`${context} side must be any|left|right|top|bottom`);
     }
   }
 }
@@ -327,6 +339,9 @@ function validateAttachments(scene: SceneSpec): void {
     }
     if (a.applyTo && a.applyTo !== 'group' && a.applyTo !== 'members') {
       throw new Error(`Attachment ${id} applyTo must be group|members`);
+    }
+    if ((a as any).targetMode && (a as any).targetMode !== 'owner' && (a as any).targetMode !== 'event-source') {
+      throw new Error(`Attachment ${id} targetMode must be owner|event-source`);
     }
     if (a.eventId) {
       const block = (eventBlocks as any)[a.eventId];

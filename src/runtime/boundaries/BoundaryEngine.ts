@@ -5,12 +5,24 @@ import { getRotatedEntityBoundaryBounds, getRectSpan } from '../geometry';
 export type BoundaryScope = 'member-any' | 'member-all' | 'group-extents';
 export type BoundaryBehavior = 'stop' | 'limit' | 'bounce' | 'wrap';
 export type BoundarySide = 'left' | 'right' | 'top' | 'bottom';
+export type BoundaryEventOutcome = 'contact-entered' | 'contact-exited' | 'wrapped' | 'bounced' | 'clamped' | 'stopped';
+
+export interface BoundaryEvent {
+  family: 'bounds';
+  outcome: BoundaryEventOutcome;
+  source: RuntimeTarget;
+  axis: 'x' | 'y';
+  side: BoundarySide;
+  priorPosition?: { x: number; y: number };
+  position?: { x: number; y: number };
+}
 
 export interface BoundaryOptions {
   scope?: BoundaryScope;
   behavior?: BoundaryBehavior;
   onEnter?: (target: RuntimeTarget, axis: 'x' | 'y', side: BoundarySide) => void;
   onExit?: (target: RuntimeTarget, axis: 'x' | 'y', side: BoundarySide) => void;
+  onEvent?: (event: BoundaryEvent) => void;
 }
 
 export interface BoundaryResult {
@@ -59,10 +71,12 @@ export class BoundaryEngine {
     this.behavior = options.behavior ?? 'stop';
     this.onEnter = options.onEnter;
     this.onExit = options.onExit;
+    this.onEvent = options.onEvent;
   }
 
   private readonly onEnter?;
   private readonly onExit?;
+  private readonly onEvent?;
 
   isMet(targetLike: RuntimeTarget | RuntimeEntity[]): boolean {
     const target = coerceTarget(targetLike);
@@ -91,12 +105,13 @@ export class BoundaryEngine {
   apply(targetLike: RuntimeTarget | RuntimeEntity[]): BoundaryResult {
     const target = coerceTarget(targetLike);
     const detected = this.detect(target);
-    const previous = this.activeContacts.get(targetKey(target)) ?? {};
-    this.updateContactState(target, detected.sides);
-    if (!detected.hit) return detected;
 
     if (this.scope === 'group-extents' && isFormationGroup(target)) {
+      const previous = this.activeContacts.get(targetKey(target)) ?? {};
+      this.updateContactState(target, detected.sides);
+      if (!detected.hit) return detected;
       this.applyGroupBehavior(target, detected.sides, previous);
+      this.finishContactStateAfterBehavior(target, detected.sides);
     } else {
       this.applyMemberBehavior(flattenTarget(target));
     }
@@ -168,18 +183,40 @@ export class BoundaryEngine {
 
     if (previous.x && previous.x !== next.x) {
       this.onExit?.(target, 'x', previous.x);
+      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis: 'x', side: previous.x });
     }
     if (previous.y && previous.y !== next.y) {
       this.onExit?.(target, 'y', previous.y);
+      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis: 'y', side: previous.y });
     }
     if (next.x && next.x !== previous.x) {
       this.onEnter?.(target, 'x', next.x);
+      this.onEvent?.({ family: 'bounds', outcome: 'contact-entered', source: target, axis: 'x', side: next.x });
     }
     if (next.y && next.y !== previous.y) {
       this.onEnter?.(target, 'y', next.y);
+      this.onEvent?.({ family: 'bounds', outcome: 'contact-entered', source: target, axis: 'y', side: next.y });
     }
 
     this.activeContacts.set(key, next);
+  }
+
+  private finishContactStateAfterBehavior(target: RuntimeTarget, before: BoundaryResult['sides']): void {
+    const key = targetKey(target);
+    const after = this.scope === 'group-extents' && isFormationGroup(target)
+      ? this.hitSides(groupBoundaryBounds(target))
+      : this.hitSides(entityBounds(target as RuntimeEntity));
+    const current = this.activeContacts.get(key) ?? before;
+
+    if (current.x && current.x !== after.x) {
+      this.onExit?.(target, 'x', current.x);
+      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis: 'x', side: current.x });
+    }
+    if (current.y && current.y !== after.y) {
+      this.onExit?.(target, 'y', current.y);
+      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis: 'y', side: current.y });
+    }
+    this.activeContacts.set(key, after);
   }
 
   private applyGroupBehavior(
@@ -286,8 +323,12 @@ export class BoundaryEngine {
 
   private applyMemberBehavior(members: RuntimeEntity[]): void {
     for (const member of members) {
+      const previous = this.activeContacts.get(targetKey(member)) ?? {};
       const current = entityBounds(member);
       const sides = this.hitSides(current);
+      this.updateContactState(member, sides);
+      if (!sides.x && !sides.y) continue;
+
       const vx = member.vx ?? 0;
       const vy = member.vy ?? 0;
       const movingOutX = sides.x === 'left'
@@ -300,30 +341,56 @@ export class BoundaryEngine {
         : sides.y === 'top'
           ? vy > 0
           : false;
+      const priorPosition = { x: member.x, y: member.y };
+      const emitOutcome = (outcome: BoundaryEventOutcome, axis: 'x' | 'y', side: BoundarySide) => {
+        this.onEvent?.({
+          family: 'bounds',
+          outcome,
+          source: member,
+          axis,
+          side,
+          priorPosition,
+          position: { x: member.x, y: member.y },
+        });
+      };
 
       if (sides.x === 'left') {
         if (this.behavior === 'wrap') {
           if (movingOutX) {
             member.x += this.bounds.maxX - current.maxX;
+            emitOutcome('wrapped', 'x', sides.x);
           } else {
             member.x += this.bounds.minX - current.minX;
           }
         } else {
           member.x += this.bounds.minX - current.minX;
-          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutX) member.vx = 0;
-          if (this.behavior === 'bounce' && movingOutX) member.vx = -vx;
+          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutX) {
+            member.vx = 0;
+            emitOutcome(this.behavior === 'stop' ? 'stopped' : 'clamped', 'x', sides.x);
+          }
+          if (this.behavior === 'bounce' && movingOutX && sides.x !== previous.x) {
+            member.vx = -vx;
+            emitOutcome('bounced', 'x', sides.x);
+          }
         }
       } else if (sides.x === 'right') {
         if (this.behavior === 'wrap') {
           if (movingOutX) {
             member.x += this.bounds.minX - current.minX;
+            emitOutcome('wrapped', 'x', sides.x);
           } else {
             member.x += this.bounds.maxX - current.maxX;
           }
         } else {
           member.x += this.bounds.maxX - current.maxX;
-          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutX) member.vx = 0;
-          if (this.behavior === 'bounce' && movingOutX) member.vx = -vx;
+          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutX) {
+            member.vx = 0;
+            emitOutcome(this.behavior === 'stop' ? 'stopped' : 'clamped', 'x', sides.x);
+          }
+          if (this.behavior === 'bounce' && movingOutX && sides.x !== previous.x) {
+            member.vx = -vx;
+            emitOutcome('bounced', 'x', sides.x);
+          }
         }
       }
 
@@ -331,27 +398,43 @@ export class BoundaryEngine {
         if (this.behavior === 'wrap') {
           if (movingOutY) {
             member.y += this.bounds.maxY - current.maxY;
+            emitOutcome('wrapped', 'y', sides.y);
           } else {
             member.y += this.bounds.minY - current.minY;
           }
         } else {
           member.y += this.bounds.minY - current.minY;
-          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutY) member.vy = 0;
-          if (this.behavior === 'bounce' && movingOutY) member.vy = -vy;
+          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutY) {
+            member.vy = 0;
+            emitOutcome(this.behavior === 'stop' ? 'stopped' : 'clamped', 'y', sides.y);
+          }
+          if (this.behavior === 'bounce' && movingOutY && sides.y !== previous.y) {
+            member.vy = -vy;
+            emitOutcome('bounced', 'y', sides.y);
+          }
         }
       } else if (sides.y === 'top') {
         if (this.behavior === 'wrap') {
           if (movingOutY) {
             member.y += this.bounds.minY - current.minY;
+            emitOutcome('wrapped', 'y', sides.y);
           } else {
             member.y += this.bounds.maxY - current.maxY;
           }
         } else {
           member.y += this.bounds.maxY - current.maxY;
-          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutY) member.vy = 0;
-          if (this.behavior === 'bounce' && movingOutY) member.vy = -vy;
+          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutY) {
+            member.vy = 0;
+            emitOutcome(this.behavior === 'stop' ? 'stopped' : 'clamped', 'y', sides.y);
+          }
+          if (this.behavior === 'bounce' && movingOutY && sides.y !== previous.y) {
+            member.vy = -vy;
+            emitOutcome('bounced', 'y', sides.y);
+          }
         }
       }
+
+      this.finishContactStateAfterBehavior(member, sides);
     }
   }
 }

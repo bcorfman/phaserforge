@@ -19,6 +19,7 @@ import { resolveTarget, TargetContext } from '../runtime/targets/resolveTarget';
 import { CallActionSpec } from '../model/types';
 import type { OpRegistry } from './opRegistry';
 import type { InputService, VarsService } from '../runtime/services/RuntimeServices';
+import type { BoundaryEvent } from '../runtime/boundaries/BoundaryEngine';
 
 export interface CompileOptions {
   opRegistry?: OpRegistry;
@@ -26,6 +27,7 @@ export interface CompileOptions {
   vars?: VarsService;
   events?: {
     emit: (eventName: string, payload: Record<string, number | string | boolean | null>, source: { targetKey: string; eventId?: string }) => void;
+    emitBounds?: (event: BoundaryEvent, source: { targetKey: string; eventId?: string }) => void;
   };
   runtime?: {
     spawnEntity?: (opts: {
