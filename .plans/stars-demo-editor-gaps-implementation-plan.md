@@ -140,7 +140,7 @@ This proposal materially extends existing editor workflows and required confirma
 - [x] Add shared normalized range helpers for continuous coordinates and inclusive integer color channels.
 - [x] Generate a seed once when the user starts a scatter draft; never call `Math.random()` during draft recomputation.
 - [x] Add a compact `Reroll` action that changes the seed intentionally, updates the live preview, and creates no project-history entry until the draft commits.
-- [ ] Document the deterministic contract in helper comments and tests: the same seed, member identity/index, and parameters produce the same authored result across reloads.
+- [x] Document the deterministic contract in helper comments and tests: the same seed, member identity/index, and parameters produce the same authored result across reloads.
 
 ## Phase 3 — Scatter Formation Authoring
 
@@ -156,9 +156,9 @@ Mockup: `.plans/mockups/stars-scatter-formation.svg`.
   - read-only/editable seed plus `Reroll`;
   - a `Random tint` foldout described in Phase 4.
 - [x] Keep the existing 200-member per-formation limit unchanged in this plan; do not expand scope merely because the scene contains 400 stars across five formations.
-- [ ] Ensure the canvas draft preview stays responsive by batching preview drawing and avoiding React/Phaser object creation for every keystroke where possible.
+- [x] Ensure the canvas draft preview stays responsive by batching preview drawing and avoiding React/Phaser object creation for every keystroke where possible.
 - [x] Ensure each commit creates one formation with 80 entities, one stable member order, one history transaction, and no persisted “generated count” flag that duplicates the live member list.
-- [ ] Ensure selecting, deleting, duplicating, saving, loading, undoing, and redoing the resulting formation do not lose or reorder members.
+- [x] Ensure selecting, deleting, duplicating, saving, loading, undoing, and redoing the resulting formation do not lose or reorder members.
 
 ## Phase 4 — Per-Entity Tint and Scatter Color Variation
 

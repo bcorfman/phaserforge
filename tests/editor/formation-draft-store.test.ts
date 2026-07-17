@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { initState, reducer } from '../../src/editor/EditorStore';
 import { sampleProject } from '../../src/model/sampleProject';
+import { parseProjectYaml, serializeProjectToYaml } from '../../src/model/serialization';
 
 function seededState() {
   const base = initState();
@@ -170,5 +171,74 @@ describe('formation draft workflow', () => {
         return [entity.x, entity.y, entity.tint];
       })
     );
+  });
+
+  it('preserves scatter member order through selection, duplication, delete, save/load, undo, and redo', () => {
+    const started = reducer(seededState(), { type: 'begin-formation-draft', template: { kind: 'entity', entityId: 'e1' } } as any);
+    const updated = reducer(started, {
+      type: 'update-formation-draft',
+      patch: {
+        name: 'Stars Blink 1',
+        arrangeKind: 'scatter',
+        memberCount: 8,
+        params: {
+          minX: 0,
+          maxX: 720,
+          minY: 5,
+          maxY: 1285,
+          seed: 'stars-lifecycle',
+          randomTint: true,
+          tintMinR: 20,
+          tintMaxR: 255,
+          tintMinG: 20,
+          tintMaxG: 255,
+          tintMinB: 20,
+          tintMaxB: 255,
+        },
+      },
+    } as any);
+    const committed = reducer(updated, { type: 'commit-formation-draft' } as any);
+    const committedScene: any = committed.project.scenes[committed.currentSceneId];
+    const groupId = 'g-stars-blink-1';
+    const memberIds = [...committedScene.groups[groupId].members];
+    const memberSnapshot = memberIds.map((id) => {
+      const entity = committedScene.entities[id];
+      return [id, entity.x, entity.y, entity.tint];
+    });
+
+    const selected = reducer(committed, { type: 'select', selection: { kind: 'group', id: groupId } } as any);
+    expect(selected.selection).toEqual({ kind: 'group', id: groupId });
+    expect((selected.project.scenes[selected.currentSceneId] as any).groups[groupId].members).toEqual(memberIds);
+
+    const duplicated = reducer(selected, { type: 'duplicate-entities', entityIds: memberIds } as any);
+    const duplicatedScene: any = duplicated.project.scenes[duplicated.currentSceneId];
+    const duplicatedIds = duplicated.selection.kind === 'entities' ? duplicated.selection.ids : [];
+    expect(duplicatedIds).toHaveLength(memberIds.length);
+    expect(duplicatedScene.groups[groupId].members).toEqual([...memberIds, ...duplicatedIds]);
+    expect(duplicatedScene.groups[groupId].layout).toEqual({ type: 'freeform' });
+
+    const undoDuplicate = reducer(duplicated, { type: 'history-undo' } as any);
+    expect((undoDuplicate.project.scenes[undoDuplicate.currentSceneId] as any).groups[groupId].members).toEqual(memberIds);
+    const redoDuplicate = reducer(undoDuplicate, { type: 'history-redo' } as any);
+    expect((redoDuplicate.project.scenes[redoDuplicate.currentSceneId] as any).groups[groupId].members.slice(0, memberIds.length)).toEqual(memberIds);
+
+    const savedProject = parseProjectYaml(serializeProjectToYaml(committed.project)) as any;
+    const savedScene = savedProject.scenes[committed.currentSceneId];
+    expect(savedScene.groups[groupId].members).toEqual(memberIds);
+    expect(memberIds.map((id) => {
+      const entity = savedScene.entities[id];
+      return [id, entity.x, entity.y, entity.tint];
+    })).toEqual(memberSnapshot);
+
+    const deleted = reducer(committed, { type: 'delete-group', id: groupId } as any);
+    const deletedScene: any = deleted.project.scenes[deleted.currentSceneId];
+    expect(deletedScene.groups[groupId]).toBeUndefined();
+    expect(deleted.selection).toEqual({ kind: 'entities', ids: memberIds });
+    expect(memberIds.map((id) => deletedScene.entities[id]?.id)).toEqual(memberIds);
+
+    const undoDelete = reducer(deleted, { type: 'history-undo' } as any);
+    expect((undoDelete.project.scenes[undoDelete.currentSceneId] as any).groups[groupId].members).toEqual(memberIds);
+    const redoDelete = reducer(undoDelete, { type: 'history-redo' } as any);
+    expect((redoDelete.project.scenes[redoDelete.currentSceneId] as any).groups[groupId]).toBeUndefined();
   });
 });
