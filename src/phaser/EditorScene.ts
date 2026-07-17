@@ -91,6 +91,7 @@ export class EditorScene extends Phaser.Scene {
   private hitboxOverlayGraphics?: Phaser.GameObjects.Graphics;
   private hitboxOverlayLabel?: Phaser.GameObjects.Text;
   private showHitboxOverlay = true;
+  private tintPreviewOverrides = new Map<string, number>();
 
   private getSceneSpec(): SceneSpec {
     return this.compiled?.scene ?? EMPTY_SCENE_SPEC;
@@ -340,6 +341,7 @@ export class EditorScene extends Phaser.Scene {
     EventBus.on('selection-changed', this.handleSelectionChanged, this);
     EventBus.on('hitbox-overlay-changed', this.handleHitboxOverlayChanged, this);
     EventBus.on('formation-draft-changed', this.handleFormationDraftChanged, this);
+    EventBus.on('formation-tint-preview-changed', this.handleFormationTintPreviewChanged, this);
     EventBus.on('canvas-update-bounds', this.updateBounds, this);
     EventBus.on('toggle-grid-snap', this.toggleGridSnap, this);
     EventBus.on('scene-zoom-in', this.zoomIn, this);
@@ -388,6 +390,7 @@ export class EditorScene extends Phaser.Scene {
     EventBus.off('selection-changed', this.handleSelectionChanged, this);
     EventBus.off('hitbox-overlay-changed', this.handleHitboxOverlayChanged, this);
     EventBus.off('formation-draft-changed', this.handleFormationDraftChanged, this);
+    EventBus.off('formation-tint-preview-changed', this.handleFormationTintPreviewChanged, this);
     EventBus.off('canvas-update-bounds', this.updateBounds, this);
     EventBus.off('toggle-grid-snap', this.toggleGridSnap, this);
     EventBus.off('scene-zoom-in', this.zoomIn, this);
@@ -1558,8 +1561,10 @@ export class EditorScene extends Phaser.Scene {
       sprite.setDisplaySize(displayWidth, displayHeight);
       sprite.setFlipX(entity.flipX ?? false);
       sprite.setFlipY(entity.flipY ?? false);
-      if (entity.tint != null) {
-        sprite.setTint(entity.tint);
+      const previewTint = this.tintPreviewOverrides.get(entity.id);
+      const tint = previewTint ?? entity.tint;
+      if (tint != null) {
+        sprite.setTint(tint);
       } else {
         sprite.clearTint();
       }
@@ -1570,6 +1575,15 @@ export class EditorScene extends Phaser.Scene {
           sprite.setFrame(frame);
         }
       }
+    }
+  }
+
+  private handleFormationTintPreviewChanged(payload?: { groupId?: string; tints?: Record<string, number> }): void {
+    this.tintPreviewOverrides = new Map(Object.entries(payload?.tints ?? {}));
+    for (const [id, sprite] of this.sprites.entries()) {
+      const entity = this.compiled?.entities[id];
+      if (!entity) continue;
+      this.applyEntityDisplayProps(sprite, entity, (entity as any).asset, (entity as any).text);
     }
   }
 

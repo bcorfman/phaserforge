@@ -70,7 +70,7 @@ import {
   type ProjectHistoryEventDraft,
 } from './projectHistoryEvents';
 import { appendPersistenceDebugEntry, summarizeProjectLoadForDebug, summarizeYamlForDebug } from '../util/persistenceDebug';
-import { createSeededRandom, randomIntInRange } from '../util/deterministicRandom';
+import { buildGroupTintVariation } from './tintVariation';
 
 export const SCENE_STORAGE_KEY_V1 = 'phaserforge.sceneYaml.v1';
 export const SCENE_STORAGE_KEY = 'phaserforge.sceneYaml.v2';
@@ -3664,23 +3664,15 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const group = scene.groups[action.groupId];
       if (!group) return state;
       const selectedIds = state.selection.kind === 'entities' ? new Set(state.selection.ids) : undefined;
-      const targetIds = group.members.filter((id) => {
-        if (!scene.entities[id]) return false;
-        return action.scope === 'selection' && selectedIds ? selectedIds.has(id) : true;
-      });
+      const variation = buildGroupTintVariation(scene, action.groupId, action, selectedIds);
+      const targetIds = Object.keys(variation);
       if (targetIds.length === 0) return state;
 
-      const r = createSeededRandom(action.seed, `formation:${action.groupId}:tint-r`);
-      const g = createSeededRandom(action.seed, `formation:${action.groupId}:tint-g`);
-      const b = createSeededRandom(action.seed, `formation:${action.groupId}:tint-b`);
       const entities = { ...scene.entities };
       let changed = false;
       for (const id of targetIds) {
         const entity = entities[id];
-        const tint =
-          (randomIntInRange(r, action.minR, action.maxR) << 16)
-          | (randomIntInRange(g, action.minG, action.maxG) << 8)
-          | randomIntInRange(b, action.minB, action.maxB);
+        const tint = variation[id];
         if (entity.tint === tint) continue;
         entities[id] = { ...entity, tint };
         changed = true;
