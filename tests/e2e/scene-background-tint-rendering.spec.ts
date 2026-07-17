@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyProject } from '../../src/model/emptyProject';
-import { dispatchAction, getSceneSnapshot, seedProject } from './helpers';
+import { dispatchAction, getRenderDebugSnapshot, getSceneSnapshot, seedProject } from './helpers';
 
 const WHITE_PIXEL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
@@ -66,12 +66,13 @@ test('scene background and entity tint match in edit and play without selection 
 
   await expect.poll(async () => {
     const snapshot = await getSceneSnapshot<any>(page);
+    const render = await getRenderDebugSnapshot<any>(page);
     return {
       sceneKey: snapshot?.sceneKey,
-      background: snapshot?.cameraBackgroundColor,
-      imageTint: snapshot?.entityDisplay?.imageStar?.tint,
-      sheetTint: snapshot?.entityDisplay?.sheetStar?.tint,
-      placeholderTint: snapshot?.entityDisplay?.placeholderStar?.fillColor ?? snapshot?.entityDisplay?.placeholderStar?.tint,
+      background: render?.cameraBackgroundColor,
+      imageTint: render?.entityDisplay?.imageStar?.tint,
+      sheetTint: render?.entityDisplay?.sheetStar?.tint,
+      placeholderTint: render?.entityDisplay?.placeholderStar?.fillColor ?? render?.entityDisplay?.placeholderStar?.tint,
     };
   }).toEqual({
     sceneKey: 'EditorScene',
@@ -82,17 +83,18 @@ test('scene background and entity tint match in edit and play without selection 
   });
 
   await dispatchAction(page, { type: 'select', selection: { kind: 'entity', id: 'imageStar' } });
-  await expect.poll(async () => (await getSceneSnapshot<any>(page))?.entityDisplay?.imageStar?.tint).toBe(0x224466);
+  await expect.poll(async () => (await getRenderDebugSnapshot<any>(page))?.entityDisplay?.imageStar?.tint).toBe(0x224466);
 
   await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect.poll(async () => {
     const snapshot = await getSceneSnapshot<any>(page);
+    const render = await getRenderDebugSnapshot<any>(page);
     return {
       sceneKey: snapshot?.sceneKey,
-      background: snapshot?.cameraBackgroundColor,
-      imageTint: snapshot?.entityDisplay?.imageStar?.tint,
-      sheetTint: snapshot?.entityDisplay?.sheetStar?.tint,
-      placeholderTint: snapshot?.entityDisplay?.placeholderStar?.fillColor ?? snapshot?.entityDisplay?.placeholderStar?.tint,
+      background: render?.cameraBackgroundColor,
+      imageTint: render?.entityDisplay?.imageStar?.tint,
+      sheetTint: render?.entityDisplay?.sheetStar?.tint,
+      placeholderTint: render?.entityDisplay?.placeholderStar?.fillColor ?? render?.entityDisplay?.placeholderStar?.tint,
     };
   }).toEqual({
     sceneKey: 'GameScene',

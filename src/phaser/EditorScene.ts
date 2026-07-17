@@ -423,8 +423,6 @@ export class EditorScene extends Phaser.Scene {
     isActive: boolean;
     sceneKey: string;
     compiledSceneId?: string;
-    cameraBackgroundColor?: number;
-    entityDisplay?: Record<string, { tint?: number; fillColor?: number }>;
     runtimeEvents?: { pendingEvents: number; lastDrainedEventNames: string[] };
     referenceSpriteCount: number;
     zoom: number;
@@ -444,8 +442,6 @@ export class EditorScene extends Phaser.Scene {
       isActive: this.scene.isActive(),
       sceneKey: this.scene.key,
       compiledSceneId: this.compiled?.scene.id,
-      cameraBackgroundColor: (this.cameras.main.backgroundColor as any)?.color,
-      entityDisplay: this.getEntityDisplaySnapshot(),
       ...(this.compiled?.debug ? { runtimeEvents: { ...this.compiled.debug } } : {}),
       referenceSpriteCount: this.referenceSprites.size,
       zoom: this.currentZoom,
@@ -457,6 +453,16 @@ export class EditorScene extends Phaser.Scene {
       worldWidth: world.width,
       worldHeight: world.height,
       backgroundLayerCount: this.backgroundObjects.length,
+    };
+  }
+
+  public getRenderDebugSnapshot(): {
+    cameraBackgroundColor?: number;
+    entityDisplay: Record<string, { tint?: number; fillColor?: number }>;
+  } {
+    return {
+      cameraBackgroundColor: (this.cameras.main.backgroundColor as any)?.color,
+      entityDisplay: this.getEntityDisplaySnapshot(),
     };
   }
 
