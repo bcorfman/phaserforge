@@ -178,9 +178,9 @@ Mockups: `.plans/mockups/stars-scatter-formation.svg` and `.plans/mockups/stars-
 - [x] Persist final tints on entities and preserve the seed/settings in the scatter layout parameters only for intentional reapply/reroll; derive member count from `group.members`.
 - [x] Add a `Visual Variations` foldout to the formation inspector for batch random tint after creation, as shown in `.plans/mockups/stars-formation-visual-variations.svg`.
 - [x] Let the formation operation choose all members or the current member selection, RGB channel Min/Max, and a deterministic seed; Preview must be reversible, Apply/Reroll must be one semantic history transaction, and Cancel must restore the exact prior tints.
-- [ ] Store final tint values on entities. Keep only the last applied variation recipe when it is needed for intentional Reroll; do not treat that recipe as a replacement for entity tint ground truth.
-- [ ] Reuse the same batch command from the multi-selection inspector rather than implementing a second randomization algorithm or requiring hundreds of individual edits.
-- [ ] Verify pixel-art texture filtering remains nearest-neighbor after tinting.
+- [x] Store final tint values on entities. Keep only the last applied variation recipe when it is needed for intentional Reroll; do not treat that recipe as a replacement for entity tint ground truth.
+- [x] Reuse the same batch command from the multi-selection inspector rather than implementing a second randomization algorithm or requiring hundreds of individual edits.
+- [x] Verify pixel-art texture filtering remains nearest-neighbor after tinting.
 
 ## Phase 5 — Authored Scene Background Color
 
@@ -190,8 +190,8 @@ Mockup: `.plans/mockups/stars-scene-and-tint.svg`.
 - [x] Add validation, YAML round-trip, migration, canonicalization, duplication, history, and cloud/local persistence coverage.
 - [x] Add a `Scene Appearance` foldout to the existing scene inspector with a color picker, paired hex input, and `Use default` action.
 - [x] Apply the color to the main camera in both `EditorScene` and `GameScene` before rendering background layers; layers continue to render above it.
-- [ ] Ensure base-scene composition has a documented rule: the active scene's authored camera background wins, falling back to the base/default only when absent.
-- [ ] Verify black (`#000000`) survives save/reload and is identical in edit mode, play mode, and published runtime.
+- [x] Ensure base-scene composition has a documented rule: the active scene's authored camera background wins, falling back to the base/default only when absent.
+- [x] Verify black (`#000000`) survives save/reload and is identical in edit mode, play mode, and published runtime.
 
 ## Phase 6 — Complete Typed Bounds Event Family, Event Context, and Composable Actions
 
