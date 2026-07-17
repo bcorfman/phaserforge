@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSeededRandom, normalizeRange, randomFloatInRange, randomIntInRange } from '../../src/editor/deterministicRandom';
+import { computeFormationDraftPositions, computeFormationDraftTints } from '../../src/editor/formationDraft';
 
 describe('deterministic random helpers', () => {
   it('returns the same sequence for the same seed and stream', () => {
@@ -32,5 +33,33 @@ describe('deterministic random helpers', () => {
   it('generates inclusive integer color channel bounds', () => {
     expect(randomIntInRange(() => 0, 20, 255)).toBe(20);
     expect(randomIntInRange(() => 0.999999, 20, 255)).toBe(255);
+  });
+
+  it('keeps authored scatter results stable for the same seed, member index, and parameters', () => {
+    const draft = {
+      arrangeKind: 'scatter',
+      memberCount: 8,
+      params: {
+        minX: 0,
+        maxX: 720,
+        minY: 5,
+        maxY: 1285,
+        seed: 'stars-contract',
+        randomTint: true,
+        tintMinR: 20,
+        tintMaxR: 255,
+        tintMinG: 20,
+        tintMaxG: 255,
+        tintMinB: 20,
+        tintMaxB: 255,
+      },
+    };
+
+    const authored = computeFormationDraftPositions(draft, { width: 3, height: 3 })
+      .map((position, index) => ({ ...position, tint: computeFormationDraftTints(draft)?.[index] }));
+    const reloaded = computeFormationDraftPositions({ ...draft, params: { ...draft.params } }, { width: 3, height: 3 })
+      .map((position, index) => ({ ...position, tint: computeFormationDraftTints({ ...draft, params: { ...draft.params } })?.[index] }));
+
+    expect(reloaded).toEqual(authored);
   });
 });
