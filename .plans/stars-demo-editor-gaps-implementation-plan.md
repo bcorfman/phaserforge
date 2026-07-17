@@ -131,6 +131,7 @@ This proposal materially extends existing editor workflows and required confirma
 - [ ] Add editor component tests for control visibility, paired-control layout, defaults, validation, disabling, and dispatched patches shown in the five SVG mockups.
 - [ ] Add Phaser editor/play scene tests proving scene background and entity tint render consistently and that editor selection styling does not destroy the authored tint.
 - [ ] Add a focused E2E stars-authoring test that creates a smaller deterministic fixture through the primary UI—including a Bounds/Wrapped Event Block—then separately seed the five-formation, 400-star project for play-mode behavior/performance assertions.
+- [ ] Add a command-level stars demo integration test, following the `docs/getting-started/pattern-demo.md` / `tests/e2e/pattern-demo-persistence.spec.ts` style, that builds the faithful `stars.py` project through underlying editor commands/project-builder helpers rather than Playwright GUI clicks, then runs the resulting project and verifies the end behavior.
 
 ## Phase 2 — Deterministic Random Foundation
 
@@ -282,6 +283,12 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 ## Phase 7 — Assemble and Prove the Faithful Stars Workflow
 
 - [ ] Create a documented test fixture/project with world `720 × 1280`, background `#000000`, one 3 × 3 white asset, and five 80-member Scatter formations named `Stars Blink 1` through `Stars Blink 5`.
+- [ ] Add a `stars.py` parity integration spec that constructs that fixture via editor reducer actions or shared project-step builders, analogous to the Pattern Demo command-driven persistence/runtime tests:
+  - do not exercise manual GUI authoring with Playwright clicks for this parity test;
+  - call the same underlying editor commands used by the UI where possible (`update-scene-world`, asset import/create, begin/update/commit formation draft, create/update Event Blocks and attachments, set scene appearance);
+  - after each major build step, assert the persisted project shape matches the expected scene, group, member, attachment, and event-block state;
+  - compile/run the final project and verify the visible/timed `stars.py` behavior: 400 present members, five blink periods, velocity timeline checkpoints, wrap relocation, event-source X reroll, no vertical-column drift after repeated wraps, and black background;
+  - include save/reload and YAML export/import assertions for the finished fixture, using direct project load/snapshot helpers rather than GUI flows.
 - [ ] Set each formation's scatter bounds to X `0..720`, Y `5..1285`, random RGB channel range `20..255`, and a distinct recorded seed so the five formations do not overlap deterministically.
 - [ ] Apply `Blink Until` to the five formations at 200, 250, 300, 350, and 400 ms respectively, infinite.
 - [ ] Apply the same permanent `Move Until` recipe/pattern to each formation's members with velocity `0,0`, bounds `(0,-5)..(720,1285)`, and Behavior `Wrap`.
