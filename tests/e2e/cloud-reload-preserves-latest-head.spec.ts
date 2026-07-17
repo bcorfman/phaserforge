@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { sampleProject } from '../../src/model/sampleProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
 import { appendProjectRevision, createProjectRevision } from '../../src/editor/projectTreeHistory';
+import { createProjectSnapshot, serializeProjectToYaml } from '../../src/model/serialization';
 import { enablePersistenceDebug, expectPersistenceDebugEvents, expectProjectRestoreState, getState, gotoStudio } from './helpers';
 
 test('cloud-backed active project reload restores the latest IndexedDB head and history without legacy localStorage project state @regression', async ({ page }) => {
@@ -45,10 +46,13 @@ test('cloud-backed active project reload restores the latest IndexedDB head and 
       syncStatus: 'cloud',
       cloudProjectId: 'g1',
       revisions: appendProjectRevision([staleRevision], latestRevision),
+      yaml: serializeProjectToYaml(sampleProject),
     }),
     id: 'cloud:g1',
     projectId: latestProject.id,
-  };
+    projectSnapshot: createProjectSnapshot(latestProject),
+  } as any;
+  delete latestRecord.project;
   const olderProject = structuredClone(sampleProject);
   olderProject.title = 'Older Cloud Game';
   const olderRecord = {

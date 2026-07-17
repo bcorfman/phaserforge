@@ -1,4 +1,10 @@
-import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
+import {
+  createProjectSnapshot,
+  parseProjectSnapshot,
+  parseProjectYaml,
+  serializeProjectToYaml,
+  type ProjectSpecSnapshot,
+} from '../model/serialization';
 import { createEmptyProject } from '../model/emptyProject';
 import { projectsSemanticallyEqual } from '../model/projectCanonical';
 import type { ProjectSpec, StartupMode } from '../model/types';
@@ -75,7 +81,9 @@ type LatestActiveProjectSnapshotRecord = {
   savedAt: string;
 };
 
-type PersistedProjectRecord = Omit<StoredProjectRecord, 'project'>;
+type PersistedProjectRecord = Omit<StoredProjectRecord, 'project'> & {
+  projectSnapshot?: ProjectSpecSnapshot;
+};
 
 export type PreferencesRecord = {
   startupMode: StartupMode;
@@ -273,7 +281,10 @@ function parsePreferencesRecord(raw: unknown, context: string): PreferencesRecor
   };
 }
 
-function buildStoredProjectRecordBase(raw: unknown, context: string): Omit<StoredProjectRecord, 'project'> & { project?: ProjectSpec } {
+function buildStoredProjectRecordBase(
+  raw: unknown,
+  context: string,
+): Omit<StoredProjectRecord, 'project'> & { project?: ProjectSpec; projectSnapshot?: ProjectSpecSnapshot } {
   assertStoredProjectRecord(raw && typeof raw === 'object', `${context}: stored project record must be an object, got ${describeRuntimeValue(raw)}`);
   const candidate = raw as Record<string, unknown>;
   assertStoredProjectRecord(typeof candidate.id === 'string' && candidate.id.length > 0, `${context}: id must be a non-empty string`);
@@ -309,6 +320,7 @@ function buildStoredProjectRecordBase(raw: unknown, context: string): Omit<Store
     ...(candidate.historyEvents !== undefined ? { historyEvents: candidate.historyEvents as ProjectHistoryEvent[] } : {}),
     ...(candidate.archivedHistoryEvents !== undefined ? { archivedHistoryEvents: candidate.archivedHistoryEvents as ProjectHistoryEvent[] } : {}),
     ...('project' in candidate ? { project: candidate.project as ProjectSpec | undefined } : {}),
+    ...('projectSnapshot' in candidate ? { projectSnapshot: candidate.projectSnapshot as ProjectSpecSnapshot | undefined } : {}),
   };
 }
 
@@ -498,7 +510,7 @@ function getValidProjectOrNull(project: ProjectSpec | undefined): ProjectSpec | 
 }
 
 function hydrateStoredProjectRecord(
-  record: Omit<StoredProjectRecord, 'project'> & { project?: ProjectSpec },
+  record: Omit<StoredProjectRecord, 'project'> & { project?: ProjectSpec; projectSnapshot?: ProjectSpecSnapshot },
   context: string,
 ): StoredProjectRecord {
   const validProject = getValidProjectOrNull(record.project);
@@ -514,6 +526,25 @@ function hydrateStoredProjectRecord(
       historyEvents: record.historyEvents ?? [],
       archivedHistoryEvents: record.archivedHistoryEvents ?? [],
     };
+  }
+  if (record.projectSnapshot) {
+    try {
+      const project = parseProjectSnapshot(record.projectSnapshot);
+      validateProjectSpec(project);
+      return {
+        ...record,
+        project,
+        revisions: normalizeStoredProjectRevisions(project, record.revisions),
+        archivedRevisions: normalizeStoredProjectRevisions(project, record.archivedRevisions, {
+          fallbackToCurrentProject: false,
+          enforceLatestMatchesProject: false,
+        }),
+        historyEvents: record.historyEvents ?? [],
+        archivedHistoryEvents: record.archivedHistoryEvents ?? [],
+      };
+    } catch {
+      // Fall through to revision/YAML compatibility paths for older or damaged records.
+    }
   }
   if (Array.isArray(record.revisions) && record.revisions.length > 0) {
     try {
@@ -571,7 +602,10 @@ function parseStoredProjectRecord(raw: unknown, context: string): StoredProjectR
 
 function dehydrateStoredProjectRecord(record: StoredProjectRecord): PersistedProjectRecord {
   const { project: _project, ...persisted } = structuredClone(record);
-  return persisted;
+  return {
+    ...persisted,
+    projectSnapshot: createProjectSnapshot(record.project),
+  };
 }
 
 function validateStoredProjectRecordForPersistence(record: StoredProjectRecord): void {

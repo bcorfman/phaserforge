@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PhaserGame } from './phaser/PhaserHost';
 import { EventBus, getActiveScene } from './phaser/EventBus';
 import { getGame } from './cloud/api';
-import { parseProjectYaml } from './model/serialization';
+import { parseProjectSnapshot, parseProjectYaml } from './model/serialization';
 import { getSceneWorld } from './editor/sceneWorld';
 import type { ProjectSpec } from './model/types';
 import { AudioDebugOverlay } from './AudioDebugOverlay';
@@ -24,6 +24,15 @@ function readYamlUrl(): string | null {
   return typeof globalVal === 'string' && globalVal.trim().length > 0 ? globalVal.trim() : null;
 }
 
+function readProjectUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const url = new URL(window.location.href);
+  const raw = url.searchParams.get('projectUrl');
+  if (raw && raw.trim().length > 0) return raw.trim();
+  const globalVal = (window as any).__PHASER_FORGE_PLAY_PROJECT_URL;
+  return typeof globalVal === 'string' && globalVal.trim().length > 0 ? globalVal.trim() : null;
+}
+
 function unlockAudioFromStartGesture(): void {
   const game = (window as any).__phaserGame;
   const sound = game?.sound;
@@ -42,6 +51,7 @@ function unlockAudioFromStartGesture(): void {
 export default function PlayApp() {
   const gameId = useMemo(() => readPlayGameId(), []);
   const yamlUrl = useMemo(() => readYamlUrl(), []);
+  const projectUrl = useMemo(() => readProjectUrl(), []);
   const [error, setError] = useState<string | null>(null);
   const [project, setProject] = useState<ProjectSpec | null>(null);
   const [sceneId, setSceneId] = useState<string | null>(null);
@@ -53,7 +63,15 @@ export default function PlayApp() {
     let cancelled = false;
     const load = async () => {
       try {
-        if (yamlUrl) {
+        if (projectUrl) {
+          const res = await fetch(projectUrl, { credentials: 'omit', cache: 'no-store' });
+          if (!res.ok) throw new Error(`http_${res.status}`);
+          const snapshot = await res.json();
+          const parsed = parseProjectSnapshot(snapshot);
+          if (cancelled) return;
+          setProject(parsed);
+          setSceneId(parsed.initialSceneId);
+        } else if (yamlUrl) {
           const res = await fetch(yamlUrl, { credentials: 'omit', cache: 'no-store' });
           if (!res.ok) throw new Error(`http_${res.status}`);
           const yamlText = await res.text();
@@ -78,7 +96,7 @@ export default function PlayApp() {
     return () => {
       cancelled = true;
     };
-  }, [gameId, yamlUrl]);
+  }, [gameId, projectUrl, yamlUrl]);
 
   const world = useMemo(() => {
     if (!project || !sceneId) return null;

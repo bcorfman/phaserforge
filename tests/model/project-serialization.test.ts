@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseProjectYaml, serializeProjectToYaml } from '../../src/model/serialization';
+import { createProjectSnapshot, parseProjectSnapshot, parseProjectYaml, serializeProjectSnapshot, serializeProjectToYaml } from '../../src/model/serialization';
 import { sampleScene } from '../../src/model/sampleScene';
 import { stringify } from 'yaml';
 
@@ -414,5 +414,96 @@ describe('project YAML serialization', () => {
     const yaml = serializeProjectToYaml(project);
     const parsed = parseProjectYaml(yaml);
     expect(parsed).toEqual(project);
+  });
+});
+
+describe('project structured snapshots', () => {
+  it('canonicalizes and validates a structured ProjectSpec without YAML', () => {
+    const project = {
+      id: 'project-1',
+      title: 'Snapshot Project',
+      assets: {
+        images: {
+          enemy: {
+            id: 'enemy',
+            width: 16,
+            height: 16,
+            source: { kind: 'embedded', dataUrl: 'data:image/png;base64,AAAA', originalName: 'enemy.png', mimeType: 'image/png' },
+          },
+        },
+        spriteSheets: {},
+        fonts: {},
+      },
+      audio: {
+        sounds: {
+          theme: {
+            id: 'theme',
+            source: { kind: 'embedded', dataUrl: 'data:audio/mp3;base64,AAAA', originalName: 'theme.mp3', mimeType: 'audio/mpeg' },
+          },
+        },
+      },
+      inputMaps: {
+        arrows: { actions: { moveLeft: [{ device: 'keyboard', key: 'ArrowLeft', event: 'held' }] } },
+      },
+      defaultInputMapId: 'arrows',
+      collections: { gems: { id: 'gems', name: 'Gems', entityIds: ['e1'] } },
+      counters: { score: { id: 'score', name: 'Score', initialValue: 0 } },
+      scenes: {
+        'scene-1': {
+          ...sampleScene,
+          backgroundColor: 0x000000,
+          entities: {
+            ...sampleScene.entities,
+            e1: { ...sampleScene.entities.e1, tint: 0x224466 },
+          },
+          groups: {
+            ...sampleScene.groups,
+            g1: {
+              ...sampleScene.groups.g1,
+              layout: {
+                type: 'arrange',
+                arrangeKind: 'scatter',
+                params: { minX: 0, maxX: 720, minY: 5, maxY: 1285, seed: 'stars-1' },
+              },
+            },
+          },
+          eventBlocks: {
+            wrap: {
+              id: 'wrap',
+              target: { type: 'group', groupId: 'g-enemies' },
+              trigger: { type: 'bounds', boundsEvent: 'wrapped', axis: 'y', side: 'bottom' },
+            },
+          },
+          attachments: {
+            rerollX: {
+              id: 'rerollX',
+              target: { type: 'group', groupId: 'g-enemies' },
+              eventId: 'wrap',
+              targetMode: 'event-source',
+              presetId: 'SetProperty',
+              params: { property: 'x', valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'wrap-x' } },
+            },
+          },
+        },
+      },
+      initialSceneId: 'scene-1',
+      patterns: {
+        p1: {
+          id: 'p1',
+          name: 'Pattern 1',
+          params: [],
+          body: [{ presetId: 'Wait', params: { durationMs: 10 } }],
+        },
+      },
+    } as any;
+
+    const snapshot = createProjectSnapshot(project);
+    expect(snapshot.version).toBe(1);
+    expect(parseProjectSnapshot(snapshot)).toEqual(project);
+    expect(parseProjectSnapshot(JSON.parse(serializeProjectSnapshot(project)))).toEqual(project);
+  });
+
+  it('rejects unsupported structured snapshot versions', () => {
+    expect(() => parseProjectSnapshot({ version: 999, project: {} })).toThrow(/Unsupported project snapshot version/);
   });
 });
