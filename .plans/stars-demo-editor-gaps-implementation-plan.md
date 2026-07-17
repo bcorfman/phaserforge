@@ -176,7 +176,7 @@ Mockups: `.plans/mockups/stars-scatter-formation.svg` and `.plans/mockups/stars-
   - paired channel Min/Max inputs, defaulting to 20 and 255;
   - deterministic preview and commit using tint-specific PRNG streams.
 - [x] Persist final tints on entities and preserve the seed/settings in the scatter layout parameters only for intentional reapply/reroll; derive member count from `group.members`.
-- [ ] Add a `Visual Variations` foldout to the formation inspector for batch random tint after creation, as shown in `.plans/mockups/stars-formation-visual-variations.svg`.
+- [x] Add a `Visual Variations` foldout to the formation inspector for batch random tint after creation, as shown in `.plans/mockups/stars-formation-visual-variations.svg`.
 - [ ] Let the formation operation choose all members or the current member selection, RGB channel Min/Max, and a deterministic seed; Preview must be reversible, Apply/Reroll must be one semantic history transaction, and Cancel must restore the exact prior tints.
 - [ ] Store final tint values on entities. Keep only the last applied variation recipe when it is needed for intentional Reroll; do not treat that recipe as a replacement for entity tint ground truth.
 - [ ] Reuse the same batch command from the multi-selection inspector rather than implementing a second randomization algorithm or requiring hundreds of individual edits.

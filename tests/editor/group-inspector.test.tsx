@@ -150,6 +150,8 @@ describe('Group inspector', () => {
           scope: 'all',
         },
         onVariationDraftChange: () => {},
+        onPreviewTintVariation: () => {},
+        onCancelTintVariation: () => {},
         onApplyTintVariation: () => {},
         onRerollTintVariation: () => {},
       })
@@ -158,7 +160,9 @@ describe('Group inspector', () => {
     expect(markup).toContain('Visual Variations');
     expect(markup).toContain('data-testid="formation-variation-scope"');
     expect(markup).toContain('data-testid="formation-variation-seed"');
+    expect(markup).toContain('data-testid="formation-variation-preview"');
     expect(markup).toContain('data-testid="formation-variation-apply"');
+    expect(markup).toContain('data-testid="formation-variation-cancel"');
     expect(markup).toMatch(
       /<div class="inspector-grid-2">[\s\S]*data-testid="formation-variation-min-r"[\s\S]*data-testid="formation-variation-max-r"[\s\S]*<\/div>/
     );

@@ -1130,6 +1130,24 @@ describe('EditorStore reducer', () => {
     );
   });
 
+  it('does not apply selection-scoped formation tint variation when no members are selected', () => {
+    const state = seededState();
+    const next = reducer(state, {
+      type: 'apply-group-tint-variation',
+      groupId: 'g-enemies',
+      seed: 'stars-selection',
+      minR: 20,
+      maxR: 255,
+      minG: 20,
+      maxG: 255,
+      minB: 20,
+      maxB: 255,
+      scope: 'selection',
+    } as any);
+
+    expect(next).toBe(state);
+  });
+
   it('updates scene world size', () => {
     const state = seededState();
     const next = reducer(state, {

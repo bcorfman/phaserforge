@@ -28,6 +28,7 @@ import {
 } from './spriteSizing';
 import { formatRgbHex, parseRgbHex } from './colorHex';
 import { makeSeed } from '../util/deterministicRandom';
+import { buildGroupTintVariation } from './tintVariation';
 
 type ArrangeParameterSpec = { name: string; type?: string };
 type TintVariationDraft = {
@@ -224,10 +225,20 @@ export function Inspector() {
           onConvertLayoutArrange={(arrangeKind) => dispatch({ type: 'convert-group-layout-arrange', id: group.id, arrangeKind })}
           variationDraft={tintVariationDraft}
           onVariationDraftChange={(patch) => setTintVariationDraft((draft) => ({ ...draft, ...patch }))}
-          onApplyTintVariation={() => dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...tintVariationDraft } as any)}
+          onPreviewTintVariation={() => {
+            const selectedIds = selection.kind === 'entities' ? new Set(selection.ids) : undefined;
+            const tints = buildGroupTintVariation(scene, group.id, tintVariationDraft, selectedIds);
+            EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints });
+          }}
+          onCancelTintVariation={() => EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints: undefined })}
+          onApplyTintVariation={() => {
+            EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints: undefined });
+            dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...tintVariationDraft } as any);
+          }}
           onRerollTintVariation={() => {
             const seed = makeSeed('variation');
             setTintVariationDraft((draft) => ({ ...draft, seed }));
+            EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints: undefined });
             dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...tintVariationDraft, seed } as any);
           }}
           onUngroup={() => dispatch({ type: 'ungroup-group', id: group.id })}
@@ -1310,6 +1321,8 @@ function GroupInspector({
   onConvertLayoutArrange,
   variationDraft,
   onVariationDraftChange,
+  onPreviewTintVariation,
+  onCancelTintVariation,
   onApplyTintVariation,
   onRerollTintVariation,
   onUngroup,
@@ -1355,6 +1368,8 @@ function GroupInspector({
   onConvertLayoutArrange: (arrangeKind: string) => void;
   variationDraft?: TintVariationDraft;
   onVariationDraftChange?: (patch: Partial<TintVariationDraft>) => void;
+  onPreviewTintVariation?: () => void;
+  onCancelTintVariation?: () => void;
   onApplyTintVariation?: () => void;
   onRerollTintVariation?: () => void;
   onUngroup: () => void;
@@ -1528,6 +1543,8 @@ function GroupInspector({
       applyConvertLayout,
       variationDraft,
       onVariationDraftChange,
+      onPreviewTintVariation,
+      onCancelTintVariation,
       onApplyTintVariation,
       onRerollTintVariation,
     })
@@ -1588,6 +1605,8 @@ export function renderGroupInspector(
     applyConvertLayout: () => void;
     variationDraft?: TintVariationDraft;
     onVariationDraftChange?: (patch: Partial<TintVariationDraft>) => void;
+    onPreviewTintVariation?: () => void;
+    onCancelTintVariation?: () => void;
     onApplyTintVariation?: () => void;
     onRerollTintVariation?: () => void;
   }
@@ -1841,11 +1860,17 @@ export function renderGroupInspector(
           </div>
         ))}
         <div className="inspector-row inspector-inline-buttons">
+          <button className="button button-compact" data-testid="formation-variation-preview" type="button" onClick={handlers.onPreviewTintVariation}>
+            Preview
+          </button>
           <button className="button" data-testid="formation-variation-apply" type="button" onClick={handlers.onApplyTintVariation}>
             Apply
           </button>
           <button className="button button-compact" data-testid="formation-variation-reroll" type="button" onClick={handlers.onRerollTintVariation}>
             Reroll
+          </button>
+          <button className="button button-compact" data-testid="formation-variation-cancel" type="button" onClick={handlers.onCancelTintVariation}>
+            Cancel
           </button>
         </div>
       </InspectorFoldout>
