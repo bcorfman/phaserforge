@@ -1,4 +1,5 @@
 import { useEditorStore } from './EditorStore';
+import { resolveEditorDeployChannel } from './deployChannel';
 
 type ToolbarViewProps = {
   state: Pick<ReturnType<typeof useEditorStore>['state'], 'dirty' | 'uiScale' | 'themeMode' | 'error' | 'statusMessage' | 'syncMode'>;
@@ -7,12 +8,16 @@ type ToolbarViewProps = {
 };
 
 export function ToolbarView({ state, dispatch, onToggleSyncMode }: ToolbarViewProps) {
+  const deployChannel = resolveEditorDeployChannel();
   return (
     <header className="toolbar" data-testid="toolbar">
       <div className="toolbar-left">
         <p className="toolbar-kicker">Browser Editor</p>
         <div className="toolbar-title-row">
           <h1 className="brand">PhaserForge</h1>
+          {deployChannel === 'dev' ? (
+            <span className="badge toolbar-channel-badge" data-testid="deploy-channel-badge">Dev</span>
+          ) : null}
           <button
             className={`badge toolbar-sync-badge ${state.syncMode === 'offline' ? 'toolbar-sync-badge-offline' : ''}`}
             data-testid="project-sync-badge"

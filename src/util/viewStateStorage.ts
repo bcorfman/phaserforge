@@ -1,4 +1,6 @@
-export const VIEW_STATE_STORAGE_KEY = 'phaserforge.viewState.v1';
+import { getChannelScopedStorageKey } from '../editor/deployChannel';
+
+export const VIEW_STATE_STORAGE_KEY = getChannelScopedStorageKey('phaserforge.viewState.v1');
 
 export type ViewState = {
   zoom: number;
