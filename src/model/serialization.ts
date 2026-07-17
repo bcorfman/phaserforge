@@ -232,6 +232,9 @@ export function parseProjectYaml(text: string): ProjectSpec {
     const backgroundLayers = Array.isArray((sceneRaw as any)?.backgroundLayers)
       ? (sceneRaw as any).backgroundLayers
       : undefined;
+    const backgroundColor = Number.isInteger((sceneRaw as any)?.backgroundColor)
+      ? (sceneRaw as any).backgroundColor
+      : undefined;
     const music = coerceSceneMusic((sceneRaw as any)?.music);
     const ambience = coerceSceneAmbience((sceneRaw as any)?.ambience);
     const input = (sceneRaw as any)?.input && typeof (sceneRaw as any).input === 'object' ? (sceneRaw as any).input : undefined;
@@ -239,6 +242,7 @@ export function parseProjectYaml(text: string): ProjectSpec {
     const triggers = coerceTriggerZones((sceneRaw as any)?.triggers);
     scenes[sceneId] = {
       ...(migrated as GameSceneSpec),
+      ...(backgroundColor !== undefined ? { backgroundColor } : {}),
       ...(backgroundLayers ? { backgroundLayers } : {}),
       ...(music ? { music } : {}),
       ...(ambience ? { ambience } : {}),

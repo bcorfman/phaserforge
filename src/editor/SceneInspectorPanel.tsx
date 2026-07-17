@@ -7,6 +7,7 @@ import { SceneCollisionsBody } from './SceneCollisionsPanel';
 import { SceneInputBody } from './SceneInputPanel';
 import { readSceneMapSelection } from './sceneInputMaps';
 import { SceneStateBody } from './SceneStatePanel';
+import { formatRgbHex, parseRgbHex } from './colorHex';
 
 function summarizeCount(label: string, count: number): string {
   if (count === 1) return `1 ${label}`;
@@ -59,11 +60,13 @@ export function SceneInspectorPanel({
   const inputSummary = `Active: ${activeLabel} · Fallback: ${fallbackLabel}`;
 
   const backgroundSummary = summarizeCount('layer', backgroundLayers.length);
+  const appearanceSummary = scene.backgroundColor == null ? 'Default' : formatRgbHex(scene.backgroundColor);
   const collisionsSummary = summarizeCount('rule', rules.length);
   const stateSummary = `${Object.keys(project.counters ?? {}).length} counters · ${Object.keys(project.collections ?? {}).length} collections`;
 
   const expandAll = () => {
     foldouts.setOpen('scene.backgroundLayers', true);
+    foldouts.setOpen('scene.appearance', true);
     foldouts.setOpen('scene.audio', true);
     foldouts.setOpen('scene.input', true);
     foldouts.setOpen('scene.collisions', true);
@@ -72,6 +75,7 @@ export function SceneInspectorPanel({
 
   const collapseAll = () => {
     foldouts.setOpen('scene.backgroundLayers', false);
+    foldouts.setOpen('scene.appearance', false);
     foldouts.setOpen('scene.audio', false);
     foldouts.setOpen('scene.input', false);
     foldouts.setOpen('scene.collisions', false);
@@ -91,6 +95,47 @@ export function SceneInspectorPanel({
           </button>
         </div>
       </div>
+
+      <InspectorFoldout
+        title="Scene Appearance"
+        summary={appearanceSummary}
+        open={foldouts.isOpen('scene.appearance', true)}
+        onToggle={() => foldouts.toggle('scene.appearance', true)}
+      >
+        <div className="inspector-grid-2">
+          <label className="field">
+            <span>Background</span>
+            <input
+              aria-label="Scene Background Color"
+              data-testid="scene-background-color-picker"
+              type="color"
+              value={formatRgbHex(scene.backgroundColor ?? 0x0c0f1a)}
+              disabled={disabled}
+              onChange={(event) => dispatch({ type: 'set-scene-background-color', backgroundColor: parseRgbHex(event.target.value) })}
+            />
+          </label>
+          <label className="field">
+            <span>Hex</span>
+            <input
+              aria-label="Scene Background Hex"
+              data-testid="scene-background-color-hex"
+              placeholder="#rrggbb"
+              value={formatRgbHex(scene.backgroundColor)}
+              disabled={disabled}
+              onChange={(event) => dispatch({ type: 'set-scene-background-color', backgroundColor: parseRgbHex(event.target.value) })}
+            />
+          </label>
+        </div>
+        <button
+          className="button button-compact"
+          type="button"
+          data-testid="scene-background-use-default"
+          disabled={disabled || scene.backgroundColor == null}
+          onClick={() => dispatch({ type: 'set-scene-background-color', backgroundColor: undefined })}
+        >
+          Use default
+        </button>
+      </InspectorFoldout>
 
       <InspectorFoldout
         title="Background Layers"

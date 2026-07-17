@@ -20,6 +20,10 @@ describe('SceneInspectorPanel', () => {
     expect(markup.match(/Scene: scene-1/g)?.length ?? 0).toBe(1);
     expect(markup).toContain('Expand All');
     expect(markup).toContain('Collapse All');
+    expect(markup).toContain('Scene Appearance');
+    expect(markup).toContain('data-testid="scene-background-color-picker"');
+    expect(markup).toContain('data-testid="scene-background-color-hex"');
+    expect(markup).toContain('data-testid="scene-background-use-default"');
   });
 
   it('defaults to only Background Layers expanded (Option C2)', () => {

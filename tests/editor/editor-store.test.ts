@@ -1089,6 +1089,65 @@ describe('EditorStore reducer', () => {
     expect(next.dirty).toBe(true);
   });
 
+  it('applies deterministic random tint variation to formation members as one undoable action', () => {
+    const state = seededState();
+    const group = sceneOf(state).groups['g-enemies'];
+    const next = reducer(state, {
+      type: 'apply-group-tint-variation',
+      groupId: 'g-enemies',
+      seed: 'stars-variation',
+      minR: 20,
+      maxR: 255,
+      minG: 20,
+      maxG: 255,
+      minB: 20,
+      maxB: 255,
+      scope: 'all',
+    } as any);
+
+    const tints = group.members.map((id: string) => sceneOf(next).entities[id].tint);
+    expect(tints.every((tint: unknown) => Number.isInteger(tint) && (tint as number) >= 0x141414 && (tint as number) <= 0xffffff)).toBe(true);
+    expect(new Set(tints).size).toBeGreaterThan(1);
+    expect(next.history.past).toHaveLength(state.history.past.length + 1);
+
+    const repeated = reducer(state, {
+      type: 'apply-group-tint-variation',
+      groupId: 'g-enemies',
+      seed: 'stars-variation',
+      minR: 20,
+      maxR: 255,
+      minG: 20,
+      maxG: 255,
+      minB: 20,
+      maxB: 255,
+      scope: 'all',
+    } as any);
+    expect(group.members.map((id: string) => sceneOf(repeated).entities[id].tint)).toEqual(tints);
+
+    const undone = reducer(next, { type: 'history-undo' } as any);
+    expect(group.members.map((id: string) => sceneOf(undone).entities[id].tint)).toEqual(
+      group.members.map((id: string) => sceneOf(state).entities[id].tint)
+    );
+  });
+
+  it('does not apply selection-scoped formation tint variation when no members are selected', () => {
+    const state = seededState();
+    const next = reducer(state, {
+      type: 'apply-group-tint-variation',
+      groupId: 'g-enemies',
+      seed: 'stars-selection',
+      minR: 20,
+      maxR: 255,
+      minG: 20,
+      maxG: 255,
+      minB: 20,
+      maxB: 255,
+      scope: 'selection',
+    } as any);
+
+    expect(next).toBe(state);
+  });
+
   it('updates scene world size', () => {
     const state = seededState();
     const next = reducer(state, {

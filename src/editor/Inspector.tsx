@@ -26,8 +26,21 @@ import {
   scaleFromDisplayPixels,
   scaleFromPercent,
 } from './spriteSizing';
+import { formatRgbHex, parseRgbHex } from './colorHex';
+import { makeSeed } from '../util/deterministicRandom';
+import { buildGroupTintVariation } from './tintVariation';
 
 type ArrangeParameterSpec = { name: string; type?: string };
+type TintVariationDraft = {
+  scope: 'all' | 'selection';
+  seed: string;
+  minR: number;
+  maxR: number;
+  minG: number;
+  maxG: number;
+  minB: number;
+  maxB: number;
+};
 
 function arePairedInspectorParams(a: ArrangeParameterSpec, b: ArrangeParameterSpec): boolean {
   const aName = a.name;
@@ -68,6 +81,16 @@ export function Inspector() {
   const scene = state.project.scenes[state.currentSceneId];
   const { selection, interaction } = state;
   const [pinDuringDrag, setPinDuringDrag] = useState(false);
+  const [tintVariationDraft, setTintVariationDraft] = useState<TintVariationDraft>({
+    scope: 'all',
+    seed: makeSeed('variation'),
+    minR: 20,
+    maxR: 255,
+    minG: 20,
+    maxG: 255,
+    minB: 20,
+    maxB: 255,
+  });
 
   const multiAssetOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -200,6 +223,24 @@ export function Inspector() {
           onConvertLayoutFreeform={() => dispatch({ type: 'convert-group-layout-freeform', id: group.id })}
           onConvertLayoutGrid={(rows, cols) => dispatch({ type: 'convert-group-layout-grid', id: group.id, rows, cols })}
           onConvertLayoutArrange={(arrangeKind) => dispatch({ type: 'convert-group-layout-arrange', id: group.id, arrangeKind })}
+          variationDraft={tintVariationDraft}
+          onVariationDraftChange={(patch) => setTintVariationDraft((draft) => ({ ...draft, ...patch }))}
+          onPreviewTintVariation={() => {
+            const selectedIds = selection.kind === 'entities' ? new Set(selection.ids) : undefined;
+            const tints = buildGroupTintVariation(scene, group.id, tintVariationDraft, selectedIds);
+            EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints });
+          }}
+          onCancelTintVariation={() => EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints: undefined })}
+          onApplyTintVariation={() => {
+            EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints: undefined });
+            dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...tintVariationDraft } as any);
+          }}
+          onRerollTintVariation={() => {
+            const seed = makeSeed('variation');
+            setTintVariationDraft((draft) => ({ ...draft, seed }));
+            EventBus.emit('formation-tint-preview-changed', { groupId: group.id, tints: undefined });
+            dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...tintVariationDraft, seed } as any);
+          }}
           onUngroup={() => dispatch({ type: 'ungroup-group', id: group.id })}
           onDissolve={() => dispatch({ type: 'dissolve-group', id: group.id })}
           onDeleteGroup={() => dispatch({ type: 'delete-group', id: group.id })}
@@ -1086,6 +1127,37 @@ function EntityInspector({
               onCommit={(next) => update({ depth: next })}
             />
           </label>
+          <div className="inspector-grid-2">
+            <label className="field">
+              <span>Tint</span>
+              <input
+                aria-label="Tint"
+                data-testid="entity-tint-picker"
+                type="color"
+                value={formatRgbHex(resolved.tint ?? 0xffffff)}
+                onChange={(e) => update({ tint: parseRgbHex(e.target.value) })}
+              />
+            </label>
+            <label className="field">
+              <span>Hex</span>
+              <input
+                aria-label="Tint Hex"
+                data-testid="entity-tint-hex-input"
+                placeholder="#rrggbb"
+                value={formatRgbHex(resolved.tint)}
+                onChange={(e) => update({ tint: parseRgbHex(e.target.value) })}
+              />
+            </label>
+          </div>
+          <button
+            className="button button-compact"
+            type="button"
+            data-testid="entity-tint-clear"
+            disabled={resolved.tint == null}
+            onClick={() => update({ tint: undefined })}
+          >
+            Clear tint
+          </button>
           <label className="field">
             <span>Asset</span>
             <select
@@ -1247,6 +1319,12 @@ function GroupInspector({
   onConvertLayoutFreeform,
   onConvertLayoutGrid,
   onConvertLayoutArrange,
+  variationDraft,
+  onVariationDraftChange,
+  onPreviewTintVariation,
+  onCancelTintVariation,
+  onApplyTintVariation,
+  onRerollTintVariation,
   onUngroup,
   onDissolve,
   onDeleteGroup,
@@ -1288,6 +1366,12 @@ function GroupInspector({
   onConvertLayoutFreeform: () => void;
   onConvertLayoutGrid: (rows: number, cols: number) => void;
   onConvertLayoutArrange: (arrangeKind: string) => void;
+  variationDraft?: TintVariationDraft;
+  onVariationDraftChange?: (patch: Partial<TintVariationDraft>) => void;
+  onPreviewTintVariation?: () => void;
+  onCancelTintVariation?: () => void;
+  onApplyTintVariation?: () => void;
+  onRerollTintVariation?: () => void;
   onUngroup: () => void;
   onDissolve: () => void;
   onDeleteGroup: () => void;
@@ -1457,6 +1541,12 @@ function GroupInspector({
       convertArrangeKind,
       setConvertArrangeKind,
       applyConvertLayout,
+      variationDraft,
+      onVariationDraftChange,
+      onPreviewTintVariation,
+      onCancelTintVariation,
+      onApplyTintVariation,
+      onRerollTintVariation,
     })
   );
 }
@@ -1513,6 +1603,12 @@ export function renderGroupInspector(
     convertArrangeKind: string;
     setConvertArrangeKind: (next: string) => void;
     applyConvertLayout: () => void;
+    variationDraft?: TintVariationDraft;
+    onVariationDraftChange?: (patch: Partial<TintVariationDraft>) => void;
+    onPreviewTintVariation?: () => void;
+    onCancelTintVariation?: () => void;
+    onApplyTintVariation?: () => void;
+    onRerollTintVariation?: () => void;
   }
 ) {
   const members = group.members.map((memberId) => scene.entities[memberId]).filter(Boolean);
@@ -1709,6 +1805,74 @@ export function renderGroupInspector(
         >
           Apply Layout
         </button>
+      </InspectorFoldout>
+
+      <InspectorFoldout
+        title="Visual Variations"
+        open={handlers.foldouts.isOpen('group.visualVariations', false)}
+        onToggle={() => handlers.foldouts.toggle('group.visualVariations', false)}
+      >
+        <label className="field">
+          <span>Members</span>
+          <select
+            aria-label="Variation Members"
+            data-testid="formation-variation-scope"
+            value={handlers.variationDraft?.scope ?? 'all'}
+            onChange={(e) => handlers.onVariationDraftChange?.({ scope: e.target.value === 'selection' ? 'selection' : 'all' })}
+          >
+            <option value="all">All members</option>
+            <option value="selection">Current member selection</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>Seed</span>
+          <input
+            aria-label="Variation Seed"
+            data-testid="formation-variation-seed"
+            value={handlers.variationDraft?.seed ?? ''}
+            onChange={(e) => handlers.onVariationDraftChange?.({ seed: e.target.value })}
+          />
+        </label>
+        {([
+          ['Red', 'R', 'minR', 'maxR'],
+          ['Green', 'G', 'minG', 'maxG'],
+          ['Blue', 'B', 'minB', 'maxB'],
+        ] as const).map(([label, suffix, minKey, maxKey]) => (
+          <div key={label} className="inspector-grid-2">
+            <label className="field">
+              <span>{label} Min</span>
+              <ValidatedNumberInput
+                aria-label={`${label} Min`}
+                data-testid={`formation-variation-min-${suffix.toLowerCase()}`}
+                value={Number(handlers.variationDraft?.[minKey] ?? 20)}
+                onCommit={(next) => handlers.onVariationDraftChange?.({ [minKey]: Math.max(0, Math.min(255, Math.round(next || 0))) } as any)}
+              />
+            </label>
+            <label className="field">
+              <span>{label} Max</span>
+              <ValidatedNumberInput
+                aria-label={`${label} Max`}
+                data-testid={`formation-variation-max-${suffix.toLowerCase()}`}
+                value={Number(handlers.variationDraft?.[maxKey] ?? 255)}
+                onCommit={(next) => handlers.onVariationDraftChange?.({ [maxKey]: Math.max(0, Math.min(255, Math.round(next || 0))) } as any)}
+              />
+            </label>
+          </div>
+        ))}
+        <div className="inspector-row inspector-inline-buttons">
+          <button className="button button-compact" data-testid="formation-variation-preview" type="button" onClick={handlers.onPreviewTintVariation}>
+            Preview
+          </button>
+          <button className="button" data-testid="formation-variation-apply" type="button" onClick={handlers.onApplyTintVariation}>
+            Apply
+          </button>
+          <button className="button button-compact" data-testid="formation-variation-reroll" type="button" onClick={handlers.onRerollTintVariation}>
+            Reroll
+          </button>
+          <button className="button button-compact" data-testid="formation-variation-cancel" type="button" onClick={handlers.onCancelTintVariation}>
+            Cancel
+          </button>
+        </div>
       </InspectorFoldout>
 
       <InspectorFoldout
@@ -1956,6 +2120,7 @@ function AttachmentInspector({
     'PatrolPattern',
     'Wait',
     'Call',
+    'SetProperty',
     'Repeat',
     'BlinkUntil',
     'CallbackUntil',
@@ -2173,6 +2338,10 @@ function AttachmentInspector({
               }
               if (nextType === 'Call') {
                 onUpdate({ ...base, params: { callId: 'callback' } });
+                return;
+              }
+              if (nextType === 'SetProperty') {
+                onUpdate({ ...base, params: { property: 'x', valueSource: { kind: 'constant', value: 0 } } });
                 return;
               }
               if (nextType === 'Repeat') {
@@ -2737,6 +2906,111 @@ function AttachmentInspector({
               />
             </label>
           </div>
+        </InspectorFoldout>
+      )}
+
+      {attachment.presetId === 'SetProperty' && (
+        <InspectorFoldout
+          title="Set Property"
+          open={foldouts.isOpen('attachment.setproperty', true)}
+          onToggle={() => foldouts.toggle('attachment.setproperty', true)}
+        >
+          <label className="field">
+            <span>Property</span>
+            <select
+              aria-label="Set Property Property"
+              data-testid="attachment-setproperty-property-select"
+              value={String(params.property ?? 'x')}
+              onChange={(e) => {
+                const property = e.target.value;
+                const defaultValue = property === 'visible' ? true : 0;
+                onUpdate({ ...attachment, params: { ...params, property, valueSource: { kind: 'constant', value: defaultValue } } });
+              }}
+            >
+              <option value="x">X</option>
+              <option value="y">Y</option>
+              <option value="tint">Tint</option>
+              <option value="alpha">Alpha</option>
+              <option value="visible">Visible</option>
+              <option value="vx">Velocity X</option>
+              <option value="vy">Velocity Y</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Value</span>
+            <select
+              aria-label="Set Property Value Source"
+              data-testid="attachment-setproperty-value-source-select"
+              value={String((params.valueSource as any)?.kind ?? 'constant')}
+              onChange={(e) => {
+                const kind = e.target.value;
+                if (kind === 'randomRange') {
+                  onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'set-property' } } });
+                  return;
+                }
+                onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'constant', value: params.property === 'visible' ? true : 0 } } });
+              }}
+            >
+              <option value="constant">Constant</option>
+              {String(params.property ?? 'x') !== 'visible' && <option value="randomRange">Random Range</option>}
+            </select>
+          </label>
+
+          {String((params.valueSource as any)?.kind ?? 'constant') === 'randomRange' ? (
+            <>
+              <div className="inspector-grid-2">
+                <label className="field">
+                  <span>Min</span>
+                  <ValidatedNumberInput
+                    aria-label="Set Property Random Min"
+                    data-testid="attachment-setproperty-random-min"
+                    value={Number((params.valueSource as any)?.min ?? 0)}
+                    onCommit={(next) => onUpdate({ ...attachment, params: { ...params, valueSource: { ...(params.valueSource as any), kind: 'randomRange', min: next } } })}
+                  />
+                </label>
+                <label className="field">
+                  <span>Max</span>
+                  <ValidatedNumberInput
+                    aria-label="Set Property Random Max"
+                    data-testid="attachment-setproperty-random-max"
+                    value={Number((params.valueSource as any)?.max ?? 720)}
+                    onCommit={(next) => onUpdate({ ...attachment, params: { ...params, valueSource: { ...(params.valueSource as any), kind: 'randomRange', max: next } } })}
+                  />
+                </label>
+              </div>
+              <label className="field">
+                <span>Seed</span>
+                <input
+                  aria-label="Set Property Seed"
+                  data-testid="attachment-setproperty-seed"
+                  value={String((params.valueSource as any)?.seed ?? '')}
+                  onChange={(e) => onUpdate({ ...attachment, params: { ...params, valueSource: { ...(params.valueSource as any), kind: 'randomRange', seed: e.target.value } } })}
+                />
+              </label>
+            </>
+          ) : String(params.property ?? 'x') === 'visible' ? (
+            <label className="field field-checkbox">
+              <span>Constant</span>
+              <input
+                aria-label="Set Property Constant Boolean"
+                data-testid="attachment-setproperty-constant-boolean"
+                type="checkbox"
+                checked={(params.valueSource as any)?.value !== false}
+                onChange={(e) => onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'constant', value: e.target.checked } } })}
+              />
+            </label>
+          ) : (
+            <label className="field">
+              <span>Constant</span>
+              <ValidatedNumberInput
+                aria-label="Set Property Constant Number"
+                data-testid="attachment-setproperty-constant-number"
+                value={Number((params.valueSource as any)?.value ?? 0)}
+                onCommit={(next) => onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'constant', value: next } } })}
+              />
+            </label>
+          )}
         </InspectorFoldout>
       )}
 
