@@ -27,8 +27,19 @@ import {
   scaleFromPercent,
 } from './spriteSizing';
 import { formatRgbHex, parseRgbHex } from './colorHex';
+import { makeSeed } from '../util/deterministicRandom';
 
 type ArrangeParameterSpec = { name: string; type?: string };
+type TintVariationDraft = {
+  scope: 'all' | 'selection';
+  seed: string;
+  minR: number;
+  maxR: number;
+  minG: number;
+  maxG: number;
+  minB: number;
+  maxB: number;
+};
 
 function arePairedInspectorParams(a: ArrangeParameterSpec, b: ArrangeParameterSpec): boolean {
   const aName = a.name;
@@ -69,6 +80,16 @@ export function Inspector() {
   const scene = state.project.scenes[state.currentSceneId];
   const { selection, interaction } = state;
   const [pinDuringDrag, setPinDuringDrag] = useState(false);
+  const [tintVariationDraft, setTintVariationDraft] = useState<TintVariationDraft>({
+    scope: 'all',
+    seed: makeSeed('variation'),
+    minR: 20,
+    maxR: 255,
+    minG: 20,
+    maxG: 255,
+    minB: 20,
+    maxB: 255,
+  });
 
   const multiAssetOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -201,6 +222,14 @@ export function Inspector() {
           onConvertLayoutFreeform={() => dispatch({ type: 'convert-group-layout-freeform', id: group.id })}
           onConvertLayoutGrid={(rows, cols) => dispatch({ type: 'convert-group-layout-grid', id: group.id, rows, cols })}
           onConvertLayoutArrange={(arrangeKind) => dispatch({ type: 'convert-group-layout-arrange', id: group.id, arrangeKind })}
+          variationDraft={tintVariationDraft}
+          onVariationDraftChange={(patch) => setTintVariationDraft((draft) => ({ ...draft, ...patch }))}
+          onApplyTintVariation={() => dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...tintVariationDraft } as any)}
+          onRerollTintVariation={() => {
+            const seed = makeSeed('variation');
+            setTintVariationDraft((draft) => ({ ...draft, seed }));
+            dispatch({ type: 'apply-group-tint-variation', groupId: group.id, ...tintVariationDraft, seed } as any);
+          }}
           onUngroup={() => dispatch({ type: 'ungroup-group', id: group.id })}
           onDissolve={() => dispatch({ type: 'dissolve-group', id: group.id })}
           onDeleteGroup={() => dispatch({ type: 'delete-group', id: group.id })}
@@ -1279,6 +1308,10 @@ function GroupInspector({
   onConvertLayoutFreeform,
   onConvertLayoutGrid,
   onConvertLayoutArrange,
+  variationDraft,
+  onVariationDraftChange,
+  onApplyTintVariation,
+  onRerollTintVariation,
   onUngroup,
   onDissolve,
   onDeleteGroup,
@@ -1320,6 +1353,10 @@ function GroupInspector({
   onConvertLayoutFreeform: () => void;
   onConvertLayoutGrid: (rows: number, cols: number) => void;
   onConvertLayoutArrange: (arrangeKind: string) => void;
+  variationDraft?: TintVariationDraft;
+  onVariationDraftChange?: (patch: Partial<TintVariationDraft>) => void;
+  onApplyTintVariation?: () => void;
+  onRerollTintVariation?: () => void;
   onUngroup: () => void;
   onDissolve: () => void;
   onDeleteGroup: () => void;
@@ -1489,6 +1526,10 @@ function GroupInspector({
       convertArrangeKind,
       setConvertArrangeKind,
       applyConvertLayout,
+      variationDraft,
+      onVariationDraftChange,
+      onApplyTintVariation,
+      onRerollTintVariation,
     })
   );
 }
@@ -1545,6 +1586,10 @@ export function renderGroupInspector(
     convertArrangeKind: string;
     setConvertArrangeKind: (next: string) => void;
     applyConvertLayout: () => void;
+    variationDraft?: TintVariationDraft;
+    onVariationDraftChange?: (patch: Partial<TintVariationDraft>) => void;
+    onApplyTintVariation?: () => void;
+    onRerollTintVariation?: () => void;
   }
 ) {
   const members = group.members.map((memberId) => scene.entities[memberId]).filter(Boolean);
@@ -1741,6 +1786,68 @@ export function renderGroupInspector(
         >
           Apply Layout
         </button>
+      </InspectorFoldout>
+
+      <InspectorFoldout
+        title="Visual Variations"
+        open={handlers.foldouts.isOpen('group.visualVariations', false)}
+        onToggle={() => handlers.foldouts.toggle('group.visualVariations', false)}
+      >
+        <label className="field">
+          <span>Members</span>
+          <select
+            aria-label="Variation Members"
+            data-testid="formation-variation-scope"
+            value={handlers.variationDraft?.scope ?? 'all'}
+            onChange={(e) => handlers.onVariationDraftChange?.({ scope: e.target.value === 'selection' ? 'selection' : 'all' })}
+          >
+            <option value="all">All members</option>
+            <option value="selection">Current member selection</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>Seed</span>
+          <input
+            aria-label="Variation Seed"
+            data-testid="formation-variation-seed"
+            value={handlers.variationDraft?.seed ?? ''}
+            onChange={(e) => handlers.onVariationDraftChange?.({ seed: e.target.value })}
+          />
+        </label>
+        {([
+          ['Red', 'R', 'minR', 'maxR'],
+          ['Green', 'G', 'minG', 'maxG'],
+          ['Blue', 'B', 'minB', 'maxB'],
+        ] as const).map(([label, suffix, minKey, maxKey]) => (
+          <div key={label} className="inspector-grid-2">
+            <label className="field">
+              <span>{label} Min</span>
+              <ValidatedNumberInput
+                aria-label={`${label} Min`}
+                data-testid={`formation-variation-min-${suffix.toLowerCase()}`}
+                value={Number(handlers.variationDraft?.[minKey] ?? 20)}
+                onCommit={(next) => handlers.onVariationDraftChange?.({ [minKey]: Math.max(0, Math.min(255, Math.round(next || 0))) } as any)}
+              />
+            </label>
+            <label className="field">
+              <span>{label} Max</span>
+              <ValidatedNumberInput
+                aria-label={`${label} Max`}
+                data-testid={`formation-variation-max-${suffix.toLowerCase()}`}
+                value={Number(handlers.variationDraft?.[maxKey] ?? 255)}
+                onCommit={(next) => handlers.onVariationDraftChange?.({ [maxKey]: Math.max(0, Math.min(255, Math.round(next || 0))) } as any)}
+              />
+            </label>
+          </div>
+        ))}
+        <div className="inspector-row inspector-inline-buttons">
+          <button className="button" data-testid="formation-variation-apply" type="button" onClick={handlers.onApplyTintVariation}>
+            Apply
+          </button>
+          <button className="button button-compact" data-testid="formation-variation-reroll" type="button" onClick={handlers.onRerollTintVariation}>
+            Reroll
+          </button>
+        </div>
       </InspectorFoldout>
 
       <InspectorFoldout

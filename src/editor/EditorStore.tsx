@@ -70,6 +70,7 @@ import {
   type ProjectHistoryEventDraft,
 } from './projectHistoryEvents';
 import { appendPersistenceDebugEntry, summarizeProjectLoadForDebug, summarizeYamlForDebug } from '../util/persistenceDebug';
+import { createSeededRandom, randomIntInRange } from '../util/deterministicRandom';
 
 export const SCENE_STORAGE_KEY_V1 = 'phaserforge.sceneYaml.v1';
 export const SCENE_STORAGE_KEY = 'phaserforge.sceneYaml.v2';
@@ -255,6 +256,18 @@ export type EditorAction =
   | { type: 'update-scene-world'; width: number; height: number }
   | { type: 'update-entity'; id: Id; next: EntitySpec }
   | { type: 'patch-entities'; entityIds: Id[]; patch: Partial<EntitySpec> }
+  | {
+      type: 'apply-group-tint-variation';
+      groupId: Id;
+      scope?: 'all' | 'selection';
+      seed: string;
+      minR: number;
+      maxR: number;
+      minG: number;
+      maxG: number;
+      minB: number;
+      maxB: number;
+    }
   | { type: 'import-entities'; drafts: ImportedEntityDraft[] }
   | { type: 'update-group'; id: Id; next: GroupSpec }
   | { type: 'create-attachment'; target: TargetRef; presetId: string; init?: Partial<AttachmentSpec> }
@@ -866,6 +879,7 @@ function isUndoableAction(action: EditorAction): boolean {
     case 'reset-project':
     case 'update-entity':
     case 'patch-entities':
+    case 'apply-group-tint-variation':
     case 'import-entities':
     case 'update-group':
     case 'create-attachment':
@@ -1144,6 +1158,8 @@ function describeEditorAction(stateBefore: EditorState, stateAfter: EditorState,
       return 'Updated entity';
     case 'patch-entities':
       return action.entityIds.length === 1 ? 'Updated entity' : `Updated ${action.entityIds.length} entities`;
+    case 'apply-group-tint-variation':
+      return `Randomized tint for ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.groupId)}`;
     case 'update-group':
       return `Updated group ${formatGroupLabel(stateAfter.project.scenes[stateAfter.currentSceneId], action.id)}`;
     case 'duplicate-entities':
@@ -3642,6 +3658,35 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
 
       if (!changed) return state;
       return withScene(state, { ...scene, entities } as GameSceneSpec, true);
+    }
+    case 'apply-group-tint-variation': {
+      const scene = getActiveScene(state);
+      const group = scene.groups[action.groupId];
+      if (!group) return state;
+      const selectedIds = state.selection.kind === 'entities' ? new Set(state.selection.ids) : undefined;
+      const targetIds = group.members.filter((id) => {
+        if (!scene.entities[id]) return false;
+        return action.scope === 'selection' && selectedIds ? selectedIds.has(id) : true;
+      });
+      if (targetIds.length === 0) return state;
+
+      const r = createSeededRandom(action.seed, `formation:${action.groupId}:tint-r`);
+      const g = createSeededRandom(action.seed, `formation:${action.groupId}:tint-g`);
+      const b = createSeededRandom(action.seed, `formation:${action.groupId}:tint-b`);
+      const entities = { ...scene.entities };
+      let changed = false;
+      for (const id of targetIds) {
+        const entity = entities[id];
+        const tint =
+          (randomIntInRange(r, action.minR, action.maxR) << 16)
+          | (randomIntInRange(g, action.minG, action.maxG) << 8)
+          | randomIntInRange(b, action.minB, action.maxB);
+        if (entity.tint === tint) continue;
+        entities[id] = { ...entity, tint };
+        changed = true;
+      }
+      if (!changed) return state;
+      return withScene(state, { ...scene, entities } as GameSceneSpec, true, { kind: 'group', id: action.groupId });
     }
     case 'import-entities':
       return importEntities(state, action.drafts);

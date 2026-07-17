@@ -116,6 +116,60 @@ describe('Group inspector', () => {
     expect(eventsIndex).toBeGreaterThan(layoutIndex);
   });
 
+  it('renders formation visual variation controls with paired RGB ranges', () => {
+    const group = sampleScene.groups['g-enemies'];
+    const markup = renderToStaticMarkup(
+      renderGroupInspector(group, project, sampleScene, {
+        onSelectMember: () => {},
+        onRemoveMember: () => {},
+        onUpdateGroup: () => {},
+        onUngroup: () => {},
+        onDeleteGroup: () => {},
+        onCreateEventBlock: () => {},
+        onUpdateEventBlock: () => {},
+        onRemoveEventBlock: () => {},
+        onAddAttachment: () => {},
+        onSelectAttachment: () => {},
+        onMoveAttachment: () => {},
+        onReorderAttachments: () => {},
+        onNestAttachmentsUnderRepeat: () => {},
+        onRemoveAttachment: () => {},
+        onUngroupParallelAttachments: () => {},
+        onMoveParallelAttachmentGroup: () => {},
+        onMakeParallelAttachments: () => {},
+        foldouts: { isOpen: () => true, toggle: () => {} },
+        registry,
+        variationDraft: {
+          seed: 'stars-variation',
+          minR: 20,
+          maxR: 255,
+          minG: 20,
+          maxG: 255,
+          minB: 20,
+          maxB: 255,
+          scope: 'all',
+        },
+        onVariationDraftChange: () => {},
+        onApplyTintVariation: () => {},
+        onRerollTintVariation: () => {},
+      })
+    );
+
+    expect(markup).toContain('Visual Variations');
+    expect(markup).toContain('data-testid="formation-variation-scope"');
+    expect(markup).toContain('data-testid="formation-variation-seed"');
+    expect(markup).toContain('data-testid="formation-variation-apply"');
+    expect(markup).toMatch(
+      /<div class="inspector-grid-2">[\s\S]*data-testid="formation-variation-min-r"[\s\S]*data-testid="formation-variation-max-r"[\s\S]*<\/div>/
+    );
+    expect(markup).toMatch(
+      /<div class="inspector-grid-2">[\s\S]*data-testid="formation-variation-min-g"[\s\S]*data-testid="formation-variation-max-g"[\s\S]*<\/div>/
+    );
+    expect(markup).toMatch(
+      /<div class="inspector-grid-2">[\s\S]*data-testid="formation-variation-min-b"[\s\S]*data-testid="formation-variation-max-b"[\s\S]*<\/div>/
+    );
+  });
+
   it('passes the selected attachment marker through the attached actions panel', () => {
     const group = sampleScene.groups['g-enemies'];
     const scene = {
