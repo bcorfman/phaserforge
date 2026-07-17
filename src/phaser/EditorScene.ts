@@ -105,6 +105,8 @@ export class EditorScene extends Phaser.Scene {
   private formationDraftGraphics?: Phaser.GameObjects.Graphics;
   private formationDraftHandle?: Phaser.GameObjects.Arc;
   private formationDraftActive = false;
+  private pendingFormationDraftPayload: any | null = null;
+  private formationDraftFrame: number | undefined;
   private pendingDrag?: {
     startClient: { x: number; y: number };
     startWorld: { x: number; y: number };
@@ -415,6 +417,10 @@ export class EditorScene extends Phaser.Scene {
     if (canvas && this.wheelListener) {
       canvas.removeEventListener('wheel', this.wheelListener);
       this.wheelListener = undefined;
+    }
+    if (this.formationDraftFrame !== undefined) {
+      window.cancelAnimationFrame(this.formationDraftFrame);
+      this.formationDraftFrame = undefined;
     }
   }
 
@@ -1316,6 +1322,17 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private handleFormationDraftChanged(payload: any): void {
+    this.pendingFormationDraftPayload = payload;
+    if (this.formationDraftFrame !== undefined) return;
+    this.formationDraftFrame = window.requestAnimationFrame(() => {
+      this.formationDraftFrame = undefined;
+      const nextPayload = this.pendingFormationDraftPayload;
+      this.pendingFormationDraftPayload = null;
+      this.renderFormationDraftPreview(nextPayload);
+    });
+  }
+
+  private renderFormationDraftPreview(payload: any): void {
     const gfx = this.formationDraftGraphics;
     if (!gfx) return;
 
