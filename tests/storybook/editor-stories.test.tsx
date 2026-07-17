@@ -14,6 +14,7 @@ import * as cloudAccountPanelStories from '../../src/editor/CloudAccountPanel.st
 import * as yamlStories from '../../src/editor/ViewbarYamlControls.stories';
 import * as entityListStories from '../../src/editor/EntityList.stories';
 import * as workspaceConflictModalStories from '../../src/editor/WorkspaceConflictModal.stories';
+import * as starsEditorPanelStories from '../../src/editor/StarsEditorPanels.stories';
 
 setProjectAnnotations(preview);
 
@@ -25,6 +26,7 @@ const composedCloudStories = composeStories(cloudAccountPanelStories);
 const composedYamlStories = composeStories(yamlStories);
 const composedEntityListStories = composeStories(entityListStories);
 const composedWorkspaceConflictStories = composeStories(workspaceConflictModalStories);
+const composedStarsEditorPanelStories = composeStories(starsEditorPanelStories);
 
 async function renderStoryAndPlay(Story: React.ComponentType & { play?: (context: { canvasElement: HTMLElement }) => Promise<void>; parameters?: any }) {
   __resetCloudAccountPanelAuthCacheForTests();
@@ -100,6 +102,14 @@ describe('storybook interaction stories', () => {
   it('runs the workspace conflict stories', async () => {
     await renderStoryAndPlay(composedWorkspaceConflictStories.PreviewAndChooseCloud as any);
     await renderStoryAndPlay(composedWorkspaceConflictStories.ExportBothAndChooseDevice as any);
+    expect(true).toBe(true);
+  });
+
+  it('runs the stars demo editor panel stories', async () => {
+    await renderStoryAndPlay(composedStarsEditorPanelStories.ScatterDraftControls as any);
+    await renderStoryAndPlay(composedStarsEditorPanelStories.SceneAppearanceControls as any);
+    await renderStoryAndPlay(composedStarsEditorPanelStories.FormationVisualVariations as any);
+    await renderStoryAndPlay(composedStarsEditorPanelStories.BoundsEventNoCodeAction as any);
     expect(true).toBe(true);
   });
 });
