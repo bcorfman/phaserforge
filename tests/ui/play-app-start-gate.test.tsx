@@ -53,6 +53,7 @@ vi.mock('../../src/cloud/api', () => ({
 
 vi.mock('../../src/model/serialization', () => ({
   parseProjectYaml: vi.fn(() => project),
+  parseProjectSnapshot: vi.fn(() => project),
 }));
 
 vi.mock('../../src/editor/sceneWorld', () => ({
@@ -86,6 +87,16 @@ describe('PlayApp start gate', () => {
     expect(fetch).toHaveBeenCalledWith('/game.yaml', { credentials: 'omit', cache: 'no-store' });
     expect(await screen.findByTestId('mock-phaser-game')).not.toBeNull();
     expect(eventBus.emit).not.toHaveBeenCalledWith('runtime:load-project', expect.anything(), expect.anything(), 'play');
+  });
+
+  it('loads structured project snapshots when a project URL is provided', async () => {
+    window.history.replaceState({}, '', '/?projectUrl=%2Fgame.json');
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ version: 1, project }) })) as any);
+
+    render(<PlayApp />);
+
+    expect(await screen.findByTestId('play-start-gate')).not.toBeNull();
+    expect(fetch).toHaveBeenCalledWith('/game.json', { credentials: 'omit', cache: 'no-store' });
   });
 
   it('starts the game only after the player clicks the gate', async () => {

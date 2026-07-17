@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import { createApp } from '../../server/src/server/app';
 import { createMemoryRepositories } from '../../server/src/server/repositories/memory';
 import { createEmptyProject } from '../../src/model/emptyProject';
+import * as projectSerialization from '../../src/model/serialization';
 
 function makeApp() {
   const repositories = createMemoryRepositories();
@@ -289,7 +290,7 @@ describe('publish github pages', () => {
       .find((content) => content.includes('<div id="root"></div>'));
     expect(indexHtml).toContain('<title>Game One</title>');
     expect(indexHtml).toContain('<meta name="phaserforge-mode" content="play" />');
-    expect(indexHtml).toContain(`window.__PHASER_FORGE_PLAY_YAML_URL = ${JSON.stringify(`./game.yaml?pf_publish=${encodeURIComponent(res.body.publishMarker)}`)};`);
+    expect(indexHtml).toContain(`window.__PHASER_FORGE_PLAY_PROJECT_URL = ${JSON.stringify(`./game.json?pf_publish=${encodeURIComponent(res.body.publishMarker)}`)};`);
     expect(indexHtml).toContain(`window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(res.body.publishMarker)};`);
     expect(indexHtml).toContain("fetch('./phaserforge-publish.json?pf_check='");
     expect(indexHtml).toContain("nextUrl.searchParams.set('pf_publish', latest.publishMarker)");
@@ -303,6 +304,7 @@ describe('publish github pages', () => {
     const { userId, csrf } = await signup(agent);
     await linkGithub(repositories, userId);
     await addGame(repositories, userId);
+    const yamlSerializeSpy = vi.spyOn(projectSerialization, 'serializeProjectToYaml');
 
     const treeBodies: any[] = [];
     const blobBodies: Array<{ content: string; encoding: string }> = [];
@@ -378,8 +380,10 @@ describe('publish github pages', () => {
     expect(treeBodies).toHaveLength(1);
     expect(treeBodies[0].tree.some((entry: any) => entry.path === '.github/workflows/deploy-phaserforge-pages.yml')).toBe(true);
     expect(treeBodies[0].tree.some((entry: any) => entry.path === 'index.html')).toBe(true);
-    expect(treeBodies[0].tree.some((entry: any) => entry.path === 'game.yaml')).toBe(true);
+    expect(treeBodies[0].tree.some((entry: any) => entry.path === 'game.json')).toBe(true);
+    expect(treeBodies[0].tree.some((entry: any) => entry.path === 'game.yaml')).toBe(false);
     expect(treeBodies[0].tree.some((entry: any) => entry.path === 'phaserforge-publish.json')).toBe(true);
+    expect(yamlSerializeSpy).not.toHaveBeenCalled();
     const workflowBlob = blobBodies
       .map((blob) => Buffer.from(blob.content, 'base64').toString('utf8'))
       .find((content) => content.includes('Deploy PhaserForge game to GitHub Pages'));
@@ -470,7 +474,7 @@ describe('publish github pages', () => {
     expect(res.body.error).toBe('github_workflow_permission_required');
   });
 
-  it('publish materializes cloud assets into repo files and rewrites game.yaml paths', async () => {
+  it('publish materializes cloud assets into repo files and rewrites game.json paths', async () => {
     const { app, repositories } = makeApp();
     const agent = request.agent(app);
     const { userId, csrf } = await signup(agent);
@@ -561,12 +565,12 @@ describe('publish github pages', () => {
     const audioBlob = decodedBlobs.find((bytes) => bytes.toString('utf8') === 'ABCD');
     expect(audioBlob).toBeDefined();
 
-    const yamlBlob = decodedBlobs
+    const projectJsonBlob = decodedBlobs
       .map((bytes) => bytes.toString('utf8'))
-      .find((content) => content.includes('initialSceneId:') && !content.includes('<!doctype html>'));
-    expect(yamlBlob).toContain('kind: path');
-    expect(yamlBlob).toContain(`path: assets/cloud/theme.mp3?pf_publish=${encodeURIComponent(publishRes.body.publishMarker)}`);
-    expect(yamlBlob).not.toContain('kind: cloud');
+      .find((content) => content.includes('"version":1') && content.includes('"initialSceneId"'));
+    expect(projectJsonBlob).toContain('"kind":"path"');
+    expect(projectJsonBlob).toContain(`"path":"assets/cloud/theme.mp3?pf_publish=${encodeURIComponent(publishRes.body.publishMarker)}"`);
+    expect(projectJsonBlob).not.toContain('"kind":"cloud"');
   });
 
   it('publish includes repo path-backed demo-pack audio files in the published repo', async () => {
@@ -656,10 +660,10 @@ describe('publish github pages', () => {
       .map((blob) => Buffer.from(blob.content, 'base64'))
       .find((bytes) => bytes.toString('utf8') === 'DEMOAUDIO');
     expect(audioBlob).toBeDefined();
-    const yamlBlob = blobBodies
+    const projectJsonBlob = blobBodies
       .map((blob) => Buffer.from(blob.content, 'base64').toString('utf8'))
-      .find((content) => content.includes('initialSceneId'));
-    expect(yamlBlob).toContain('path: assets/demo-pack/audio/Simulacra-chosic.com_.mp3');
+      .find((content) => content.includes('"version":1') && content.includes('"initialSceneId"'));
+    expect(projectJsonBlob).toContain('"path":"assets/demo-pack/audio/Simulacra-chosic.com_.mp3?pf_publish=');
   });
 
   it('publish fetches repo path-backed demo-pack audio when the local file is only a Git LFS pointer', async () => {

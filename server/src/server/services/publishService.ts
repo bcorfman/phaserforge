@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { serializeProjectToYaml } from '../../../../src/model/serialization';
+import { serializeProjectSnapshot } from '../../../../src/model/serialization';
 import type { AssetFileSource, ProjectSpec } from '../../../../src/model/types';
 import type { Repositories } from '../types';
 
@@ -311,8 +311,8 @@ async function readPublishableDistFiles(): Promise<Array<{ relPath: string; byte
 function buildPlayIndexHtml(distIndexHtml: string, publishMarker: string, gameTitle: string): string {
   const meta = `<meta name="phaserforge-mode" content="play" />`;
   const publishMeta = `<meta name="phaserforge-publish-marker" content="${publishMarker}" />`;
-  const yamlUrl = `./game.yaml?pf_publish=${encodeURIComponent(publishMarker)}`;
-  const boot = `<script>window.__PHASER_FORGE_PLAY_YAML_URL = ${JSON.stringify(yamlUrl)};window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(publishMarker)};(() => { const currentMarker = window.__PHASER_FORGE_PUBLISH_MARKER; fetch('./phaserforge-publish.json?pf_check=' + encodeURIComponent(String(Date.now())), { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((latest) => { if (!latest || typeof latest.publishMarker !== 'string' || latest.publishMarker === currentMarker) return; const nextUrl = new URL(window.location.href); nextUrl.searchParams.set('pf_publish', latest.publishMarker); window.location.replace(nextUrl.toString()); }).catch(() => {}); })();</script>`;
+  const projectUrl = `./game.json?pf_publish=${encodeURIComponent(publishMarker)}`;
+  const boot = `<script>window.__PHASER_FORGE_PLAY_PROJECT_URL = ${JSON.stringify(projectUrl)};window.__PHASER_FORGE_PUBLISH_MARKER = ${JSON.stringify(publishMarker)};(() => { const currentMarker = window.__PHASER_FORGE_PUBLISH_MARKER; fetch('./phaserforge-publish.json?pf_check=' + encodeURIComponent(String(Date.now())), { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((latest) => { if (!latest || typeof latest.publishMarker !== 'string' || latest.publishMarker === currentMarker) return; const nextUrl = new URL(window.location.href); nextUrl.searchParams.set('pf_publish', latest.publishMarker); window.location.replace(nextUrl.toString()); }).catch(() => {}); })();</script>`;
   const title = `<title>${escapeHtml(gameTitle)}</title>`;
   if (distIndexHtml.includes('name="phaserforge-mode"')) return distIndexHtml;
   if (distIndexHtml.includes('</title>')) {
@@ -718,11 +718,11 @@ export async function publishGameToGithubPages(
   const playIndex = buildPlayIndexHtml(Buffer.from(indexEntry.bytes).toString('utf8'), publishMarker, game.title);
   const publishableProject = await materializeProjectForPublish(repositories, userId, game.project, publishMarker);
   if (!publishableProject) return { ok: false, error: 'cloud_asset_missing' };
-  const yamlNormalized = serializeProjectToYaml(publishableProject.project);
+  const projectSnapshotJson = serializeProjectSnapshot(publishableProject.project);
   const files: Array<{ path: string; bytes: Uint8Array }> = [
     { path: PAGES_WORKFLOW_PATH, bytes: Buffer.from(buildPagesWorkflowYaml(), 'utf8') },
     { path: 'index.html', bytes: Buffer.from(playIndex, 'utf8') },
-    { path: 'game.yaml', bytes: Buffer.from(yamlNormalized, 'utf8') },
+    { path: 'game.json', bytes: Buffer.from(projectSnapshotJson, 'utf8') },
     { path: PAGES_PUBLISH_PROBE_PATH, bytes: Buffer.from(buildPublishProbeJson(publishMarker), 'utf8') },
   ];
 
