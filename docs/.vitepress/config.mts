@@ -24,6 +24,7 @@ export default defineConfig({
         text: 'Reference',
         items: [
           { text: 'Editor Workflows', link: '/reference/editor-workflows' },
+          { text: 'Project Data', link: '/reference/project-data' },
           { text: 'Workflow Glossary', link: '/reference/workflow-glossary' },
         ],
       },
