@@ -88,18 +88,18 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 
 ## Phase 7 — Assemble and Prove the Faithful Stars Workflow
 
-- [ ] Create a documented test fixture/project with world `720 × 1280`, background `#000000`, one 3 × 3 white asset, and five 80-member Scatter formations named `Stars Blink 1` through `Stars Blink 5`.
-- [ ] Add a `stars.py` parity integration spec that constructs that fixture via editor reducer actions or shared project-step builders, analogous to the Pattern Demo command-driven persistence/runtime tests:
+- [x] Create a documented test fixture/project with world `720 × 1280`, background `#000000`, one 3 × 3 white asset, and five 80-member Scatter formations named `Stars Blink 1` through `Stars Blink 5`.
+- [x] Add a `stars.py` parity integration spec that constructs that fixture via editor reducer actions or shared project-step builders, analogous to the Pattern Demo command-driven persistence/runtime tests:
   - do not exercise manual GUI authoring with Playwright clicks for this parity test;
   - call the same underlying editor commands used by the UI where possible (`update-scene-world`, asset import/create, begin/update/commit formation draft, create/update Event Blocks and attachments, set scene appearance);
   - after each major build step, assert the persisted project shape matches the expected scene, group, member, attachment, and event-block state;
   - compile/run the final project and verify the visible/timed `stars.py` behavior: 400 present members, five blink periods, velocity timeline checkpoints, wrap relocation, event-source X reroll, no vertical-column drift after repeated wraps, and black background;
   - include save/reload and YAML export/import assertions for the finished fixture, using direct project load/snapshot helpers rather than GUI flows.
-- [ ] Set each formation's scatter bounds to X `0..720`, Y `5..1285`, random RGB channel range `20..255`, and a distinct recorded seed so the five formations do not overlap deterministically.
-- [ ] Apply `Blink Until` to the five formations at 200, 250, 300, 350, and 400 ms respectively, infinite.
-- [ ] Apply the same permanent `Move Until` recipe/pattern to each formation's members with velocity `0,0`, bounds `(0,-5)..(720,1285)`, and Behavior `Wrap`.
-- [ ] Add the same group-owned Event Block to each formation with Trigger `Bounds`, Event `Wrapped`, Axis `Y`, then add `Set Property` targeting `Event source`, Property `X`, Value `Random Range 0..720`; give each formation a distinct recorded wrap seed.
-- [ ] In parallel on each formation, apply the same infinite Repeat velocity sequence:
+- [x] Set each formation's scatter bounds to X `0..720`, Y `5..1285`, random RGB channel range `20..255`, and a distinct recorded seed so the five formations do not overlap deterministically.
+- [x] Apply `Blink Until` to the five formations at 200, 250, 300, 350, and 400 ms respectively, infinite.
+- [x] Apply the same permanent `Move Until` recipe/pattern to each formation's members with velocity `0,0`, bounds `(0,-5)..(720,1285)`, and Behavior `Wrap`.
+- [x] Add the same group-owned Event Block to each formation with Trigger `Bounds`, Event `Wrapped`, Axis `Y`, then add `Set Property` targeting `Event source`, Property `X`, Value `Random Range 0..720`; give each formation a distinct recorded wrap seed.
+- [x] In parallel on each formation, apply the same infinite Repeat velocity sequence:
   - Wait 1000 ms at `vy=0`;
   - Tween `vy` to `-240` over 2000 ms with ease-in;
   - Wait 5000 ms;
@@ -107,10 +107,10 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
   - Wait 1500 ms;
   - Tween `vy` to `0` over 2000 ms with ease-out;
   - repeat.
-- [ ] Verify the full cycle duration, velocity checkpoints, continuous movement, five independent blink rates, opposite-edge reentry, and X reroll against the reference behavior.
-- [ ] Verify no obvious vertical columns emerge over repeated wraps and that all 400 members remain present.
-- [ ] Verify save/reload, edit/play toggling, YAML export/import, undo/redo, and scene duplication retain all authored behavior.
-- [ ] Measure draft editing with 80 members and total-scene play-mode frame rate, initial compile time, YAML size, and save latency with all 400 stars; record acceptable thresholds in tests or a short performance note rather than relying on subjective inspection.
+- [x] Verify the full cycle duration, velocity checkpoints, continuous movement, five independent blink rates, opposite-edge reentry, and X reroll against the reference behavior.
+- [x] Verify no obvious vertical columns emerge over repeated wraps and that all 400 members remain present.
+- [x] Verify save/reload, edit/play toggling, YAML export/import, undo/redo, and scene duplication retain all authored behavior.
+- [x] Measure draft editing with 80 members and total-scene play-mode frame rate, initial compile time, YAML size, and save latency with all 400 stars; record acceptable thresholds in tests or a short performance note rather than relying on subjective inspection.
 
 ## Phase 8 — Workflow Documentation and Required Verification
 
@@ -123,9 +123,9 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
   - extend `A43`/`A46` with event-source target binding and Set Property value sources.
 - [x] Update `.repo-memory/product-memory.md` only if implementation establishes a durable rule not already covered (likely deterministic authored randomization and authored tint surviving selection styling).
 - [x] Run focused unit/component/integration tests for every touched model, editor helper, compiler, runtime action, and Phaser scene.
-- [ ] Run TypeScript/build validation and the repository's standard unit suite.
+- [x] Run TypeScript/build validation and the repository's standard unit suite.
 - [x] Run required GUI smoke: `npm run test:e2e -- --project=chromium --grep @smoke`.
-- [ ] Run the new stars workflow E2E and any directly affected formation, attachment, serialization, play-mode, and persistence specs in Chromium.
+- [x] Run the new stars workflow E2E and any directly affected formation, attachment, serialization, play-mode, and persistence specs in Chromium.
 - [ ] Inspect each shipped UI state against the five SVG mockups at normal and narrow inspector widths, light and dark themes, and supported UI scales.
 - [x] Confirm `playwright.config.ts` still uses the default worker count of 3.
 - [x] Confirm no files under `/home/bcorfman/dev/arcadeactions/` changed.
@@ -133,7 +133,7 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 ## Definition of Done
 
 - [ ] Every checkbox above is complete or explicitly moved into a separately approved follow-up plan with rationale.
-- [ ] A user can author and persist the complete stars demo without hand-editing YAML or writing runtime code.
+- [ ] A user can author and persist the complete stars demo using the editor UI without hand-editing YAML or writing runtime code.
 - [ ] The primary workflows remain the existing formation draft, inspector, and action attachment paths.
 - [ ] Old projects load without visual or behavioral drift.
 - [ ] The five-formation, 400-star fixture meets recorded editor and runtime performance thresholds.
