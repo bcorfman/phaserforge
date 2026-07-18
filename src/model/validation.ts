@@ -353,6 +353,12 @@ function validateAttachments(scene: SceneSpec): void {
       const targetB = JSON.stringify((block as any).target);
       if (targetA !== targetB) throw new Error(`Attachment ${id} target must match eventBlock ${a.eventId} target`);
     }
+    if (a.targetMode === 'event-source') {
+      const trigger = a.trigger ?? (a.eventId ? (eventBlocks as any)[a.eventId]?.trigger : undefined);
+      if (trigger?.type !== 'bounds') {
+        throw new Error(`Attachment ${id} event-source target requires a Bounds event trigger`);
+      }
+    }
     if (a.trigger) validateAttachmentTrigger(a.trigger, `Attachment ${id} trigger`);
     if (a.condition) validateInlineCondition(a.condition, `Attachment ${id} condition`);
     if (a.presetId === 'SetProperty') validateSetPropertyAttachment(a, `Attachment ${id}`);
