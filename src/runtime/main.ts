@@ -6,7 +6,7 @@ import { SCENE_HEIGHT, SCENE_WIDTH } from '../editor/viewport';
 
 export function createGameConfig(container: string): Phaser.Types.Core.GameConfig
 {
-    return {
+    const config = {
         type: Phaser.AUTO,
         parent: container,
         width: SCENE_WIDTH,
@@ -22,6 +22,7 @@ export function createGameConfig(container: string): Phaser.Types.Core.GameConfi
         },
         antialias: false,
         pixelArt: true,
+        resolution: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
         scale: {
             mode: Phaser.Scale.RESIZE,
             autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -29,6 +30,7 @@ export function createGameConfig(container: string): Phaser.Types.Core.GameConfi
             snap: { width: 1, height: 1 },
         },
     };
+    return config as Phaser.Types.Core.GameConfig;
 }
 
 export function configureGameAudioPersistence(game: Phaser.Game): void
