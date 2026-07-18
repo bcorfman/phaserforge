@@ -5,6 +5,16 @@ import { getTargetLabel } from './attachmentCommands';
 import { ActionLibraryDrawer } from './ActionLibraryDrawer';
 import { loadPinnedActionTypes, loadPinnedActionTypesFromPersistence, togglePinnedActionType } from './actionPins';
 import { loadPinnedPatternIds, loadPinnedPatternIdsFromPersistence, togglePinnedPatternId } from './patternPins';
+import {
+  BOUNDS_AXIS_FILTER_VALUES,
+  BOUNDS_EVENT_DEFINITIONS,
+  BOUNDS_SIDE_FILTER_VALUES,
+  BOUNDS_SIDE_LABELS,
+  boundsEventDefinition,
+  boundsOutcomeIsCompatible,
+  type BoundsEventOutcome,
+} from '../runtime/events';
+import type { BoundsBehavior } from '../model/events';
 
 const SUPPORTED_PRESETS = new Set([
   'MoveUntil',
@@ -35,43 +45,32 @@ const SUPPORTED_PRESETS = new Set([
   'RemoveSelfFromCollection',
 ]);
 
-const BOUNDS_EVENT_OPTIONS = [
-  ['contact-entered', 'Contact Entered'],
-  ['contact-exited', 'Contact Exited'],
-  ['wrapped', 'Wrapped'],
-  ['bounced', 'Bounced'],
-  ['clamped', 'Clamped'],
-  ['stopped', 'Stopped'],
-] as const;
-
-const BOUNDS_AXIS_OPTIONS = [
-  ['any', 'Any'],
-  ['x', 'X'],
-  ['y', 'Y'],
-] as const;
-
-const BOUNDS_SIDE_OPTIONS = [
-  ['any', 'Any'],
-  ['left', 'Left / Min X'],
-  ['right', 'Right / Max X'],
-  ['top', 'Top / Min Y'],
-  ['bottom', 'Bottom / Max Y'],
-] as const;
-
-const BOUNDS_EVENT_DESCRIPTIONS: Record<string, string> = {
-  'contact-entered': 'Source begins touching or crossing a configured boundary.',
-  'contact-exited': 'Source leaves a tracked boundary contact.',
-  wrapped: 'Wrap relocated the source to the opposite boundary.',
-  bounced: 'Bounce inverted source velocity on the affected axis.',
-  clamped: 'Clamp at Edge corrected source position and blocked outward motion.',
-  stopped: 'Stop corrected source position and zeroed affected velocity.',
-};
+const BOUNDS_AXIS_OPTIONS = BOUNDS_AXIS_FILTER_VALUES.map((value) => [value, value === 'any' ? 'Any' : value.toUpperCase()] as const);
+const BOUNDS_SIDE_OPTIONS = BOUNDS_SIDE_FILTER_VALUES.map((value) => [value, BOUNDS_SIDE_LABELS[value]] as const);
 
 function targetsEqual(a: TargetRef, b: TargetRef): boolean {
   if (a.type !== b.type) return false;
   return a.type === 'entity'
     ? a.entityId === (b as any).entityId
     : a.groupId === (b as any).groupId;
+}
+
+function displayBoundsBehavior(behavior: BoundsBehavior): string {
+  if (behavior === 'wrap') return 'Wrap';
+  if (behavior === 'bounce') return 'Bounce';
+  if (behavior === 'limit') return 'Clamp at Edge';
+  return 'Stop';
+}
+
+function getKnownBoundsBehavior(scene: SceneSpec, target: TargetRef): BoundsBehavior | undefined {
+  const behaviors = new Set<BoundsBehavior>();
+  for (const attachment of Object.values(scene.attachments ?? {})) {
+    if (!targetsEqual(attachment.target, target)) continue;
+    const condition = attachment.condition;
+    if (condition?.type !== 'BoundsHit') continue;
+    behaviors.add(condition.behavior ?? 'stop');
+  }
+  return behaviors.size === 1 ? Array.from(behaviors)[0] : undefined;
 }
 
 function listInputActionIds(project: ProjectSpec): string[] {
@@ -735,6 +734,16 @@ function EventBlockCard({
   const triggerEdge = trigger.edge ?? (triggerType === 'visible' ? 'shown' : triggerType === 'input_action' ? 'pressed' : undefined);
   const triggerActionId = trigger.actionId ?? (inputActionIds[0] ?? '');
   const triggerEventName = (trigger as any).eventName ?? '';
+  const knownBoundsBehavior = useMemo(() => getKnownBoundsBehavior(scene, target), [scene.attachments, target]);
+  const boundsEventOptions = useMemo(() => {
+    if (!knownBoundsBehavior) return BOUNDS_EVENT_DEFINITIONS;
+    return BOUNDS_EVENT_DEFINITIONS.filter((definition) => boundsOutcomeIsCompatible(definition.value, knownBoundsBehavior));
+  }, [knownBoundsBehavior]);
+  const selectedBoundsEvent = ((trigger as any).boundsEvent ?? 'wrapped') as BoundsEventOutcome;
+  const selectedBoundsDefinition = boundsEventDefinition(selectedBoundsEvent);
+  const boundsCompatibilityText = knownBoundsBehavior
+    ? `Compatible with ${displayBoundsBehavior(knownBoundsBehavior)}`
+    : 'Choose a Bounds behavior to show compatibility';
   const knownEventNames = useMemo(() => {
     const names = new Set<string>();
     for (const attachment of Object.values(scene.attachments ?? {})) {
@@ -910,8 +919,8 @@ function EventBlockCard({
                   value={(trigger as any).boundsEvent ?? 'wrapped'}
                   onChange={(e) => onUpdateEventBlock({ ...block, trigger: { ...trigger, type: 'bounds', boundsEvent: e.target.value } as any })}
                 >
-                  {BOUNDS_EVENT_OPTIONS.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
+                  {boundsEventOptions.map((definition) => (
+                    <option key={definition.value} value={definition.value}>{definition.label}</option>
                   ))}
                 </select>
               </label>
@@ -943,9 +952,9 @@ function EventBlockCard({
               </select>
             </label>
             <div className="inspector-row" data-testid={`event-bounds-description-${block.id}`}>
-              {BOUNDS_EVENT_DESCRIPTIONS[(trigger as any).boundsEvent ?? 'wrapped']}
+              {selectedBoundsDefinition.description}
             </div>
-            <div className="tag-button" data-testid={`event-bounds-compatibility-${block.id}`}>Compatible with matching Bounds behavior</div>
+            <div className="tag-button" data-testid={`event-bounds-compatibility-${block.id}`}>{boundsCompatibilityText}</div>
           </div>
         ) : !hideEventControls && triggerType === 'visible' ? (
           <label className="field">

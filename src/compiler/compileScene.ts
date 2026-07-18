@@ -10,6 +10,7 @@ import { compileAttachments, type CompiledAttachmentScript } from './compileAtta
 import { migrateSceneSpec } from '../model/migrateScene';
 import type { BoundaryEvent } from '../runtime/boundaries/BoundaryEngine';
 import type { TargetRef } from '../model/types';
+import type { RuntimeEventEnvelope } from '../runtime/events';
 
 export interface CompiledScene {
   scene: SceneSpec;
@@ -71,17 +72,16 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
 
   const actionManager = new ActionManager();
 
-  type RuntimeEvent = {
-    kind: 'custom';
-    name: string;
-    payload: Record<string, number | string | boolean | null>;
-    source: { targetKey: string; eventId?: string };
-  } | {
-    kind: 'bounds';
-    event: BoundaryEvent;
-    source: { targetKey: string; eventId?: string };
-  };
+  type RuntimeEvent = RuntimeEventEnvelope & (
+    | { family: 'custom'; sourceAttachment: { targetKey: string; eventId?: string } }
+    | { family: 'bounds'; boundaryEvent: BoundaryEvent; sourceAttachment: { targetKey: string; eventId?: string } }
+  );
   const eventQueue: RuntimeEvent[] = [];
+  let nextEventOrder = 0;
+  const nextOccurrence = () => {
+    nextEventOrder += 1;
+    return { id: `evt-${String(nextEventOrder).padStart(6, '0')}`, order: nextEventOrder };
+  };
   const lastDrainedEventNames: string[] = [];
   const lastStartedEventScriptKeys: string[] = [];
   const debug = { pendingEvents: 0, lastDrainedEventNames, lastStartedEventScriptKeys } satisfies NonNullable<CompiledScene['debug']>;
@@ -89,10 +89,34 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
     ...(options ?? {}),
     events: {
       emit: (eventName, payload, source) => {
-        eventQueue.push({ kind: 'custom', name: eventName, payload, source });
+        eventQueue.push({
+          family: 'custom',
+          type: eventName,
+          payload,
+          source: { targetKey: source.targetKey },
+          owner: { targetKey: source.targetKey, eventBlockId: source.eventId },
+          occurrence: nextOccurrence(),
+          sourceAttachment: source,
+        });
       },
       emitBounds: (event, source) => {
-        eventQueue.push({ kind: 'bounds', event, source });
+        eventQueue.push({
+          family: 'bounds',
+          type: event.outcome,
+          phase: event.outcome === 'contact-entered' || event.outcome === 'contact-exited' ? 'edge' : 'outcome',
+          payload: { axis: event.axis, side: event.side },
+          source: { targetKey: `entity:${event.source.id}`, entityId: event.source.id },
+          owner: { targetKey: source.targetKey, eventBlockId: source.eventId },
+          occurrence: nextOccurrence(),
+          details: {
+            axis: event.axis,
+            side: event.side,
+            priorPosition: event.priorPosition,
+            position: event.position,
+          },
+          boundaryEvent: event,
+          sourceAttachment: source,
+        });
       },
     },
   };
@@ -138,14 +162,14 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
       lastDrainedEventNames.splice(
         0,
         lastDrainedEventNames.length,
-        ...drained.map((e) => e.kind === 'custom' ? e.name : `bounds:${e.event.outcome}`)
+        ...drained.map((e) => e.family === 'custom' ? e.type : `bounds:${e.type}`)
       );
       lastStartedEventScriptKeys.splice(0, lastStartedEventScriptKeys.length);
       for (const evt of drained) {
         for (const script of scripts) {
-          if (evt.kind === 'custom') {
+          if (evt.family === 'custom') {
             if (script.trigger?.type !== 'event') continue;
-            if ((script.trigger as any).eventName !== evt.name) continue;
+            if ((script.trigger as any).eventName !== evt.type) continue;
             if (actionManager.getActionsForTarget(script.targetKey, script.eventId).length > 0) continue;
             script.action.reset?.();
             actionManager.add(script.action, { targetKey: script.targetKey, eventId: script.eventId });
@@ -154,9 +178,9 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
           }
 
           if (script.trigger?.type !== 'bounds') continue;
-          if (!boundsTriggerMatches(script.trigger, evt.event)) continue;
-          if (!boundsEventIsInScriptScope(script.targetKey, evt.event)) continue;
-          const eventSource = targetRefFromBoundaryEvent(evt.event);
+          if (!boundsTriggerMatches(script.trigger, evt.boundaryEvent)) continue;
+          if (!boundsEventIsInScriptScope(script.targetKey, evt.boundaryEvent)) continue;
+          const eventSource = targetRefFromBoundaryEvent(evt.boundaryEvent);
           const action = script.createActionForEvent?.(eventSource) ?? script.action;
           action.reset?.();
           actionManager.add(action, { targetKey: script.targetKey, eventId: script.eventId });

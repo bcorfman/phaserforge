@@ -46,6 +46,7 @@ import {
 } from '../runtime/patterns/movementPatterns';
 import type { CompileOptions, CompileContext } from './compileBehaviors';
 import type { CallActionSpec } from '../model/types';
+import { boundsEventDebugName } from '../runtime/events';
 
 type CallArgPrimitive = number | string | boolean | null;
 
@@ -117,7 +118,7 @@ function stableTriggerKey(trigger: AttachmentSpec['trigger'] | undefined): strin
   if (trigger.type === 'visible') return `visible:${trigger.edge ?? ''}`;
   if (trigger.type === 'input_action') return `input_action:${trigger.actionId ?? ''}:${trigger.edge ?? ''}`;
   if (trigger.type === 'event') return `event:${trigger.eventName ?? ''}`;
-  if (trigger.type === 'bounds') return `bounds:${trigger.boundsEvent ?? ''}:${trigger.axis ?? 'any'}:${trigger.side ?? 'any'}`;
+  if (trigger.type === 'bounds') return boundsEventDebugName(trigger.boundsEvent ?? 'wrapped', trigger.axis, trigger.side);
   return 'start';
 }
 
