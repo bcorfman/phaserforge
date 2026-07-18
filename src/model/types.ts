@@ -389,6 +389,16 @@ export interface AttachmentTriggerSpec {
   side?: BoundsSideFilter;
 }
 
+export type ValueSourceSpec =
+  | { kind: 'constant'; value: number | boolean }
+  | { kind: 'randomRange'; min: number; max: number; seed: string | number; integer?: boolean }
+  | {
+      kind: 'eventField';
+      field: 'sourceId' | 'outcome' | 'axis' | 'side' | 'positionX' | 'positionY' | 'priorPositionX' | 'priorPositionY';
+    };
+
+export type AttachmentParamValue = number | string | boolean | null | ValueSourceSpec;
+
 export interface AttachmentSpec {
   id: Id;
   name?: string;
@@ -425,7 +435,7 @@ export interface AttachmentSpec {
    */
   presetId: string;
   targetMode?: 'owner' | 'event-source';
-  params?: Record<string, number | string | boolean | null>;
+  params?: Record<string, AttachmentParamValue>;
   condition?: InlineConditionSpec;
   tag?: string;
 }
@@ -580,10 +590,6 @@ export interface AttachmentTemplate {
   tag?: string;
   parentIndex?: number;
 }
-
-export type ValueSourceSpec =
-  | { kind: 'constant'; value: number | boolean }
-  | { kind: 'randomRange'; min: number; max: number; seed: string | number; integer?: boolean };
 
 export interface SnippetSpec {
   id: Id;

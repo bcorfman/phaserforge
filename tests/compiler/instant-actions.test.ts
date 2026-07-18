@@ -88,5 +88,25 @@ describe('instant actions', () => {
     expect(first.entities.e1.x).toBeGreaterThanOrEqual(0);
     expect(first.entities.e1.x).toBeLessThanOrEqual(720);
     expect(first.entities.e1.x).toBe(second.entities.e1.x);
+    expect(Number.isInteger(first.entities.e1.x)).toBe(false);
+  });
+
+  it('SetProperty random range streams are independent per action id', () => {
+    const base = {
+      target: { type: 'entity', entityId: 'e1' },
+      enabled: true,
+      order: 0,
+      presetId: 'SetProperty',
+      params: { property: 'x', valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'same-seed' } },
+    } as const;
+    const first = compileScene(makeScene({ ...base, id: 'att1' } as any));
+    const secondScene = makeScene({ ...base, id: 'att1' } as any);
+    secondScene.attachments = { att2: { ...base, id: 'att2' } as any };
+    const second = compileScene(secondScene);
+
+    first.startAll();
+    second.startAll();
+
+    expect(first.entities.e1.x).not.toBe(second.entities.e1.x);
   });
 });
