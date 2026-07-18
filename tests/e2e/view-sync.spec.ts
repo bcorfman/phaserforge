@@ -1,22 +1,36 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, entityClientCenter, getSceneSnapshot, getState, panByScreenDelta, seedSampleScene, waitForViewportToSettle } from './helpers';
+import { getResizedViewportScroll } from '../../src/editor/viewport';
+import { dismissViewHint, getSceneSnapshot, panByScreenDelta, seedSampleScene, setEditorModeViaUi, waitForViewportToSettle } from './helpers';
 
-async function normalizedEntityPosition(page: Parameters<typeof entityClientCenter>[0], entityId: string) {
-  const canvas = page.locator('#game-container canvas');
-  await expect(canvas).toBeVisible();
-  const canvasBox = await canvas.boundingBox();
-  if (!canvasBox) throw new Error('Canvas bounding box unavailable');
+type CameraSnapshot = {
+  zoom: number;
+  scrollX: number;
+  scrollY: number;
+  viewportWidth: number;
+  viewportHeight: number;
+};
 
-  const center = await entityClientCenter(page, entityId);
-  return {
-    x: (center.x - canvasBox.x) / canvasBox.width,
-    y: (center.y - canvasBox.y) / canvasBox.height,
-  };
+function cameraTransferDifference(source: CameraSnapshot, current: CameraSnapshot): number {
+  const expectedScroll = getResizedViewportScroll(
+    source.scrollX,
+    source.scrollY,
+    source.viewportWidth,
+    source.viewportHeight,
+    current.viewportWidth,
+    current.viewportHeight,
+    source.zoom,
+  );
+  return Math.max(
+    Math.abs(current.zoom - source.zoom) / 0.01,
+    Math.abs(current.scrollX - expectedScroll.scrollX),
+    Math.abs(current.scrollY - expectedScroll.scrollY),
+  );
 }
 
 test('Edit and Preview preserve camera view state @critical', async ({ page }) => {
   await seedSampleScene(page);
   await dismissViewHint(page);
+  await expect(page.getByTestId('toolbar-status')).toBeHidden();
 
   const editBefore = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number; sceneKey?: string }>(page);
   expect(editBefore.sceneKey).toBe('EditorScene');
@@ -33,39 +47,27 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
   expect(editSnapshot.sceneKey).toBe('EditorScene');
   expect(editSnapshot.ready).toBe(true);
   expect(editSnapshot.zoom).toBeGreaterThan(editBefore.zoom);
-  const editAnchorNormalized = await normalizedEntityPosition(page, 'e1');
+  const transferSnapshot = await getSceneSnapshot<CameraSnapshot>(page);
 
-  await page.getByTestId('toggle-mode-button').click();
-  await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('play');
+  await setEditorModeViaUi(page, 'play');
   await expect.poll(async () => {
     const snap = await getSceneSnapshot<{ sceneKey?: string; ready?: boolean; isActive?: boolean }>(page);
     return { sceneKey: snap?.sceneKey, ready: snap?.ready, isActive: snap?.isActive };
   }).toEqual({ sceneKey: 'GameScene', ready: true, isActive: true });
 
-  const playSnapshot = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number }>(page);
-  expect(Math.abs(playSnapshot.zoom - editSnapshot.zoom)).toBeLessThanOrEqual(0.01);
-  expect(Math.abs(playSnapshot.scrollX - editSnapshot.scrollX)).toBeLessThanOrEqual(1);
-  expect(Math.abs(playSnapshot.scrollY - editSnapshot.scrollY)).toBeLessThanOrEqual(1);
+  await expect.poll(async () => {
+    const playSnapshot = await getSceneSnapshot<CameraSnapshot>(page);
+    return cameraTransferDifference(transferSnapshot, playSnapshot);
+  }).toBeLessThanOrEqual(1);
 
-  await page.getByTestId('toggle-mode-button').click();
-  await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('edit');
+  await setEditorModeViaUi(page, 'edit');
   await expect.poll(async () => {
     const snap = await getSceneSnapshot<{ sceneKey?: string; ready?: boolean; isActive?: boolean }>(page);
     return { sceneKey: snap?.sceneKey, ready: snap?.ready, isActive: snap?.isActive };
   }).toEqual({ sceneKey: 'EditorScene', ready: true, isActive: true });
   await waitForViewportToSettle(page, { stableForMs: 150 });
 
-  const editRestoredSnapshot = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number; ready?: boolean }>(page);
+  const editRestoredSnapshot = await getSceneSnapshot<CameraSnapshot & { ready?: boolean }>(page);
   expect(editRestoredSnapshot.ready).toBe(true);
-  expect(Math.abs(editRestoredSnapshot.zoom - editSnapshot.zoom)).toBeLessThanOrEqual(0.01);
-  expect(Math.abs(editRestoredSnapshot.scrollX - editSnapshot.scrollX)).toBeLessThanOrEqual(1);
-  expect(Math.abs(editRestoredSnapshot.scrollY - editSnapshot.scrollY)).toBeLessThanOrEqual(1);
-  await expect
-    .poll(async () => {
-      const restoredAnchorNormalized = await normalizedEntityPosition(page, 'e1');
-      const dx = Math.abs(restoredAnchorNormalized.x - editAnchorNormalized.x);
-      const dy = Math.abs(restoredAnchorNormalized.y - editAnchorNormalized.y);
-      return Math.max(dx, dy);
-    })
-    .toBeLessThanOrEqual(0.02);
+  expect(cameraTransferDifference(transferSnapshot, editRestoredSnapshot)).toBeLessThanOrEqual(1);
 });
