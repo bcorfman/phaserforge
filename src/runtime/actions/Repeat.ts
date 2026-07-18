@@ -1,9 +1,10 @@
-import { Action, ActionBase } from '../Action';
+import { Action, ActionBase, type ActionStartContext } from '../Action';
 
 export class Repeat extends ActionBase {
   private child: Action;
   private count?: number;
   private iterations = 0;
+  private activeContext?: ActionStartContext;
 
   constructor(child: Action, count?: number) {
     super();
@@ -11,10 +12,11 @@ export class Repeat extends ActionBase {
     this.count = count;
   }
 
-  start(): void {
+  start(context?: ActionStartContext): void {
     if (this.started) return;
-    super.start();
-    this.child.start();
+    super.start(context);
+    this.activeContext = context;
+    this.child.start(context);
   }
 
   update(dtMs: number): void {
@@ -29,7 +31,7 @@ export class Repeat extends ActionBase {
     }
 
     if (this.child.reset) this.child.reset();
-    this.child.start();
+    this.child.start(this.activeContext);
   }
 
   stop(): void {
@@ -41,6 +43,7 @@ export class Repeat extends ActionBase {
   reset(): void {
     super.reset();
     this.iterations = 0;
+    this.activeContext = undefined;
     if (this.child.reset) this.child.reset();
   }
 }

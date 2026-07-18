@@ -1,22 +1,24 @@
-import { ActionBase, Action } from '../Action';
+import { ActionBase, Action, type ActionStartContext } from '../Action';
 
 export class Sequence extends ActionBase {
   private children: Action[];
   private index = 0;
+  private activeContext?: ActionStartContext;
 
   constructor(children: Action[]) {
     super();
     this.children = children;
   }
 
-  start(): void {
+  start(context?: ActionStartContext): void {
     if (this.started) return;
-    super.start();
+    super.start(context);
+    this.activeContext = context;
     if (this.children.length === 0) {
       this.complete = true;
       return;
     }
-    this.children[0].start();
+    this.children[0].start(context);
   }
 
   update(dtMs: number): void {
@@ -35,7 +37,7 @@ export class Sequence extends ActionBase {
         this.complete = true;
         return;
       }
-      next.start();
+      next.start(this.activeContext);
       current = next;
     }
   }
@@ -52,6 +54,7 @@ export class Sequence extends ActionBase {
   reset(): void {
     super.reset();
     this.index = 0;
+    this.activeContext = undefined;
     for (const child of this.children) {
       if (child.reset) child.reset();
     }

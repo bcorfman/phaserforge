@@ -1,5 +1,11 @@
+import type { RuntimeEventEnvelope } from '../model/events';
+
+export interface ActionStartContext {
+  event?: RuntimeEventEnvelope;
+}
+
 export interface Action {
-  start(): void;
+  start(context?: ActionStartContext): void;
   update(dtMs: number): void;
   isComplete(): boolean;
   stop?(): void;
@@ -14,7 +20,7 @@ export abstract class ActionBase implements Action {
   private stopped = false;
   private effectRemoved = false;
 
-  start(): void {
+  start(_context?: ActionStartContext): void {
     if (this.started) return;
     this.started = true;
   }
