@@ -199,27 +199,27 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 
 ### 6A — Define a finite event model
 
-- [ ] Introduce a typed runtime event envelope shared by custom events, bounds, collisions, trigger zones, visibility, and future finite event families:
+- [x] Introduce a typed runtime event envelope shared by custom events, bounds, collisions, trigger zones, visibility, and future finite event families:
   - stable event family/type;
   - phase/edge and family-specific details;
   - `source`/`instigator` entity when one exists;
   - owning/static target and event-block identity;
   - primitive payload values;
   - deterministic occurrence identity/order for debugging and replay.
-- [ ] Add one `bounds` trigger family to `AttachmentTriggerSpec` rather than separate trigger types for every outcome. Its filters should cover:
+- [x] Add one `bounds` trigger family to `AttachmentTriggerSpec` rather than separate trigger types for every outcome. Its filters should cover:
   - event: contact entered, contact exited, wrapped, bounced, clamped, or stopped;
   - axis: any, X, or Y;
   - side: any, min/left/bottom, or max/right/top as terminology permits.
-- [ ] Give each outcome one stable, user-facing meaning:
+- [x] Give each outcome one stable, user-facing meaning:
   - Contact Entered: the source begins touching/crossing a configured boundary on an axis, before the configured behavior consequence is reported;
   - Contact Exited: a previously active boundary contact ends, including the deterministic contact exit following a wrap relocation;
   - Wrapped: Wrap relocated the source to the opposite boundary;
   - Bounced: Bounce inverted the source velocity on the affected axis;
   - Clamped: Clamp at Edge corrected the source position and prevented outward movement;
   - Stopped: Stop corrected the source position, zeroed affected velocity, and completed/stopped the relevant movement action according to existing semantics.
-- [ ] Expose only outcomes compatible with the selected Bounds behavior when the editor can determine it; otherwise show the full family with clear compatibility hints rather than silently creating an event that can never fire.
-- [ ] Keep the taxonomy finite and behavior-oriented. New event families require a typed schema and editor metadata; they are not arbitrary string callbacks.
-- [ ] Retain custom named events for user-defined coordination, but do not encode engine facts such as wrap into magic event-name strings.
+- [x] Expose only outcomes compatible with the selected Bounds behavior when the editor can determine it; otherwise show the full family with clear compatibility hints rather than silently creating an event that can never fire.
+- [x] Keep the taxonomy finite and behavior-oriented. New event families require a typed schema and editor metadata; they are not arbitrary string callbacks.
+- [x] Retain custom named events for user-defined coordination, but do not encode engine facts such as wrap into magic event-name strings.
 
 ### 6B — Emit correct member-local boundary events
 

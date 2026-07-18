@@ -1,3 +1,5 @@
+import type { BoundsAxisFilter, BoundsEventOutcome, BoundsSideFilter } from './events';
+
 export type Id = string;
 export type ProjectRenderMode = 'pixel-art' | 'smooth-2d';
 
@@ -382,9 +384,9 @@ export interface AttachmentTriggerSpec {
   actionId?: string;
   edge?: 'pressed' | 'released' | 'shown' | 'hidden';
   eventName?: string;
-  boundsEvent?: 'contact-entered' | 'contact-exited' | 'wrapped' | 'bounced' | 'clamped' | 'stopped';
-  axis?: 'any' | 'x' | 'y';
-  side?: 'any' | 'left' | 'right' | 'top' | 'bottom';
+  boundsEvent?: BoundsEventOutcome;
+  axis?: BoundsAxisFilter;
+  side?: BoundsSideFilter;
 }
 
 export interface AttachmentSpec {
