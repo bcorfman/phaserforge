@@ -30,6 +30,9 @@ export interface BoundaryResult {
   sides: { x?: 'left' | 'right'; y?: 'top' | 'bottom' };
 }
 
+type BoundaryAxis = 'x' | 'y';
+type BoundaryContacts = BoundaryResult['sides'];
+
 function entityBounds(entity: RuntimeEntity): GroupBounds {
   return getRotatedEntityBoundaryBounds(entity);
 }
@@ -107,11 +110,11 @@ export class BoundaryEngine {
     const detected = this.detect(target);
 
     if (this.scope === 'group-extents' && isFormationGroup(target)) {
-      const previous = this.activeContacts.get(targetKey(target)) ?? {};
-      this.updateContactState(target, detected.sides);
-      if (!detected.hit) return detected;
-      this.applyGroupBehavior(target, detected.sides, previous);
-      this.finishContactStateAfterBehavior(target, detected.sides);
+      if (!detected.hit) {
+        this.updateContactState(target, detected.sides);
+        return detected;
+      }
+      this.applyGroupBehavior(target, detected.sides);
     } else {
       this.applyMemberBehavior(flattenTarget(target));
     }
@@ -178,72 +181,93 @@ export class BoundaryEngine {
   }
 
   private updateContactState(target: RuntimeTarget, next: BoundaryResult['sides']): void {
-    const key = targetKey(target);
-    const previous = this.activeContacts.get(key) ?? {};
-
-    if (previous.x && previous.x !== next.x) {
-      this.onExit?.(target, 'x', previous.x);
-      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis: 'x', side: previous.x });
-    }
-    if (previous.y && previous.y !== next.y) {
-      this.onExit?.(target, 'y', previous.y);
-      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis: 'y', side: previous.y });
-    }
-    if (next.x && next.x !== previous.x) {
-      this.onEnter?.(target, 'x', next.x);
-      this.onEvent?.({ family: 'bounds', outcome: 'contact-entered', source: target, axis: 'x', side: next.x });
-    }
-    if (next.y && next.y !== previous.y) {
-      this.onEnter?.(target, 'y', next.y);
-      this.onEvent?.({ family: 'bounds', outcome: 'contact-entered', source: target, axis: 'y', side: next.y });
-    }
-
-    this.activeContacts.set(key, next);
+    this.updateAxisContact(target, 'x', next.x);
+    this.updateAxisContact(target, 'y', next.y);
   }
 
-  private finishContactStateAfterBehavior(target: RuntimeTarget, before: BoundaryResult['sides']): void {
+  private updateAxisContact(
+    target: RuntimeTarget,
+    axis: BoundaryAxis,
+    nextSide: BoundaryContacts[BoundaryAxis]
+  ): BoundaryContacts[BoundaryAxis] {
+    const key = targetKey(target);
+    const previous = this.activeContacts.get(key) ?? {};
+    const previousSide = previous[axis];
+
+    if (previousSide && previousSide !== nextSide) {
+      this.onExit?.(target, axis, previousSide);
+      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis, side: previousSide });
+    }
+    if (nextSide && nextSide !== previousSide) {
+      this.onEnter?.(target, axis, nextSide);
+      this.onEvent?.({ family: 'bounds', outcome: 'contact-entered', source: target, axis, side: nextSide });
+    }
+
+    this.activeContacts.set(key, { ...previous, [axis]: nextSide });
+    return previousSide;
+  }
+
+  private finishAxisContactAfterBehavior(
+    target: RuntimeTarget,
+    axis: BoundaryAxis,
+    beforeSide: BoundaryContacts[BoundaryAxis]
+  ): void {
     const key = targetKey(target);
     const after = this.scope === 'group-extents' && isFormationGroup(target)
       ? this.hitSides(groupBoundaryBounds(target))
       : this.hitSides(entityBounds(target as RuntimeEntity));
-    const current = this.activeContacts.get(key) ?? before;
+    const current = this.activeContacts.get(key) ?? {};
+    const currentSide = current[axis] ?? beforeSide;
+    const afterSide = after[axis];
 
-    if (current.x && current.x !== after.x) {
-      this.onExit?.(target, 'x', current.x);
-      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis: 'x', side: current.x });
+    if (currentSide && currentSide !== afterSide) {
+      this.onExit?.(target, axis, currentSide);
+      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis, side: currentSide });
     }
-    if (current.y && current.y !== after.y) {
-      this.onExit?.(target, 'y', current.y);
-      this.onEvent?.({ family: 'bounds', outcome: 'contact-exited', source: target, axis: 'y', side: current.y });
-    }
-    this.activeContacts.set(key, after);
+    this.activeContacts.set(key, { ...current, [axis]: afterSide });
+  }
+
+  private emitOutcome(
+    target: RuntimeTarget,
+    outcome: BoundaryEventOutcome,
+    axis: BoundaryAxis,
+    side: BoundarySide,
+    priorPosition?: { x: number; y: number }
+  ): void {
+    this.onEvent?.({
+      family: 'bounds',
+      outcome,
+      source: target,
+      axis,
+      side,
+      priorPosition,
+      position: 'x' in target && 'y' in target ? { x: target.x, y: target.y } : undefined,
+    });
   }
 
   private applyGroupBehavior(
     target: RuntimeTarget,
-    sides: BoundaryResult['sides'],
-    previous: BoundaryResult['sides']
+    sides: BoundaryResult['sides']
   ): void {
     if (!isFormationGroup(target)) return;
-    const current = groupBoundaryBounds(target);
     const members = target.members;
-    const movingOutX = sides.x === 'left'
+    const initialMovingOutX = sides.x === 'left'
       ? members.some((member) => (member.vx ?? 0) < 0)
       : sides.x === 'right'
         ? members.some((member) => (member.vx ?? 0) > 0)
         : false;
-    const movingOutY = sides.y === 'bottom'
+    const initialMovingOutY = sides.y === 'bottom'
       ? members.some((member) => (member.vy ?? 0) < 0)
       : sides.y === 'top'
         ? members.some((member) => (member.vy ?? 0) > 0)
         : false;
 
-    let dx = 0;
-    let dy = 0;
-
     if (sides.x === 'left') {
+      const previousSide = this.updateAxisContact(target, 'x', sides.x);
+      const current = groupBoundaryBounds(target);
+      let dx = 0;
       if (this.behavior === 'wrap') {
-        dx = movingOutX
+        dx = initialMovingOutX
           ? this.bounds.maxX - current.maxX
           : current.minX < this.bounds.minX
             ? this.bounds.minX - current.minX
@@ -251,9 +275,15 @@ export class BoundaryEngine {
       } else {
         dx = this.bounds.minX - current.minX;
       }
+      target.translate(dx, 0);
+      this.applyGroupAxisOutcome(target, 'x', sides.x, initialMovingOutX, previousSide);
+      this.finishAxisContactAfterBehavior(target, 'x', sides.x);
     } else if (sides.x === 'right') {
+      const previousSide = this.updateAxisContact(target, 'x', sides.x);
+      const current = groupBoundaryBounds(target);
+      let dx = 0;
       if (this.behavior === 'wrap') {
-        dx = movingOutX
+        dx = initialMovingOutX
           ? this.bounds.minX - current.minX
           : current.maxX > this.bounds.maxX
             ? this.bounds.maxX - current.maxX
@@ -261,11 +291,19 @@ export class BoundaryEngine {
       } else {
         dx = this.bounds.maxX - current.maxX;
       }
+      target.translate(dx, 0);
+      this.applyGroupAxisOutcome(target, 'x', sides.x, initialMovingOutX, previousSide);
+      this.finishAxisContactAfterBehavior(target, 'x', sides.x);
+    } else {
+      this.updateAxisContact(target, 'x', undefined);
     }
 
     if (sides.y === 'bottom') {
+      const previousSide = this.updateAxisContact(target, 'y', sides.y);
+      const current = groupBoundaryBounds(target);
+      let dy = 0;
       if (this.behavior === 'wrap') {
-        dy = movingOutY
+        dy = initialMovingOutY
           ? this.bounds.maxY - current.maxY
           : current.minY < this.bounds.minY
             ? this.bounds.minY - current.minY
@@ -273,9 +311,15 @@ export class BoundaryEngine {
       } else {
         dy = this.bounds.minY - current.minY;
       }
+      target.translate(0, dy);
+      this.applyGroupAxisOutcome(target, 'y', sides.y, initialMovingOutY, previousSide);
+      this.finishAxisContactAfterBehavior(target, 'y', sides.y);
     } else if (sides.y === 'top') {
+      const previousSide = this.updateAxisContact(target, 'y', sides.y);
+      const current = groupBoundaryBounds(target);
+      let dy = 0;
       if (this.behavior === 'wrap') {
-        dy = movingOutY
+        dy = initialMovingOutY
           ? this.bounds.minY - current.minY
           : current.maxY > this.bounds.maxY
             ? this.bounds.maxY - current.maxY
@@ -283,158 +327,134 @@ export class BoundaryEngine {
       } else {
         dy = this.bounds.maxY - current.maxY;
       }
+      target.translate(0, dy);
+      this.applyGroupAxisOutcome(target, 'y', sides.y, initialMovingOutY, previousSide);
+      this.finishAxisContactAfterBehavior(target, 'y', sides.y);
+    } else {
+      this.updateAxisContact(target, 'y', undefined);
     }
+  }
 
-    target.translate(dx, dy);
-
+  private applyGroupAxisOutcome(
+    target: RuntimeTarget,
+    axis: BoundaryAxis,
+    side: BoundarySide,
+    movingOut: boolean,
+    previousSide: BoundaryContacts[BoundaryAxis]
+  ): void {
+    if (!isFormationGroup(target)) return;
     if (this.behavior === 'limit' || this.behavior === 'stop') {
-      if (sides.x && movingOutX) {
+      if (movingOut) {
         for (const member of target.members) {
-          const vx = member.vx ?? 0;
-          if (sides.x === 'left' ? vx < 0 : vx > 0) member.vx = 0;
+          if (axis === 'x') {
+            const vx = member.vx ?? 0;
+            if (side === 'left' ? vx < 0 : vx > 0) member.vx = 0;
+          } else {
+            const vy = member.vy ?? 0;
+            if (side === 'bottom' ? vy < 0 : vy > 0) member.vy = 0;
+          }
         }
-      }
-      if (sides.y && movingOutY) {
-        for (const member of target.members) {
-          const vy = member.vy ?? 0;
-          if (sides.y === 'bottom' ? vy < 0 : vy > 0) member.vy = 0;
-        }
+        this.emitOutcome(target, this.behavior === 'stop' ? 'stopped' : 'clamped', axis, side);
       }
       return;
     }
 
-    if (this.behavior === 'bounce') {
-      const shouldFlipX = sides.x && sides.x !== previous.x;
-      const shouldFlipY = sides.y && sides.y !== previous.y;
+    if (this.behavior === 'wrap') {
+      if (movingOut) this.emitOutcome(target, 'wrapped', axis, side);
+      return;
+    }
+
+    if (this.behavior === 'bounce' && movingOut && side !== previousSide) {
       for (const member of target.members) {
-        if (shouldFlipX && sides.x) {
+        if (axis === 'x') {
           const vx = member.vx ?? 0;
-          const movingOut = sides.x === 'left' ? vx < 0 : vx > 0;
-          if (movingOut) member.vx = -vx;
-        }
-        if (shouldFlipY && sides.y) {
+          if (side === 'left' ? vx < 0 : vx > 0) member.vx = -vx;
+        } else {
           const vy = member.vy ?? 0;
-          const movingOut = sides.y === 'bottom' ? vy < 0 : vy > 0;
-          if (movingOut) member.vy = -vy;
+          if (side === 'bottom' ? vy < 0 : vy > 0) member.vy = -vy;
         }
       }
+      this.emitOutcome(target, 'bounced', axis, side);
     }
   }
 
   private applyMemberBehavior(members: RuntimeEntity[]): void {
     for (const member of members) {
-      const previous = this.activeContacts.get(targetKey(member)) ?? {};
       const current = entityBounds(member);
       const sides = this.hitSides(current);
-      this.updateContactState(member, sides);
-      if (!sides.x && !sides.y) continue;
+      if (!sides.x && !sides.y) {
+        this.updateContactState(member, sides);
+        continue;
+      }
 
-      const vx = member.vx ?? 0;
-      const vy = member.vy ?? 0;
-      const movingOutX = sides.x === 'left'
+      this.applyMemberAxisBehavior(member, current, 'x', sides.x);
+      this.applyMemberAxisBehavior(member, current, 'y', sides.y);
+    }
+  }
+
+  private applyMemberAxisBehavior(
+    member: RuntimeEntity,
+    current: GroupBounds,
+    axis: BoundaryAxis,
+    side: BoundaryContacts[BoundaryAxis]
+  ): void {
+    if (!side) {
+      this.updateAxisContact(member, axis, undefined);
+      return;
+    }
+
+    const previousSide = this.updateAxisContact(member, axis, side);
+    const vx = member.vx ?? 0;
+    const vy = member.vy ?? 0;
+    const movingOut = axis === 'x'
+      ? side === 'left'
         ? vx < 0
-        : sides.x === 'right'
-          ? vx > 0
-          : false;
-      const movingOutY = sides.y === 'bottom'
+        : vx > 0
+      : side === 'bottom'
         ? vy < 0
-        : sides.y === 'top'
-          ? vy > 0
-          : false;
-      const priorPosition = { x: member.x, y: member.y };
-      const emitOutcome = (outcome: BoundaryEventOutcome, axis: 'x' | 'y', side: BoundarySide) => {
-        this.onEvent?.({
-          family: 'bounds',
-          outcome,
-          source: member,
-          axis,
-          side,
-          priorPosition,
-          position: { x: member.x, y: member.y },
-        });
-      };
+        : vy > 0;
+    const priorPosition = { x: member.x, y: member.y };
 
-      if (sides.x === 'left') {
+    if (axis === 'x') {
+      if (side === 'left') {
         if (this.behavior === 'wrap') {
-          if (movingOutX) {
-            member.x += this.bounds.maxX - current.maxX;
-            emitOutcome('wrapped', 'x', sides.x);
-          } else {
-            member.x += this.bounds.minX - current.minX;
-          }
+          member.x += movingOut ? this.bounds.maxX - current.maxX : this.bounds.minX - current.minX;
         } else {
           member.x += this.bounds.minX - current.minX;
-          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutX) {
-            member.vx = 0;
-            emitOutcome(this.behavior === 'stop' ? 'stopped' : 'clamped', 'x', sides.x);
-          }
-          if (this.behavior === 'bounce' && movingOutX && sides.x !== previous.x) {
-            member.vx = -vx;
-            emitOutcome('bounced', 'x', sides.x);
-          }
         }
-      } else if (sides.x === 'right') {
+      } else {
         if (this.behavior === 'wrap') {
-          if (movingOutX) {
-            member.x += this.bounds.minX - current.minX;
-            emitOutcome('wrapped', 'x', sides.x);
-          } else {
-            member.x += this.bounds.maxX - current.maxX;
-          }
+          member.x += movingOut ? this.bounds.minX - current.minX : this.bounds.maxX - current.maxX;
         } else {
           member.x += this.bounds.maxX - current.maxX;
-          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutX) {
-            member.vx = 0;
-            emitOutcome(this.behavior === 'stop' ? 'stopped' : 'clamped', 'x', sides.x);
-          }
-          if (this.behavior === 'bounce' && movingOutX && sides.x !== previous.x) {
-            member.vx = -vx;
-            emitOutcome('bounced', 'x', sides.x);
-          }
         }
       }
-
-      if (sides.y === 'bottom') {
-        if (this.behavior === 'wrap') {
-          if (movingOutY) {
-            member.y += this.bounds.maxY - current.maxY;
-            emitOutcome('wrapped', 'y', sides.y);
-          } else {
-            member.y += this.bounds.minY - current.minY;
-          }
-        } else {
-          member.y += this.bounds.minY - current.minY;
-          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutY) {
-            member.vy = 0;
-            emitOutcome(this.behavior === 'stop' ? 'stopped' : 'clamped', 'y', sides.y);
-          }
-          if (this.behavior === 'bounce' && movingOutY && sides.y !== previous.y) {
-            member.vy = -vy;
-            emitOutcome('bounced', 'y', sides.y);
-          }
-        }
-      } else if (sides.y === 'top') {
-        if (this.behavior === 'wrap') {
-          if (movingOutY) {
-            member.y += this.bounds.minY - current.minY;
-            emitOutcome('wrapped', 'y', sides.y);
-          } else {
-            member.y += this.bounds.maxY - current.maxY;
-          }
-        } else {
-          member.y += this.bounds.maxY - current.maxY;
-          if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOutY) {
-            member.vy = 0;
-            emitOutcome(this.behavior === 'stop' ? 'stopped' : 'clamped', 'y', sides.y);
-          }
-          if (this.behavior === 'bounce' && movingOutY && sides.y !== previous.y) {
-            member.vy = -vy;
-            emitOutcome('bounced', 'y', sides.y);
-          }
-        }
+    } else if (side === 'bottom') {
+      if (this.behavior === 'wrap') {
+        member.y += movingOut ? this.bounds.maxY - current.maxY : this.bounds.minY - current.minY;
+      } else {
+        member.y += this.bounds.minY - current.minY;
       }
-
-      this.finishContactStateAfterBehavior(member, sides);
+    } else {
+      if (this.behavior === 'wrap') {
+        member.y += movingOut ? this.bounds.minY - current.minY : this.bounds.maxY - current.maxY;
+      } else {
+        member.y += this.bounds.maxY - current.maxY;
+      }
     }
+
+    if (this.behavior === 'wrap') {
+      if (movingOut) this.emitOutcome(member, 'wrapped', axis, side, priorPosition);
+    } else if ((this.behavior === 'limit' || this.behavior === 'stop') && movingOut) {
+      if (axis === 'x') member.vx = 0;
+      else member.vy = 0;
+      this.emitOutcome(member, this.behavior === 'stop' ? 'stopped' : 'clamped', axis, side, priorPosition);
+    } else if (this.behavior === 'bounce' && movingOut && side !== previousSide) {
+      if (axis === 'x') member.vx = -vx;
+      else member.vy = -vy;
+      this.emitOutcome(member, 'bounced', axis, side, priorPosition);
+    }
+
+    this.finishAxisContactAfterBehavior(member, axis, side);
   }
 }
