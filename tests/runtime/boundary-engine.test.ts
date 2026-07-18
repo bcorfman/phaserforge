@@ -216,6 +216,59 @@ describe('boundary engine', () => {
     expect(right.x).toBe(100);
   });
 
+  it('orders simultaneous member crossings by member order, then x before y, with edge and outcome adjacent', () => {
+    const events: BoundaryEvent[] = [];
+    const first = makeEntity('first', -2, -2);
+    const second = makeEntity('second', -3, -3);
+    first.vx = -20;
+    first.vy = -30;
+    second.vx = -40;
+    second.vy = -50;
+    const engine = new BoundaryEngine(
+      { minX: 0, maxX: 720, minY: 0, maxY: 1280 },
+      { scope: 'member-any', behavior: 'wrap', onEvent: (event) => events.push(event) }
+    );
+
+    engine.apply(createFormationGroup('stars', [first, second]));
+
+    expect(events.map((event) => `${event.source.id}:${event.outcome}:${event.axis}:${event.side}`)).toEqual([
+      'first:contact-entered:x:left',
+      'first:wrapped:x:left',
+      'first:contact-exited:x:left',
+      'first:contact-entered:y:bottom',
+      'first:wrapped:y:bottom',
+      'first:contact-exited:y:bottom',
+      'second:contact-entered:x:left',
+      'second:wrapped:x:left',
+      'second:contact-exited:x:left',
+      'second:contact-entered:y:bottom',
+      'second:wrapped:y:bottom',
+      'second:contact-exited:y:bottom',
+    ]);
+  });
+
+  it('emits structured group-extents outcomes after contact enters', () => {
+    const events: BoundaryEvent[] = [];
+    const group = createFormationGroup('g1', [
+      makeEntity('e1', 15, 0),
+      makeEntity('e2', 35, 0),
+      makeEntity('e3', 55, 0),
+    ]);
+    group.setVelocity(100, 0);
+    const engine = new BoundaryEngine(
+      { minX: 0, maxX: 60, minY: -100, maxY: 100 },
+      { scope: 'group-extents', behavior: 'bounce', onEvent: (event) => events.push(event) }
+    );
+
+    engine.apply(group);
+    engine.apply(group);
+
+    expect(events.map((event) => `${event.outcome}:${event.axis}:${event.side}:${event.source.id}`)).toEqual([
+      'contact-entered:x:right:g1',
+      'bounced:x:right:g1',
+    ]);
+  });
+
   it('emits bounced, clamped, and stopped outcomes with behavior-specific effects', () => {
     const bouncedEvents: BoundaryEvent[] = [];
     const bounced = makeEntity('bounced', 715, 100);

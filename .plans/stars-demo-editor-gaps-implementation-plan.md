@@ -223,14 +223,14 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 
 ### 6B — Emit correct member-local boundary events
 
-- [ ] Refactor `BoundaryEngine` contact tracking so member scope records contacts per member, not only under an aggregate group target key.
-- [ ] Emit structured contact events on edges and structured outcome events after the behavior is applied.
-- [ ] For each crossing, order events deterministically: Contact Entered first, then the applied outcome (Wrapped/Bounced/Clamped/Stopped), with Contact Exited emitted only when contact state actually clears.
-- [ ] For Wrapped, include the exact member, axis, side exited, prior position, and wrapped position; preserve the opposite-edge placement before downstream actions run.
-- [ ] Emit at most one outcome event per member/axis crossing and no event while correcting an inward-moving target or remaining in contact.
-- [ ] Preserve existing `onEnter`/`onExit` compatibility internally until all callers migrate, then remove duplication only with direct regression coverage.
-- [ ] Define and test event ordering when X and Y cross in one tick and when several members cross in the same update.
-- [ ] Use stable member order, then X before Y, as the tie-breaker for simultaneous events unless current runtime ordering provides a stronger invariant; document the final invariant in tests.
+- [x] Refactor `BoundaryEngine` contact tracking so member scope records contacts per member, not only under an aggregate group target key.
+- [x] Emit structured contact events on edges and structured outcome events after the behavior is applied.
+- [x] For each crossing, order events deterministically: Contact Entered first, then the applied outcome (Wrapped/Bounced/Clamped/Stopped), with Contact Exited emitted only when contact state actually clears.
+- [x] For Wrapped, include the exact member, axis, side exited, prior position, and wrapped position; preserve the opposite-edge placement before downstream actions run.
+- [x] Emit at most one outcome event per member/axis crossing and no event while correcting an inward-moving target or remaining in contact.
+- [x] Preserve existing `onEnter`/`onExit` compatibility internally until all callers migrate, then remove duplication only with direct regression coverage.
+- [x] Define and test event ordering when X and Y cross in one tick and when several members cross in the same update.
+- [x] Use stable member order, then X before Y, as the tie-breaker for simultaneous events unless current runtime ordering provides a stronger invariant; document the final invariant in tests.
 
 ### 6C — Route event context into Event Blocks
 
