@@ -6,6 +6,7 @@ import {
   parseStoredViewState,
   shouldResetViewStateForProjectChange,
   shouldPersistViewState,
+  toExactViewState,
   VIEW_STATE_STORAGE_KEY,
   type ViewState,
   readStoredViewState,
@@ -70,6 +71,21 @@ describe('viewStateStorage', () => {
     expect(fakeStorage.getItem(VIEW_STATE_STORAGE_KEY)).toBe(JSON.stringify({ projectId: 'p1', ...view }));
     expect(readStoredViewState(fakeStorage, 'p1')).toEqual(view);
     expect(readStoredViewState(fakeStorage, 'p2')).toBeUndefined();
+  });
+
+  it('strips viewport dimensions for exact same-canvas mode-switch restores', () => {
+    expect(toExactViewState({
+      zoom: 1.4,
+      scrollX: -220,
+      scrollY: -160,
+      viewportWidth: 1280,
+      viewportHeight: 721,
+    })).toEqual({
+      zoom: 1.4,
+      scrollX: -220,
+      scrollY: -160,
+    });
+    expect(toExactViewState(undefined)).toBeUndefined();
   });
 
   it('does not persist boot-time viewport state before restore has run', () => {

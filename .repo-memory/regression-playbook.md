@@ -27,7 +27,7 @@ Use this file to keep previously solved bug classes from drifting back in.
 
 - Risks: fractional authored geometry, blurry sprite rendering, inconsistent pixel scaling.
 - Preferred coverage: reducer/unit tests plus runtime/bootstrap tests.
-- Mode-switch camera/view restores for reused scenes should wake the target scene before applying pending camera state, and assertions should check scroll directly after the active-scene-ready handoff; sleeping-scene camera state can drift on WebKit wake.
+- Mode-switch camera/view restores are same-canvas exact transfers: capture only zoom/scroll, not viewport dimensions, wake reused target scenes before applying pending camera state, and assert scroll directly after active-scene-ready handoff. Viewport-aware resize compensation belongs to reload/resize restores and can reintroduce WebKit drift.
 
 ### Serialization / migration
 

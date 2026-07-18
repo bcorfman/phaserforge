@@ -211,7 +211,12 @@ describe('boundary engine', () => {
 
     const wrapped = events.filter((event) => event.outcome === 'wrapped');
     expect(wrapped).toHaveLength(1);
-    expect(wrapped[0]).toMatchObject({ axis: 'x', side: 'left' });
+    expect(wrapped[0]).toMatchObject({
+      axis: 'x',
+      side: 'left',
+      priorPosition: { x: -2, y: 100 },
+      position: { x: 715, y: 100 },
+    });
     expect(wrapped[0].source).toBe(left);
     expect(right.x).toBe(100);
   });
