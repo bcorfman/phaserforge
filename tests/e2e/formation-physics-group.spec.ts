@@ -10,7 +10,9 @@ test('Preview/play mode builds Arcade Physics groups for formations @slow', asyn
   const before = await getFormationPhysicsGroupInfo(page, 'g-enemies');
   expect(before).toBeNull();
 
-  await page.getByTestId('toggle-mode-button').click();
+  // This spec covers formation physics lifecycle. Mode-button interaction is covered by
+  // mode-toggle-stability.spec.ts; use the state-driven bridge to avoid WebKit click flakes.
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
   await expect.poll(async () => {
     const state = await getState<{ mode?: string }>(page);
     return state?.mode;
@@ -22,7 +24,7 @@ test('Preview/play mode builds Arcade Physics groups for formations @slow', asyn
     .poll(async () => getFormationPhysicsGroupInfo(page, 'g-enemies'), { timeout: 20000 })
     .toEqual({ memberCount: 15 });
 
-  await page.getByTestId('toggle-mode-button').click();
+  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('edit'));
   await expect.poll(async () => {
     const state = await getState<{ mode?: string }>(page);
     return state?.mode;
