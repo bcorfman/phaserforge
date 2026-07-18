@@ -6,7 +6,7 @@ import { SCENE_HEIGHT, SCENE_WIDTH } from '../editor/viewport';
 
 export function createGameConfig(container: string): Phaser.Types.Core.GameConfig
 {
-    return {
+    const config = {
         type: Phaser.AUTO,
         parent: container,
         width: SCENE_WIDTH,
@@ -16,7 +16,7 @@ export function createGameConfig(container: string): Phaser.Types.Core.GameConfi
         physics: {
             default: 'arcade',
             arcade: {
-                gravity: { y: 0 },
+                gravity: { x: 0, y: 0 },
                 debug: false,
             },
         },
@@ -30,6 +30,7 @@ export function createGameConfig(container: string): Phaser.Types.Core.GameConfi
             snap: { width: 1, height: 1 },
         },
     };
+    return config as Phaser.Types.Core.GameConfig;
 }
 
 export function configureGameAudioPersistence(game: Phaser.Game): void

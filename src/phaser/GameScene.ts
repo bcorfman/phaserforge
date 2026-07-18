@@ -565,6 +565,10 @@ export class GameScene extends Phaser.Scene {
         globalVolume?: number;
         musicKey?: string;
         cacheHasCurrentMusic?: boolean;
+        currentMusicResolvedUrl?: string;
+        currentMusicLoadType?: string;
+        currentMusicLoadStatus?: 'queued' | 'complete' | 'error' | 'cached';
+        currentMusicLoadError?: string;
       }
       | undefined;
     const currentMusicKey = audio?.musicAssetId ? this.getAudioKey(audio.musicAssetId) : undefined;
@@ -585,7 +589,7 @@ export class GameScene extends Phaser.Scene {
         const analyser = this.audioDebugAnalyser;
         const samples = this.audioDebugSamples;
         if (!analyser || !samples) throw new Error('missing analyser');
-        analyser.getByteTimeDomainData(samples);
+        analyser.getByteTimeDomainData(samples as Uint8Array<ArrayBuffer>);
         let min = 255;
         let max = 0;
         for (const sample of samples) {

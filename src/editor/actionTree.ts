@@ -14,7 +14,7 @@ export interface BehaviorActionTree {
 export function buildBehaviorActionTrees(scene: SceneSpec): BehaviorActionTree[] {
   return Object.values(scene.behaviors).map((behavior) => ({
     behaviorId: behavior.id,
-    root: buildActionTreeNode(scene, behavior.rootActionId, new Set()),
+    root: behavior.rootActionId ? buildActionTreeNode(scene, behavior.rootActionId, new Set()) : undefined,
   }));
 }
 

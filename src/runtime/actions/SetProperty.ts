@@ -20,7 +20,12 @@ function resolveValue(source: ValueSource, occurrence: string, context?: ActionS
   if (!event) return undefined;
   switch (source.field) {
     case 'sourceId':
-      return event.source?.entityId ?? event.source?.target?.entityId ?? event.source?.target?.groupId ?? event.source?.targetKey;
+      return event.source?.entityId
+        ?? (event.source?.target?.type === 'entity'
+          ? event.source.target.entityId
+          : event.source?.target?.type === 'group'
+            ? event.source.target.groupId
+            : event.source?.targetKey);
     case 'outcome':
       return event.type;
     case 'axis':

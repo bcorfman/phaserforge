@@ -139,7 +139,16 @@ function VariationStory({ previewSpy = fn(), applySpy = fn() }: { previewSpy?: R
     onCancelTintVariation: () => {},
     onApplyTintVariation: applySpy as any,
     onRerollTintVariation: () => {},
-  });
+    layoutPreset: undefined,
+    setLayoutPreset: () => {},
+    layoutParams: {},
+    setLayoutParams: () => {},
+    onArrangeGroup: () => {},
+    onUpdateGroupLayout: () => {},
+    onCreateAttachment: () => {},
+    onUpdateAttachment: () => {},
+    onDeleteAttachment: () => {},
+  } as any);
 }
 
 function BoundsEventStory({ updateSpy = fn(), addAttachmentSpy = fn() }: { updateSpy?: ReturnType<typeof fn>; addAttachmentSpy?: ReturnType<typeof fn> }) {

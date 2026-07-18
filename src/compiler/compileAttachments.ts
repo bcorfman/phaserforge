@@ -39,7 +39,6 @@ import {
   buildWaveOffset,
   buildZigzagOffset,
   estimateFigureEightDurationMs,
-  estimateOrbitDurationMs,
   estimateSpiralDurationMs,
   estimateWaveDurationMs,
   estimateZigzagDurationMs,
@@ -392,7 +391,6 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const target = resolveTarget(targetRef, ctx.targets);
     const condition = instantiateInlineCondition(attachment.condition, ctx, { targetKey: stableTargetKey(targetRef), eventId: attachment.eventId });
     // Duration is still used by the inspector defaults / quick usage; runtime action completes after one full orbit.
-    const _durationMs = estimateOrbitDurationMs({ radius, velocity });
     return new OrbitPattern(target, { radius, velocity, clockwise, condition, rotateWithPath: true, rotationOffsetDeg: 0, centerMode });
   }
   if (presetId === 'BouncePattern' || presetId === 'PatrolPattern') {

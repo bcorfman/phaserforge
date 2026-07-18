@@ -24,19 +24,6 @@ function keyboardMatches(bindingKey: string, eventCode: string, eventKey?: strin
   return b === code || (key ? b === key : false);
 }
 
-function mouseButtonMatches(bindingButton: 'left' | 'middle' | 'right', eventButton: number): boolean {
-  switch (bindingButton) {
-    case 'left':
-      return eventButton === 0;
-    case 'middle':
-      return eventButton === 1;
-    case 'right':
-      return eventButton === 2;
-    default:
-      return false;
-  }
-}
-
 function gamepadButtonPressed(pad: Gamepad, index: number): boolean {
   const btn = pad.buttons[index];
   return Boolean(btn && (btn.pressed || btn.value > 0.5));

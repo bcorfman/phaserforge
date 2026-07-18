@@ -14,7 +14,7 @@ export class BoundsHit implements Condition {
   readonly behavior: BoundaryBehavior;
   private readonly engine: BoundaryEngine;
 
-  constructor(bounds: Bounds, private mode: 'any' | 'all', options: BoundaryOptions = {}) {
+  constructor(bounds: Bounds, _mode: 'any' | 'all', options: BoundaryOptions = {}) {
     this.scope = options.scope ?? 'member-any';
     this.behavior = options.behavior ?? 'stop';
     this.engine = new BoundaryEngine(bounds, {
