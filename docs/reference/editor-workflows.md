@@ -116,6 +116,8 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 
 #### A26 — Edit / Commit Formation Draft
 - In the floating draft panel, choose template source, name, preset, count, and params.
+- For `Scatter`, edit count, paired X/Y min/max bounds, seed, and Reroll.
+- Optional `Random tint` expands paired RGB channel min/max controls; preview and commit are deterministic from the stored seed and tint streams.
 - Drag the draft panel by its title.
 - `Enter` commits; `Esc` cancels.
 
@@ -137,19 +139,37 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 - Scene overflow `⋯` → `Rename…`, `⧉ Duplicate Scene`, `★ Set as Base / Clear Base`, `Clear Scene…`, or `Delete…`.
 
 #### A31a — Manage Project Root
-- Project Tree header → `Manage` → `Create New`, `Open...`, `Toggle Sync Mode`, `Import YAML`, `Export as YAML`, `Rename`, `History`, or `Clear Project ...`.
+- Project Tree header → `Manage` → `Create New`, `Open...`, `Toggle Sync Mode`, `Import YAML`, `Export as YAML`, `Project Settings...`, `Rename`, `History`, or `Clear Project ...`.
+- `Project Settings...` opens a lightweight dialog for project-wide `Pixels Per Unit` and render mode (`Pixel Art` / `Smooth 2D`).
 - `Rename` opens inline rename on the project root row.
 - `History` swaps the left pane into `Project Revisions`.
 
 #### A31b — Browse Project Revisions
 - Project Tree header → `Manage` → `History`.
+- Use `Past 7 Days`, `Past 14`, or `Past 30` to filter active visible revisions.
 - Select a revision row to preview it in the canvas.
 - Use `Restore...` or `Copy...`, or use the back arrow to return to Project Tree.
+- Use the pane-level `Archive...` control when you want to clean up multiple visible revisions.
+
+#### A31c — Archive Multiple Project Revisions
+- In `Project Revisions`, click `Archive...` to enter archive mode.
+- Use the per-row `Select` controls to mark one or more visible revision rows.
+- Click `Archive Selected` and confirm.
+
+#### A31d — Browse Archived Project Revisions
+- In `Project Revisions`, click `Archived`.
+- Select an archived revision row to preview it in the canvas.
+- Use `Restore...`, `Copy...`, or `Delete...`.
+
+#### A31e — Delete Archived Project Revisions
+- In `Archived`, either use per-row `Delete...` or enter delete mode for multi-select cleanup.
+- Confirm `Delete Permanently` in the dialog.
 
 #### A32 — Create Sprite from an Existing Asset
 - Drag an image/spritesheet asset onto the canvas.
 - Double-click an image/spritesheet in Assets Dock.
 - Scene graph → `Sprites` → `+ Add ▾` → `Sprite (from Asset)` → choose asset.
+- New sprites derive authored `width/height` from natural asset pixels and the current project `Pixels Per Unit`.
 
 #### A33 — Create Text Entity
 - Scene graph → `Text` → `+ Add`.
@@ -172,6 +192,7 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 - Drag image/spritesheet asset onto an existing canvas sprite to replace its asset.
 - Drag image asset onto Background Layers to create/replace a layer.
 - Drag audio asset onto Scene Music to assign music.
+- Creating a sprite from empty canvas space uses project pixel scale for the initial world size.
 
 #### A38 — Manage Asset Row Actions
 - Asset overflow `⋯` → `Rename…`, `Delete…`.
@@ -180,24 +201,30 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 ### Inspector: entities, formations, actions, scene systems
 
 #### A39 — Edit Single Entity Properties
-- In Inspector, edit transform, sprite size, text settings, hitbox, physics, visual settings, asset selection, frame settings, alpha/visibility/depth, and flip.
+- In Inspector, edit transform, sprite size, text settings, hitbox, physics, visual settings, asset selection, frame settings, tint, alpha/visibility/depth, and flip.
+- For asset-backed sprites, `Sprite Size` also shows `Natural Size`, `Project Scale`, `World Size`, and `Use Project Scale`.
 - Text entities can also be rasterized to a sprite.
 - If the entity is in a formation, `Apply Asset to Formation` pushes the chosen asset to sibling members.
 
 #### A40 — Edit Multi-selection Properties
-- With 2+ sprites selected, use the multi-entity inspector to bulk-edit shared transform/scale/rotation/origin, flip, alpha, visibility, and depth.
+- With 2+ sprites selected, use the multi-entity inspector to bulk-edit shared transform/scale/rotation/origin, flip, tint, alpha, visibility, and depth.
 
 #### A41 — Edit Formation Properties
 - In Inspector, rename the formation, inspect member count/layout summary, convert layout type, open the layout inspector, edit layout params, select/remove individual members, and delete the formation.
+- Use `Visual Variations` to preview, apply, reroll, or cancel deterministic random RGB tint for all members or selected members; final tint values live on member entities.
 
 #### A42 — Create / Edit Event Blocks
 - In `Actions/Events`, add an event block.
-- Rename it and choose trigger type: scene start, update, input action, visible edge, or custom event.
+- Rename it and choose trigger type: scene start, update, input action, visible edge, custom event, or typed Bounds event.
+- Bounds triggers expose the finite event family `Contact Entered`, `Contact Exited`, `Wrapped`, `Bounced`, `Clamped`, and `Stopped`, with Axis and Side filters.
+- Bounds triggers show compatibility hints for the selected bounds behavior and route only events in the owning target/formation scope.
 - Switch between `Handlers` and `Wiring`.
 
 #### A43 — Create / Edit Action Steps
 - Use `+ Add Action` or an action overflow menu to add above, below, or as a child.
 - Drag actions to reorder.
+- Add `Set Property` when a constrained action should set X, Y, tint, alpha, visibility, vx, or vy from a constant, seeded random range, or selected primitive event field.
+- For Bounds event blocks, `Set Property` can target `Event source`, meaning the individual member/instigator carried by that event occurrence.
 - Open an action to edit its parameters in the attachment inspector.
 - Remove one or many selected actions.
 
@@ -213,7 +240,9 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 
 #### A46 — Edit Attachment Details
 - Select an action row or `Open` it from overflow.
-- Edit its name, enabled state, target application mode, preset-specific parameters, and remove it.
+- Edit its name, enabled state, target application mode, event-source target binding where available, preset-specific parameters, and remove it.
+- For `Set Property`, choose the allowlisted property and a value source: constant, seeded random range with Min/Max/Seed, or compatible event field.
+- Runtime random X/Y values may remain continuous; authored edit-time geometry remains pixel-rounded.
 - Use `Back to Actions/Events` to return from the attachment inspector.
 
 #### A47 — Manage Background Layers
@@ -282,6 +311,7 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 
 #### A61 — Set Scene World Size
 - Edit `W` / `H` in the viewbar and commit on blur or `Enter`.
+- In the Scene inspector, use `Scene Appearance` to set or clear the authored solid background color rendered behind background layers.
 
 #### A62 — Switch Inspector / Cloud Pane
 - In cloud-enabled deployments, switch the right pane between `Inspector` and `Cloud`.
@@ -329,7 +359,7 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 - A2 select multiple sprites → A20 group → A41 adjust formation → A21/A22/A24 refine membership/order.
 
 ### W3 — Create a Formation from a Template
-- A25 start draft → A26 edit template/preset/count/params → commit → A41 refine layout and members.
+- A25 start draft → A26 edit template/preset/count/params, including Scatter bounds/seed/random tint when needed → commit → A41 refine layout, members, and Visual Variations.
 
 ### W4 — Asset Import to Sprite Placement
 - A36 import asset → A32 create sprite from asset → A39 tune the created sprite.
@@ -338,7 +368,7 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 - A35 find asset → A37 drag asset onto an existing canvas sprite → A39 refine frame/size/visual settings.
 
 ### W6 — Background Setup
-- A36 import image → A37 drag image to Background Layers or A47 add a layer manually → A47 tune layer settings.
+- A61 set authored scene background color when needed → A36 import image → A37 drag image to Background Layers or A47 add a layer manually → A47 tune layer settings.
 
 ### W7 — Scene Audio Setup
 - A36 import audio → A48 assign music → A48 add ambience rows → A7 test in Play mode.
@@ -356,7 +386,7 @@ This reference mirrors the workflow inventory in a docs-friendly format so tutor
 - A1 select entity → A42 create handler → A43 add/reorder actions → A45 optionally convert/apply patterns → A46 tune an action → A7 test.
 
 ### W12 — Formation Behavior / Event Authoring
-- A1 select formation → A42 create handler → A43/A44/A45 build grouped action flow → A7 test.
+- A1 select formation → A42 create handler, including Bounds filters when needed → A43/A44/A45 build grouped action flow → A46 target owner or Event source and tune value sources → A7 test.
 
 ### W13 — Bulk Edit Pass
 - A2 multi-select sprites → A18/A19 normalize spacing or alignment → A40 bulk-edit shared visuals/transform values.

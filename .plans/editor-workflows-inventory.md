@@ -115,6 +115,8 @@ It follows the original rule: identify the smallest reusable workflows first, th
 
 #### A26 — Edit / Commit Formation Draft
 - In the floating draft panel, choose template source, name, preset, count, and params.
+- For `Scatter`, edit count, paired X/Y min/max bounds, seed, and Reroll.
+- Optional `Random tint` expands paired RGB channel min/max controls; preview and commit are deterministic from the stored seed and tint streams.
 - Drag the draft panel by its title.
 - `Enter` commits; `Esc` cancels.
 
@@ -198,25 +200,30 @@ It follows the original rule: identify the smallest reusable workflows first, th
 ### Inspector: entities, formations, actions, scene systems
 
 #### A39 — Edit Single Entity Properties
-- In Inspector, edit transform, sprite size, text settings, hitbox, physics, visual settings, asset selection, frame settings, alpha/visibility/depth, and flip.
+- In Inspector, edit transform, sprite size, text settings, hitbox, physics, visual settings, asset selection, frame settings, tint, alpha/visibility/depth, and flip.
 - For asset-backed sprites, `Sprite Size` also shows `Natural Size`, `Project Scale`, `World Size`, and `Use Project Scale`.
 - Text entities can also be rasterized to a sprite.
 - If the entity is in a formation, `Apply Asset to Formation` pushes the chosen asset to sibling members.
 
 #### A40 — Edit Multi-selection Properties
-- With 2+ sprites selected, use the multi-entity inspector to bulk-edit shared transform/scale/rotation/origin, flip, alpha, visibility, and depth.
+- With 2+ sprites selected, use the multi-entity inspector to bulk-edit shared transform/scale/rotation/origin, flip, tint, alpha, visibility, and depth.
 
 #### A41 — Edit Formation Properties
 - In Inspector, rename the formation, inspect member count/layout summary, convert layout type, open the layout inspector, edit layout params, select/remove individual members, and delete the formation.
+- Use `Visual Variations` to preview, apply, reroll, or cancel deterministic random RGB tint for all members or selected members; final tint values live on member entities.
 
 #### A42 — Create / Edit Event Blocks
 - In `Actions/Events`, add an event block.
-- Rename it and choose trigger type: scene start, update, input action, visible edge, or custom event.
+- Rename it and choose trigger type: scene start, update, input action, visible edge, custom event, or typed Bounds event.
+- Bounds triggers expose the finite event family `Contact Entered`, `Contact Exited`, `Wrapped`, `Bounced`, `Clamped`, and `Stopped`, with Axis and Side filters.
+- Bounds triggers show compatibility hints for the selected bounds behavior and route only events in the owning target/formation scope.
 - Switch between `Handlers` and `Wiring`.
 
 #### A43 — Create / Edit Action Steps
 - Use `+ Add Action` or an action overflow menu to add above, below, or as a child.
 - Drag actions to reorder.
+- Add `Set Property` when a constrained action should set X, Y, tint, alpha, visibility, vx, or vy from a constant, seeded random range, or selected primitive event field.
+- For Bounds event blocks, `Set Property` can target `Event source`, meaning the individual member/instigator carried by that event occurrence.
 - Open an action to edit its parameters in the attachment inspector.
 - Remove one or many selected actions.
 
@@ -232,7 +239,9 @@ It follows the original rule: identify the smallest reusable workflows first, th
 
 #### A46 — Edit Attachment Details
 - Select an action row or `Open` it from overflow.
-- Edit its name, enabled state, target application mode, preset-specific parameters, and remove it.
+- Edit its name, enabled state, target application mode, event-source target binding where available, preset-specific parameters, and remove it.
+- For `Set Property`, choose the allowlisted property and a value source: constant, seeded random range with Min/Max/Seed, or compatible event field.
+- Runtime random X/Y values may remain continuous; authored edit-time geometry remains pixel-rounded.
 - Use `Back to Actions/Events` to return from the attachment inspector.
 
 #### A47 — Manage Background Layers
@@ -301,6 +310,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 
 #### A61 — Set Scene World Size
 - Edit `W` / `H` in the viewbar and commit on blur or `Enter`.
+- In the Scene inspector, use `Scene Appearance` to set or clear the authored solid background color rendered behind background layers.
 
 #### A62 — Switch Inspector / Cloud Pane
 - In cloud-enabled deployments, switch the right pane between `Inspector` and `Cloud`.
@@ -348,7 +358,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - A2 select multiple sprites → A20 group → A41 adjust formation → A21/A22/A24 refine membership/order.
 
 ### W3 — Create a Formation from a Template
-- A25 start draft → A26 edit template/preset/count/params → commit → A41 refine layout and members.
+- A25 start draft → A26 edit template/preset/count/params, including Scatter bounds/seed/random tint when needed → commit → A41 refine layout, members, and Visual Variations.
 
 ### W4 — Asset Import to Sprite Placement
 - A36 import asset → A32 create sprite from asset → A39 tune the created sprite.
@@ -357,7 +367,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - A35 find asset → A37 drag asset onto an existing canvas sprite → A39 refine frame/size/visual settings.
 
 ### W6 — Background Setup
-- A36 import image → A37 drag image to Background Layers or A47 add a layer manually → A47 tune layer settings.
+- A61 set authored scene background color when needed → A36 import image → A37 drag image to Background Layers or A47 add a layer manually → A47 tune layer settings.
 
 ### W7 — Scene Audio Setup
 - A36 import audio → A48 assign music → A48 add ambience rows → A7 test in Play mode.
@@ -375,7 +385,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - A1 select entity → A42 create handler → A43 add/reorder actions → A45 optionally convert/apply patterns → A46 tune an action → A7 test.
 
 ### W12 — Formation Behavior / Event Authoring
-- A1 select formation → A42 create handler → A43/A44/A45 build grouped action flow → A7 test.
+- A1 select formation → A42 create handler, including Bounds filters when needed → A43/A44/A45 build grouped action flow → A46 target owner or Event source and tune value sources → A7 test.
 
 ### W13 — Bulk Edit Pass
 - A2 multi-select sprites → A18/A19 normalize spacing or alignment → A40 bulk-edit shared visuals/transform values.
