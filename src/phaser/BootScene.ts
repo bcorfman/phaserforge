@@ -9,7 +9,7 @@ import { createRuntimeServices } from './runtimeServices';
 import { shouldPreserveViewStateOnProjectLoad } from './projectLoadViewState';
 import type { RuntimeServices } from '../runtime/services/RuntimeServices';
 import { resolveTarget, flattenTarget } from '../runtime/targets/resolveTarget';
-import type { ViewState } from '../util/viewStateStorage';
+import { toExactViewState, type ViewState } from '../util/viewStateStorage';
 
 export class BootScene extends Phaser.Scene {
   private project?: ProjectSpec;
@@ -146,6 +146,10 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
+  private captureExactViewStateForModeSwitch(scene: { getViewState?: () => ViewState } | undefined): void {
+    this.lastViewState = toExactViewState(scene?.getViewState?.());
+  }
+
   private resolveSceneSpec(project: ProjectSpec, sceneId: string | undefined): SceneSpec {
     if (sceneId && project.scenes[sceneId]) return project.scenes[sceneId];
     if (project.scenes[project.initialSceneId]) return project.scenes[project.initialSceneId];
@@ -236,12 +240,12 @@ export class BootScene extends Phaser.Scene {
     if (this.mode === nextMode) return;
     try {
       if (nextMode === 'edit') {
-        const game = this.scene.get('GameScene') as unknown as { getViewState?: () => any } | undefined;
-        if (game?.getViewState) this.lastViewState = game.getViewState();
+        const game = this.scene.get('GameScene') as unknown as { getViewState?: () => ViewState } | undefined;
+        this.captureExactViewStateForModeSwitch(game);
         return;
       }
-      const editor = this.scene.get('EditorScene') as unknown as { getViewState?: () => any } | undefined;
-      if (editor?.getViewState) this.lastViewState = editor.getViewState();
+      const editor = this.scene.get('EditorScene') as unknown as { getViewState?: () => ViewState } | undefined;
+      this.captureExactViewStateForModeSwitch(editor);
     } catch {
       // ignore view capture errors
     }
