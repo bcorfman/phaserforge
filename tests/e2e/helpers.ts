@@ -345,6 +345,21 @@ export async function openProjectScope(page: Page): Promise<void> {
   }
 }
 
+export async function openProjectHistory(page: Page): Promise<void> {
+  await openProjectScope(page);
+  const historyMenuItem = page.getByTestId('project-manage-history');
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.getByTestId('project-tree-manage-button').click();
+    if (await historyMenuItem.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await historyMenuItem.click();
+      await expect(page.getByTestId('project-revisions-pane')).toBeVisible();
+      return;
+    }
+    await page.keyboard.press('Escape').catch(() => {});
+  }
+  await expect(historyMenuItem).toBeVisible();
+}
+
 export async function openSceneScope(page: Page): Promise<void> {
   const tab = page.getByTestId('sidebar-scope-tab-scene');
   if (await tab.isVisible().catch(() => false)) {

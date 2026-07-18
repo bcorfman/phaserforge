@@ -1,20 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { dismissViewHint, getState, gotoStudio, openProjectScope, seedSampleScene, waitForSampleScene } from './helpers';
-
-async function openProjectHistory(page: Page) {
-  await openProjectScope(page);
-  const historyMenuItem = page.getByTestId('project-manage-history');
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.getByTestId('project-tree-manage-button').click();
-    if (await historyMenuItem.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await historyMenuItem.click();
-      await expect(page.getByTestId('project-revisions-pane')).toBeVisible();
-      return;
-    }
-    await page.keyboard.press('Escape').catch(() => {});
-  }
-  await expect(historyMenuItem).toBeVisible();
-}
+import { expect, test } from '@playwright/test';
+import { dismissViewHint, getState, gotoStudio, openProjectHistory, seedSampleScene, waitForSampleScene } from './helpers';
 
 test('scene world resize history preserves summary and grouping after tab reopen @regression', async ({ page }) => {
   await seedSampleScene(page, { once: true });

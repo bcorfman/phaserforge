@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, gotoStudio, openProjectScope, seedSampleScene, waitForSampleScene } from './helpers';
+import { dismissViewHint, gotoStudio, openProjectHistory, seedSampleScene, waitForSampleScene } from './helpers';
 
 test('tab close and reopen restores the latest active project head and history @regression', async ({ page }) => {
   await seedSampleScene(page, { once: true });
@@ -13,8 +13,7 @@ test('tab close and reopen restores the latest active project head and history @
   await page.getByTestId('rename-project-input').press('Enter');
   await expect(page.getByTestId('project-tree-root-button')).toContainText('Pattern Demo');
 
-  await page.getByTestId('project-tree-manage-button').click();
-  await page.getByTestId('project-manage-history').click();
+  await openProjectHistory(page);
   const revisionsPane = page.getByTestId('project-revisions-pane');
   await expect(revisionsPane).toBeVisible();
   await expect(revisionsPane).toContainText('Renamed to Pattern Demo');
@@ -28,9 +27,7 @@ test('tab close and reopen restores the latest active project head and history @
     await dismissViewHint(reopenedPage);
 
     await expect(reopenedPage.getByTestId('project-tree-root-button')).toContainText('Pattern Demo');
-    await openProjectScope(reopenedPage);
-    await reopenedPage.getByTestId('project-tree-manage-button').click();
-    await reopenedPage.getByTestId('project-manage-history').click();
+    await openProjectHistory(reopenedPage);
     await expect(reopenedPage.getByTestId('project-revisions-pane')).toContainText('Renamed to Pattern Demo');
   } finally {
     await reopenedPage.close();
