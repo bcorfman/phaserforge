@@ -2110,6 +2110,8 @@ function AttachmentInspector({
     attachment.target.type === 'entity'
       ? (scene.entities[attachment.target.entityId]?.name ?? attachment.target.entityId)
       : (scene.groups[attachment.target.groupId]?.name ?? attachment.target.groupId);
+  const eventBlockTrigger = attachment.eventId ? scene.eventBlocks?.[attachment.eventId]?.trigger : attachment.trigger;
+  const canTargetEventSource = eventBlockTrigger?.type === 'bounds';
   const supportedPresetIds = new Set([
     'MoveUntil',
     'MoveTo',
@@ -2305,6 +2307,23 @@ function AttachmentInspector({
             >
               <option value="group">Group</option>
               <option value="members">Members</option>
+            </select>
+          </label>
+        )}
+        {canTargetEventSource && (
+          <label className="field">
+            <span>Target</span>
+            <select
+              aria-label="Action Target"
+              data-testid="attachment-target-mode-select"
+              value={attachment.targetMode === 'event-source' ? 'event-source' : 'owner'}
+              onChange={(e) => {
+                const targetMode = e.target.value === 'event-source' ? 'event-source' : undefined;
+                onUpdate({ ...attachment, targetMode });
+              }}
+            >
+              <option value="owner">Owner</option>
+              <option value="event-source">Event source</option>
             </select>
           </label>
         )}
@@ -2986,12 +3005,28 @@ function AttachmentInspector({
               </div>
               <label className="field">
                 <span>Seed</span>
-                <input
-                  aria-label="Set Property Seed"
-                  data-testid="attachment-setproperty-seed"
-                  value={String((params.valueSource as any)?.seed ?? '')}
-                  onChange={(e) => onUpdate({ ...attachment, params: { ...params, valueSource: { ...(params.valueSource as any), kind: 'randomRange', seed: e.target.value } } })}
-                />
+                <div className="inspector-row inspector-inline-buttons">
+                  <input
+                    aria-label="Set Property Seed"
+                    data-testid="attachment-setproperty-seed"
+                    value={String((params.valueSource as any)?.seed ?? '')}
+                    onChange={(e) => onUpdate({ ...attachment, params: { ...params, valueSource: { ...(params.valueSource as any), kind: 'randomRange', seed: e.target.value } } })}
+                  />
+                  <button
+                    className="button button-compact"
+                    data-testid="attachment-setproperty-reroll"
+                    type="button"
+                    onClick={() => onUpdate({
+                      ...attachment,
+                      params: {
+                        ...params,
+                        valueSource: { ...(params.valueSource as any), kind: 'randomRange', seed: makeSeed('set-property') },
+                      },
+                    })}
+                  >
+                    Reroll
+                  </button>
+                </div>
               </label>
             </>
           ) : String(params.property ?? 'x') === 'visible' ? (

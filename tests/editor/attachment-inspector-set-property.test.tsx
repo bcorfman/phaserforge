@@ -49,6 +49,66 @@ describe('Attachment inspector Set Property', () => {
     expect(markup).toContain('data-testid="attachment-setproperty-random-min"');
     expect(markup).toContain('data-testid="attachment-setproperty-random-max"');
     expect(markup).toContain('data-testid="attachment-setproperty-seed"');
+    expect(markup).toContain('data-testid="attachment-setproperty-reroll"');
     expect(markup).toMatch(/<div class="inspector-grid-2">[\s\S]*attachment-setproperty-random-min[\s\S]*attachment-setproperty-random-max[\s\S]*<\/div>/);
+  });
+
+  it('shows Event source target choice only for source-providing triggers', () => {
+    const scene = baseScene();
+    scene.eventBlocks = {
+      wrap: {
+        id: 'wrap',
+        target: { type: 'group', groupId: 'g1' },
+        trigger: { type: 'bounds', boundsEvent: 'wrapped', axis: 'y', side: 'any' },
+      } as any,
+      start: {
+        id: 'start',
+        target: { type: 'group', groupId: 'g1' },
+        trigger: { type: 'start' },
+      } as any,
+    };
+
+    const boundsMarkup = renderToStaticMarkup(
+      renderAttachmentInspector(
+        {
+          id: 'att-bounds',
+          target: { type: 'group', groupId: 'g1' },
+          eventId: 'wrap',
+          targetMode: 'event-source',
+          presetId: 'SetProperty',
+          enabled: true,
+          order: 0,
+          params: { property: 'x', valueSource: { kind: 'constant', value: 0 } },
+        } as any,
+        baseProject(),
+        scene,
+        { arrange: [], conditions: [], actions: [{ type: 'SetProperty', displayName: 'Set Property', category: 'state', implemented: true }] } as any,
+        () => {},
+        () => {}
+      )
+    );
+
+    const startMarkup = renderToStaticMarkup(
+      renderAttachmentInspector(
+        {
+          id: 'att-start',
+          target: { type: 'group', groupId: 'g1' },
+          eventId: 'start',
+          presetId: 'SetProperty',
+          enabled: true,
+          order: 0,
+          params: { property: 'x', valueSource: { kind: 'constant', value: 0 } },
+        } as any,
+        baseProject(),
+        scene,
+        { arrange: [], conditions: [], actions: [{ type: 'SetProperty', displayName: 'Set Property', category: 'state', implemented: true }] } as any,
+        () => {},
+        () => {}
+      )
+    );
+
+    expect(boundsMarkup).toContain('data-testid="attachment-target-mode-select"');
+    expect(boundsMarkup).toContain('Event source');
+    expect(startMarkup).not.toContain('data-testid="attachment-target-mode-select"');
   });
 });

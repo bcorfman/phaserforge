@@ -62,6 +62,46 @@ function displayBoundsBehavior(behavior: BoundsBehavior): string {
   return 'Stop';
 }
 
+function formatBoundsEventVerb(outcome: BoundsEventOutcome): string {
+  if (outcome === 'contact-entered') return 'enter bounds';
+  if (outcome === 'contact-exited') return 'exit bounds';
+  if (outcome === 'wrapped') return 'wrap';
+  if (outcome === 'bounced') return 'bounce';
+  if (outcome === 'clamped') return 'clamp';
+  return 'stop';
+}
+
+function formatBoundsTriggerSentence(scene: SceneSpec, block: EventBlockSpec): string {
+  const trigger = block.trigger;
+  if (trigger?.type !== 'bounds') return `When ${block.name ?? block.id}`;
+  const targetLabel = getTargetLabel(scene, block.target);
+  const eventText = formatBoundsEventVerb((trigger.boundsEvent ?? 'wrapped') as BoundsEventOutcome);
+  const axis = trigger.axis && trigger.axis !== 'any' ? ` on ${trigger.axis.toUpperCase()}` : '';
+  const side = trigger.side && trigger.side !== 'any' ? ` at ${BOUNDS_SIDE_LABELS[trigger.side]}` : '';
+  return `When ${targetLabel} ${eventText}${axis}${side}`;
+}
+
+function formatSetPropertyActionSentence(attachment: AttachmentSpec): string | undefined {
+  if (attachment.presetId !== 'SetProperty') return undefined;
+  const propertyLabels: Record<string, string> = {
+    x: 'X',
+    y: 'Y',
+    tint: 'Tint',
+    alpha: 'Alpha',
+    visible: 'Visible',
+    vx: 'Velocity X',
+    vy: 'Velocity Y',
+  };
+  const property = propertyLabels[String(attachment.params?.property ?? 'x')] ?? String(attachment.params?.property ?? 'property');
+  const target = attachment.targetMode === 'event-source' ? 'event source' : 'owner';
+  const valueSource = attachment.params?.valueSource as any;
+  let value = 'constant 0';
+  if (valueSource?.kind === 'randomRange') value = `random ${Number(valueSource.min ?? 0)}..${Number(valueSource.max ?? 0)}`;
+  else if (valueSource?.kind === 'constant') value = String(valueSource.value ?? 0);
+  else if (valueSource?.kind === 'eventField') value = `event ${String(valueSource.field ?? '')}`;
+  return `Set ${target} ${property} to ${value}`;
+}
+
 function getKnownBoundsBehavior(scene: SceneSpec, target: TargetRef): BoundsBehavior | undefined {
   const behaviors = new Set<BoundsBehavior>();
   for (const attachment of Object.values(scene.attachments ?? {})) {
@@ -303,6 +343,24 @@ function EventWiringMap({
     return { events, emittersByEvent, handlersByEvent };
   }, [scene.attachments, scene.eventBlocks]);
 
+  const boundsWiringSentences = useMemo(() => {
+    const rows: Array<{ eventBlockId: Id; sentence: string }> = [];
+    for (const block of Object.values(scene.eventBlocks ?? {})) {
+      if (block.trigger?.type !== 'bounds') continue;
+      const actionSentences = Object.values(scene.attachments ?? {})
+        .filter((attachment) => attachment.eventId === block.id)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((attachment) => formatSetPropertyActionSentence(attachment))
+        .filter((sentence): sentence is string => Boolean(sentence));
+      if (actionSentences.length === 0) continue;
+      rows.push({
+        eventBlockId: block.id,
+        sentence: `${formatBoundsTriggerSentence(scene, block)} → ${actionSentences.join(' then ')}`,
+      });
+    }
+    return rows;
+  }, [scene]);
+
   const selectedTargetLabel = getTargetLabel(scene, selectedTarget);
   const knownInputIds = useMemo(() => listInputActionIds(project), [project]);
 
@@ -310,60 +368,74 @@ function EventWiringMap({
     <div>
       <div className="muted">Scene-level map. Create handlers on selected target: {selectedTargetLabel}</div>
       {knownInputIds.length === 0 ? null : null}
-      {events.length === 0 ? (
+      {events.length === 0 && boundsWiringSentences.length === 0 ? (
         <div className="muted">No emitted or handled events yet. Add an Emit Event action or an On Event trigger.</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-          <div>
-            <div className="panel-heading">Emitters</div>
-            {events.map((eventName) => {
-              const emitters = emittersByEvent.get(eventName) ?? [];
-              return (
-                <div key={`emitters-${eventName}`} className="inspector-block" style={{ marginTop: 10 }}>
-                  <strong>{eventName}</strong>
-                  {emitters.length === 0 ? <div className="muted">None</div> : null}
-                  {emitters.map((e) => (
-                    <div key={e.attachmentId} className="member-row">
-                      <button className="tag-button" type="button" onClick={() => onSelectAttachment(e.attachmentId)}>
-                        {getTargetLabel(scene, e.target)} · {e.eventId ? `Event ${e.eventId}` : 'OnSceneStart'} · EmitEvent
+        <>
+          {boundsWiringSentences.length > 0 ? (
+            <div className="inspector-block" style={{ marginTop: 10 }}>
+              <div className="panel-heading">Bounds</div>
+              {boundsWiringSentences.map((row) => (
+                <div key={row.eventBlockId} className="inspector-row" data-testid={`event-wiring-bounds-${row.eventBlockId}`}>
+                  {row.sentence}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {events.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              <div>
+                <div className="panel-heading">Emitters</div>
+                {events.map((eventName) => {
+                  const emitters = emittersByEvent.get(eventName) ?? [];
+                  return (
+                    <div key={`emitters-${eventName}`} className="inspector-block" style={{ marginTop: 10 }}>
+                      <strong>{eventName}</strong>
+                      {emitters.length === 0 ? <div className="muted">None</div> : null}
+                      {emitters.map((e) => (
+                        <div key={e.attachmentId} className="member-row">
+                          <button className="tag-button" type="button" onClick={() => onSelectAttachment(e.attachmentId)}>
+                            {getTargetLabel(scene, e.target)} · {e.eventId ? `Event ${e.eventId}` : 'OnSceneStart'} · EmitEvent
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+              <div>
+                <div className="panel-heading">Events</div>
+                {events.map((eventName) => (
+                  <div key={`events-${eventName}`} className="inspector-block" style={{ marginTop: 10 }}>
+                    <strong>{eventName}</strong>
+                    <div className="inspector-row">
+                      <button className="tag-button" type="button" onClick={() => onCreateHandlerEventBlock(eventName)}>
+                        Create handler on {selectedTargetLabel}
                       </button>
                     </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-          <div>
-            <div className="panel-heading">Events</div>
-            {events.map((eventName) => (
-              <div key={`events-${eventName}`} className="inspector-block" style={{ marginTop: 10 }}>
-                <strong>{eventName}</strong>
-                <div className="inspector-row">
-                  <button className="tag-button" type="button" onClick={() => onCreateHandlerEventBlock(eventName)}>
-                    Create handler on {selectedTargetLabel}
-                  </button>
-                </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div>
-            <div className="panel-heading">Handlers</div>
-            {events.map((eventName) => {
-              const handlers = handlersByEvent.get(eventName) ?? [];
-              return (
-                <div key={`handlers-${eventName}`} className="inspector-block" style={{ marginTop: 10 }}>
-                  <strong>{eventName}</strong>
-                  {handlers.length === 0 ? <div className="muted">None</div> : null}
-                  {handlers.map((h) => (
-                    <div key={h.eventBlockId} className="member-row">
-                      <span className="muted">{getTargetLabel(scene, h.target)}</span>
+              <div>
+                <div className="panel-heading">Handlers</div>
+                {events.map((eventName) => {
+                  const handlers = handlersByEvent.get(eventName) ?? [];
+                  return (
+                    <div key={`handlers-${eventName}`} className="inspector-block" style={{ marginTop: 10 }}>
+                      <strong>{eventName}</strong>
+                      {handlers.length === 0 ? <div className="muted">None</div> : null}
+                      {handlers.map((h) => (
+                        <div key={h.eventBlockId} className="member-row">
+                          <span className="muted">{getTargetLabel(scene, h.target)}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );
