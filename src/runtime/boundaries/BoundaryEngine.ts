@@ -1,15 +1,15 @@
 import { coerceTarget, flattenTarget, isFormationGroup } from '../targets/resolveTarget';
 import { GroupBounds, RuntimeEntity, RuntimeTarget } from '../targets/types';
 import { getRotatedEntityBoundaryBounds, getRectSpan } from '../geometry';
+import type { BoundsEventOutcome } from '../events';
 
 export type BoundaryScope = 'member-any' | 'member-all' | 'group-extents';
 export type BoundaryBehavior = 'stop' | 'limit' | 'bounce' | 'wrap';
 export type BoundarySide = 'left' | 'right' | 'top' | 'bottom';
-export type BoundaryEventOutcome = 'contact-entered' | 'contact-exited' | 'wrapped' | 'bounced' | 'clamped' | 'stopped';
 
 export interface BoundaryEvent {
   family: 'bounds';
-  outcome: BoundaryEventOutcome;
+  outcome: BoundsEventOutcome;
   source: RuntimeTarget;
   axis: 'x' | 'y';
   side: BoundarySide;
