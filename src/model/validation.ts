@@ -17,6 +17,7 @@ import {
 } from './types';
 import { normalizeProjectPixelsPerUnit, normalizeProjectRenderMode } from './projectPixelScale';
 import { resolveEntityDefaults } from './entityDefaults';
+import { BOUNDS_AXIS_FILTER_VALUES, BOUNDS_EVENT_VALUES, BOUNDS_SIDE_FILTER_VALUES } from './events';
 
 export function validateProjectSpec(project: ProjectSpec): void {
   if (!project || typeof project !== 'object') throw new Error('Project must be an object');
@@ -307,14 +308,16 @@ function validateAttachmentTrigger(trigger: AttachmentTriggerSpec, context: stri
   }
   if (type === 'bounds') {
     const boundsEvent = String((trigger as any).boundsEvent ?? '');
-    if (!['contact-entered', 'contact-exited', 'wrapped', 'bounced', 'clamped', 'stopped'].includes(boundsEvent)) {
-      throw new Error(`${context} boundsEvent must be contact-entered|contact-exited|wrapped|bounced|clamped|stopped`);
+    if (!(BOUNDS_EVENT_VALUES as readonly string[]).includes(boundsEvent)) {
+      throw new Error(`${context} boundsEvent must be ${BOUNDS_EVENT_VALUES.join('|')}`);
     }
     const axis = String((trigger as any).axis ?? 'any');
-    if (axis !== 'any' && axis !== 'x' && axis !== 'y') throw new Error(`${context} axis must be any|x|y`);
+    if (!(BOUNDS_AXIS_FILTER_VALUES as readonly string[]).includes(axis)) {
+      throw new Error(`${context} axis must be ${BOUNDS_AXIS_FILTER_VALUES.join('|')}`);
+    }
     const side = String((trigger as any).side ?? 'any');
-    if (side !== 'any' && side !== 'left' && side !== 'right' && side !== 'top' && side !== 'bottom') {
-      throw new Error(`${context} side must be any|left|right|top|bottom`);
+    if (!(BOUNDS_SIDE_FILTER_VALUES as readonly string[]).includes(side)) {
+      throw new Error(`${context} side must be ${BOUNDS_SIDE_FILTER_VALUES.join('|')}`);
     }
   }
 }
