@@ -11,6 +11,15 @@ export type ViewState = {
 };
 export type StoredViewState = ViewState & { projectId: string };
 
+export function toExactViewState(view: ViewState | null | undefined): ViewState | undefined {
+  if (!view) return undefined;
+  return {
+    zoom: view.zoom,
+    scrollX: view.scrollX,
+    scrollY: view.scrollY,
+  };
+}
+
 export function shouldPersistViewState(options: {
   projectId: string | null | undefined;
   initialized: boolean;
