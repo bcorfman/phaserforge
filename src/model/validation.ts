@@ -452,7 +452,18 @@ function validateSetPropertyAttachment(attachment: AttachmentSpec, context: stri
     }
     return;
   }
-  throw new Error(`${context} valueSource.kind must be constant|randomRange`);
+  if (kind === 'eventField') {
+    const field = String((source as any).field ?? '');
+    const numericFields = new Set(['positionX', 'positionY', 'priorPositionX', 'priorPositionY']);
+    const primitiveFields = new Set(['sourceId', 'outcome', 'axis', 'side', ...numericFields]);
+    if (!primitiveFields.has(field)) {
+      throw new Error(`${context} eventField field must be sourceId|outcome|axis|side|positionX|positionY|priorPositionX|priorPositionY`);
+    }
+    if (type === 'boolean') throw new Error(`${context} visible does not support eventField`);
+    if (!numericFields.has(field)) throw new Error(`${context} eventField must select a numeric field for ${property}`);
+    return;
+  }
+  throw new Error(`${context} valueSource.kind must be constant|randomRange|eventField`);
 }
 
 function validateActions(scene: SceneSpec): void {

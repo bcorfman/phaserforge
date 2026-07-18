@@ -210,11 +210,23 @@ describe('model validation', () => {
         presetId: 'SetProperty',
         params: { property: 'tint', valueSource: { kind: 'constant', value: 0x224466 } },
       } as any,
+      a3: {
+        id: 'a3',
+        target: { type: 'entity', entityId: 'e1' },
+        presetId: 'SetProperty',
+        params: { property: 'x', valueSource: { kind: 'eventField', field: 'positionX' } },
+      } as any,
     };
     expect(() => validateSceneSpec(scene)).not.toThrow();
 
     (scene.attachments.a2 as any).params = { property: 'visible', valueSource: { kind: 'randomRange', min: 0, max: 1, seed: 'bad' } };
     expect(() => validateSceneSpec(scene)).toThrow(/visible.*randomRange/i);
+
+    (scene.attachments.a2 as any).params = { property: 'x', valueSource: { kind: 'eventField', field: 'side' } };
+    expect(() => validateSceneSpec(scene)).toThrow(/eventField.*numeric/i);
+
+    (scene.attachments.a2 as any).params = { property: 'visible', valueSource: { kind: 'eventField', field: 'positionX' } };
+    expect(() => validateSceneSpec(scene)).toThrow(/visible.*eventField/i);
   });
 
   it('validates typed Bounds event triggers and event-source target binding', () => {

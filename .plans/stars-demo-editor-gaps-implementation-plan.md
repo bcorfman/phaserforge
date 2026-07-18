@@ -1,13 +1,12 @@
 # Stars Demo Editor Gaps — Step-by-Step Implementation Plan
 
-Status: user-reviewed proposal; implementation is not authorized until the user reviews this revision.
+Status: user-reviewed proposal with phases 1–6D implemented; continue using this file as the active checklist for remaining stars-demo work.
 
 Reviewed decisions (2026-07-16):
 
 - use five Scatter formations of 80 stars rather than one 400-member formation or a new partitioning workflow;
 - implement the complete finite Bounds event family, not only Wrapped;
-- approved the proposed Scatter, tint/variation, scene appearance, and no-code Bounds/Set Property workflows;
-- change plan and mockups only; do not begin implementation yet.
+- approved the proposed Scatter, tint/variation, scene appearance, and no-code Bounds/Set Property workflows.
 
 References:
 
@@ -35,225 +34,32 @@ After this plan is complete, a user can reproduce the visible and timed behavior
 
 The velocity values in PhaserForge are pixels/second, while `stars.py` sets Arcade velocity in pixels/frame at 60 FPS. The faithful editor values are therefore `-240 px/s` for `-4` and `+840 px/s` for `+14`.
 
-## Current Ground Truth and Gap Decisions
+## Implemented Baseline
 
-- [x] Reconfirm the following against tests and implementation immediately before coding, because this plan is allowed to outlive the code it describes.
-  - Formation creation already has one primary path and a live canvas draft (`A25`/`A26`); its current 200-member per-formation cap is sufficient for five 80-member blink formations.
-  - `EntitySpec` has no entity tint, although background image layers already support tint.
-  - `GameSceneSpec` has no authored solid background color; edit and play cameras use hard-coded colors.
-  - `Move Until` supports continuous per-member wrapping, but the action/event system cannot route a bounds event to the individual member that wrapped or use random values in a following action.
-  - The existing action editor can already express the blink timings and velocity phase loop with `Parallel`, `Repeat`, `Wait`, `Tween Until`, and `Move Until`; do not create duplicate action types for those behaviors.
-- [ ] Keep these scope decisions unless new ground truth invalidates them.
-  - Extend the existing formation draft with a `Scatter` preset; do not add a second “scatter tool” entry point.
-  - Author five Scatter formations of 80 members. Do not add formation partitioning, overlapping formations, or collection-targeted actions for this demo.
-  - Store generated positions and tints on entities. Store the seed and scatter/tint settings in the formation's arrange layout so reopening or reapplying the layout remains deterministic.
-  - Extend the existing Event Block/action system with a finite typed Bounds event family, event-source target binding, and constrained value sources. Do not add one-off `randomizeOnWrap` fields to Move Until.
-  - Keep this proposal entirely no-code: `When Bounds → Wrapped` followed by `Set Property → X → Random Range`.
-  - Continue using an imported 3 × 3 white image for the star template. A general primitive/solid-color sprite creator is useful but is not required to close this demo gap.
-  - Implement the whole finite Bounds outcome family: Contact Entered, Contact Exited, Wrapped, Bounced, Clamped, and Stopped, with axis and side filters.
-  - Add only the first small reusable value-source vocabulary required here (`Constant`, `Random Range`, and event fields needed for filtering/targeting). Do not build an unrestricted expression language in this increment.
+Phases 1–6D are implemented and covered by tests. Use this summary plus `docs/reference/project-data.md` for the current contract; tests remain the exact behavior source.
 
-## Existing Event Foundation and Explicit Non-Goal
+- Formation draft has a `Scatter` preset with deterministic X/Y bounds, seed/reroll, 200-member cap, stable member order, and optional deterministic random RGB tint.
+- `EntitySpec.tint?: number` and `GameSceneSpec.backgroundColor?: number` are optional RGB integers and round-trip through project data/YAML.
+- Final generated positions and tints live on entities; scatter/tint params and seeds live on the formation layout only for intentional reapply/reroll.
+- `Move Until` owns bounds detection/behavior. Consequences belong in Event Blocks/actions, not one-off fields such as `randomizeOnWrap`.
+- Bounds events are typed and finite: `contact-entered`, `contact-exited`, `wrapped`, `bounced`, `clamped`, `stopped`, with `axis` and `side` filters.
+- Runtime Bounds events carry member-local source, owner/event block, occurrence id/order, axis/side, prior position, and resolved position.
+- Event Blocks route typed Bounds events by filter and owner scope, preserve custom event-name behavior, and can bind action targets to `event-source`.
+- `Set Property` is the no-code primitive for `x`, `y`, `tint`, `alpha`, `visible`, `vx`, and `vy`.
+- `ValueSourceSpec` is finite: `constant`, seeded `randomRange`, and compatible labeled `eventField` values. Runtime random X/Y may remain continuous.
 
-The project is not starting from zero, but the existing pieces do not yet compose into a general bounds-event workflow.
+## Remaining Guardrails
 
-- [ ] Preserve and build on Event Blocks, which already group action sequences under typed triggers (`start`, `update`, input action, visibility, and custom event).
-- [ ] Preserve `Emit Event` and the runtime event queue, while upgrading event routing beyond name-only matching.
-- [ ] Leave the existing `Call` plus `OpRegistry` behavior unchanged and out of scope. The stars workflow does not require it, and this plan must not use it to justify a script editor or broader low-code initiative.
-- [ ] Reuse the boundary engine's existing `onEnter`/`onExit` contact-edge concept, but do not treat it as sufficient: callbacks currently occur before behavior resolution and receive the aggregate runtime target rather than a guaranteed individual wrapped member.
-- [ ] Reuse trigger-zone/collision notions such as `instigator`, but consolidate them into one typed runtime event context instead of adding another incompatible callback shape.
-- [ ] Treat `.plans/archive/mockups/stars-demo-needed-features-2026-05-26/03-moveuntil-wrap-callback-reroll-x.svg` as explicitly superseded. Its `Script` line is not an implementation specification and must not be copied into product UI.
+- Keep the primary paths in `A25/A26`, `A39/A40/A41`, `A42/A43/A46`, and Scene Appearance; no new scatter tool or Move Until consequence panel.
+- Keep the stars workflow no-code: `When Bounds -> Wrapped` followed by `Set Property -> Event source -> X -> Random Range`.
+- Do not add Script, Expression, Formula, Callback Body, TypeScript, JavaScript, callable `rand(...)`, arbitrary object paths, or untyped event JSON.
+- Keep `Call` plus `OpRegistry` unchanged and out of scope.
+- Continue using an imported 3 x 3 white image for the star template.
+- If expanding the action system, add finite primitives or recipes only after classifying the gap; do not claim arbitrary-game completeness.
 
-## No-Code Action-System Boundary
-
-This plan does not claim that a no-code editor can express every possible game. It adopts a narrower, achievable goal: a relatively complete grammar for common 2D arcade/action games, with explicit non-goals instead of an endless list of gameplay-specific actions.
-
-### Separate primitives from recipes
-
-- [ ] Classify registry entries as either semantic primitives or recipes/presets. A primitive adds a capability the runtime could not otherwise express; a recipe gives a common name and friendly form to a composition of existing primitives.
-- [ ] Do not add a new primitive for a named gameplay behavior if it can be expressed clearly as a short composition. Blink, patrol, bounce, fade, scale, Move X/Y, and named motion patterns should be evaluated as recipes/templates rather than evidence that the core needs a separate action type for every verb.
-- [ ] Require every proposed core action to answer: “What new state transition or engine service becomes possible?” Reject additions whose only answer is a game-specific name.
-- [ ] Let recipes/macros provide discoverability and tuned fields while compiling to the stable primitive model. Serialized projects should not require a new runtime class for every recipe.
-
-### Target a modest core grammar
-
-- [ ] Treat the following as the candidate completeness boundary; confirm it in a separate action-system audit before expanding the registry:
-  - Flow: Sequence, Parallel, Wait, Repeat, conditional branch, and stop/cancel an active action block.
-  - Targeting: owner/self, event source/instigator, explicit entity/formation, collection members, and scene.
-  - Values: typed constant, seeded random range/choice, selected event field, counter/state value, and selected readable property—without free-form expressions.
-  - Entity properties: Set and Change an allowlisted typed property; Tween an allowlisted numeric property.
-  - Motion/physics: set velocity, move/translate, apply impulse/force where supported, and configure/enable body or collision state.
-  - Lifecycle: spawn from an authored template/pool, destroy/despawn, enable/disable, and reset to authored state.
-  - State: set/add/clamp counters or variables; add/remove collection or tag membership.
-  - Presentation: play/stop animation, choose frame, set visibility/tint/alpha, and play/stop audio.
-  - Coordination: emit a typed/custom event and change scene with an authored transition.
-- [ ] Prefer one parameterized action family over Cartesian products such as Set X, Set Y, Randomize X, Randomize Y, Set Tint, and Randomize Tint.
-- [ ] Keep typed property and value metadata finite and discoverable. Adding an allowlisted property or value adapter is smaller and safer than adding another action family.
-
-### Define honest completeness and escape policy
-
-- [ ] Define PhaserForge's supported no-code game envelope explicitly—initially common 2D arcade/action mechanics—not “all games.”
-- [ ] Build a representative capability suite (movement, platform hazard, pickup/counter, projectile spawn/despawn, enemy wave, animation/audio response, scene transition, and this stars demo) and require the core grammar to express each without custom code.
-- [ ] When a real project cannot be expressed, classify the gap before acting:
-  - missing core primitive used broadly across genres;
-  - missing recipe/preset over existing primitives;
-  - missing engine subsystem;
-  - genuinely game-specific behavior outside the supported envelope.
-- [ ] Add a primitive only for the first category, add a recipe for the second, plan the subsystem independently for the third, and record the fourth as unsupported rather than growing the core opportunistically.
-- [ ] Do not promise arbitrary-game completeness without an extension model. If a future extension model becomes necessary, evaluate typed plugin-defined actions separately from in-editor scripting; neither belongs in this stars plan.
-
-## Required Workflow Confirmation Gate
-
-This proposal materially extends existing editor workflows and required confirmation under `AGENTS.md`. The user approved the workflow direction and four initial mockups on 2026-07-16; the revised full Bounds-family mockup remains subject to review before implementation begins.
-
-- [x] Obtain user confirmation for these workflow changes:
-  - Impacted workflows: `A25 — Start Formation Draft`, `A26 — Edit / Commit Formation Draft`, `A39 — Edit Single Entity Properties`, `A40 — Edit Multi-selection Properties`, `A41 — Edit Formation Properties`, `A42 — Create / Edit Event Blocks`, `A43 — Create / Edit Action Steps`, `A46 — Edit Attachment Details`, and scene inspection within `A61 — Set Scene World Size`.
-  - Current primary path: start a formation draft, choose a preset/count/parameters, and commit; configure Move Until bounds in the attachment inspector.
-  - Proposed primary path: the same formation and inspector paths, plus the existing Event Block path extended with `Bounds → Wrapped`, event-source targeting, and `Set Property` with `Random Range`.
-  - Entry points: none added, removed, or merged.
-  - Step impact: 400 entities become one draft-and-commit operation instead of repeated duplication/manual layout; wrap X randomization becomes a reusable event plus action sequence instead of being impossible.
-  - Pointer travel: controls stay inside the already-open formation, scene/entity, and attachment inspectors.
-  - Style contracts: paired Min/Max and X/Y controls remain side-by-side; new options use existing foldouts, selects, checkboxes, compact buttons, and validated numeric inputs.
-
-## Phase 1 — Lock Contracts with Tests First
-
-- [x] Add seeded RNG helper tests for identical-seed stability, different-seed divergence, inclusive integer RGB bounds, finite float ranges, reversed-range normalization, and independent named streams.
-- [x] Add scatter layout tests for 400 members, integer-pixel authored positions, world/margin bounds, deterministic output, and no mutation of the template entity.
-- [x] Add formation creation/store tests proving that one history transaction creates 80 uniquely identified members, preserves template properties, assigns deterministic tints, records the scatter layout parameters, and remains undoable/redoable as a single user action.
-- [x] Add serialization, canonicalization, migration, and validation tests for:
-  - [x] optional `GameSceneSpec.backgroundColor`;
-  - [x] optional `EntitySpec.tint`;
-  - [x] scatter layout parameters and seed;
-  - [x] typed Bounds event trigger/filter specs, event-source target binding, and reusable action value sources;
-  - [x] older YAML with none of the new fields.
-- [x] Add runtime boundary-event tests for upward and downward vertical wrap, horizontal wrap, contact enter/exit, one Wrapped event per crossing, behavior resolution before event dispatch, and the exact member/axis/side in event context.
-- [x] Add compiler/event-router tests showing typed Bounds filters, event-source target binding, event payload/value resolution, and reentrant event policy work independently for group members.
-- [x] Add editor component tests for control visibility, paired-control layout, defaults, validation, disabling, and dispatched patches shown in the five SVG mockups.
-- [x] Add Phaser editor/play scene tests proving scene background and entity tint render consistently and that editor selection styling does not destroy the authored tint.
-- [x] Add a focused E2E stars-authoring test that creates a smaller deterministic fixture through the primary UI—including a Bounds/Wrapped Event Block—then separately seed the five-formation, 400-star project for play-mode behavior/performance assertions.
-- [x] Add a command-level stars demo integration test, following the `docs/getting-started/pattern-demo.md` / `tests/e2e/pattern-demo-persistence.spec.ts` style, that builds the faithful `stars.py` project through underlying editor commands/project-builder helpers rather than Playwright GUI clicks, then runs the resulting project and verifies the end behavior.
-
-## Phase 2 — Deterministic Random Foundation
-
-- [x] Add a small dependency-free seeded PRNG helper under `src/editor/` or a shared deterministic utility module.
-- [x] Accept a stable string or 32-bit numeric seed and derive named substreams (at minimum `position-x`, `position-y`, `tint-r`, `tint-g`, `tint-b`, and `wrap`) so changing one variation dimension does not reshuffle unrelated dimensions.
-- [x] Add shared normalized range helpers for continuous coordinates and inclusive integer color channels.
-- [x] Generate a seed once when the user starts a scatter draft; never call `Math.random()` during draft recomputation.
-- [x] Add a compact `Reroll` action that changes the seed intentionally, updates the live preview, and creates no project-history entry until the draft commits.
-- [x] Document the deterministic contract in helper comments and tests: the same seed, member identity/index, and parameters produce the same authored result across reloads.
-
-## Phase 3 — Scatter Formation Authoring
-
-Mockup: `.plans/mockups/stars-scatter-formation.svg`.
-
-- [x] Register an implemented `scatter` arrange entry in `public/editor-registry.yaml` with `minX`, `maxX`, `minY`, `maxY`, and `seed` parameters.
-- [x] Add `scatter` to `buildDefaultDraftParams` and default its bounds from the live scene world; allow the star workflow to set `maxY=1285` for the +5 vertical margin.
-- [x] Implement deterministic scatter position generation in `src/editor/formationDraft.ts` or `src/editor/formationLayout.ts`, rounding final authored X/Y values to integer pixels.
-- [x] Extend the existing live formation draft panel with:
-  - `Preset: Scatter`;
-  - `Count` within the existing supported formation limit (80 for each stars formation);
-  - paired X Min/Max and Y Min/Max controls;
-  - read-only/editable seed plus `Reroll`;
-  - a `Random tint` foldout described in Phase 4.
-- [x] Keep the existing 200-member per-formation limit unchanged in this plan; do not expand scope merely because the scene contains 400 stars across five formations.
-- [x] Ensure the canvas draft preview stays responsive by batching preview drawing and avoiding React/Phaser object creation for every keystroke where possible.
-- [x] Ensure each commit creates one formation with 80 entities, one stable member order, one history transaction, and no persisted “generated count” flag that duplicates the live member list.
-- [x] Ensure selecting, deleting, duplicating, saving, loading, undoing, and redoing the resulting formation do not lose or reorder members.
-
-## Phase 4 — Per-Entity Tint and Scatter Color Variation
-
-Mockups: `.plans/mockups/stars-scatter-formation.svg` and `.plans/mockups/stars-scene-and-tint.svg`.
-
-- [x] Add optional `tint?: number` to `EntitySpec`, interpreted as `0xRRGGBB`; absence means white/no tint for backward compatibility.
-- [x] Update validation and YAML coercion to accept only finite integer RGB values in `[0x000000,0xFFFFFF]` and reject malformed values with a useful path-specific message.
-- [x] Apply tint in both `EditorScene` and `GameScene` for image, spritesheet, and placeholder sprites; define text tint behavior explicitly or gate the field for text entities.
-- [x] Refactor editor selection visuals to use selection frames/outline effects without replacing authored sprite tint with orange/cyan/white.
-- [x] Add a `Tint` color field plus hex text input to the single-entity Visual inspector, reusing the existing background-layer color parsing pattern.
-- [x] Add tint to the multi-entity common-value/patch flow so a selection can receive one tint or clear tint consistently.
-- [x] Add `Random tint` controls to the Scatter formation draft:
-  - disabled by default for general formations;
-  - RGB mode for the stars workflow;
-  - paired channel Min/Max inputs, defaulting to 20 and 255;
-  - deterministic preview and commit using tint-specific PRNG streams.
-- [x] Persist final tints on entities and preserve the seed/settings in the scatter layout parameters only for intentional reapply/reroll; derive member count from `group.members`.
-- [x] Add a `Visual Variations` foldout to the formation inspector for batch random tint after creation, as shown in `.plans/mockups/stars-formation-visual-variations.svg`.
-- [x] Let the formation operation choose all members or the current member selection, RGB channel Min/Max, and a deterministic seed; Preview must be reversible, Apply/Reroll must be one semantic history transaction, and Cancel must restore the exact prior tints.
-- [x] Store final tint values on entities. Keep only the last applied variation recipe when it is needed for intentional Reroll; do not treat that recipe as a replacement for entity tint ground truth.
-- [x] Reuse the same batch command from the multi-selection inspector rather than implementing a second randomization algorithm or requiring hundreds of individual edits.
-- [x] Verify pixel-art texture filtering remains nearest-neighbor after tinting.
-
-## Phase 5 — Authored Scene Background Color
-
-Mockup: `.plans/mockups/stars-scene-and-tint.svg`.
-
-- [x] Add optional `backgroundColor?: number` to `GameSceneSpec`; default missing values to the current product background so old projects do not visually change.
-- [x] Add validation, YAML round-trip, migration, canonicalization, duplication, history, and cloud/local persistence coverage.
-- [x] Add a `Scene Appearance` foldout to the existing scene inspector with a color picker, paired hex input, and `Use default` action.
-- [x] Apply the color to the main camera in both `EditorScene` and `GameScene` before rendering background layers; layers continue to render above it.
-- [x] Ensure base-scene composition has a documented rule: the active scene's authored camera background wins, falling back to the base/default only when absent.
-- [x] Verify black (`#000000`) survives save/reload and is identical in edit mode, play mode, and published runtime.
-
-## Phase 6 — Complete Typed Bounds Event Family, Event Context, and Composable Actions
+## Remaining Work
 
 Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/mockups/stars-bounds-event-family.svg`.
-
-### 6A — Define a finite event model
-
-- [x] Introduce a typed runtime event envelope shared by custom events, bounds, collisions, trigger zones, visibility, and future finite event families:
-  - stable event family/type;
-  - phase/edge and family-specific details;
-  - `source`/`instigator` entity when one exists;
-  - owning/static target and event-block identity;
-  - primitive payload values;
-  - deterministic occurrence identity/order for debugging and replay.
-- [x] Add one `bounds` trigger family to `AttachmentTriggerSpec` rather than separate trigger types for every outcome. Its filters should cover:
-  - event: contact entered, contact exited, wrapped, bounced, clamped, or stopped;
-  - axis: any, X, or Y;
-  - side: any, min/left/bottom, or max/right/top as terminology permits.
-- [x] Give each outcome one stable, user-facing meaning:
-  - Contact Entered: the source begins touching/crossing a configured boundary on an axis, before the configured behavior consequence is reported;
-  - Contact Exited: a previously active boundary contact ends, including the deterministic contact exit following a wrap relocation;
-  - Wrapped: Wrap relocated the source to the opposite boundary;
-  - Bounced: Bounce inverted the source velocity on the affected axis;
-  - Clamped: Clamp at Edge corrected the source position and prevented outward movement;
-  - Stopped: Stop corrected the source position, zeroed affected velocity, and completed/stopped the relevant movement action according to existing semantics.
-- [x] Expose only outcomes compatible with the selected Bounds behavior when the editor can determine it; otherwise show the full family with clear compatibility hints rather than silently creating an event that can never fire.
-- [x] Keep the taxonomy finite and behavior-oriented. New event families require a typed schema and editor metadata; they are not arbitrary string callbacks.
-- [x] Retain custom named events for user-defined coordination, but do not encode engine facts such as wrap into magic event-name strings.
-
-### 6B — Emit correct member-local boundary events
-
-- [x] Refactor `BoundaryEngine` contact tracking so member scope records contacts per member, not only under an aggregate group target key.
-- [x] Emit structured contact events on edges and structured outcome events after the behavior is applied.
-- [x] For each crossing, order events deterministically: Contact Entered first, then the applied outcome (Wrapped/Bounced/Clamped/Stopped), with Contact Exited emitted only when contact state actually clears.
-- [x] For Wrapped, include the exact member, axis, side exited, prior position, and wrapped position; preserve the opposite-edge placement before downstream actions run.
-- [x] Emit at most one outcome event per member/axis crossing and no event while correcting an inward-moving target or remaining in contact.
-- [x] Preserve existing `onEnter`/`onExit` compatibility internally until all callers migrate, then remove duplication only with direct regression coverage.
-- [x] Define and test event ordering when X and Y cross in one tick and when several members cross in the same update.
-- [x] Use stable member order, then X before Y, as the tie-breaker for simultaneous events unless current runtime ordering provides a stronger invariant; document the final invariant in tests.
-
-### 6C — Route event context into Event Blocks
-
-- [x] Upgrade the compile-scene event queue from name-only matching to typed filter matching while preserving current custom-event behavior.
-- [x] Route only events relevant to the Event Block's owning target/formation unless the trigger explicitly opts into a broader scope.
-- [x] Add an attachment target binding such as `targetMode: 'owner' | 'event-source'`; default to owner for backward compatibility.
-- [x] Resolve `event-source` to the member/instigator carried by the active event, so a group-owned Event Block can modify only the star that wrapped.
-- [x] Make active event context available to every action in the triggered sequence and isolate contexts when multiple events start actions in the same tick.
-- [x] Define reentrancy/overlap semantics explicitly. For bounds events, do not discard a second member's event merely because the first member's action block is active; instantiate per-occurrence action runs or queue them deterministically.
-- [x] Expose event family, source ID, axis, side, and outcome in runtime debug state so failed wiring is inspectable.
-
-### 6D — Add reusable no-code property/value actions
-
-- [x] Add a generic `Set Property` action rather than `Randomize X On Wrap`.
-- [x] Initially support safe entity properties needed by current editor contracts: X, Y, tint, alpha, visibility, and velocity components; add others only when runtime/editor semantics are clear.
-- [ ] Define a small serialized `ValueSourceSpec` union:
-  - constant number/color/boolean;
-  - seeded random numeric range (continuous or integer as property metadata requires);
-  - selected primitive event fields where useful.
-- [ ] Use the shared deterministic RNG foundation, with independent per-action/per-event-source streams so hundreds of stars do not receive identical values.
-- [x] Validate property/value type compatibility through registry metadata and model validation; do not rely on runtime coercion.
-- [ ] Ensure Set Property X/Y rounds to authored pixel rules only in edit-time authoring; runtime random positions may remain continuous when the action explicitly uses a continuous range.
-- [x] Do not route this workflow through `Call`, custom operation IDs, argument JSON, or host-registered callbacks; the constrained built-in action must be sufficient by itself.
 
 ### 6E — Extend the existing Event Block GUI
 
@@ -308,7 +114,7 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 
 ## Phase 8 — Workflow Documentation and Required Verification
 
-- [ ] Update `.plans/editor-workflows-inventory.md` after the confirmed UI ships:
+- [x] Update `.plans/editor-workflows-inventory.md` after the confirmed UI ships:
   - extend `A26` with Scatter bounds, seed/reroll, count, and random tint;
   - extend `A39`/`A40` with tint;
   - extend `A41` with batch Visual Variations for formation members;

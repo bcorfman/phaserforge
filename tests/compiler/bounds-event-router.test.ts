@@ -204,4 +204,20 @@ describe('typed bounds event router', () => {
     ]);
     expect(compiled.entities.star2.x).toBe(640);
   });
+
+  it('resolves numeric fields from the active Bounds event context', () => {
+    const scene = makeBoundsEventScene();
+    (scene.attachments.rerollX as any).params = { property: 'y', valueSource: { kind: 'eventField', field: 'positionY' } };
+    const compiled = compileScene(scene);
+    compiled.startAll();
+
+    compiled.actionManager.update(0);
+    compiled.updateTriggers(0);
+
+    expect(compiled.debug?.lastStartedEventContexts).toEqual([
+      expect.objectContaining({ family: 'bounds', outcome: 'wrapped', sourceId: 'star1' }),
+    ]);
+    expect(compiled.entities.star1.y).toBe(1275);
+    expect(compiled.entities.star2.y).toBe(100);
+  });
 });
