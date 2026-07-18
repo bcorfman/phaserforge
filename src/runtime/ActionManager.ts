@@ -1,8 +1,9 @@
-import { Action } from './Action';
+import { Action, type ActionStartContext } from './Action';
 
 export interface ActionMetadata {
   targetKey?: string;
   eventId?: string;
+  context?: ActionStartContext;
 }
 
 interface ManagedAction {
@@ -14,7 +15,7 @@ export class ActionManager {
   private actions: ManagedAction[] = [];
 
   add(action: Action, meta: ActionMetadata = {}): void {
-    action.start();
+    action.start(meta.context);
     this.actions.push({ action, meta });
   }
 

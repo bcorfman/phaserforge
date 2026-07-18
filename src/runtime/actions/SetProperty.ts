@@ -1,4 +1,4 @@
-import { ActionBase } from '../Action';
+import { ActionBase, type ActionStartContext } from '../Action';
 import { coerceTarget, flattenTarget } from '../targets/resolveTarget';
 import type { RuntimeEntity, RuntimeTarget } from '../targets/types';
 import { createSeededRandom, randomFloatInRange, randomIntInRange } from '../../util/deterministicRandom';
@@ -49,12 +49,13 @@ export class SetProperty extends ActionBase {
     this.target = coerceTarget(target);
   }
 
-  start(): void {
+  start(context?: ActionStartContext): void {
     if (this.started) return;
-    super.start();
+    super.start(context);
     const members = flattenTarget(this.target);
+    const occurrenceId = context?.event?.occurrence?.id ?? 'no-event';
     members.forEach((member, index) => {
-      applyToEntity(member, this.property, resolveValue(this.source, member.id ?? String(index)));
+      applyToEntity(member, this.property, resolveValue(this.source, `${occurrenceId}:${member.id ?? String(index)}`));
     });
     this.stop();
   }
