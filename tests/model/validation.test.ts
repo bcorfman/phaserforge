@@ -264,6 +264,11 @@ describe('model validation', () => {
     (scene.eventBlocks.ev1 as any).trigger = { type: 'bounds', boundsEvent: 'wrapped', axis: 'y', side: 'bottom' };
     (scene.attachments.a1 as any).targetMode = 'script';
     expect(() => validateSceneSpec(scene)).toThrow(/targetMode/i);
+
+    (scene.attachments.a1 as any).targetMode = 'event-source';
+    (scene.attachments.a1 as any).eventId = undefined;
+    (scene.attachments.a1 as any).trigger = { type: 'start' };
+    expect(() => validateSceneSpec(scene)).toThrow(/event-source.*bounds/i);
   });
 
   it('A17 project validation allows cloud and path asset sources', () => {

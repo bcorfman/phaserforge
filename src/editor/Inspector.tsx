@@ -2112,6 +2112,13 @@ function AttachmentInspector({
       : (scene.groups[attachment.target.groupId]?.name ?? attachment.target.groupId);
   const eventBlockTrigger = attachment.eventId ? scene.eventBlocks?.[attachment.eventId]?.trigger : attachment.trigger;
   const canTargetEventSource = eventBlockTrigger?.type === 'bounds';
+  const canUseEventFields = eventBlockTrigger?.type === 'bounds';
+  const eventFieldOptions = [
+    ['positionX', 'Position X'],
+    ['positionY', 'Position Y'],
+    ['priorPositionX', 'Prior Position X'],
+    ['priorPositionY', 'Prior Position Y'],
+  ] as const;
   const supportedPresetIds = new Set([
     'MoveUntil',
     'MoveTo',
@@ -2139,6 +2146,15 @@ function AttachmentInspector({
     'RemoveSelfFromCollection',
   ]);
   const supportedPresets = registry.actions.filter((entry) => entry.implemented && supportedPresetIds.has(entry.type));
+  const setPropertyEntry = registry.actions.find((entry) => entry.type === 'SetProperty');
+  const registryPropertyKeys = (setPropertyEntry?.propertyTargets ?? [])
+    .map((target) => String(target.key))
+    .filter((key): key is 'x' | 'y' | 'tint' | 'alpha' | 'visible' | 'vx' | 'vy' =>
+      key === 'x' || key === 'y' || key === 'tint' || key === 'alpha' || key === 'visible' || key === 'vx' || key === 'vy'
+    );
+  const allowedSetPropertyKeys = registryPropertyKeys.length > 0
+    ? registryPropertyKeys
+    : (['x', 'y', 'tint', 'alpha', 'visible', 'vx', 'vy'] as const);
   const params = attachment.params ?? {};
   const world = getSceneWorld(scene);
   const foldouts = useInspectorFoldouts();
@@ -2951,13 +2967,11 @@ function AttachmentInspector({
                 onUpdate({ ...attachment, params: { ...params, property, valueSource: { kind: 'constant', value: defaultValue } } });
               }}
             >
-              <option value="x">X</option>
-              <option value="y">Y</option>
-              <option value="tint">Tint</option>
-              <option value="alpha">Alpha</option>
-              <option value="visible">Visible</option>
-              <option value="vx">Velocity X</option>
-              <option value="vy">Velocity Y</option>
+              {allowedSetPropertyKeys.map((property) => (
+                <option key={property} value={property}>
+                  {property === 'x' ? 'X' : property === 'y' ? 'Y' : property === 'tint' ? 'Tint' : property === 'alpha' ? 'Alpha' : property === 'visible' ? 'Visible' : property === 'vx' ? 'Velocity X' : 'Velocity Y'}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -2973,15 +2987,32 @@ function AttachmentInspector({
                   onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'set-property' } } });
                   return;
                 }
+                if (kind === 'eventField' && canUseEventFields) {
+                  onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'eventField', field: 'positionX' } } });
+                  return;
+                }
                 onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'constant', value: params.property === 'visible' ? true : 0 } } });
               }}
             >
               <option value="constant">Constant</option>
               {String(params.property ?? 'x') !== 'visible' && <option value="randomRange">Random Range</option>}
+              {canUseEventFields && String(params.property ?? 'x') !== 'visible' && <option value="eventField">Event field</option>}
             </select>
           </label>
 
-          {String((params.valueSource as any)?.kind ?? 'constant') === 'randomRange' ? (
+          {String((params.valueSource as any)?.kind ?? 'constant') === 'eventField' ? (
+            <label className="field">
+              <span>Event field</span>
+              <select
+                aria-label="Set Property Event Field"
+                data-testid="attachment-setproperty-event-field-select"
+                value={String((params.valueSource as any)?.field ?? 'positionX')}
+                onChange={(e) => onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'eventField', field: e.target.value } } })}
+              >
+                {eventFieldOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+          ) : String((params.valueSource as any)?.kind ?? 'constant') === 'randomRange' ? (
             <>
               <div className="inspector-grid-2">
                 <label className="field">

@@ -79,12 +79,12 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 
 ### 6F — Enforce the no-code boundary
 
-- [ ] Do not add a Script, Expression, Formula, Callback Body, TypeScript, or JavaScript field anywhere in this workflow.
-- [ ] Do not introduce implicit identifiers such as `bounds`, `exitSide`, or `self`; every available target, property, filter, and value source must be discoverable through labeled controls.
-- [ ] Do not introduce callable functions such as `rand(...)`; Random Range is a typed value-source option with visible Min, Max, and Seed fields.
+- [x] Do not add a Script, Expression, Formula, Callback Body, TypeScript, or JavaScript field anywhere in this workflow.
+- [x] Do not introduce implicit identifiers such as `bounds`, `exitSide`, or `self`; every available target, property, filter, and value source must be discoverable through labeled controls.
+- [x] Do not introduce callable functions such as `rand(...)`; Random Range is a typed value-source option with visible Min, Max, and Seed fields.
 - [x] Keep the Set Property property list allowlisted and registry-described. Users cannot type arbitrary object paths such as `bounds.minX` or mutate unknown runtime state.
-- [ ] Keep event fields available only through labeled selectors and compatible controls; do not expose an untyped event object or JSON expression context.
-- [ ] Require a separate user-approved product proposal before any future in-editor scripting initiative. That proposal would need to define language choice, API/reference discovery, types, editor tooling, sandbox/security model, determinism, debugging, persistence/versioning, publishing, and migration independently of this demo.
+- [x] Keep event fields available only through labeled selectors and compatible controls; do not expose an untyped event object or JSON expression context.
+- [x] Require a separate user-approved product proposal before any future in-editor scripting initiative. That proposal would need to define language choice, API/reference discovery, types, editor tooling, sandbox/security model, determinism, debugging, persistence/versioning, publishing, and migration independently of this demo.
 
 ## Phase 7 — Assemble and Prove the Faithful Stars Workflow
 
