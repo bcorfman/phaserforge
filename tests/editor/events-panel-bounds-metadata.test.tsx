@@ -37,7 +37,7 @@ async function renderBoundsPanel(behavior: 'wrap' | 'bounce' | 'limit' | 'stop')
     wrap: {
       id: 'wrap',
       target: { type: 'group', groupId: 'g1' },
-      trigger: { type: 'bounds', boundsEvent: behavior === 'bounce' ? 'bounced' : 'wrapped', axis: 'y', side: 'bottom' },
+      trigger: { type: 'bounds', boundsEvent: behavior === 'bounce' ? 'bounced' : 'wrapped', axis: 'y', side: 'any' },
     } as any,
   };
   scene.attachments = {
@@ -52,6 +52,15 @@ async function renderBoundsPanel(behavior: 'wrap' | 'bounce' | 'limit' | 'stop')
         behavior,
         bounds: { minX: 0, maxX: 720, minY: 0, maxY: 1280 },
       },
+    } as any,
+    rerollX: {
+      id: 'rerollX',
+      target: { type: 'group', groupId: 'g1' },
+      eventId: 'wrap',
+      targetMode: 'event-source',
+      presetId: 'SetProperty',
+      order: 0,
+      params: { property: 'x', valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'wrap-x' } },
     } as any,
   };
 
@@ -104,6 +113,19 @@ describe('EventsPanel bounds event metadata', () => {
     const labels = Array.from(container.querySelectorAll('[data-testid="event-bounds-side-wrap"] option')).map((option) => option.textContent);
     expect(labels).toEqual(['Any', 'Left / Min X', 'Right / Max X', 'Bottom / Min Y', 'Top / Max Y']);
     expect(container.querySelector('[data-testid="event-bounds-compatibility-wrap"]')?.textContent).toContain('Compatible with Bounce');
+    await React.act(async () => root.unmount());
+  });
+
+  it('shows bounds wiring as a readable event-to-action sentence', async () => {
+    const { container, root } = await renderBoundsPanel('wrap');
+    await React.act(async () => {
+      const wiringTab = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Wiring');
+      wiringTab?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.querySelector('[data-testid="event-wiring-bounds-wrap"]')?.textContent).toContain(
+      'When g1 wrap on Y → Set event source X to random 0..720'
+    );
     await React.act(async () => root.unmount());
   });
 });
