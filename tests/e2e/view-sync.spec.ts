@@ -44,6 +44,8 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
 
   const playSnapshot = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number }>(page);
   expect(Math.abs(playSnapshot.zoom - editSnapshot.zoom)).toBeLessThanOrEqual(0.01);
+  expect(Math.abs(playSnapshot.scrollX - editSnapshot.scrollX)).toBeLessThanOrEqual(1);
+  expect(Math.abs(playSnapshot.scrollY - editSnapshot.scrollY)).toBeLessThanOrEqual(1);
 
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('edit');
@@ -56,6 +58,8 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
   const editRestoredSnapshot = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number; ready?: boolean }>(page);
   expect(editRestoredSnapshot.ready).toBe(true);
   expect(Math.abs(editRestoredSnapshot.zoom - editSnapshot.zoom)).toBeLessThanOrEqual(0.01);
+  expect(Math.abs(editRestoredSnapshot.scrollX - editSnapshot.scrollX)).toBeLessThanOrEqual(1);
+  expect(Math.abs(editRestoredSnapshot.scrollY - editSnapshot.scrollY)).toBeLessThanOrEqual(1);
   await expect
     .poll(async () => {
       const restoredAnchorNormalized = await normalizedEntityPosition(page, 'e1');
