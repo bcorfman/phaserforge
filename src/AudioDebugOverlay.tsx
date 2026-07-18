@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { getActiveScene } from './phaser/EventBus';
 
 type AudioDebugSnapshot = {
@@ -39,7 +39,7 @@ function readSnapshot(): AudioDebugSnapshot | null {
   }
 }
 
-export function AudioDebugOverlay(): JSX.Element | null {
+export function AudioDebugOverlay(): ReactElement | null {
   const enabled = useMemo(() => isAudioDebugEnabled(), []);
   const [snapshot, setSnapshot] = useState<AudioDebugSnapshot | null>(null);
 

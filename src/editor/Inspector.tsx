@@ -3007,7 +3007,10 @@ function AttachmentInspector({
                 aria-label="Set Property Event Field"
                 data-testid="attachment-setproperty-event-field-select"
                 value={String((params.valueSource as any)?.field ?? 'positionX')}
-                onChange={(e) => onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'eventField', field: e.target.value } } })}
+                onChange={(e) => {
+                  const field = e.target.value as typeof eventFieldOptions[number][0];
+                  onUpdate({ ...attachment, params: { ...params, valueSource: { kind: 'eventField', field } } });
+                }}
               >
                 {eventFieldOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>

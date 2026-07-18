@@ -77,10 +77,10 @@ export function computeTargetAabb(
 
   const bounds = members.map((member: any) => computeEntityAabb(member));
   return {
-    minX: Math.min(...bounds.map((b) => b.minX)),
-    maxX: Math.max(...bounds.map((b) => b.maxX)),
-    minY: Math.min(...bounds.map((b) => b.minY)),
-    maxY: Math.max(...bounds.map((b) => b.maxY)),
+    minX: Math.min(...bounds.map((b: { minX: number }) => b.minX)),
+    maxX: Math.max(...bounds.map((b: { maxX: number }) => b.maxX)),
+    minY: Math.min(...bounds.map((b: { minY: number }) => b.minY)),
+    maxY: Math.max(...bounds.map((b: { maxY: number }) => b.maxY)),
   };
 }
 

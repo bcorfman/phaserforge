@@ -233,7 +233,7 @@ export const ValidatedTextareaInput = forwardRef<HTMLTextAreaElement, BaseTextar
         setDraft(next);
         onLiveChange?.(next);
       }}
-      onBlur={(e) => {
+      onBlur={() => {
         const blurMode = blurModeRef.current;
         blurModeRef.current = null;
         if (blurMode === 'revert') {
@@ -244,7 +244,6 @@ export const ValidatedTextareaInput = forwardRef<HTMLTextAreaElement, BaseTextar
           commit(draft);
           onFinalize?.(blurMode === 'commit' ? 'enter' : 'blur');
         }
-        props.onBlur?.(e);
       }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !(e.shiftKey || e.altKey || e.ctrlKey || e.metaKey)) {

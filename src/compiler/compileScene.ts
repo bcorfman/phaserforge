@@ -328,7 +328,12 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
             side: event.details.side,
           }
         : {}),
-      sourceId: event.source?.entityId ?? event.source?.target?.entityId ?? event.source?.target?.groupId ?? event.source?.targetKey,
+      sourceId: event.source?.entityId
+        ?? (event.source?.target?.type === 'entity'
+          ? event.source.target.entityId
+          : event.source?.target?.type === 'group'
+            ? event.source.target.groupId
+            : event.source?.targetKey),
       occurrenceId: event.occurrence.id,
       occurrenceOrder: event.occurrence.order,
     };

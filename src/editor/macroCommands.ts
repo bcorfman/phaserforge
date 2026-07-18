@@ -30,7 +30,7 @@ export function createMacroFromAttachments(
       ...(a.enabled === false ? { enabled: false } : {}),
       ...(a.applyTo ? { applyTo: a.applyTo } : {}),
       presetId: a.presetId,
-      ...(a.params ? { params: a.params } : {}),
+      ...(a.params ? { params: a.params as unknown as AttachmentTemplate['params'] } : {}),
       ...(a.condition ? { condition: a.condition } : {}),
       ...(a.tag ? { tag: a.tag } : {}),
       ...(parentIndex !== undefined ? { parentIndex } : {}),
@@ -61,4 +61,3 @@ export function applyMacroToTargetAndEvent(scene: SceneSpec, target: TargetRef, 
   const snippetLike = { id: macro.id, name: macro.name, kind: 'attachments' as const, attachmentsTemplate: macro.body };
   return applySnippetToTargetAndEvent(scene, target, eventId, snippetLike as any);
 }
-

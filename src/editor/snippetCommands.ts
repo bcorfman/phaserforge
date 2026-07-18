@@ -33,7 +33,7 @@ export function createSnippetFromAttachments(
       ...(a.enabled === false ? { enabled: false } : {}),
       ...(a.applyTo ? { applyTo: a.applyTo } : {}),
       presetId: a.presetId,
-      ...(a.params ? { params: a.params } : {}),
+      ...(a.params ? { params: a.params as unknown as AttachmentTemplate['params'] } : {}),
       ...(a.condition ? { condition: a.condition } : {}),
       ...(a.tag ? { tag: a.tag } : {}),
       ...(parentIndex !== undefined ? { parentIndex } : {}),
@@ -72,8 +72,9 @@ export function applySnippetToTargetAndEvent(
   const existing = Object.values(scene.attachments ?? {})
     .filter((a) => {
       if (a.target.type !== target.type) return false;
-      if (target.type === 'entity') return a.target.entityId === (target as any).entityId;
-      return a.target.groupId === (target as any).groupId;
+      if (target.type === 'entity' && a.target.type === 'entity') return a.target.entityId === target.entityId;
+      if (target.type === 'group' && a.target.type === 'group') return a.target.groupId === target.groupId;
+      return false;
     })
     .filter((a) => (typeof a.eventId === 'string' && a.eventId.length > 0 ? a.eventId : undefined) === (eventId && eventId.length > 0 ? eventId : undefined))
     .filter((a) => !a.parentAttachmentId)
@@ -126,4 +127,3 @@ export function applySnippetToTargetAndEvent(
 
   return { ...scene, attachments: nextAttachments };
 }
-

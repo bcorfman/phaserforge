@@ -163,8 +163,8 @@ export class BasicAudioService implements AudioService {
     for (const [assetId, entry] of this.ambience.entries()) {
       if (!desiredIds.has(assetId)) {
         try {
-          entry.sound.stop();
-          entry.sound.destroy();
+          entry.sound?.stop();
+          entry.sound?.destroy();
         } catch {
           // ignore
         }

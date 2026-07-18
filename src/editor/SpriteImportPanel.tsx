@@ -34,7 +34,7 @@ function loadImageMetadata(src: string, name: string, mimeType: string | undefin
         width: image.naturalWidth,
         height: image.naturalHeight,
         image,
-        sourceKind,
+        sourceKind: 'embedded',
       });
     };
     image.onerror = () => reject(new Error('Unable to load image'));
