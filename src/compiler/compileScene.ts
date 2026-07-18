@@ -12,6 +12,17 @@ import type { BoundaryEvent } from '../runtime/boundaries/BoundaryEngine';
 import type { TargetRef } from '../model/types';
 import type { RuntimeEventEnvelope } from '../runtime/events';
 
+interface RuntimeEventDebugEntry {
+  family: RuntimeEventEnvelope['family'];
+  type: string;
+  outcome?: string;
+  sourceId?: string;
+  axis?: string;
+  side?: string;
+  occurrenceId: string;
+  occurrenceOrder: number;
+}
+
 export interface CompiledScene {
   scene: SceneSpec;
   entities: Record<string, RuntimeEntity>;
@@ -22,7 +33,9 @@ export interface CompiledScene {
   debug?: {
     pendingEvents: number;
     lastDrainedEventNames: string[];
+    lastDrainedEvents: RuntimeEventDebugEntry[];
     lastStartedEventScriptKeys: string[];
+    lastStartedEventContexts: RuntimeEventDebugEntry[];
   };
   startAll(): void;
   updateTriggers(dtMs: number): void;
@@ -83,8 +96,16 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
     return { id: `evt-${String(nextEventOrder).padStart(6, '0')}`, order: nextEventOrder };
   };
   const lastDrainedEventNames: string[] = [];
+  const lastDrainedEvents: RuntimeEventDebugEntry[] = [];
   const lastStartedEventScriptKeys: string[] = [];
-  const debug = { pendingEvents: 0, lastDrainedEventNames, lastStartedEventScriptKeys } satisfies NonNullable<CompiledScene['debug']>;
+  const lastStartedEventContexts: RuntimeEventDebugEntry[] = [];
+  const debug = {
+    pendingEvents: 0,
+    lastDrainedEventNames,
+    lastDrainedEvents,
+    lastStartedEventScriptKeys,
+    lastStartedEventContexts,
+  } satisfies NonNullable<CompiledScene['debug']>;
   const mergedOptions: CompileOptions = {
     ...(options ?? {}),
     events: {
@@ -93,7 +114,7 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
           family: 'custom',
           type: eventName,
           payload,
-          source: { targetKey: source.targetKey },
+          source: { targetKey: source.targetKey, target: targetRefFromTargetKey(source.targetKey) },
           owner: { targetKey: source.targetKey, eventBlockId: source.eventId },
           occurrence: nextOccurrence(),
           sourceAttachment: source,
@@ -105,7 +126,11 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
           type: event.outcome,
           phase: event.outcome === 'contact-entered' || event.outcome === 'contact-exited' ? 'edge' : 'outcome',
           payload: { axis: event.axis, side: event.side },
-          source: { targetKey: `entity:${event.source.id}`, entityId: event.source.id },
+          source: {
+            targetKey: `entity:${event.source.id}`,
+            target: { type: 'entity', entityId: event.source.id },
+            entityId: event.source.id,
+          },
           owner: { targetKey: source.targetKey, eventBlockId: source.eventId },
           occurrence: nextOccurrence(),
           details: {
@@ -164,16 +189,25 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
         lastDrainedEventNames.length,
         ...drained.map((e) => e.family === 'custom' ? e.type : `bounds:${e.type}`)
       );
+      lastDrainedEvents.splice(
+        0,
+        lastDrainedEvents.length,
+        ...drained.map((event) => summarizeRuntimeEvent(event))
+      );
       lastStartedEventScriptKeys.splice(0, lastStartedEventScriptKeys.length);
+      lastStartedEventContexts.splice(0, lastStartedEventContexts.length);
       for (const evt of drained) {
         for (const script of scripts) {
           if (evt.family === 'custom') {
             if (script.trigger?.type !== 'event') continue;
             if ((script.trigger as any).eventName !== evt.type) continue;
             if (actionManager.getActionsForTarget(script.targetKey, script.eventId).length > 0) continue;
-            script.action.reset?.();
-            actionManager.add(script.action, { targetKey: script.targetKey, eventId: script.eventId });
+            const eventSource = targetRefFromRuntimeEvent(evt);
+            const action = script.createActionForEvent?.(eventSource) ?? script.action;
+            action.reset?.();
+            actionManager.add(action, { targetKey: script.targetKey, eventId: script.eventId, context: { event: evt } });
             lastStartedEventScriptKeys.push(script.key);
+            lastStartedEventContexts.push(summarizeRuntimeEvent(evt));
             continue;
           }
 
@@ -183,8 +217,9 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
           const eventSource = targetRefFromBoundaryEvent(evt.boundaryEvent);
           const action = script.createActionForEvent?.(eventSource) ?? script.action;
           action.reset?.();
-          actionManager.add(action, { targetKey: script.targetKey, eventId: script.eventId });
+          actionManager.add(action, { targetKey: script.targetKey, eventId: script.eventId, context: { event: evt } });
           lastStartedEventScriptKeys.push(script.key);
+          lastStartedEventContexts.push(summarizeRuntimeEvent(evt));
         }
       }
     }
@@ -238,6 +273,9 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
     }
     eventQueue.splice(0, eventQueue.length);
     lastDrainedEventNames.splice(0, lastDrainedEventNames.length);
+    lastDrainedEvents.splice(0, lastDrainedEvents.length);
+    lastStartedEventScriptKeys.splice(0, lastStartedEventScriptKeys.length);
+    lastStartedEventContexts.splice(0, lastStartedEventContexts.length);
     debug.pendingEvents = 0;
   };
 
@@ -265,5 +303,34 @@ export function compileScene(scene: SceneSpec, options?: CompileOptions): Compil
     const group = groups[event.source.id];
     if (group) return { type: 'group', groupId: group.id };
     return undefined;
+  }
+
+  function targetRefFromRuntimeEvent(event: RuntimeEventEnvelope): TargetRef | undefined {
+    if (event.source?.target) return event.source.target;
+    if (event.source?.targetKey) return targetRefFromTargetKey(event.source.targetKey);
+    return undefined;
+  }
+
+  function targetRefFromTargetKey(targetKey: string): TargetRef | undefined {
+    if (targetKey.startsWith('entity:')) return { type: 'entity', entityId: targetKey.slice('entity:'.length) };
+    if (targetKey.startsWith('group:')) return { type: 'group', groupId: targetKey.slice('group:'.length) };
+    return undefined;
+  }
+
+  function summarizeRuntimeEvent(event: RuntimeEventEnvelope): RuntimeEventDebugEntry {
+    return {
+      family: event.family,
+      type: event.type,
+      ...(event.family === 'bounds'
+        ? {
+            outcome: event.type,
+            axis: event.details.axis,
+            side: event.details.side,
+          }
+        : {}),
+      sourceId: event.source?.entityId ?? event.source?.target?.entityId ?? event.source?.target?.groupId ?? event.source?.targetKey,
+      occurrenceId: event.occurrence.id,
+      occurrenceOrder: event.occurrence.order,
+    };
   }
 }

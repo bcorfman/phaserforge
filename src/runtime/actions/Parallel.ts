@@ -1,4 +1,4 @@
-import { Action, ActionBase } from '../Action';
+import { Action, ActionBase, type ActionStartContext } from '../Action';
 
 export class Parallel extends ActionBase {
   private readonly children: Action[];
@@ -8,11 +8,11 @@ export class Parallel extends ActionBase {
     this.children = children;
   }
 
-  start(): void {
+  start(context?: ActionStartContext): void {
     if (this.started) return;
-    super.start();
+    super.start(context);
     for (const child of this.children) {
-      child.start();
+      child.start(context);
     }
   }
 

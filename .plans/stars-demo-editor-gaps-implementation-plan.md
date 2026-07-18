@@ -234,13 +234,13 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 
 ### 6C — Route event context into Event Blocks
 
-- [ ] Upgrade the compile-scene event queue from name-only matching to typed filter matching while preserving current custom-event behavior.
-- [ ] Route only events relevant to the Event Block's owning target/formation unless the trigger explicitly opts into a broader scope.
-- [ ] Add an attachment target binding such as `targetMode: 'owner' | 'event-source'`; default to owner for backward compatibility.
-- [ ] Resolve `event-source` to the member/instigator carried by the active event, so a group-owned Event Block can modify only the star that wrapped.
-- [ ] Make active event context available to every action in the triggered sequence and isolate contexts when multiple events start actions in the same tick.
-- [ ] Define reentrancy/overlap semantics explicitly. For bounds events, do not discard a second member's event merely because the first member's action block is active; instantiate per-occurrence action runs or queue them deterministically.
-- [ ] Expose event family, source ID, axis, side, and outcome in runtime debug state so failed wiring is inspectable.
+- [x] Upgrade the compile-scene event queue from name-only matching to typed filter matching while preserving current custom-event behavior.
+- [x] Route only events relevant to the Event Block's owning target/formation unless the trigger explicitly opts into a broader scope.
+- [x] Add an attachment target binding such as `targetMode: 'owner' | 'event-source'`; default to owner for backward compatibility.
+- [x] Resolve `event-source` to the member/instigator carried by the active event, so a group-owned Event Block can modify only the star that wrapped.
+- [x] Make active event context available to every action in the triggered sequence and isolate contexts when multiple events start actions in the same tick.
+- [x] Define reentrancy/overlap semantics explicitly. For bounds events, do not discard a second member's event merely because the first member's action block is active; instantiate per-occurrence action runs or queue them deterministically.
+- [x] Expose event family, source ID, axis, side, and outcome in runtime debug state so failed wiring is inspectable.
 
 ### 6D — Add reusable no-code property/value actions
 
