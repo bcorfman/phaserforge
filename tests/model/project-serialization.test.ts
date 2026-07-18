@@ -311,6 +311,14 @@ describe('project YAML serialization', () => {
               presetId: 'SetProperty',
               params: { property: 'x', valueSource: { kind: 'randomRange', min: 0, max: 720, seed: 'wrap-x' } },
             },
+            copyWrappedY: {
+              id: 'copyWrappedY',
+              target: { type: 'group', groupId: 'g-enemies' },
+              eventId: 'wrap',
+              targetMode: 'event-source',
+              presetId: 'SetProperty',
+              params: { property: 'y', valueSource: { kind: 'eventField', field: 'positionY' } },
+            },
           },
         },
       },
@@ -323,6 +331,8 @@ describe('project YAML serialization', () => {
     expect(yaml).toMatch(/boundsEvent:\s*wrapped/);
     expect(yaml).toMatch(/targetMode:\s*event-source/);
     expect(yaml).toMatch(/valueSource:/);
+    expect(yaml).toMatch(/kind:\s*eventField/);
+    expect(yaml).toMatch(/field:\s*positionY/);
     expect(parseProjectYaml(yaml)).toEqual(project);
   });
 

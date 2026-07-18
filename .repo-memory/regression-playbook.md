@@ -4,45 +4,22 @@ Use this file to keep previously solved bug classes from drifting back in.
 
 ## Default Approach
 
-1. Identify the bug class, not just the symptom.
-2. Find the narrowest existing invariant in tests, product memory, or workflow docs.
-3. Add or tighten tests first when practical.
-4. Fix the product if behavior is wrong.
-5. Redesign the test when the failure is flake rather than product behavior.
-6. Record a new durable rule in `.repo-memory/product-memory.md` only if it will matter again.
+1. Identify the bug class.
+2. Find the narrowest invariant in tests, product memory, or workflow docs.
+3. Add/tighten tests first when practical.
+4. Fix product behavior, or redesign the test if the failure is flake.
+5. Add product memory only for a durable rule that will matter again.
 
 ## Common Regression Classes
 
-### Persistence / reload
-
-- Risks: stale cache precedence, reload/reopen recovery, local/cloud divergence.
-- Preferred coverage: reducer/helper tests plus targeted Playwright reload/reopen checks.
-
-### Workflow
-
-- Risks: duplicate entry points, extra steps, mismatched labels, inconsistent primary path.
-- Preferred coverage: shared logic tests plus E2E on the primary user path.
-
-### Geometry / rendering
-
-- Risks: fractional authored geometry, blurry sprite rendering, inconsistent pixel scaling.
-- Preferred coverage: reducer/unit tests plus runtime/bootstrap tests.
-- Mode-switch camera/view restores are same-canvas exact transfers: capture only zoom/scroll, not viewport dimensions, wake reused target scenes before applying pending camera state, and assert scroll directly after active-scene-ready handoff. Viewport-aware resize compensation belongs to reload/resize restores and can reintroduce WebKit drift.
-
-### Serialization / migration
-
-- Risks: save/load drift, canonicalization mismatch, legacy compatibility breaks.
-- Preferred coverage: round-trip and migration fixture tests.
-
-### History narrative
-
-- Risks: summaries/grouping drift after reload, compaction, or rebuild.
-- Preferred coverage: helper tests plus targeted E2E for reload/reopen preservation.
-
-### Cross-surface
-
-- Risks: a fix lands in one surface but not another.
-- Preferred coverage: one shared-logic test and one user-facing integration path.
+- Persistence/reload: stale cache precedence, reload/reopen recovery, local/cloud divergence. Cover with reducer/helper tests plus targeted Playwright reload/reopen checks.
+- Workflow: duplicate entry points, extra steps, mismatched labels, inconsistent primary path. Cover shared logic plus the primary user path.
+- Geometry/rendering: fractional authored geometry, blurry sprites, pixel-scale drift. Cover reducer/unit plus runtime/bootstrap tests.
+- View restore: mode-switch restores are same-canvas exact transfers; capture only zoom/scroll, wake reused scenes before applying pending camera state, assert scroll after active-scene-ready handoff.
+- Serialization/migration: save/load drift, canonicalization mismatch, legacy compatibility. Cover round-trip and migration fixtures.
+- History narrative: summaries/grouping drift after reload, compaction, or rebuild. Cover helper tests plus targeted reload/reopen E2E.
+- Cross-surface: one surface fixed while another can reintroduce the bug. Cover shared logic plus one user-facing integration path.
+- Event/action model: editor controls, `ValueSourceSpec`, validation, compiler routing, runtime event context, and docs must move together.
 
 ## Keep It Small
 

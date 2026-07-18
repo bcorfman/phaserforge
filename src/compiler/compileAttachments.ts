@@ -68,7 +68,7 @@ function parseSetPropertyKey(raw: unknown): SetPropertyKey {
   return 'x';
 }
 
-function parseValueSource(params: AttachmentSpec['params'] | undefined, property: SetPropertyKey): ValueSource {
+function parseValueSource(params: AttachmentSpec['params'] | undefined, property: SetPropertyKey, stream: string): ValueSource {
   const valueSource = (params as any)?.valueSource;
   const valueKind = typeof (params as any)?.valueKind === 'string' ? String((params as any).valueKind) : undefined;
   const raw = valueSource && typeof valueSource === 'object'
@@ -87,8 +87,25 @@ function parseValueSource(params: AttachmentSpec['params'] | undefined, property
       max: Number.isFinite(max) ? max : 0,
       seed,
       integer: (raw as any).integer === true || property === 'tint' || property === 'visible',
-      stream: property,
+      stream,
     };
+  }
+
+  if ((raw as any).kind === 'eventField') {
+    const field = String((raw as any).field ?? 'positionX');
+    if (
+      field === 'sourceId' ||
+      field === 'outcome' ||
+      field === 'axis' ||
+      field === 'side' ||
+      field === 'positionX' ||
+      field === 'positionY' ||
+      field === 'priorPositionX' ||
+      field === 'priorPositionY'
+    ) {
+      return { kind: 'eventField', field };
+    }
+    return { kind: 'eventField', field: 'positionX' };
   }
 
   if (property === 'visible') {
@@ -290,7 +307,7 @@ function compileAtomicAttachment(attachment: AttachmentSpec, ctx: CompileContext
     const property = parseSetPropertyKey(attachment.params?.property);
     const targetRef = targetOverride ?? attachment.target;
     const target = resolveTarget(targetRef, ctx.targets);
-    return new SetProperty(target, property, parseValueSource(attachment.params, property));
+    return new SetProperty(target, property, parseValueSource(attachment.params, property, `${attachment.id}:${property}`));
   }
   if (presetId === 'TweenUntil') {
     const property = String(attachment.params?.property ?? 'x');
