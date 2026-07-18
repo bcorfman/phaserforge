@@ -10,7 +10,7 @@ import { ProjectPickerPanel } from './ProjectPickerPanel';
 import { buildProjectPickerModel, type ProjectPickerFilter } from './projectLibrary';
 import { exportYamlToDisk } from './yamlFileExport';
 import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
-import { parseProjectYaml, serializeProjectToYaml } from '../model/serialization';
+import { serializeProjectToYaml } from '../model/serialization';
 import {
   deriveWorldUnitsFromNaturalPixels,
   getProjectPixelsPerUnit,
@@ -1178,7 +1178,7 @@ export function EntityListView({
                     onClick={() => dispatch({ type: 'open-project-root-rename' })}
                   >
                     <span>{projectTreeRows[0]?.label ?? 'Untitled Project'}</span>
-                    <span className="list-item-meta">{projectTreeRows[0]?.sceneCount ?? 0} scenes</span>
+                    <span className="list-item-meta">{projectTreeRows.filter((row) => row.kind === 'scene').length} scenes</span>
                   </button>
                 )}
               </div>

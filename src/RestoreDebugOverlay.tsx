@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import {
   isDebugUrlFlagEnabled,
   isPersistenceDebugEnabled,
@@ -75,7 +75,7 @@ function readRestoreDebugEntries(): PersistenceDebugEntry[] {
   ));
 }
 
-export function RestoreDebugOverlay(): JSX.Element | null {
+export function RestoreDebugOverlay(): ReactElement | null {
   const enabled = useMemo(() => isRestoreDebugEnabled(), []);
   const [entries, setEntries] = useState<PersistenceDebugEntry[]>(() => (enabled ? readRestoreDebugEntries() : []));
 

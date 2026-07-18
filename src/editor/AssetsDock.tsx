@@ -63,6 +63,8 @@ export function AssetsDock({
   dispatch: React.Dispatch<EditorAction>;
   disabled: boolean;
 }) {
+  void sceneId;
+  void selection;
   const [tab, setTab] = useState<AssetTab>('images');
   const [search, setSearch] = useState('');
   const [showImageThumbnails, setShowImageThumbnails] = useState(true);

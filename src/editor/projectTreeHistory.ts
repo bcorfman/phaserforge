@@ -939,7 +939,7 @@ function buildProjectHistoryVisibleEntries(
     const summary = formatProjectRevisionSummary(revision, previousRevision, revisionHistory, historyEvents);
     const detailItems = buildProjectRevisionDetailItems(revision, previousRevision, revisionHistory, historyEvents);
     const repetition = detailItems.length === 1 ? classifyRepetitiveHistorySummary(summary) : null;
-    const lastEntry = entries.at(-1);
+    const lastEntry = entries[entries.length - 1];
 
     if (repetition && lastEntry?.repetitionKey === repetition.key) {
       lastEntry.revisions.push(revision);

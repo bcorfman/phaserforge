@@ -60,7 +60,7 @@ export function getDefaultApiStubResponse(urlString: string, method: string): Ap
 export const defaultApiHandlers = [
   http.all(/.*\/api\/.*/, ({ request }) => {
     const response = getDefaultApiStubResponse(request.url, request.method);
-    return HttpResponse.json(response.body, { status: response.status });
+    return HttpResponse.json(response.body as Record<string, unknown>, { status: response.status });
   }),
 ];
 

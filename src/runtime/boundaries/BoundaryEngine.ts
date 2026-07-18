@@ -229,7 +229,7 @@ export class BoundaryEngine {
 
   private emitOutcome(
     target: RuntimeTarget,
-    outcome: BoundaryEventOutcome,
+    outcome: BoundsEventOutcome,
     axis: BoundaryAxis,
     side: BoundarySide,
     priorPosition?: { x: number; y: number }

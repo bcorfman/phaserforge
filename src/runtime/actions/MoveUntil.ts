@@ -98,7 +98,7 @@ export class MoveUntil extends ActionBase {
   }
 
   private isTerminalBoundaryBehavior(): boolean {
-    return this.condition.behavior === 'stop' || this.condition.behavior === 'limit';
+    return this.condition instanceof BoundsHit && (this.condition.behavior === 'stop' || this.condition.behavior === 'limit');
   }
 
   private getVelocitySnapshot(): Array<{ vx: number; vy: number }> {

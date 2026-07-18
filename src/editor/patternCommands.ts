@@ -87,7 +87,7 @@ export function createPatternFromAttachments(
       ...(a.enabled === false ? { enabled: false } : {}),
       ...(a.applyTo ? { applyTo: a.applyTo } : {}),
       presetId: a.presetId,
-      ...(a.params ? { params: a.params } : {}),
+      ...(a.params ? { params: a.params as unknown as AttachmentTemplate['params'] } : {}),
       ...(a.condition ? { condition: a.condition } : {}),
       ...(a.tag ? { tag: a.tag } : {}),
       ...(parentIndex !== undefined ? { parentIndex } : {}),

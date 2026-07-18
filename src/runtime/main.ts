@@ -16,13 +16,12 @@ export function createGameConfig(container: string): Phaser.Types.Core.GameConfi
         physics: {
             default: 'arcade',
             arcade: {
-                gravity: { y: 0 },
+                gravity: { x: 0, y: 0 },
                 debug: false,
             },
         },
         antialias: false,
         pixelArt: true,
-        resolution: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
         scale: {
             mode: Phaser.Scale.RESIZE,
             autoCenter: Phaser.Scale.CENTER_BOTH,
