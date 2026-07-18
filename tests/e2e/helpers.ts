@@ -425,6 +425,25 @@ export async function getState<T = any>(page: Page): Promise<T> {
   return page.evaluate(() => window.__PHASER_FORGE_TEST__?.getState()) as Promise<T>;
 }
 
+export async function setEditorModeViaUi(page: Page, mode: 'edit' | 'play'): Promise<void> {
+  const readMode = async () => (await getState<{ mode?: string }>(page))?.mode;
+  const toggle = page.getByTestId('toggle-mode-button');
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await readMode() === mode) return;
+    await toggle.click();
+    try {
+      await expect.poll(readMode, { timeout: 3000 }).toBe(mode);
+      return;
+    } catch {
+      // WebKit can lose a synthetic click while the active Phaser scene is settling.
+      // Retry the labeled UI control, but only while state still has the wrong mode.
+    }
+  }
+
+  await expect.poll(readMode).toBe(mode);
+}
+
 export async function enablePersistenceDebug(page: Page): Promise<void> {
   await page.addInitScript(() => {
     try {
