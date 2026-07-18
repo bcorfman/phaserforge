@@ -164,9 +164,9 @@ export class BootScene extends Phaser.Scene {
     const baseScene = baseId && project.scenes[baseId] ? project.scenes[baseId] : undefined;
     const bundle = baseScene && baseScene.id !== scene.id ? { active: scene, reference: baseScene } : scene;
     if (isRunning) {
+      this.scene.wake('EditorScene');
       editor.setPendingViewState(this.lastViewState);
       editor.loadSceneSpec(project, bundle as any);
-      this.scene.wake('EditorScene');
       return;
     }
 
@@ -186,9 +186,9 @@ export class BootScene extends Phaser.Scene {
     game.setRuntimeOps(this.opRegistry);
     game.queueLoad(project, scene, this.lastViewState);
     if (isRunning) {
+      this.scene.wake('GameScene');
       game.setPendingViewState(this.lastViewState);
       game.loadSceneSpec(project, scene);
-      this.scene.wake('GameScene');
       return;
     }
     game.setPendingViewState(this.lastViewState);
