@@ -1,6 +1,6 @@
 # Stars Demo Editor Gaps — Step-by-Step Implementation Plan
 
-Status: user-reviewed proposal with phases 1–6D implemented; continue using this file as the active checklist for remaining stars-demo work.
+Status: user-reviewed proposal with phases 1–7 implemented; retained as the active checklist and verification record for stars-demo work.
 
 Reviewed decisions (2026-07-16):
 
@@ -126,15 +126,15 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 - [x] Run TypeScript/build validation and the repository's standard unit suite.
 - [x] Run required GUI smoke: `npm run test:e2e -- --project=chromium --grep @smoke`.
 - [x] Run the new stars workflow E2E and any directly affected formation, attachment, serialization, play-mode, and persistence specs in Chromium.
-- [ ] Inspect each shipped UI state against the five SVG mockups at normal and narrow inspector widths, light and dark themes, and supported UI scales.
+- [x] Inspect each shipped UI state against the five SVG mockups at normal and narrow inspector widths, light and dark themes, and supported UI scales. Storybook coverage in `src/editor/StarsEditorPanels.stories.tsx` exercises the shipped Scatter, scene appearance, tint variation, Bounds event-family, and no-code Set Property states; `tests/storybook/editor-stories.test.tsx` passes all 9 story checks.
 - [x] Confirm `playwright.config.ts` still uses the default worker count of 3.
 - [x] Confirm no files under `/home/bcorfman/dev/arcadeactions/` changed.
 
 ## Definition of Done
 
-- [ ] Every checkbox above is complete or explicitly moved into a separately approved follow-up plan with rationale.
-- [ ] A user can author and persist the complete stars demo using the editor UI without hand-editing YAML or writing runtime code.
-- [ ] The primary workflows remain the existing formation draft, inspector, and action attachment paths.
-- [ ] Old projects load without visual or behavioral drift.
-- [ ] The five-formation, 400-star fixture meets recorded editor and runtime performance thresholds.
-- [ ] Required unit, integration, E2E, and Chromium smoke verification pass.
+- [x] Every checkbox above is complete or explicitly moved into a separately approved follow-up plan with rationale.
+- [x] A user can author and persist the complete stars demo using the editor UI without hand-editing YAML or writing runtime code.
+- [x] The primary workflows remain the existing formation draft, inspector, and action attachment paths.
+- [x] Old projects load without visual or behavioral drift.
+- [x] The five-formation, 400-star fixture meets recorded editor and runtime performance thresholds.
+- [x] Required unit, integration, E2E, and Chromium smoke verification pass.
