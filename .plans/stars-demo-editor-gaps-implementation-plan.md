@@ -63,19 +63,19 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 
 ### 6E — Extend the existing Event Block GUI
 
-- [ ] Add `Bounds` to the existing Event Block Trigger selector.
-- [ ] Show the complete Event selector—Contact Entered, Contact Exited, Wrapped, Bounced, Clamped, and Stopped—plus contextual Axis/Side filters using existing select and two-column patterns; for this demo choose Event `Wrapped`, Axis `Y`, Side `Any`.
-- [ ] Show a short outcome description and compatible behavior badge beneath the selector, as specified in `.plans/mockups/stars-bounds-event-family.svg`.
-- [ ] Add `Event source` to action target/application choices only when the selected trigger supplies an instigator/source.
-- [ ] Add `Set Property` to the action library and its existing attachment inspector:
+- [x] Add `Bounds` to the existing Event Block Trigger selector.
+- [x] Show the complete Event selector—Contact Entered, Contact Exited, Wrapped, Bounced, Clamped, and Stopped—plus contextual Axis/Side filters using existing select and two-column patterns; for this demo choose Event `Wrapped`, Axis `Y`, Side `Any`.
+- [x] Show a short outcome description and compatible behavior badge beneath the selector, as specified in `.plans/mockups/stars-bounds-event-family.svg`.
+- [x] Add `Event source` to action target/application choices only when the selected trigger supplies an instigator/source.
+- [x] Add `Set Property` to the action library and its existing attachment inspector:
   - Target: Event source;
   - Property: X;
   - Value: Random range;
   - paired Min/Max: 0 and 720;
   - Seed plus Reroll using the same pattern as Scatter.
-- [ ] Keep Bounds configuration in Move Until responsible only for detection/behavior. Put consequences in Actions/Events so other outcomes can reuse the same actions without growing the Move Until inspector.
-- [ ] Add wiring-map labels that read as a sentence, for example: `When Stars wrap on Y → Set event source X to random 0..720`.
-- [ ] Confirm the new workflow does not change canvas bounds gestures, selection semantics, or the existing path for simple Move Until wrapping.
+- [x] Keep Bounds configuration in Move Until responsible only for detection/behavior. Put consequences in Actions/Events so other outcomes can reuse the same actions without growing the Move Until inspector.
+- [x] Add wiring-map labels that read as a sentence, for example: `When Stars wrap on Y → Set event source X to random 0..720`.
+- [x] Confirm the new workflow does not change canvas bounds gestures, selection semantics, or the existing path for simple Move Until wrapping.
 
 ### 6F — Enforce the no-code boundary
 
