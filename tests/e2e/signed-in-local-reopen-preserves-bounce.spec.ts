@@ -114,7 +114,7 @@ async function expectProjectPersisted(page: Parameters<typeof test>[0]['page']) 
   await expect.poll(async () => {
     const record = await page.evaluate(async () => {
       const openDb = () => new Promise<IDBDatabase>((resolve, reject) => {
-        const request = window.indexedDB.open('phaserforge.persistence.v1', 1);
+        const request = window.indexedDB.open('phaserforge.persistence.v1');
         request.onerror = () => reject(request.error);
         request.onsuccess = () => resolve(request.result);
       });
