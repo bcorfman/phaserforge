@@ -27,6 +27,7 @@ Use this file to keep previously solved bug classes from drifting back in.
 
 - Risks: fractional authored geometry, blurry sprite rendering, inconsistent pixel scaling.
 - Preferred coverage: reducer/unit tests plus runtime/bootstrap tests.
+- Mode-switch camera/view assertions must wait for the preferred scene to be both ready and active; a ready but sleeping scene can expose stale camera state, especially in WebKit.
 
 ### Serialization / migration
 

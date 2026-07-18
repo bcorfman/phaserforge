@@ -37,15 +37,20 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
 
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('play');
-  await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('GameScene');
-  await expect.poll(async () => (await getSceneSnapshot<{ ready?: boolean }>(page))?.ready).toBe(true);
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{ sceneKey?: string; ready?: boolean; isActive?: boolean }>(page);
+    return { sceneKey: snap?.sceneKey, ready: snap?.ready, isActive: snap?.isActive };
+  }).toEqual({ sceneKey: 'GameScene', ready: true, isActive: true });
 
   const playSnapshot = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number }>(page);
   expect(Math.abs(playSnapshot.zoom - editSnapshot.zoom)).toBeLessThanOrEqual(0.01);
 
   await page.getByTestId('toggle-mode-button').click();
   await expect.poll(async () => (await getState<{ mode?: string }>(page))?.mode).toBe('edit');
-  await expect.poll(async () => (await getSceneSnapshot<{ sceneKey?: string }>(page))?.sceneKey).toBe('EditorScene');
+  await expect.poll(async () => {
+    const snap = await getSceneSnapshot<{ sceneKey?: string; ready?: boolean; isActive?: boolean }>(page);
+    return { sceneKey: snap?.sceneKey, ready: snap?.ready, isActive: snap?.isActive };
+  }).toEqual({ sceneKey: 'EditorScene', ready: true, isActive: true });
   await waitForViewportToSettle(page, { stableForMs: 150 });
 
   const editRestoredSnapshot = await getSceneSnapshot<{ zoom: number; scrollX: number; scrollY: number; ready?: boolean }>(page);
