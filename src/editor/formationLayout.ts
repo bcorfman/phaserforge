@@ -334,7 +334,7 @@ function createEntityIdAllocator(scene: SceneSpec, memberIds: Id[], groupId: Id)
       const usedNumbers = new Set(
         Object.keys(scene.entities)
           .map(parseNumberedId)
-          .filter((parsed): parsed is { prefix: string; value: number } => Boolean(parsed) && parsed.prefix === prefix)
+          .filter((parsed): parsed is { prefix: string; value: number } => parsed !== undefined && parsed.prefix === prefix)
           .map((parsed) => parsed.value)
       );
 

@@ -14,9 +14,9 @@ export function hasDraggedAsset(dataTransfer: DataTransfer | null): boolean {
 
 export function readDraggedAsset(dataTransfer: DataTransfer | null): { assetKind: AssetKind; assetId: Id } | null {
   if (!dataTransfer) return null;
-  const parse = (assetKind: unknown, assetId: unknown) => {
+  const parse = (assetKind: unknown, assetId: unknown): { assetKind: AssetKind; assetId: Id } | null => {
     if ((assetKind === 'image' || assetKind === 'spritesheet' || assetKind === 'audio' || assetKind === 'font') && typeof assetId === 'string' && assetId.length > 0) {
-      return { assetKind, assetId };
+      return { assetKind: assetKind as AssetKind, assetId };
     }
     return null;
   };

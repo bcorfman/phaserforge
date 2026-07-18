@@ -16,7 +16,7 @@ function targetsEqual(a: TargetRef, b: TargetRef): boolean {
     return a.entityId === b.entityId;
   }
 
-  return a.groupId === (b as Extract<TargetRef, { type: 'group' }>).groupId;
+  return a.type === 'group' && b.type === 'group' && a.groupId === b.groupId;
 }
 
 function makeIdFactory(scene: SceneSpec) {
@@ -63,7 +63,7 @@ function collectReachableActionIds(scene: SceneSpec): Set<Id> {
     }
   };
 
-  Object.values(scene.behaviors).forEach((behavior) => visit(behavior.rootActionId));
+  Object.values(scene.behaviors).forEach((behavior) => { if (behavior.rootActionId) visit(behavior.rootActionId); });
   return visited;
 }
 

@@ -95,10 +95,11 @@ export function parseScreenshotManifest(value: unknown): ScreenshotManifestEntry
     }
 
     if (base.source === 'playwright') {
+      const scene = entry.scene === 'sample' ? 'sample' : undefined;
       return {
         ...base,
         source: 'playwright',
-        ...(typeof entry.scene === 'string' ? { scene: entry.scene } : {}),
+        ...(scene ? { scene } : {}),
         ...(typeof entry.capture === 'string' ? { capture: entry.capture as PlaywrightScreenshotManifestEntry['capture'] } : {}),
       } satisfies PlaywrightScreenshotManifestEntry;
     }

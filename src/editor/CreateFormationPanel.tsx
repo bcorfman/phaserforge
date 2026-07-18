@@ -104,7 +104,7 @@ export function CreateFormationPanel({
   const [memberCountDraft, setMemberCountDraft] = useState(12);
   const [templateEntityId, setTemplateEntityId] = useState<Id>('');
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
-  const [pendingCreate, setPendingCreate] = useState(false);
+  const [, setPendingCreate] = useState(false);
 
   useEffect(() => {
     const nextSuggestion = getNextFormationName(scene);

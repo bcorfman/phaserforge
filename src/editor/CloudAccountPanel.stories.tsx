@@ -12,7 +12,7 @@ function CloudAccountPanelStoryHarness({ initialProject }: { initialProject?: an
 
   return (
     <CloudAccountPanel
-      state={{ project }}
+      state={{ project, syncMode: 'offline', initialized: true }}
       dispatch={(action) => {
         if (action.type !== 'set-project-metadata') return;
         setProject((current: any) => ({

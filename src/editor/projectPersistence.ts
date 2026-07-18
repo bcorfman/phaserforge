@@ -672,13 +672,13 @@ async function readWorkspaceBackup(db: IDBDatabase): Promise<WorkspaceBackupReco
   const tx = db.transaction(WORKSPACE_STORE, 'readonly');
   const backup = await requestValue(tx.objectStore(WORKSPACE_STORE).get(WORKSPACE_BACKUP_KEY));
   await txComplete(tx);
-  const record = (backup as WorkspaceBackupRecord | { yaml?: string; source?: WorkspaceBackupRecord['source']; savedAt?: string } | undefined) ?? null;
+  const record = (backup as (WorkspaceBackupRecord | { yaml?: string; source?: WorkspaceBackupRecord['source']; savedAt?: string }) | undefined) ?? null;
   if (!record) return null;
   if ('project' in record && record.project) {
     validateProjectSpec(record.project);
     return record as WorkspaceBackupRecord;
   }
-  if (typeof record.yaml === 'string') {
+  if ('yaml' in record && typeof record.yaml === 'string') {
     const project = parseProjectYaml(record.yaml);
     validateProjectSpec(project);
     return {
@@ -827,6 +827,7 @@ async function loadIndexedDbSnapshot(): Promise<PersistenceSnapshot> {
     | 'latest-active-snapshot'
     | 'workspace-active-project'
     | 'newest-cloud-project-head'
+    | 'bootstrap-fallback'
     | 'none' = 'none';
   if (latestActiveSnapshot) {
     const existingIndex = localProjects.findIndex((record) => record.id === latestActiveSnapshot.recordId);

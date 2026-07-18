@@ -32,6 +32,7 @@ interface PhaserForgeTestBridge {
   getGroupLabelVisible(id: string): boolean | null;
   getFormationPhysicsGroupInfo(groupId: string): { memberCount: number } | null;
   getEditableBoundsRect(): PhaserForgeRect | null;
+  getHitboxOverlayInfo(): { visible: boolean; labelX: number; labelY: number } | null;
   hitTestAtClientPoint(clientX: number, clientY: number): { kind: 'none' | 'entity' | 'group'; id?: string };
   worldToClient(point: PhaserForgePoint): PhaserForgePoint | null;
   setPointerWorld(point: PhaserForgePoint): void;

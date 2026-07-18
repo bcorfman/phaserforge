@@ -515,7 +515,7 @@ function createFontAssetSpec(assetId: Id, source: AssetFileSource, originalName:
   };
 }
 
-function createAudioAssetSpec(assetId: Id, source: AssetFileSource, originalName: string | undefined) {
+function createAudioAssetSpec(assetId: Id, source: AssetFileSource, _originalName: string | undefined) {
   return {
     id: assetId,
     source,
@@ -1065,7 +1065,7 @@ function formatPatternLabel(project: ProjectSpec, patternId: Id): string {
   return project.patterns?.[patternId]?.name?.trim() || patternId;
 }
 
-function formatLoopTemplateLabel(templateId: EditorAction extends { type: 'apply-loop-template'; templateId: infer T } ? T : never): string {
+function formatLoopTemplateLabel(templateId: string): string {
   switch (templateId) {
     case 'loops:intro_then_repeat':
       return 'Intro then Repeat';
@@ -1250,7 +1250,8 @@ function describeEditorAction(stateBefore: EditorState, stateAfter: EditorState,
       return 'Removed collision rule';
     case 'add-trigger-zone':
       return (() => {
-        const trigger = stateAfter.project.scenes[stateAfter.currentSceneId]?.triggers?.at(-1);
+        const triggers = stateAfter.project.scenes[stateAfter.currentSceneId]?.triggers ?? [];
+        const trigger = triggers[triggers.length - 1];
         return `Added trigger ${trigger?.name?.trim() || trigger?.id || 'trigger'}`;
       })();
     case 'update-trigger-zone':
@@ -1405,7 +1406,7 @@ function buildProjectHistoryEventDraftsForAction(
       }];
     case 'set-scene-background-color':
       return [{
-        kind: 'scene.backgroundColor.set',
+        kind: 'scene.background.set',
         burstId: `scene.backgroundColor.set:${stateAfter.currentSceneId}:${actionBurstToken}`,
         scope: { kind: 'scene', sceneId: stateAfter.currentSceneId },
         summary: action.backgroundColor == null ? 'Reset scene background color' : 'Updated scene background color',
@@ -1453,7 +1454,8 @@ function buildProjectHistoryEventDraftsForAction(
         summary: 'Removed collision rule',
       }];
     case 'add-trigger-zone': {
-      const trigger = stateAfter.project.scenes[stateAfter.currentSceneId]?.triggers?.at(-1);
+      const triggers = stateAfter.project.scenes[stateAfter.currentSceneId]?.triggers ?? [];
+      const trigger = triggers[triggers.length - 1];
       return [{
         kind: 'trigger.added',
         burstId: `trigger.added:${stateAfter.currentSceneId}:${trigger?.id ?? actionBurstToken}:${actionBurstToken}`,
@@ -2499,7 +2501,6 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         for (const scene of Object.values(parsed.scenes)) validateSceneSpec(scene);
         const currentSceneId = parsed.initialSceneId;
         const expiresAt = Date.now() + 4000;
-        const statusMessage = formatProjectLoadStatus(action.sourceLabel);
         return {
           ...state,
           project: parsed,
@@ -4349,7 +4350,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         interaction: {
           kind: action.kind,
           id: action.id,
-          handle: action.handle,
+          handle: action.handle as 'left' | 'right' | 'top' | 'bottom' | 'br' | 'tr' | 'tl' | 'bl' | undefined,
         },
       };
     case 'end-canvas-interaction':

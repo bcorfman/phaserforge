@@ -43,14 +43,14 @@ export interface VFormationArrangeOptions<T extends { x: number; y: number }> {
   count?: number;
 }
 
-export interface DiamondArrangeOptions<T extends { x: number; y: number }> {
+export interface DiamondArrangeOptions {
   centerX?: number;
   centerY?: number;
   spacing?: number;
   includeCenter?: boolean;
 }
 
-export interface TriangleArrangeOptions<T extends { x: number; y: number }> {
+export interface TriangleArrangeOptions {
   apexX?: number;
   apexY?: number;
   rowSpacing?: number;
@@ -58,7 +58,7 @@ export interface TriangleArrangeOptions<T extends { x: number; y: number }> {
   invert?: boolean;
 }
 
-export interface HexGridArrangeOptions<T extends { x: number; y: number }> {
+export interface HexGridArrangeOptions {
   rows?: number;
   cols?: number;
   startX?: number;
@@ -66,14 +66,14 @@ export interface HexGridArrangeOptions<T extends { x: number; y: number }> {
   spacing?: number;
 }
 
-export interface ConcentricRingsArrangeOptions<T extends { x: number; y: number }> {
+export interface ConcentricRingsArrangeOptions {
   centerX?: number;
   centerY?: number;
   radii: number[];
   spritesPerRing: number[];
 }
 
-export interface CrossArrangeOptions<T extends { x: number; y: number }> {
+export interface CrossArrangeOptions {
   centerX?: number;
   centerY?: number;
   armLength?: number;
@@ -191,7 +191,7 @@ export function arrangeVFormation<T extends { x: number; y: number }>(
 
 export function arrangeDiamond<T extends { x: number; y: number }>(
   items: T[],
-  options: DiamondArrangeOptions<T> = {}
+  options: DiamondArrangeOptions = {}
 ): T[] {
   const { centerX = 0, centerY = 0, spacing = 50, includeCenter = true } = options;
   if (items.length === 0) return items;
@@ -225,7 +225,7 @@ export function arrangeDiamond<T extends { x: number; y: number }>(
 
 export function arrangeTriangle<T extends { x: number; y: number }>(
   items: T[],
-  options: TriangleArrangeOptions<T> = {}
+  options: TriangleArrangeOptions = {}
 ): T[] {
   const { apexX = 0, apexY = 0, rowSpacing = 50, lateralSpacing = 50, invert = false } = options;
   if (items.length === 0) return items;
@@ -248,12 +248,10 @@ export function arrangeTriangle<T extends { x: number; y: number }>(
 
 export function arrangeHexagonalGrid<T extends { x: number; y: number }>(
   items: T[],
-  options: HexGridArrangeOptions<T> = {}
+  options: HexGridArrangeOptions = {}
 ): T[] {
   const { cols = 5, startX = 0, startY = 0, spacing = 50 } = options;
   const resolvedCols = Math.max(1, Math.floor(cols));
-  const minimumRows = Math.ceil(items.length / resolvedCols);
-  const resolvedRows = Math.max(1, Math.floor(options.rows ?? minimumRows), minimumRows);
   const xStep = spacing;
   const yStep = spacing * Math.sqrt(3) / 2;
   items.forEach((item, i) => {
@@ -268,7 +266,7 @@ export function arrangeHexagonalGrid<T extends { x: number; y: number }>(
 
 export function arrangeConcentricRings<T extends { x: number; y: number }>(
   items: T[],
-  options: ConcentricRingsArrangeOptions<T>
+  options: ConcentricRingsArrangeOptions
 ): T[] {
   const { centerX = 0, centerY = 0, radii, spritesPerRing } = options;
   if (radii.length !== spritesPerRing.length) {
@@ -291,7 +289,7 @@ export function arrangeConcentricRings<T extends { x: number; y: number }>(
 
 export function arrangeCross<T extends { x: number; y: number }>(
   items: T[],
-  options: CrossArrangeOptions<T> = {}
+  options: CrossArrangeOptions = {}
 ): T[] {
   const { centerX = 0, centerY = 0, armLength = 120, spacing = 60, includeCenter = true } = options;
   if (items.length === 0) return items;

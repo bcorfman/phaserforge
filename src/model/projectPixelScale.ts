@@ -36,10 +36,12 @@ export function getNaturalSpriteSize(
     const width = sheet?.grid?.frameWidth ?? asset.grid?.frameWidth;
     const height = sheet?.grid?.frameHeight ?? asset.grid?.frameHeight;
     if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+    if (width === undefined || height === undefined) return null;
     return { width: Math.max(1, Math.round(width)), height: Math.max(1, Math.round(height)) };
   }
   const image = project.assets.images?.[asset.source.assetId];
   if (!Number.isFinite(image?.width) || !Number.isFinite(image?.height)) return null;
+  if (image?.width === undefined || image.height === undefined) return null;
   return { width: Math.max(1, Math.round(image.width)), height: Math.max(1, Math.round(image.height)) };
 }
 
