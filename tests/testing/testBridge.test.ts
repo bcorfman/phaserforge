@@ -5,9 +5,11 @@ import {
   registerActionDispatcher,
   registerAppStateGetter,
   registerModeToggleHandler,
+  registerSceneGetter,
   unregisterActionDispatcher,
   unregisterAppStateGetter,
   unregisterModeToggleHandler,
+  unregisterSceneGetter,
 } from '../../src/testing/testBridge';
 
 describe('testBridge mode helpers', () => {
@@ -36,5 +38,57 @@ describe('testBridge mode helpers', () => {
     unregisterAppStateGetter(getState);
     unregisterActionDispatcher(dispatch);
     unregisterModeToggleHandler(handler);
+  });
+
+  it('does not report a ready preferred scene before it becomes active', () => {
+    const getState = () =>
+      ({
+        mode: 'edit',
+        initialized: true,
+      }) as any;
+    registerAppStateGetter(getState);
+
+    const makeScene = (snapshot: { sceneKey: string; ready: boolean; isActive: boolean }) =>
+      ({
+        getTestSnapshot: () => ({
+          ...snapshot,
+          zoom: 1,
+          scrollX: 0,
+          scrollY: 0,
+          viewportWidth: 800,
+          viewportHeight: 600,
+        }),
+        getEntityWorldRect: () => null,
+        getEntitySpriteWorldRect: () => null,
+        getGroupWorldBounds: () => null,
+        getGroupFrameVisible: () => null,
+        getGroupLabelVisible: () => null,
+        getFormationPhysicsGroupInfo: () => null,
+        getEditableBoundsRect: () => null,
+        getHitboxOverlayInfo: () => null,
+        worldToClient: () => null,
+        testSetPointerWorld: () => {},
+        testPointerDownEntity: () => {},
+        testTapWorld: () => {},
+        testDragWorld: () => {},
+        testDuplicateEntities: () => {},
+        testDragBoundsHandle: () => {},
+        testPanByScreenDelta: () => {},
+      }) as any;
+
+    const gameGetter = () => makeScene({ sceneKey: 'GameScene', ready: true, isActive: true });
+    const editorGetter = () => makeScene({ sceneKey: 'EditorScene', ready: true, isActive: false });
+    registerSceneGetter(gameGetter);
+    registerSceneGetter(editorGetter);
+
+    expect(window.__PHASER_FORGE_TEST__?.getSceneSnapshot()).toMatchObject({
+      sceneKey: 'GameScene',
+      ready: true,
+      isActive: true,
+    });
+
+    unregisterSceneGetter(editorGetter);
+    unregisterSceneGetter(gameGetter);
+    unregisterAppStateGetter(getState);
   });
 });

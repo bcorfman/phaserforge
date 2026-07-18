@@ -128,8 +128,7 @@ function getSceneBridge(): SceneBridge | null {
     }
   }
 
-  if (readyPreferredScene) return readyPreferredScene;
-  return activeScene ?? firstNonNull;
+  return activeScene ?? readyPreferredScene ?? firstNonNull;
 }
 
 function ensureBridge(): void {
