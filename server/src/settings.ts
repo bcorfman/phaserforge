@@ -15,6 +15,10 @@ export type Settings = {
     clientId: string;
     clientSecret: string;
   };
+  deployment?: {
+    channel: 'stable' | 'dev' | 'unknown';
+    commit: string;
+  };
 };
 
 export function resolveCookiePolicy(settings: Pick<Settings, 'cookieSameSite' | 'cookieSecure' | 'frontendBaseUrl' | 'publicBaseUrl'>): {
@@ -70,5 +74,10 @@ export function loadSettingsFromEnv(env: NodeJS.ProcessEnv): Settings {
       githubClientId && githubClientSecret
         ? { clientId: githubClientId, clientSecret: githubClientSecret }
         : undefined,
+    deployment: {
+      channel:
+        env.DEPLOY_CHANNEL === 'stable' || env.DEPLOY_CHANNEL === 'dev' ? env.DEPLOY_CHANNEL : 'unknown',
+      commit: env.DEPLOY_COMMIT?.trim() || 'unknown',
+    },
   };
 }

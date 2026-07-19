@@ -51,6 +51,11 @@ describe('auth', () => {
     await request(app).get('/api/v1/health').expect(200).expect({ status: 'ok' });
   });
 
+  it('exposes deployment channel and commit without changing the health contract', async () => {
+    const { app } = makeApp({ deployment: { channel: 'dev', commit: 'abc123' } });
+    await request(app).get('/api/v1/version').expect(200).expect({ channel: 'dev', commit: 'abc123' });
+  });
+
   it('serves csrf responses with no-store cache headers', async () => {
     const { app } = makeApp();
     const res = await request(app).get('/api/v1/auth/csrf').expect(200);
@@ -79,6 +84,17 @@ describe('auth', () => {
     expect(res.headers['access-control-allow-credentials']).toBe('true');
     expect(res.headers['access-control-allow-headers']).toContain('Cache-Control');
     expect(res.headers['access-control-allow-headers']).toContain('Pragma');
+  });
+
+  it('does not grant credentialed CORS access to an unrecognized channel origin', async () => {
+    const { app } = makeApp({ corsAllowOrigins: ['https://bcorfman.github.io'] });
+    const res = await request(app)
+      .get('/api/v1/health')
+      .set('Origin', 'https://untrusted.example')
+      .expect(200);
+
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+    expect(res.headers['access-control-allow-credentials']).toBeUndefined();
   });
 
   it('signs up and returns session cookie', async () => {
