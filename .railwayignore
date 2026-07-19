@@ -1,0 +1,11 @@
+# Playwright's WebKit compatibility links are only for local Linux test runs.
+# They point at host libraries that do not exist in Railway's build container;
+# excluding them also prevents Railway CLI indexing from following broken links.
+.playwright-lib-compat/
+
+# These are not needed to build or run the Railway API.
+.git/
+node_modules/
+dist/
+test-results/
+playwright-report/
