@@ -84,6 +84,7 @@ Exit criteria:
 Goal: ensure each Pages channel targets the correct Railway environment.
 
 - [x] Add explicit build variables for stable and development API bases rather than relying on one shared `VITE_API_BASE_URL` value.
+- [x] Keep the two `VITE_API_BASE_URL_*` values repository-level because the single Pages workflow builds both static channel artifacts in one job; use per-environment `RAILWAY_PUBLIC_URL` only for the separately targeted backend deployment jobs.
 - [x] Update the Pages workflow so `/dev/` receives the development API URL and `/stable/` receives the stable API URL.
 - [x] Preserve channel-scoped browser storage and the existing default that disables development cloud persistence until the dev backend is verified.
 - [x] Ensure OAuth start links and callback return paths are correct for `/dev/` and `/stable/` (existing callback-path tests remain green; the build keeps each channel's `BASE_URL`).
