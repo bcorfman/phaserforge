@@ -34,7 +34,7 @@ jobs:
        github.event.workflow_run.head_branch == 'main' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.channel == 'stable' && 'stable' || 'development' }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.channel == 'stable' && 'phaserforge / production' || 'phaserforge / development' }}
     permissions:
       contents: read
     steps:
