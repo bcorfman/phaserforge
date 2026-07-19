@@ -19,4 +19,11 @@ describe('deployment workflow contract', () => {
     expect(railwayWorkflow).toContain('/api/v1/health');
     expect(railwayWorkflow).toContain('/api/v1/version');
   });
+
+  it('reads non-sensitive Railway IDs from the selected GitHub environment', () => {
+    expect(railwayWorkflow).toContain('RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}');
+    expect(railwayWorkflow).toContain('RAILWAY_ENVIRONMENT_ID: ${{ vars.RAILWAY_ENVIRONMENT_ID }}');
+    expect(railwayWorkflow).toContain('RAILWAY_SERVICE_ID: ${{ vars.RAILWAY_SERVICE_ID }}');
+    expect(railwayWorkflow).toContain('RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}');
+  });
 });
