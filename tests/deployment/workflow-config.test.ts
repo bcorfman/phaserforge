@@ -14,7 +14,7 @@ describe('deployment workflow contract', () => {
   it('keeps stable backend deployment manual and protected by a stable environment', () => {
     expect(railwayWorkflow).toContain('workflow_dispatch:');
     expect(railwayWorkflow).toContain("inputs.channel == 'stable'");
-    expect(railwayWorkflow).toContain("&& 'stable' || 'development'");
+    expect(railwayWorkflow).toContain("&& 'phaserforge / production' || 'phaserforge / development'");
     expect(railwayWorkflow).toContain('railway up');
     expect(railwayWorkflow).toContain('/api/v1/health');
     expect(railwayWorkflow).toContain('/api/v1/version');

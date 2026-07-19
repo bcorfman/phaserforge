@@ -18,13 +18,13 @@ Delete the old shared `VITE_API_BASE_URL` variable after both new variables are 
 
 These two `VITE_API_BASE_URL_*` variables intentionally remain repository-level variables. The Pages workflow builds both channel artifacts in one job: it needs the development URL while building `/dev/` and the stable URL while building `/stable/`. Vite embeds these values into static JavaScript at build time; Railway environment variables are not available to the published browser bundle. By contrast, `RAILWAY_PUBLIC_URL` is used by one backend deployment job at a time, so it is correctly configured as the same variable name with different values in the GitHub `development` and `stable` environments.
 
-For the Railway workflow, create a GitHub **development** environment and a protected **stable** environment. Add `RAILWAY_TOKEN` as an environment secret to each environment, using that environment's resources. Add the non-sensitive Railway IDs as environment variables:
+For the Railway workflow, configure the GitHub environments named exactly `phaserforge / development` and protected `phaserforge / production`. Add `RAILWAY_TOKEN` as an environment secret to each environment, using that environment's resources. Add the non-sensitive Railway IDs as environment variables:
 
 - `RAILWAY_PROJECT_ID`
 - `RAILWAY_ENVIRONMENT_ID`
 - `RAILWAY_SERVICE_ID`
 
-Add `RAILWAY_PUBLIC_URL` as an environment variable in each GitHub environment. Stable should require reviewers before a deployment job can start.
+Add `RAILWAY_PUBLIC_URL` as an environment variable in each GitHub environment. Production should require reviewers before a deployment job can start.
 
 ## Railway dashboard configuration
 
