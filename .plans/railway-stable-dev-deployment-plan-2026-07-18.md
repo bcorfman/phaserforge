@@ -105,7 +105,7 @@ Goal: make Railway deployment reproducible, auditable, and aligned with the Page
 - [x] Gate automatic dev deployment on successful CI for the development deployment ref.
 - [x] Make stable deployment an explicit promotion from a known commit or release tag after the corresponding frontend promotion.
 - [ ] Use GitHub environment protections for stable deployment approval and stable secrets.
-- [ ] Store the Railway project/environment/service identifiers and token in the corresponding GitHub environment, not in repository files.
+- [ ] Store the Railway project/environment/service identifiers as variables and the Railway token as a secret in the corresponding GitHub environment, not in repository files.
 - [ ] Disable Railway dashboard auto-deploys so GitHub Actions remains the only deployment trigger.
 - [x] Deploy with the Railway CLI or the configured Railway integration; do not depend on undocumented dashboard-only behavior.
 - [x] Run the Railway health check after deployment and fail the workflow if it does not become healthy.
