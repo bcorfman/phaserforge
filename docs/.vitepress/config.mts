@@ -19,6 +19,7 @@ export default defineConfig({
           { text: 'Pattern Demo', link: '/getting-started/pattern-demo' },
           { text: 'Stars Demo', link: '/getting-started/stars-demo' },
           { text: 'Publish to GitHub Pages', link: '/getting-started/publish-to-github-pages' },
+          { text: 'Stable and Development Deployment', link: '/getting-started/railway-deployment' },
         ],
       },
       {

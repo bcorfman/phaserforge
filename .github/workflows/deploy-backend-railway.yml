@@ -1,0 +1,96 @@
+name: Deploy Backend (Railway)
+
+on:
+  workflow_run:
+    workflows:
+      - PhaserForge CI
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Deployment channel. Stable is an explicit promotion.
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - stable
+      ref:
+        description: Commit, branch, or release tag to deploy for a manual promotion.
+        required: true
+        default: main
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.channel == 'stable' && 'stable' || 'development' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout deployment ref
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.workflow_run.head_sha }}
+          lfs: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          DEPLOY_CHANNEL: ${{ github.event_name == 'workflow_dispatch' && inputs.channel || 'dev' }}
+          DEPLOY_COMMIT: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          test -n "$RAILWAY_TOKEN"
+          test -n "$RAILWAY_PROJECT_ID"
+          test -n "$RAILWAY_ENVIRONMENT_ID"
+          test -n "$RAILWAY_SERVICE_ID"
+          railway up \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_ENVIRONMENT_ID" \
+            --service "$RAILWAY_SERVICE_ID" \
+            --ci
+
+      - name: Verify Railway health and deployed version
+        env:
+          RAILWAY_PUBLIC_URL: ${{ vars.RAILWAY_PUBLIC_URL }}
+          EXPECTED_CHANNEL: ${{ github.event_name == 'workflow_dispatch' && inputs.channel || 'dev' }}
+          DEPLOYED_COMMIT: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          test -n "$RAILWAY_PUBLIC_URL"
+          for attempt in $(seq 1 30); do
+            health="$(curl --silent --show-error --fail "$RAILWAY_PUBLIC_URL/api/v1/health" 2>/dev/null || true)"
+            version="$(curl --silent --show-error --fail "$RAILWAY_PUBLIC_URL/api/v1/version" 2>/dev/null || true)"
+            if [ "$health" = '{"status":"ok"}' ] && echo "$version" | grep -Fq '"channel":"'"$EXPECTED_CHANNEL"'"'; then
+              echo "Railway deployment is healthy for commit $DEPLOYED_COMMIT: $version"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Railway deployment did not become healthy with the expected version" >&2
+          exit 1
