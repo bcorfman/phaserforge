@@ -54,6 +54,12 @@ export function createApp(options: CreateAppOptions) {
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/v1/health', (_req, res) => res.json({ status: 'ok' }));
+  app.get('/api/v1/version', (_req, res) =>
+    res.json({
+      channel: settings.deployment?.channel ?? 'unknown',
+      commit: settings.deployment?.commit ?? 'unknown',
+    }),
+  );
   app.use('/api/v1/auth', authRouter(settings, repositories));
   app.use('/api/v1/games', gamesRouter(settings, repositories));
   app.use('/api/v1/publish', publishRouter(settings, repositories));

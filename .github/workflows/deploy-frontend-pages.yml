@@ -77,18 +77,24 @@ jobs:
 
       - name: Build dev channel
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV }}
           VITE_PHASERFORGE_DEPLOY_CHANNEL: dev
           VITE_E2E_TEST_BRIDGE: '1'
         run: npm run build -- --outDir dist/dev
 
+      - name: Verify dev API configuration
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV }}
+        run: test -n "$VITE_API_BASE_URL"
+
       - name: Build stable channel
         if: github.event_name == 'workflow_dispatch' && inputs.channel == 'stable'
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_STABLE }}
           VITE_PHASERFORGE_DEPLOY_CHANNEL: stable
           VITE_E2E_TEST_BRIDGE: '1'
         run: |
+          test -n "$VITE_API_BASE_URL"
           npm run build -- --outDir dist/stable
           node -e "const fs=require('fs'); fs.writeFileSync('dist/stable/version.json', JSON.stringify({ channel: 'stable', commit: process.env.GITHUB_SHA, promotedAt: new Date().toISOString() }, null, 2) + '\n')"
 
