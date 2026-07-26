@@ -1587,7 +1587,6 @@ html[data-theme='dark'] .phaser-frame {
   gap: 0.85rem;
 }
 
-.project-picker-tabs,
 .project-picker-toolbar,
 .project-picker-summary-actions {
   display: flex;
@@ -1601,11 +1600,77 @@ html[data-theme='dark'] .phaser-frame {
   gap: 0.85rem;
 }
 
-.project-picker-sources,
+.project-picker-filters,
 .project-picker-list {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.project-picker-filters {
+  align-items: stretch;
+}
+
+.project-picker-filter-heading,
+.project-picker-filter-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.project-picker-filter-heading {
+  color: var(--ink);
+  font-size: 1.1rem;
+}
+
+.project-picker-filter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.project-picker-filter-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(186, 168, 143, 0.28);
+  border-radius: 0.85rem;
+  background: rgba(12, 15, 26, 0.12);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-picker-filter-card:hover,
+.project-picker-filter-card.active {
+  border-color: rgba(74, 134, 255, 0.45);
+  background: rgba(39, 72, 135, 0.16);
+}
+
+.project-picker-filter-card.active {
+  border-color: rgba(45, 128, 143, 0.7);
+  background: rgba(33, 76, 87, 0.5);
+  color: #b8edf0;
+}
+
+.project-picker-filter-count {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.project-picker-sync-summary {
+  margin-top: 0.35rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(171, 96, 26, 0.35);
+  border-radius: 0.95rem;
+  background: rgba(171, 96, 26, 0.12);
 }
 
 .project-picker-source-card,
@@ -1670,6 +1735,13 @@ html[data-theme='dark'] .phaser-frame {
   position: relative;
 }
 
+.project-picker-list-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 3.4rem;
+}
+
 .project-picker-row-menu {
   position: absolute;
   top: calc(100% + 0.35rem);
@@ -1691,6 +1763,11 @@ html[data-theme='dark'] .phaser-frame {
   .project-picker-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .project-picker-row-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 

@@ -18,6 +18,9 @@ test.describe('Project picker', () => {
     await page.getByTestId('project-manage-library').click();
     await expect(page.getByTestId('project-picker-panel')).toBeVisible();
     await expect(page.getByTestId('project-picker-search')).toBeVisible();
+    await expect(page.getByTestId('project-picker-filter-all')).toBeVisible();
+    await expect(page.locator('.project-picker-tabs')).toHaveCount(0);
+    await expect(page.getByTestId('project-picker-list')).toContainText('All Projects');
     await expect(page.getByTestId('project-picker-list')).toContainText('Untitled Project');
     const currentProjectRow = page.locator('.project-picker-row.is-current');
     await currentProjectRow.getByRole('button', { name: /Project actions for/ }).click();

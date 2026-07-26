@@ -25,7 +25,7 @@ describe('ProjectPickerPanel', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders sources, recent projects, and active summary actions', () => {
+  it('renders sidebar filters and the unified project list', () => {
     render(
       <ProjectPickerPanel
         counts={{ cloud: 12, local: 3, unsynced: 2 }}
@@ -45,12 +45,16 @@ describe('ProjectPickerPanel', () => {
     );
 
     expect(screen.getByTestId('project-picker-panel')).toBeTruthy();
-    expect(screen.getByText('Cloud Projects')).toBeTruthy();
-    expect(screen.getByText('12 available')).toBeTruthy();
-    expect(screen.getByText('3 stored locally')).toBeTruthy();
     expect(screen.getByText('Project Library')).toBeTruthy();
+    expect(screen.getByTestId('project-picker-filter-all')).toBeTruthy();
+    expect(screen.getByTestId('project-picker-filter-recent')).toBeTruthy();
+    expect(screen.getByTestId('project-picker-filter-cloud')).toBeTruthy();
+    expect(screen.getByTestId('project-picker-filter-local')).toBeTruthy();
+    expect(screen.getByTestId('project-picker-filter-templates')).toBeTruthy();
+    expect(screen.getByText('Cloud Sync Issues')).toBeTruthy();
     expect(screen.getByText('Local Debug Copy')).toBeTruthy();
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('tablist', { name: 'Project filters' })).toBeTruthy();
     expect(screen.queryByText('Active Project Summary')).toBeNull();
   });
 

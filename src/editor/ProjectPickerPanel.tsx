@@ -14,7 +14,7 @@ export function ProjectPickerPanel({
   onRefreshCloudProjects,
 }: {
   projects: ProjectLibraryEntry[];
-  counts: { cloud: number; local: number; unsynced: number };
+  counts: { all?: number; recent?: number; cloud: number; local: number; unsynced: number };
   search: string;
   filter: ProjectPickerFilter;
   onSearchChange: (value: string) => void;
@@ -27,6 +27,7 @@ export function ProjectPickerPanel({
   const [deleteTarget, setDeleteTarget] = useState<ProjectLibraryEntry | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const filters: Array<{ value: ProjectPickerFilter; label: string }> = [
+    { value: 'all', label: 'All Projects' },
     { value: 'recent', label: 'Recent' },
     { value: 'cloud', label: 'Cloud' },
     { value: 'local', label: 'Local' },
@@ -38,7 +39,9 @@ export function ProjectPickerPanel({
       ? 'Cloud Projects'
       : filter === 'templates'
         ? 'Templates'
-        : 'Recent Projects';
+        : filter === 'recent'
+          ? 'Recent Projects'
+          : 'All Projects';
   const emptyCopy = filter === 'local'
     ? 'No locally stored projects match this filter yet.'
     : filter === 'cloud'
@@ -51,63 +54,64 @@ export function ProjectPickerPanel({
     <div className="project-picker-panel" data-testid="project-picker-panel">
       <section className="panel-section" aria-labelledby="project-picker-projects">
         <div className="panel-heading-row">
-        <h3 className="panel-heading" id="project-picker-projects">Project Library</h3>
+          <h3 className="panel-heading" id="project-picker-projects">Project Library</h3>
           <button className="button button-compact" type="button" onClick={onRefreshCloudProjects}>Refresh</button>
         </div>
 
-        <div className="project-picker-tabs" role="tablist" aria-label="Project filters">
-          {filters.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              className={`button button-compact ${filter === tab.value ? 'active' : ''}`}
-              data-testid={`project-picker-filter-${tab.value}`}
-              role="tab"
-              aria-selected={filter === tab.value}
-              onClick={() => onFilterChange(tab.value)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="project-picker-toolbar">
-          <label className="field" style={{ flex: 1 }}>
-            <span>Search</span>
-            <input
-              aria-label="Search projects"
-              data-testid="project-picker-search"
-              placeholder="Search projects, tags, repo names…"
-              value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
-            />
-          </label>
-        </div>
-
         <div className="project-picker-grid">
-          <div className="project-picker-sources">
-            <div className={`project-picker-source-card ${filter === 'cloud' ? 'project-picker-source-card-cloud' : ''}`}>
-              <div>
-                <div className="project-picker-source-title">Cloud Projects</div>
-                <div className="project-picker-source-copy">{counts.cloud} available</div>
-              </div>
+          <aside className="project-picker-filters" aria-label="Project filters">
+            <div className="project-picker-filter-heading">Filters</div>
+            <label className="field">
+              <span>Search</span>
+              <input
+                aria-label="Search projects"
+                data-testid="project-picker-search"
+                placeholder="Search projects, tags, repo names…"
+                value={search}
+                onChange={(event) => onSearchChange(event.target.value)}
+              />
+            </label>
+            <div className="project-picker-filter-label">Show</div>
+            <div className="project-picker-filter-list" role="tablist" aria-label="Project filters">
+              {filters.map((tab) => {
+                const count = tab.value === 'all'
+                  ? counts.all
+                  : tab.value === 'recent'
+                    ? counts.recent
+                    : tab.value === 'cloud'
+                      ? counts.cloud
+                      : tab.value === 'local'
+                        ? counts.local
+                        : 0;
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    className={`project-picker-filter-card ${filter === tab.value ? 'active' : ''}`}
+                    data-testid={`project-picker-filter-${tab.value}`}
+                    role="tab"
+                    aria-selected={filter === tab.value}
+                    onClick={() => onFilterChange(tab.value)}
+                  >
+                    <span>{tab.label}</span>
+                    <span className="project-picker-filter-count">{count ?? 0}</span>
+                  </button>
+                );
+              })}
             </div>
-            <div className={`project-picker-source-card ${filter === 'local' ? 'project-picker-source-card-cloud' : ''}`}>
-              <div>
-                <div className="project-picker-source-title">Local Projects</div>
-                <div className="project-picker-source-copy">{counts.local} stored locally</div>
-              </div>
+            <div className="project-picker-sync-summary">
+              <div className="project-picker-source-title">Cloud Sync Issues</div>
+              <div className="project-picker-source-copy">{counts.unsynced} need retry</div>
             </div>
-            <div className={`project-picker-source-card ${filter === 'recent' ? 'project-picker-source-card-cloud' : 'project-picker-source-card-warn'}`}>
-              <div>
-                <div className="project-picker-source-title">Cloud Sync Issues</div>
-                <div className="project-picker-source-copy">{counts.unsynced} need retry</div>
-              </div>
-            </div>
-          </div>
+          </aside>
 
           <div className="project-picker-list" data-testid="project-picker-list">
-            <div className="project-picker-list-title">{listTitle}</div>
+            <div className="project-picker-list-heading">
+              <div>
+                <div className="project-picker-list-title">{listTitle}</div>
+                <div className="project-picker-source-copy">{projects.length} {projects.length === 1 ? 'project' : 'projects'}</div>
+              </div>
+            </div>
             {projects.length === 0 ? (
               <div className="project-picker-empty">{emptyCopy}</div>
             ) : (
