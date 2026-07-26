@@ -43,17 +43,17 @@ The root Pages URL remains a redirect/landing surface; it must not become a thir
 
 Goal: establish the external resources and names before changing deployment automation.
 
-- [ ] Confirm the current Railway project, service name, public domain, deployment source, branch, variables, database attachment, and custom domain configuration.
-- [ ] Create a separate `development` environment under the existing Railway project, then create a separate API service and Postgres database inside it. A separate Railway project is optional for stronger access/billing isolation; connecting either setup to the same GitHub repository is safe when auto-deploy is disabled.
-- [ ] Reserve canonical URLs, for example:
-  - `https://phaserforge-api-production.up.railway.app`
-  - `https://phaserforge-api-dev.up.railway.app`
-- [ ] Define the frontend URLs:
+- [x] Confirm the current Railway project, service name, public domain, deployment source, branch, variables, database attachment, and custom domain configuration.
+- [x] Create a separate `development` environment under the existing Railway project, then create a separate API service and Postgres database inside it. A separate Railway project is optional for stronger access/billing isolation; connecting either setup to the same GitHub repository is safe when auto-deploy is disabled.
+- [x] Reserve canonical URLs:
+  - `https://phaserforge-production.up.railway.app`
+  - `https://phaserforge-development.up.railway.app`
+- [x] Define the frontend URLs:
   - `https://bcorfman.github.io/phaserforge/stable/`
   - `https://bcorfman.github.io/phaserforge/dev/`
-- [ ] Define an environment-variable matrix for API URLs, CORS, OAuth, cookie policy, database URLs, and deployment secrets.
-- [ ] Record which existing Railway service/database is production and preserve it as the stable environment.
-- [ ] Confirm Railway dashboard auto-deploy is disabled for both services once the GitHub Actions deploy workflow is enabled.
+- [x] Define an environment-variable matrix for API URLs, CORS, OAuth, cookie policy, database URLs, and deployment secrets.
+- [x] Record which existing Railway service/database is production and preserve it as the stable environment.
+- [x] Confirm Railway dashboard auto-deploy is disabled for both services once the GitHub Actions deploy workflow is enabled.
 
 Exit criteria:
 
@@ -64,14 +64,14 @@ Exit criteria:
 
 Goal: create a working dev backend without changing stable behavior.
 
-- [ ] Create the development Railway service from the same repository and configure it to deploy the intended development branch or deployment ref.
-- [ ] Attach a separate development Postgres database.
-- [ ] Configure development-only values for `PUBLIC_BASE_URL`, `FRONTEND_BASE_URL`, `CORS_ALLOW_ORIGINS`, `COOKIE_SAMESITE`, `COOKIE_SECURE`, `TRUST_PROXY`, session settings, and OAuth callback URLs.
-- [ ] Use separate GitHub OAuth credentials/app callback configuration if GitHub login is enabled in development.
+- [x] Create the development Railway service from the same repository and configure it to deploy the intended development branch or deployment ref.
+- [x] Attach a separate development Postgres database.
+- [x] Configure development-only values for `PUBLIC_BASE_URL`, `FRONTEND_BASE_URL`, `CORS_ALLOW_ORIGINS`, `COOKIE_SAMESITE`, `COOKIE_SECURE`, `TRUST_PROXY`, session settings, and OAuth callback URLs.
+- [x] Use separate GitHub OAuth credentials/app callback configuration if GitHub login is enabled in development.
 - [ ] Run migrations against the empty development database.
 - [ ] Verify `/api/v1/health`, auth, session persistence, CSRF, CORS, and basic cloud-game CRUD against the dev service.
 - [ ] Confirm no development request can resolve to the stable database or stable OAuth callback.
-- [ ] Configure the development Railway service's source/ref and environment-specific variables in the dashboard; keep shared build/start/health behavior in `railway.toml`.
+- [x] Configure the development Railway service's source/ref and environment-specific variables in the dashboard; keep shared build/start/health behavior in `railway.toml`.
 
 Exit criteria:
 
