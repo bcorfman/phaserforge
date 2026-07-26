@@ -34,3 +34,4 @@ storybook-static/
 
 # Private local notes (never commit)
 .plans/private/
+.env
