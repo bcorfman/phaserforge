@@ -17,7 +17,7 @@ test.describe('Project tree + history', () => {
 
     await page.getByTestId('project-tree-manage-button').click();
     await expect(page.getByTestId('project-manage-create')).toBeVisible();
-    await expect(page.getByTestId('project-manage-open')).toBeVisible();
+    await expect(page.getByTestId('project-manage-library')).toBeVisible();
     await expect(page.getByTestId('project-manage-toggle-sync')).toBeVisible();
     await expect(page.getByTestId('project-manage-import-yaml')).toBeVisible();
     await expect(page.getByTestId('project-manage-export-yaml')).toBeVisible();

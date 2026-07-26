@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ProjectLibraryEntry, ProjectPickerFilter } from './projectLibrary';
 import { formatProjectTimestamp } from './projectLibrary';
 
@@ -9,6 +10,7 @@ export function ProjectPickerPanel({
   onSearchChange,
   onFilterChange,
   onOpenProject,
+  onDeleteProject,
   onRefreshCloudProjects,
 }: {
   projects: ProjectLibraryEntry[];
@@ -18,8 +20,12 @@ export function ProjectPickerPanel({
   onSearchChange: (value: string) => void;
   onFilterChange: (value: ProjectPickerFilter) => void;
   onOpenProject: (projectId: string) => void;
+  onDeleteProject: (project: ProjectLibraryEntry) => void | Promise<void>;
   onRefreshCloudProjects: () => void;
 }) {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProjectLibraryEntry | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const filters: Array<{ value: ProjectPickerFilter; label: string }> = [
     { value: 'recent', label: 'Recent' },
     { value: 'cloud', label: 'Cloud' },
@@ -45,7 +51,7 @@ export function ProjectPickerPanel({
     <div className="project-picker-panel" data-testid="project-picker-panel">
       <section className="panel-section" aria-labelledby="project-picker-projects">
         <div className="panel-heading-row">
-          <h3 className="panel-heading" id="project-picker-projects">Open Project</h3>
+        <h3 className="panel-heading" id="project-picker-projects">Project Library</h3>
           <button className="button button-compact" type="button" onClick={onRefreshCloudProjects}>Refresh</button>
         </div>
 
@@ -128,6 +134,32 @@ export function ProjectPickerPanel({
                     >
                       Open
                     </button>
+                    <button
+                      className="button button-compact"
+                      type="button"
+                      aria-label={`Project actions for ${project.title}`}
+                      data-testid={`project-actions-${project.id}`}
+                      onClick={() => setOpenMenuId((current) => current === project.id ? null : project.id)}
+                    >
+                      ⋯
+                    </button>
+                    {openMenuId === project.id ? (
+                      <div className="project-picker-row-menu" role="menu">
+                        <button
+                          type="button"
+                          className="scene-graph-menu-item"
+                          data-testid={`project-delete-${project.id}`}
+                          disabled={project.isCurrent}
+                          title={project.isCurrent ? 'Open another project before deleting the current project' : undefined}
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            setDeleteTarget(project);
+                          }}
+                        >
+                          Delete…
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))
@@ -135,6 +167,41 @@ export function ProjectPickerPanel({
           </div>
         </div>
       </section>
+
+      {deleteTarget ? (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="project-delete-title">
+          <div className="modal-card">
+            <div className="workspace-conflict-header">
+              <div className="workspace-conflict-title" id="project-delete-title">Delete project?</div>
+            </div>
+            <div className="cloud-help">
+              {deleteTarget.source === 'cloud'
+                ? `Delete “${deleteTarget.title}” from your cloud account and remove its local cache?`
+                : `Delete “${deleteTarget.title}” from this device?`}
+            </div>
+            <div className="cloud-row" style={{ justifyContent: 'flex-end' }}>
+              <button type="button" className="button" disabled={deleteBusy} onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button
+                type="button"
+                className="button button-danger"
+                data-testid="project-delete-confirm"
+                disabled={deleteBusy}
+                onClick={async () => {
+                  setDeleteBusy(true);
+                  try {
+                    await onDeleteProject(deleteTarget);
+                    setDeleteTarget(null);
+                  } finally {
+                    setDeleteBusy(false);
+                  }
+                }}
+              >
+                {deleteBusy ? 'Deleting…' : 'Delete project'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
     </div>
   );

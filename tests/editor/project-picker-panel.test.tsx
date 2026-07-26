@@ -33,6 +33,7 @@ describe('ProjectPickerPanel', () => {
         onCreateProject={() => {}}
         onFilterChange={() => {}}
         onOpenProject={() => {}}
+        onDeleteProject={() => {}}
         onRefreshCloudProjects={() => {}}
         onSearchChange={() => {}}
         projects={[
@@ -47,7 +48,7 @@ describe('ProjectPickerPanel', () => {
     expect(screen.getByText('Cloud Projects')).toBeTruthy();
     expect(screen.getByText('12 available')).toBeTruthy();
     expect(screen.getByText('3 stored locally')).toBeTruthy();
-    expect(screen.getByText('Recent Projects')).toBeTruthy();
+    expect(screen.getByText('Project Library')).toBeTruthy();
     expect(screen.getByText('Local Debug Copy')).toBeTruthy();
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0);
     expect(screen.queryByText('Active Project Summary')).toBeNull();
@@ -61,6 +62,7 @@ describe('ProjectPickerPanel', () => {
         onCreateProject={() => {}}
         onFilterChange={() => {}}
         onOpenProject={() => {}}
+        onDeleteProject={() => {}}
         onRefreshCloudProjects={() => {}}
         onSearchChange={() => {}}
         projects={[]}
@@ -84,6 +86,7 @@ describe('ProjectPickerPanel', () => {
         onCreateProject={() => {}}
         onFilterChange={onFilterChange}
         onOpenProject={onOpenProject}
+        onDeleteProject={() => {}}
         onRefreshCloudProjects={() => {}}
         onSearchChange={onSearchChange}
         projects={[entry()]}
@@ -98,5 +101,51 @@ describe('ProjectPickerPanel', () => {
     expect(onSearchChange).toHaveBeenCalledWith('laser');
     expect(onFilterChange).toHaveBeenCalledWith('cloud');
     expect(onOpenProject).toHaveBeenCalledWith('local:1');
+  });
+
+  it('offers delete from the row menu for non-current local and cloud projects', () => {
+    const onDeleteProject = vi.fn();
+    render(
+      <ProjectPickerPanel
+        counts={{ cloud: 1, local: 1, unsynced: 0 }}
+        filter="recent"
+        onCreateProject={() => {}}
+        onFilterChange={() => {}}
+        onOpenProject={() => {}}
+        onDeleteProject={onDeleteProject}
+        onRefreshCloudProjects={() => {}}
+        onSearchChange={() => {}}
+        projects={[
+          entry({ id: 'cloud:1', projectId: 'game-1', source: 'cloud', status: 'cloud', isCurrent: false }),
+          entry({ id: 'local:2', projectId: 'project-2', source: 'local', status: 'local', isCurrent: false }),
+        ]}
+        search=""
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('project-actions-cloud:1'));
+    fireEvent.click(screen.getByTestId('project-delete-cloud:1'));
+    fireEvent.click(screen.getByTestId('project-delete-confirm'));
+    expect(onDeleteProject).toHaveBeenCalledWith(expect.objectContaining({ id: 'cloud:1', source: 'cloud' }));
+  });
+
+  it('does not offer deletion for the current project', () => {
+    render(
+      <ProjectPickerPanel
+        counts={{ cloud: 1, local: 0, unsynced: 0 }}
+        filter="cloud"
+        onCreateProject={() => {}}
+        onFilterChange={() => {}}
+        onOpenProject={() => {}}
+        onDeleteProject={() => {}}
+        onRefreshCloudProjects={() => {}}
+        onSearchChange={() => {}}
+        projects={[entry({ id: 'cloud:current', source: 'cloud', status: 'cloud', isCurrent: true })]}
+        search=""
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('project-actions-cloud:current'));
+    expect(screen.getByTestId('project-delete-cloud:current')).toHaveProperty('disabled', true);
   });
 });

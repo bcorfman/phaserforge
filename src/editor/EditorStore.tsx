@@ -55,7 +55,7 @@ import { allocDuplicateName } from './duplicateNaming';
 import { type ProjectSyncMode, type StoredProjectRecord, buildStoredProjectRecord, projectPersistence } from './projectPersistence';
 import { buildCloudProjectLibraryEntry, buildStoredProjectLibraryEntry, countProjectScenes, type ProjectLibraryEntry } from './projectLibrary';
 import type { DemoPackAssetManifestEntry } from './demoPackAssets';
-import { getGame, listGames, me } from '../cloud/api';
+import { deleteGame, fetchCsrfToken, getGame, listGames, me } from '../cloud/api';
 import {
   appendProjectRevision,
   buildRestoreRevisionStatus,
@@ -620,6 +620,7 @@ const EditorContext = createContext<{
       archiveHistoryRevisions: (revisionIds: string[]) => Promise<void>;
       deleteHistoryRevisions: (revisionIds: string[]) => Promise<void>;
       openProject: (projectId: string) => Promise<void>;
+      deleteProject: (project: ProjectLibraryEntry) => Promise<void>;
       restoreRevision: (revisionId: string) => Promise<void>;
     refreshCloudProjects: () => Promise<void>;
     toggleSyncMode: () => Promise<void>;
@@ -5164,6 +5165,23 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     setLocalProjects((await projectPersistence.load()).localProjects.map(mapStoredProject));
   };
 
+  const deleteProject = async (project: ProjectLibraryEntry) => {
+    if (project.isCurrent) throw new Error('Open another project before deleting the current project.');
+    const cloudProjectId = project.source === 'cloud' ? project.cloudProjectId ?? project.projectId : undefined;
+    if (cloudProjectId) {
+      const csrfToken = await fetchCsrfToken();
+      await deleteGame(cloudProjectId, csrfToken);
+    }
+    const records = await projectPersistence.deleteProjectRecords({
+      projectIds: [project.id],
+      ...(cloudProjectId ? { cloudProjectIds: [cloudProjectId] } : {}),
+    });
+    setLocalProjects(records.map(mapStoredProject));
+    if (cloudProjectId) {
+      setCloudProjects((projects) => projects.filter((entry) => entry.cloudProjectId !== cloudProjectId));
+    }
+  };
+
   const duplicateCurrentProject = async () => {
     const current = activeRecordRef.current ?? buildStoredProjectRecord(state.project, { id: activeProjectId ?? state.project.id });
     const duplicate = await projectPersistence.duplicateProject(current);
@@ -5342,6 +5360,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
       archiveHistoryRevisions,
       deleteHistoryRevisions,
       openProject,
+      deleteProject,
       restoreRevision,
       refreshCloudProjects,
       toggleSyncMode,

@@ -1298,6 +1298,28 @@ export const projectPersistence = {
     return getProjectRecord(projectId);
   },
 
+  async deleteProjectRecords({ projectIds = [], cloudProjectIds = [] }: { projectIds?: string[]; cloudProjectIds?: string[] }): Promise<StoredProjectRecord[]> {
+    const db = await openDb();
+    if (!db) return [];
+    const projectIdSet = new Set(projectIds);
+    const cloudProjectIdSet = new Set(cloudProjectIds);
+    const tx = db.transaction(PROJECTS_STORE, 'readwrite');
+    const store = tx.objectStore(PROJECTS_STORE);
+    const rows = await requestValue(store.getAll());
+    for (const row of Array.isArray(rows) ? rows : []) {
+      if (!row || typeof row !== 'object') continue;
+      const id = typeof (row as { id?: unknown }).id === 'string' ? (row as { id: string }).id : null;
+      const cloudProjectId = typeof (row as { cloudProjectId?: unknown }).cloudProjectId === 'string'
+        ? (row as { cloudProjectId: string }).cloudProjectId
+        : null;
+      if ((id && projectIdSet.has(id)) || (cloudProjectId && cloudProjectIdSet.has(cloudProjectId))) {
+        store.delete(id ?? '');
+      }
+    }
+    await txComplete(tx);
+    return (await this.load()).localProjects;
+  },
+
   async loadActiveProjectRecord(): Promise<StoredProjectRecord | null> {
     const latestSnapshot = await getLatestActiveSnapshotRecord({ awaitPendingWrites: true });
     if (latestSnapshot?.recordId) {

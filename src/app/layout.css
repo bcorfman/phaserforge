@@ -1667,6 +1667,20 @@ html[data-theme='dark'] .phaser-frame {
 
 .project-picker-row-actions {
   justify-content: flex-end;
+  position: relative;
+}
+
+.project-picker-row-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 20;
+  min-width: 10rem;
+  padding: 0.35rem;
+  border: 1px solid rgba(186, 168, 143, 0.35);
+  border-radius: 0.65rem;
+  background: var(--panel, #10131d);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.3);
 }
 
 @media (max-width: 980px) {

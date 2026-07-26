@@ -103,8 +103,13 @@ export function buildProjectPickerModel({
   const normalizedSearch = search.trim().toLowerCase();
   const localProjectIds = new Set(localProjects.map((entry) => entry.id));
   const cloudProjectIds = new Set(cloudProjects.map((entry) => entry.id));
+  const activeLocalProject = localProjects.find((entry) => entry.id === activeProjectId);
+  const activeCloudProjectId = activeLocalProject?.cloudProjectId;
   const merged = [...localProjects, ...cloudProjects]
-    .map((entry) => ({ ...entry, isCurrent: entry.id === activeProjectId }))
+    .map((entry) => ({
+      ...entry,
+      isCurrent: entry.id === activeProjectId || Boolean(activeCloudProjectId && entry.cloudProjectId === activeCloudProjectId),
+    }))
     .filter((entry) => {
       if (filter === 'cloud' && !cloudProjectIds.has(entry.id)) return false;
       if (filter === 'local' && !localProjectIds.has(entry.id)) return false;

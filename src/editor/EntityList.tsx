@@ -184,6 +184,7 @@ export function EntityList() {
         onSearchChange: setProjectSearch,
         onFilterChange: setProjectFilter,
         onOpenProject: (projectId: string) => void persistence.openProject(projectId),
+        onDeleteProject: (project) => void persistence.deleteProject(project),
         onRefreshCloudProjects: () => void persistence.refreshCloudProjects(),
       }}
       onCreateProject={() => void persistence.createProject()}
@@ -2130,10 +2131,10 @@ export function EntityListView({
               <button
                 type="button"
                 className="scene-graph-menu-item"
-                data-testid="project-manage-open"
+                data-testid="project-manage-library"
                 onClick={() => setMenuOpen({ kind: 'project-browser' })}
               >
-                Open...
+                Project Library...
               </button>
               <button
                 type="button"
@@ -2223,7 +2224,7 @@ export function EntityListView({
           {menuOpen.kind === 'project-browser' ? (
             <div style={{ maxHeight: 'min(70vh, 720px)', overflow: 'auto' }}>
               <div className="panel-heading-row" style={{ padding: '0.2rem 0.2rem 0 0.2rem' }}>
-                <div className="scene-graph-menu-hint" style={{ margin: 0 }}>Open Project</div>
+                <div className="scene-graph-menu-hint" style={{ margin: 0 }}>Project Library</div>
                 <button
                   type="button"
                   className="button button-compact"

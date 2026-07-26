@@ -57,6 +57,22 @@ describe('cloud api', () => {
     });
   });
 
+  it('deleteGame sends the csrf header to the encoded game endpoint', async () => {
+    vi.resetModules();
+    delete process.env.VITE_API_BASE_URL;
+    const { deleteGame } = await import('../../src/cloud/api');
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe('/api/v1/games/game%2Ftest');
+      expect(init?.method).toBe('DELETE');
+      expect((init?.headers as any)['x-csrf-token']).toBe('csrf');
+      expect(init?.credentials).toBe('include');
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    await expect(deleteGame('game/test', 'csrf')).resolves.toEqual({ ok: true });
+  });
+
   it('surfaces a readable error when a cloud save payload is too large', async () => {
     vi.resetModules();
     delete process.env.VITE_API_BASE_URL;
