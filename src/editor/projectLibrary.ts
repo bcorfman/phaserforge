@@ -2,7 +2,7 @@ import type { CloudGameMeta } from '../cloud/api';
 import type { ProjectSpec } from '../model/types';
 import type { StoredProjectRecord } from './projectPersistence';
 
-export type ProjectPickerFilter = 'recent' | 'cloud' | 'local' | 'templates';
+export type ProjectPickerFilter = 'all' | 'recent' | 'cloud' | 'local' | 'templates';
 export type ProjectEntrySource = 'local' | 'cloud';
 export type ProjectEntryStatus = 'local' | 'cloud' | 'unsynced';
 
@@ -97,7 +97,7 @@ export function buildProjectPickerModel({
   search: string;
   filter: ProjectPickerFilter;
 }): {
-  counts: { cloud: number; local: number; unsynced: number };
+  counts: { all: number; recent: number; cloud: number; local: number; unsynced: number };
   visibleProjects: ProjectLibraryEntry[];
 } {
   const normalizedSearch = search.trim().toLowerCase();
@@ -105,14 +105,19 @@ export function buildProjectPickerModel({
   const cloudProjectIds = new Set(cloudProjects.map((entry) => entry.id));
   const activeLocalProject = localProjects.find((entry) => entry.id === activeProjectId);
   const activeCloudProjectId = activeLocalProject?.cloudProjectId;
-  const merged = [...localProjects, ...cloudProjects]
+  const allLogicalProjectIds = new Set(
+    [...localProjects, ...cloudProjects].map((entry) => entry.source === 'cloud'
+      ? `cloud:${entry.cloudProjectId ?? entry.projectId}`
+      : `local:${entry.id}`),
+  );
+  const filteredEntries = [...localProjects, ...cloudProjects]
     .map((entry) => ({
       ...entry,
       isCurrent: entry.id === activeProjectId || Boolean(activeCloudProjectId && entry.cloudProjectId === activeCloudProjectId),
     }))
     .filter((entry) => {
       if (filter === 'cloud' && !cloudProjectIds.has(entry.id)) return false;
-      if (filter === 'local' && !localProjectIds.has(entry.id)) return false;
+      if (filter === 'local' && (entry.source !== 'local' || !localProjectIds.has(entry.id))) return false;
       if (filter === 'templates') return false;
       if (!normalizedSearch) return true;
       return `${entry.title} ${entry.projectId}`.toLowerCase().includes(normalizedSearch);
@@ -123,11 +128,30 @@ export function buildProjectPickerModel({
       if (Number.isFinite(aMs) && Number.isFinite(bMs) && aMs !== bMs) return bMs - aMs;
       return a.title.localeCompare(b.title);
     });
+  const mergedByLogicalProject = new Map<string, (typeof filteredEntries)[number]>();
+  for (const entry of filteredEntries) {
+    const logicalProjectId = entry.source === 'cloud'
+      ? `cloud:${entry.cloudProjectId ?? entry.projectId}`
+      : `local:${entry.id}`;
+    const existing = mergedByLogicalProject.get(logicalProjectId);
+    if (!existing) {
+      mergedByLogicalProject.set(logicalProjectId, entry);
+      continue;
+    }
+    const preferred = existing.id.startsWith('cloud:') && !entry.id.startsWith('cloud:') ? entry : existing;
+    mergedByLogicalProject.set(logicalProjectId, {
+      ...preferred,
+      isCurrent: existing.isCurrent || entry.isCurrent,
+    });
+  }
+  const merged = [...mergedByLogicalProject.values()];
 
   return {
     counts: {
+      all: allLogicalProjectIds.size,
+      recent: allLogicalProjectIds.size,
       cloud: cloudProjects.length,
-      local: localProjects.length,
+      local: localProjects.filter((entry) => entry.source === 'local').length,
       unsynced: [...localProjects, ...cloudProjects].filter((entry) => entry.status === 'unsynced').length,
     },
     visibleProjects: merged,

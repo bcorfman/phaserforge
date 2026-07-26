@@ -109,7 +109,7 @@ export function EntityList() {
   const scene = project.scenes[currentSceneId];
   const stabilityDebugKeyRef = useRef<string | null>(null);
   const [projectSearch, setProjectSearch] = useState('');
-  const [projectFilter, setProjectFilter] = useState<ProjectPickerFilter>('recent');
+  const [projectFilter, setProjectFilter] = useState<ProjectPickerFilter>('all');
   const projectModel = buildProjectPickerModel({
     localProjects: persistence.localProjects,
     cloudProjects: persistence.cloudProjects,

@@ -119,7 +119,7 @@ describe('projectLibrary helpers', () => {
     expect(model.counts.cloud).toBe(1);
   });
 
-  it('keeps locally stored cloud-linked projects visible on the local filter', () => {
+  it('does not treat a cloud cache as a separate local project', () => {
     const model = buildProjectPickerModel({
       localProjects: [
         entry({
@@ -144,7 +144,46 @@ describe('projectLibrary helpers', () => {
       filter: 'local',
     });
 
-    expect(model.counts.local).toBe(1);
-    expect(model.visibleProjects.map((item) => item.id)).toEqual(['cloud:cached-a']);
+    expect(model.counts.local).toBe(0);
+    expect(model.visibleProjects).toEqual([]);
+  });
+
+  it('deduplicates a cloud cache and its remote row in the recent library', () => {
+    const model = buildProjectPickerModel({
+      localProjects: [
+        entry({
+          id: 'cloud:cached-a',
+          projectId: 'game-a',
+          title: 'Cached Copy',
+          source: 'cloud',
+          status: 'cloud',
+          cloudProjectId: 'game-a',
+        }),
+      ],
+      cloudProjects: [
+        entry({
+          id: 'game-a',
+          projectId: 'game-a',
+          title: 'Remote Project',
+          source: 'cloud',
+          status: 'cloud',
+          cloudProjectId: 'game-a',
+        }),
+        entry({
+          id: 'game-b',
+          projectId: 'game-b',
+          title: 'Other Project',
+          source: 'cloud',
+          status: 'cloud',
+          cloudProjectId: 'game-b',
+        }),
+      ],
+      activeProjectId: null,
+      search: '',
+      filter: 'recent',
+    });
+
+    expect(model.visibleProjects.map((item) => item.id)).toEqual(['game-a', 'game-b']);
+    expect(model.visibleProjects.map((item) => item.title)).toEqual(['Remote Project', 'Other Project']);
   });
 });
