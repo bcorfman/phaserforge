@@ -209,6 +209,10 @@ async function startManagedExternalWebServer({
   await lifecycle.markPid(child.pid ?? null);
   child.stdout?.pipe(stdout);
   child.stderr?.pipe(stderr);
+  const childOutputStreamsFinished = Promise.all([
+    child.stdout ? finished(child.stdout).catch(() => {}) : Promise.resolve(),
+    child.stderr ? finished(child.stderr).catch(() => {}) : Promise.resolve(),
+  ]);
   const logStreamsFinished = Promise.all([
     finished(stdout).catch(() => {}),
     finished(stderr).catch(() => {}),
@@ -269,6 +273,7 @@ async function startManagedExternalWebServer({
     await exitPersistPromise;
     await lifecycle.waitForPendingWrites();
     if (child.exitCode != null || child.signalCode != null) {
+      await childOutputStreamsFinished;
       await logStreamsFinished;
     }
     throw error;
