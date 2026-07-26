@@ -67,7 +67,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 26
+          node-version: 24
 
       - name: Install
         run: npm ci
@@ -77,6 +77,7 @@ jobs:
 
       - name: Build dev channel
         env:
+          VITE_PHASERFORGE_ENABLE_DEV_CLOUD_PERSISTENCE: '1'
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV }}
           VITE_PHASERFORGE_DEPLOY_CHANNEL: dev
           VITE_E2E_TEST_BRIDGE: '1'

@@ -68,7 +68,7 @@ Goal: create a working dev backend without changing stable behavior.
 - [x] Attach a separate development Postgres database.
 - [x] Configure development-only values for `PUBLIC_BASE_URL`, `FRONTEND_BASE_URL`, `CORS_ALLOW_ORIGINS`, `COOKIE_SAMESITE`, `COOKIE_SECURE`, `TRUST_PROXY`, session settings, and OAuth callback URLs.
 - [x] Use separate GitHub OAuth credentials/app callback configuration if GitHub login is enabled in development.
-- [ ] Run migrations against the empty development database.
+- [x] Run migrations against the empty development database.
 - [ ] Verify `/api/v1/health`, auth, session persistence, CSRF, CORS, and basic cloud-game CRUD against the dev service.
 - [ ] Confirm no development request can resolve to the stable database or stable OAuth callback.
 - [x] Configure the development Railway service's source/ref and environment-specific variables in the dashboard; keep shared build/start/health behavior in `railway.toml`.
