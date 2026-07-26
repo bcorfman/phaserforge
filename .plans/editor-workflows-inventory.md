@@ -293,8 +293,10 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - Click `Scene` or `Project` in the left sidebar.
 
 #### A57 — Manage Project Library
-- Project Tree header → `Manage` → `Open...`.
-- In the popup, filter/search/open recent projects and refresh cloud-backed projects.
+- Project Tree header → `Manage` → `Project Library...`.
+- In the library, filter/search/open recent projects and refresh cloud-backed projects.
+- Use a project row's `⋯` menu → `Delete...` for a non-current local or cloud project, then confirm the source-specific deletion.
+- The current project cannot be deleted until another project is opened.
 - Project Tree header → `Manage` → `Create New`.
 - Project Tree header → `Manage` → `Import YAML`.
 - Project Tree header → `Manage` → `Export as YAML`.
@@ -391,7 +393,7 @@ It follows the original rule: identify the smallest reusable workflows first, th
 - A2 multi-select sprites → A18/A19 normalize spacing or alignment → A40 bulk-edit shared visuals/transform values.
 
 ### W14 — Project Switching / Recovery
-- A57 open/create/duplicate/import/export a project → A58 choose Online vs Offline behavior → Manage `Clear Project ...` when you need a fresh empty scene.
+- A57 open/create/duplicate/import/export/delete a project → A58 choose Online vs Offline behavior → Manage `Clear Project ...` when you need a fresh empty scene.
 
 ### W15 — Local File Round-trip
 - A60 open YAML or project import → edit via W1-W13 → A60 save in place or save as.

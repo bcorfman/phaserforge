@@ -127,6 +127,14 @@ export async function getGame(id: string): Promise<{ game: CloudGame }> {
   return json;
 }
 
+export async function deleteGame(id: string, csrfToken: string): Promise<{ ok: true }> {
+  const json = await api<{ ok: true }>(`/api/v1/games/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { 'x-csrf-token': csrfToken },
+  });
+  return json;
+}
+
 export async function updateGame(
   id: string,
   patch: { title?: string; project?: ProjectSpec },

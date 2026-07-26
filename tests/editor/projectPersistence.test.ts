@@ -482,6 +482,26 @@ describe('projectPersistence steady-state storage', () => {
     expect(stored?.project).toBeUndefined();
   });
 
+  it('deletes a local project record and its cloud-linked cache records', async () => {
+    const local = createEmptyProject();
+    local.id = 'local-delete';
+    const linked = createEmptyProject();
+    linked.id = 'linked-delete';
+
+    await projectPersistence.saveProjectRecord(buildStoredProjectRecord(local, { id: local.id }));
+    await projectPersistence.saveProjectRecord(buildStoredProjectRecord(linked, {
+      id: linked.id,
+      cloudProjectId: 'game-delete',
+      origin: 'cloud-cache',
+      syncStatus: 'cloud',
+    }));
+
+    await projectPersistence.deleteProjectRecords({ projectIds: [local.id], cloudProjectIds: ['game-delete'] });
+
+    expect(await projectPersistence.loadProjectById(local.id)).toBeNull();
+    expect(await projectPersistence.loadProjectById(linked.id)).toBeNull();
+  });
+
   it('stores a recoverable head revision even when callers pass an empty revisions array', async () => {
     const project = createEmptyProject();
     project.id = 'project-1';

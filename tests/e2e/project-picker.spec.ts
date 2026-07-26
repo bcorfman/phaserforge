@@ -13,12 +13,15 @@ test.describe('Project picker', () => {
 
     await openProjectScope(page);
     await page.getByTestId('project-tree-manage-button').click();
-    await expect(page.getByTestId('project-manage-open')).toBeVisible();
+    await expect(page.getByTestId('project-manage-library')).toBeVisible();
 
-    await page.getByTestId('project-manage-open').click();
+    await page.getByTestId('project-manage-library').click();
     await expect(page.getByTestId('project-picker-panel')).toBeVisible();
     await expect(page.getByTestId('project-picker-search')).toBeVisible();
     await expect(page.getByTestId('project-picker-list')).toContainText('Untitled Project');
+    const currentProjectRow = page.locator('.project-picker-row.is-current');
+    await currentProjectRow.getByRole('button', { name: /Project actions for/ }).click();
+    await expect(currentProjectRow.getByRole('button', { name: 'Delete…' })).toBeDisabled();
   });
 
   test('creates a new local project from the project tree manage menu @smoke', async ({ page }) => {
