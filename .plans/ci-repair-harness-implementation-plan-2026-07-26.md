@@ -201,13 +201,13 @@ and evidence tried, not claim a fix.
 
 Goal: make CI scope mechanically discoverable before attempting repair.
 
-- [ ] Add pure tests that parse the current PR, main, nightly, unit, Storybook,
+- [x] Add pure tests that parse the current PR, main, nightly, unit, Storybook,
   build, and deploy workflow command contracts.
-- [ ] Implement `workflowCatalog.ts` with only the supported PR Chromium and
+- [x] Implement `workflowCatalog.ts` with only the supported PR Chromium and
   local non-E2E scopes enabled; represent all others as explicitly unsupported.
-- [ ] Add a command that prints the exact catalog and validates that each
+- [x] Add a command that prints the exact catalog and validates that each
   catalog command matches the workflow source.
-- [ ] Keep `scripts/main-e2e-shards.json` as the source of main shard members;
+- [x] Keep `scripts/main-e2e-shards.json` as the source of main shard members;
   do not duplicate it in the harness.
 
 Exit criteria:
