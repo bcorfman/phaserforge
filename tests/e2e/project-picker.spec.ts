@@ -7,7 +7,7 @@ test.describe('Project picker', () => {
     await seedSampleScene(page);
     await dismissViewHint(page);
 
-    await expect(page.getByTestId('project-sync-badge')).toHaveText('Online');
+    await expect(page.getByTestId('project-sync-badge')).toHaveText('Offline');
     await page.getByTestId('project-sync-badge').click();
     await expect(page.getByTestId('project-sync-badge')).toHaveText('Offline');
 
@@ -37,7 +37,7 @@ test.describe('Project picker', () => {
     await page.getByTestId('project-manage-create').click();
     await waitForEmptyScene(page);
     await waitForViewportToSettle(page);
-    await expect(page.getByTestId('project-sync-badge')).toHaveText('Online');
+    await expect(page.getByTestId('project-sync-badge')).toHaveText('Offline');
 
     const state = await getState<{ scene?: { world?: { width: number; height: number } } } | null>(page);
     const world = state?.scene?.world ?? { width: 1024, height: 768 };

@@ -8,6 +8,7 @@ import type { Id, TriggerZoneSpec } from '../model/types';
 import { AssetsDock } from './AssetsDock';
 import { ProjectPickerPanel } from './ProjectPickerPanel';
 import { buildProjectPickerModel, type ProjectPickerFilter } from './projectLibrary';
+import { useCloudAuthStatus } from './CloudAccountPanel';
 import { exportYamlToDisk } from './yamlFileExport';
 import { getOpenFilePicker, readFileHandleText } from './yamlFileHandles';
 import { serializeProjectToYaml } from '../model/serialization';
@@ -105,6 +106,7 @@ function focusSceneGraphRow(root: HTMLElement | null, currentSceneId: string, se
 
 export function EntityList() {
   const { state, dispatch, persistence } = useEditorStore();
+  const cloudAuthStatus = useCloudAuthStatus();
   const { project, currentSceneId, selection, sidebarScope, expandedGroups, mode, projectRootEditing, revisionDialogs, revisionPreview } = state;
   const scene = project.scenes[currentSceneId];
   const stabilityDebugKeyRef = useRef<string | null>(null);
@@ -186,6 +188,7 @@ export function EntityList() {
         onOpenProject: (projectId: string) => void persistence.openProject(projectId),
         onDeleteProject: (project) => void persistence.deleteProject(project),
         onRefreshCloudProjects: () => void persistence.refreshCloudProjects(),
+        cloudAuthStatus,
       }}
       onCreateProject={() => void persistence.createProject()}
       onImportYaml={() => void importYaml()}

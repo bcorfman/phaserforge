@@ -39,6 +39,34 @@ export function resolveCachedCloudAccountUser(): Promise<CloudAccountUser> {
   return cachedCloudAccountUserPromise;
 }
 
+export type CloudAuthStatus = 'checking' | 'signed-out' | 'signed-in';
+
+export function useCloudAuthStatus(): CloudAuthStatus {
+  const cloudEnabled = isCloudPersistenceEnabledForChannel();
+  const [status, setStatus] = useState<CloudAuthStatus>(() => {
+    if (!cloudEnabled) return 'signed-out';
+    return cachedCloudAccountUser === undefined
+      ? 'checking'
+      : cachedCloudAccountUser
+        ? 'signed-in'
+        : 'signed-out';
+  });
+
+  useEffect(() => {
+    if (!cloudEnabled) {
+      setStatus('signed-out');
+      return;
+    }
+    let cancelled = false;
+    void resolveCachedCloudAccountUser().then((user) => {
+      if (!cancelled) setStatus(user ? 'signed-in' : 'signed-out');
+    });
+    return () => { cancelled = true; };
+  }, [cloudEnabled]);
+
+  return status;
+}
+
 function setCachedCloudAccountUser(user: CloudAccountUser) {
   cachedCloudAccountUser = user;
   cachedCloudAccountUserPromise = null;

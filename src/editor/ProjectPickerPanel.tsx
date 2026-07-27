@@ -12,6 +12,7 @@ export function ProjectPickerPanel({
   onOpenProject,
   onDeleteProject,
   onRefreshCloudProjects,
+  cloudAuthStatus = 'signed-out',
 }: {
   projects: ProjectLibraryEntry[];
   counts: { all?: number; recent?: number; cloud: number; local: number; unsynced: number };
@@ -22,6 +23,7 @@ export function ProjectPickerPanel({
   onOpenProject: (projectId: string) => void;
   onDeleteProject: (project: ProjectLibraryEntry) => void | Promise<void>;
   onRefreshCloudProjects: () => void;
+  cloudAuthStatus?: 'checking' | 'signed-out' | 'signed-in';
 }) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectLibraryEntry | null>(null);
@@ -101,7 +103,15 @@ export function ProjectPickerPanel({
             </div>
             <div className="project-picker-sync-summary">
               <div className="project-picker-source-title">Cloud Sync Issues</div>
-              <div className="project-picker-source-copy">{counts.unsynced} need retry</div>
+              <div className="project-picker-source-copy">
+                {cloudAuthStatus === 'checking'
+                  ? 'Checking account…'
+                  : cloudAuthStatus === 'signed-out'
+                    ? 'Sign in to sync cloud projects'
+                    : counts.unsynced > 0
+                      ? `${counts.unsynced} need retry`
+                      : 'No issues detected'}
+              </div>
             </div>
           </aside>
 
