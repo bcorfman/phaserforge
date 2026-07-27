@@ -246,17 +246,17 @@ Exit criteria:
 Goal: reproduce the failure locally and verify a human-authored patch without
 LLM integration.
 
-- [ ] Implement `reproduce.ts` using `spawn` with captured stdout/stderr,
+- [x] Implement `reproduce.ts` using `spawn` with captured stdout/stderr,
   duration, exit status, and an evidence fingerprint.
-- [ ] Add focused reproduction for a Playwright file/title where parsing can
+- [x] Add focused reproduction for a Playwright file/title where parsing can
   identify it; otherwise execute the exact CI shard command.
-- [ ] Implement `verify.ts`: focused failing test first, then the scope's
+- [x] Implement `verify.ts`: focused failing test first, then the scope's
   required verification command.
-- [ ] Add `policy.ts` deny rules for test removal/skips, timeout/retry
+- [x] Add `policy.ts` deny rules for test removal/skips, timeout/retry
   inflation, workflow modification, secret/config paths, and broad file scope.
-- [ ] Add JSONL event/state persistence, `--resume`, `--dry-run`, and
+- [x] Add JSONL event/state persistence, `--resume`, `--dry-run`, and
   `--no-agent` support.
-- [ ] Add fixture-driven tests for success, reproduction mismatch, timeout,
+- [x] Add fixture-driven tests for success, reproduction mismatch, timeout,
   repeated failure, and policy denial.
 
 Exit criteria:
@@ -270,21 +270,21 @@ Exit criteria:
 Goal: let the local harness request a repair while keeping all authority and
 token use explicit.
 
-- [ ] Add `packet.ts` to create concise diagnosis and implementation packets
+- [x] Add `packet.ts` to create concise diagnosis and implementation packets
   from stable repository guidance, the evidence envelope, the current diff,
   and a targeted file list.
-- [ ] Add an `agent.ts` adapter that is opt-in via `--agent=codex` and invokes
+- [x] Add an `agent.ts` adapter that is opt-in via `--agent=codex` and invokes
   the locally installed Codex command through a documented environment/config
   contract. It must not assume credentials are available or embed them in a
   command or packet.
-- [ ] Make diagnosis a separate call that emits only failure class, likely
+- [x] Make diagnosis a separate call that emits only failure class, likely
   cause, files/symbols to inspect, exact reproduction command, and confidence.
-- [ ] Permit implementation only if the diagnosis is non-infrastructure and
+- [x] Permit implementation only if the diagnosis is non-infrastructure and
   policy approves its requested file scope.
-- [ ] Enforce the Phase 0 budgets and stop conditions in code; record token
+- [x] Enforce the Phase 0 budgets and stop conditions in code; record token
   usage when the selected Codex interface returns it, otherwise record call,
   duration, and packet byte size without inventing a token count.
-- [ ] Require verification to complete before the summary can state
+- [x] Require verification to complete before the summary can state
   `verified`; a passing model response alone is never success.
 
 Exit criteria:

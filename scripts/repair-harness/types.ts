@@ -6,6 +6,7 @@ export interface FailureEvidence {
   testTitle?: string;
   message: string;
   stackExcerpt: string;
+  fingerprint?: string;
 }
 
 export interface ArtifactMetadata {
@@ -24,4 +25,13 @@ export interface EvidenceEnvelope {
   failure: FailureEvidence;
   artifacts: ArtifactMetadata;
   redactionsApplied: string[];
+}
+
+export interface RepairDiagnosis {
+  failureClass: FailureClass;
+  likelyCause: string;
+  files: string[];
+  symbols: string[];
+  reproductionCommand: string;
+  confidence: number;
 }
