@@ -17,6 +17,7 @@ This guide is the in-repo user guide for PhaserForge. It turns the current workf
 ## Troubleshooting
 
 - [GitHub Pages Publish Troubleshooting](./troubleshooting/github-pages-publish)
+- [CI Repair Harness Quick Start](./troubleshooting/repair-harness)
 
 ## Music Credits
 - [List](./reference/credits)

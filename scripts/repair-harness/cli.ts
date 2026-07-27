@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 
 import { formatWorkflowCatalog, getWorkflowCatalog, validateWorkflowCatalog } from './workflowCatalog';
 import { collectEvidence } from './collect';
@@ -8,6 +8,7 @@ import { verify } from './verify';
 import { runBoundedRepair } from './repair';
 import { appendEvent, readState, resolveResumeDirectory, writeState } from './state';
 import type { EvidenceEnvelope } from './types';
+import { aggregateRepairOutcomes, formatRepairMetrics, readRepairOutcomes, writeRepairMetrics } from './metrics';
 
 const repositoryRoot = path.resolve(new URL('../..', import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -21,7 +22,20 @@ const value = (name: string): string | undefined => {
 const has = (name: string): boolean => args.includes(name);
 
 async function main(): Promise<void> {
-if (args[0] === 'collect') {
+if (args[0] === 'metrics') {
+  try {
+    const repo = value('--repo') ?? repositoryRoot;
+    const runsRoot = value('--runs-root') ?? path.join(repo, '.repair-harness', 'runs');
+    const runDirectories = readdirSync(runsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => path.join(runsRoot, entry.name));
+    const outcomes = runDirectories.flatMap(readRepairOutcomes);
+    const metrics = aggregateRepairOutcomes(outcomes);
+    if (!has('--dry-run')) writeRepairMetrics(runsRoot, outcomes);
+    console.log(formatRepairMetrics(metrics));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (args[0] === 'collect') {
   try {
     const result = collectEvidence({ repo: value('--repo') ?? repositoryRoot, pr: value('--pr'), run: value('--run'), job: value('--job'), outputRoot: value('--output-root') });
     console.log(`Collected ${result.envelope.failure.class} evidence in ${result.runDirectory}`);
