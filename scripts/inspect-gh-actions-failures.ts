@@ -1,60 +1,9 @@
-import { spawnSync } from 'node:child_process';
+import { extractFailureSnippet, extractRunIdFromUrl, isFailingCheck, parseAvailableFields } from './repair-harness/ghHelpers';
+import { fetchChecks, resolvePr, runGh } from './repair-harness/github';
+
+export { extractFailureSnippet, extractRunIdFromUrl, isFailingCheck, parseAvailableFields } from './repair-harness/ghHelpers';
 
 type JsonRecord = Record<string, unknown>;
-
-const FAILURE_CONCLUSIONS = new Set(['failure', 'cancelled', 'timed_out', 'action_required']);
-const FAILURE_STATES = new Set(['failure', 'error', 'cancelled', 'timed_out', 'action_required']);
-const FAILURE_BUCKETS = new Set(['fail']);
-const FAILURE_MARKERS = ['error', 'fail', 'failed', 'traceback', 'exception', 'assert', 'panic', 'fatal', 'timeout'];
-
-export function parseAvailableFields(text: string): string[] {
-  const match = text.match(/Available fields:\s*([\s\S]+)/i);
-  if (!match) return [];
-  return match[1]
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => /^[a-zA-Z][\w-]*$/.test(line));
-}
-
-export function isFailingCheck(check: JsonRecord): boolean {
-  const conclusion = String(check.conclusion ?? '').toLowerCase();
-  if (FAILURE_CONCLUSIONS.has(conclusion)) return true;
-  const state = String((check.state ?? check.status ?? '')).toLowerCase();
-  if (FAILURE_STATES.has(state)) return true;
-  const bucket = String(check.bucket ?? '').toLowerCase();
-  return FAILURE_BUCKETS.has(bucket);
-}
-
-export function extractRunIdFromUrl(url: string): string | null {
-  const match = url.match(/\/actions\/runs\/(\d+)/);
-  return match?.[1] ?? null;
-}
-
-export function extractFailureSnippet(logText: string, maxLines = 120, context = 20): string {
-  const lines = logText.split(/\r?\n/);
-  const failureIndex = lines.findIndex((line) => {
-    const normalized = line.toLowerCase();
-    return FAILURE_MARKERS.some((marker) => normalized.includes(marker));
-  });
-  if (failureIndex < 0) {
-    return lines.slice(-maxLines).join('\n').trim();
-  }
-  const start = Math.max(0, failureIndex - context);
-  const end = Math.min(lines.length, start + maxLines);
-  return lines.slice(start, end).join('\n').trim();
-}
-
-function runGh(args: string[], options: { cwd?: string; allowFailure?: boolean } = {}) {
-  const result = spawnSync('gh', args, {
-    cwd: options.cwd,
-    encoding: 'utf8',
-  });
-  if (result.status !== 0 && !options.allowFailure) {
-    const message = [result.stderr, result.stdout].filter(Boolean).join('\n').trim();
-    throw new Error(message || `gh ${args.join(' ')} failed`);
-  }
-  return result;
-}
 
 function parseArgs(argv: string[]) {
   const parsed: { pr?: string; json: boolean; repo: string } = {
@@ -69,29 +18,6 @@ function parseArgs(argv: string[]) {
     if (arg === '--pr' || arg === '--repo') i += 1;
   }
   return parsed;
-}
-
-function resolvePr(pr: string | undefined, repo: string): string {
-  if (pr) return pr;
-  const result = runGh(['pr', 'view', '--json', 'number,url'], { cwd: repo });
-  const data = JSON.parse(result.stdout) as { number?: number; url?: string };
-  if (!data.number) throw new Error('Unable to resolve current branch PR.');
-  return String(data.number);
-}
-
-function fetchChecks(pr: string, repo: string): JsonRecord[] {
-  const primaryFields = ['name', 'state', 'conclusion', 'detailsUrl', 'startedAt', 'completedAt'];
-  let result = runGh(['pr', 'checks', pr, '--json', primaryFields.join(',')], { cwd: repo, allowFailure: true });
-  if (result.status !== 0) {
-    const availableFields = parseAvailableFields(`${result.stderr}\n${result.stdout}`);
-    const fallbackFields = ['name', 'state', 'bucket', 'link', 'workflow', 'startedAt', 'completedAt'];
-    const selectedFields = fallbackFields.filter((field) => availableFields.includes(field));
-    if (selectedFields.length === 0) {
-      throw new Error([result.stderr, result.stdout].filter(Boolean).join('\n').trim() || 'gh pr checks failed');
-    }
-    result = runGh(['pr', 'checks', pr, '--json', selectedFields.join(',')], { cwd: repo });
-  }
-  return JSON.parse(result.stdout) as JsonRecord[];
 }
 
 function inspectRun(runId: string, repo: string) {

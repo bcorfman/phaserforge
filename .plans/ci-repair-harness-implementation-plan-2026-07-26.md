@@ -221,16 +221,16 @@ Exit criteria:
 Goal: produce a compact, redacted, reproducible failure envelope without a
 model call.
 
-- [ ] Refactor the read-only reusable portions of
+- [x] Refactor the read-only reusable portions of
   `scripts/inspect-gh-actions-failures.ts` into shared helpers while preserving
   the existing `ci:checks` and `ci:checks:json` behavior and tests.
-- [ ] Add `github.ts` to fetch one resolved Actions run, failed job logs, and
+- [x] Add `github.ts` to fetch one resolved Actions run, failed job logs, and
   only that run's Playwright artifacts using authenticated `gh` commands.
-- [ ] Implement failure-class parsers for Vitest, TypeScript/build, and
+- [x] Implement failure-class parsers for Vitest, TypeScript/build, and
   Playwright output; classify runner/network/action failures as infrastructure.
-- [ ] Implement artifact metadata extraction and redaction tests. Do not unpack
+- [x] Implement artifact metadata extraction and redaction tests. Do not unpack
   or prompt raw trace/video contents by default.
-- [ ] Add `repair:ci:collect` to write the normalized evidence envelope and
+- [x] Add `repair:ci:collect` to write the normalized evidence envelope and
   human-readable collection summary.
 
 Exit criteria:
