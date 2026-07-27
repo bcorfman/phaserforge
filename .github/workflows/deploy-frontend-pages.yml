@@ -76,6 +76,7 @@ jobs:
         run: rm -rf dist && mkdir -p dist
 
       - name: Build dev channel
+        if: github.event_name != 'workflow_dispatch' || inputs.channel == 'dev'
         env:
           VITE_PHASERFORGE_ENABLE_DEV_CLOUD_PERSISTENCE: '1'
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV }}
@@ -84,6 +85,7 @@ jobs:
         run: npm run build -- --outDir dist/dev
 
       - name: Verify dev API configuration
+        if: github.event_name != 'workflow_dispatch' || inputs.channel == 'dev'
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV }}
         run: test -n "$VITE_API_BASE_URL"
@@ -99,13 +101,17 @@ jobs:
           npm run build -- --outDir dist/stable
           node -e "const fs=require('fs'); fs.writeFileSync('dist/stable/version.json', JSON.stringify({ channel: 'stable', commit: process.env.GITHUB_SHA, promotedAt: new Date().toISOString() }, null, 2) + '\n')"
 
-      - name: Preserve current stable channel
-        if: github.event_name != 'workflow_dispatch' || inputs.channel != 'stable'
+      - name: Preserve unselected channel
         run: |
           set -euo pipefail
           pages_root_url="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
-          pages_stable_url="${pages_root_url}stable/"
-          mkdir -p dist/stable
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.channel || 'dev' }}" = "stable" ]; then
+            preserve_channel="dev"
+          else
+            preserve_channel="stable"
+          fi
+          pages_channel_url="${pages_root_url}${preserve_channel}/"
+          mkdir -p "dist/${preserve_channel}"
           fetch_pages_path() {
             local url="$1"
             local target="$2"
@@ -119,14 +125,14 @@ jobs:
               --directory-prefix="$target" \
               "$url"
           }
-          fetch_pages_path "$pages_stable_url" dist || true
-          if [ ! -f dist/stable/index.html ]; then
-            echo "No existing /stable/ channel found; seeding stable from the currently published root editor."
+          fetch_pages_path "$pages_channel_url" dist || true
+          if [ ! -f "dist/${preserve_channel}/index.html" ]; then
+            echo "No existing /${preserve_channel}/ channel found; seeding it from the currently published root editor."
             mkdir -p /tmp/phaserforge-pages-root
             fetch_pages_path "$pages_root_url" /tmp/phaserforge-pages-root
-            cp -a /tmp/phaserforge-pages-root/. dist/stable/
+            cp -a /tmp/phaserforge-pages-root/. "dist/${preserve_channel}/"
           fi
-          test -f dist/stable/index.html
+          test -f "dist/${preserve_channel}/index.html"
 
       - name: Build docs
         run: npm run docs:build

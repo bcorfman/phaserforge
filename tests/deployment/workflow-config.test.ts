@@ -12,6 +12,14 @@ describe('deployment workflow contract', () => {
     expect(pagesWorkflow).not.toContain('vars.VITE_API_BASE_URL }}');
   });
 
+  it('builds only the selected Pages channel and preserves the other channel', () => {
+    expect(pagesWorkflow).toContain("inputs.channel == 'dev'");
+    expect(pagesWorkflow).toContain('name: Preserve unselected channel');
+    expect(pagesWorkflow).toContain('preserve_channel="dev"');
+    expect(pagesWorkflow).toContain('preserve_channel="stable"');
+    expect(pagesWorkflow).not.toContain('name: Build dev channel\n        env:');
+  });
+
   it('keeps stable backend deployment manual and protected by a stable environment', () => {
     expect(railwayWorkflow).toContain('workflow_dispatch:');
     expect(railwayWorkflow).toContain("inputs.channel == 'stable'");
