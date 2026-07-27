@@ -6,6 +6,7 @@ import { extractArtifactMetadata, redactSecrets } from './artifacts';
 import { resolvePr, resolveRun, resolveRunFromPr } from './github';
 import { extractFailure } from './triage';
 import type { EvidenceEnvelope } from './types';
+import { appendEvent, createRun, writeState } from './state';
 
 export interface CollectionOptions {
   repo: string;
@@ -53,8 +54,14 @@ export function collectEvidence(options: CollectionOptions): { envelope: Evidenc
     artifacts,
     redactionsApplied: ['authorization', 'token', 'password', 'secret', 'cookie', 'credentialed URLs'],
   };
-  const runDirectory = path.resolve(options.repo, options.outputRoot ?? '.repair-harness/runs', `${Date.now()}-${resolved.runId}`);
+  const runId = `${Date.now()}-${resolved.runId}`;
+  const runDirectory = options.outputRoot
+    ? path.resolve(options.repo, options.outputRoot, runId)
+    : createRun(options.repo, runId).directory;
   mkdirSync(runDirectory, { recursive: true });
+  const state = { runId, phase: 'collect', status: 'active', budgets: { modelCalls: 0, implementationAttempts: 0 }, scope, updatedAt: new Date().toISOString() } as const;
+  writeState(runDirectory, state);
+  appendEvent(runDirectory, { event: 'collection-started', runId, scope });
   writeFileSync(path.join(runDirectory, 'evidence.json'), `${JSON.stringify(envelope, null, 2)}\n`);
   writeFileSync(path.join(runDirectory, 'summary.md'), [
     `# CI failure collection`, '',
@@ -66,5 +73,6 @@ export function collectEvidence(options: CollectionOptions): { envelope: Evidenc
     `- Reproduction: \`${envelope.reproduction.command}\``,
     '', envelope.failure.stackExcerpt,
   ].join('\n') + '\n');
+  appendEvent(runDirectory, { event: 'collection-completed', failureClass: envelope.failure.class, command: envelope.reproduction.command });
   return { envelope, runDirectory };
 }
