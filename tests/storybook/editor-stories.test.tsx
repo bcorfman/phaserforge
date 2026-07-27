@@ -15,6 +15,7 @@ import * as yamlStories from '../../src/editor/ViewbarYamlControls.stories';
 import * as entityListStories from '../../src/editor/EntityList.stories';
 import * as workspaceConflictModalStories from '../../src/editor/WorkspaceConflictModal.stories';
 import * as starsEditorPanelStories from '../../src/editor/StarsEditorPanels.stories';
+import * as inspectorStories from '../../src/editor/Inspector.stories';
 
 setProjectAnnotations(preview);
 
@@ -27,6 +28,7 @@ const composedYamlStories = composeStories(yamlStories);
 const composedEntityListStories = composeStories(entityListStories);
 const composedWorkspaceConflictStories = composeStories(workspaceConflictModalStories);
 const composedStarsEditorPanelStories = composeStories(starsEditorPanelStories);
+const composedEntityInspectorStories = composeStories(inspectorStories);
 
 async function renderStoryAndPlay(Story: React.ComponentType & { play?: (context: { canvasElement: HTMLElement }) => Promise<void>; parameters?: any }) {
   __resetCloudAccountPanelAuthCacheForTests();
@@ -110,6 +112,13 @@ describe('storybook interaction stories', () => {
     await renderStoryAndPlay(composedStarsEditorPanelStories.SceneAppearanceControls as any);
     await renderStoryAndPlay(composedStarsEditorPanelStories.FormationVisualVariations as any);
     await renderStoryAndPlay(composedStarsEditorPanelStories.BoundsEventNoCodeAction as any);
+    expect(true).toBe(true);
+  });
+
+  it('runs the inspector control stories', async () => {
+    await renderStoryAndPlay(composedEntityInspectorStories.AuthoredSpriteControls as any);
+    await renderStoryAndPlay(composedEntityInspectorStories.TextEntityHidesSpriteOnlyControls as any);
+    await renderStoryAndPlay(composedEntityInspectorStories.MultiSelectDisablesPositionAndBulkEditsScale as any);
     expect(true).toBe(true);
   });
 });

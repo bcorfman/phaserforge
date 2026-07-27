@@ -46,6 +46,36 @@ function eventScene(): SceneSpec {
 }
 
 describe('compile attachments: events + nested Repeat', () => {
+  it('C1 expands group-member actions and tagged parallel rows in stable order', () => {
+    const scene: SceneSpec = {
+      id: 'scene-1',
+      world: { width: 200, height: 100 },
+      entities: {
+        e1: { id: 'e1', x: 0, y: 0, width: 10, height: 10 },
+        e2: { id: 'e2', x: 20, y: 0, width: 10, height: 10 },
+      },
+      groups: { g1: { id: 'g1', members: ['e1', 'e2'] } },
+      attachments: {
+        z: { id: 'z', target: { type: 'group', groupId: 'g1' }, applyTo: 'members', presetId: 'Call', params: { callId: 'z' }, tag: 'pargrp:movement:2', order: 2 } as any,
+        a: { id: 'a', target: { type: 'group', groupId: 'g1' }, applyTo: 'members', presetId: 'Call', params: { callId: 'a' }, tag: 'pargrp:movement:1', order: 1 } as any,
+        wait: { id: 'wait', target: { type: 'group', groupId: 'g1' }, applyTo: 'members', presetId: 'Wait', params: { durationMs: 0 }, order: 3 } as any,
+      },
+      behaviors: {},
+      actions: {},
+      conditions: {},
+    };
+    const calls: string[] = [];
+    const opRegistry = new OpRegistry();
+    opRegistry.register('a', () => calls.push('a'));
+    opRegistry.register('z', () => calls.push('z'));
+
+    const compiled = compileScene(scene, { opRegistry });
+    compiled.startAll();
+    compiled.actionManager.update(0);
+
+    expect(calls).toEqual(['a', 'a', 'z', 'z']);
+  });
+
   it('E1 emitted events trigger event scripts', () => {
     const scene = eventScene();
     const opRegistry = new OpRegistry();

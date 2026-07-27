@@ -296,4 +296,133 @@ describe('model validation', () => {
 
     expect(() => validateProjectSpec(project)).not.toThrow();
   });
+
+  it('covers the supported inline condition families and rejects malformed values', () => {
+    const scene = baseScene();
+    const attachment = {
+      id: 'a1',
+      target: { type: 'entity', entityId: 'e1' },
+      presetId: 'Wait',
+      params: { durationMs: 1 },
+    } as any;
+    scene.attachments = { a1: attachment };
+
+    for (const condition of [
+      { type: 'BoundsHit', bounds: { minX: 0, maxX: 10, minY: 0, maxY: 10 } },
+      { type: 'ElapsedTime', durationMs: 0 },
+      { type: 'Instant' },
+      { type: 'CounterCompare', counterId: 'score', value: 10, op: '==' },
+      { type: 'CounterCompare', counterId: 'score', value: 10, op: '>=' },
+      { type: 'CounterCompare', counterId: 'score', value: 10, op: '<=' },
+      { type: 'InputActionEdge', actionId: 'jump', edge: 'pressed' },
+      { type: 'InputActionEdge', actionId: 'jump', edge: 'released' },
+    ]) {
+      attachment.condition = condition;
+      expect(() => validateSceneSpec(scene)).not.toThrow();
+    }
+
+    const invalidConditions = [
+      { type: 'BoundsHit', bounds: { minX: 'bad', maxX: 10, minY: 0, maxY: 10 } },
+      { type: 'ElapsedTime', durationMs: -1 },
+      { type: 'CounterCompare', counterId: '', value: 1, op: '==' },
+      { type: 'CounterCompare', counterId: 'score', value: 'bad', op: '==' },
+      { type: 'CounterCompare', counterId: 'score', value: 1, op: '!=' },
+      { type: 'InputActionEdge', actionId: '', edge: 'pressed' },
+      { type: 'InputActionEdge', actionId: 'jump', edge: 'held' },
+    ];
+    for (const condition of invalidConditions) {
+      attachment.condition = condition;
+      expect(() => validateSceneSpec(scene)).toThrow();
+    }
+  });
+
+  it('covers attachment trigger variants and attachment structure invariants', () => {
+    const scene = baseScene();
+    const attachment = {
+      id: 'a1',
+      target: { type: 'entity', entityId: 'e1' },
+      presetId: 'Wait',
+      params: { durationMs: 1 },
+    } as any;
+    scene.attachments = { a1: attachment };
+
+    for (const trigger of [
+      { type: 'start' },
+      { type: 'update' },
+      { type: 'input_action', actionId: 'jump', edge: 'pressed' },
+      { type: 'input_action', actionId: 'jump', edge: 'released' },
+      { type: 'visible', edge: 'shown' },
+      { type: 'visible', edge: 'hidden' },
+      { type: 'event', eventName: 'Coin.Collected' },
+      { type: 'bounds', boundsEvent: 'wrapped', axis: 'any', side: 'any' },
+    ]) {
+      attachment.trigger = trigger;
+      expect(() => validateSceneSpec(scene)).not.toThrow();
+    }
+
+    for (const trigger of [
+      { type: 'input_action', actionId: '', edge: 'pressed' },
+      { type: 'input_action', actionId: 'jump', edge: 'held' },
+      { type: 'visible', edge: 'shown-or-hidden' },
+      { type: 'event', eventName: '' },
+      { type: 'bounds', boundsEvent: 'unknown' },
+      { type: 'bounds', boundsEvent: 'wrapped', axis: 'z' },
+      { type: 'bounds', boundsEvent: 'wrapped', side: 'diagonal' },
+      { type: 'unknown' },
+    ]) {
+      attachment.trigger = trigger;
+      expect(() => validateSceneSpec(scene)).toThrow();
+    }
+
+    attachment.trigger = { type: 'start' };
+    attachment.id = 'wrong';
+    expect(() => validateSceneSpec(scene)).toThrow(/id mismatch/i);
+    attachment.id = 'a1';
+    attachment.applyTo = 'invalid';
+    expect(() => validateSceneSpec(scene)).toThrow(/applyTo/i);
+    attachment.applyTo = undefined;
+    attachment.targetMode = 'invalid';
+    expect(() => validateSceneSpec(scene)).toThrow(/targetMode/i);
+  });
+
+  it('covers collision and trigger-zone validation and composite attachment invariants', () => {
+    const scene = baseScene() as any;
+    scene.collisionRules = [{
+      id: 'c1',
+      a: { type: 'layer', layer: 'player' },
+      b: { type: 'layer', layer: 'enemy' },
+      interaction: 'block',
+      onEnter: [{ callId: 'hit', args: {} }],
+    }];
+    scene.triggers = [{ id: 'z1', rect: { x: 0, y: 0, width: 10, height: 10 } }];
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+
+    scene.collisionRules[0].onEnter = { callId: 'hit' };
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+    scene.collisionRules[0].onEnter = { callId: '', args: [] };
+    expect(() => validateSceneSpec(scene)).toThrow();
+    scene.collisionRules = 'bad';
+    expect(() => validateSceneSpec(scene)).toThrow(/collisionRules/i);
+    scene.collisionRules = [];
+    scene.triggers = [{ id: 'z1', rect: { x: 0, y: 0, width: 0, height: 10 } }];
+    expect(() => validateSceneSpec(scene)).toThrow(/positive/i);
+
+    scene.triggers = [];
+    scene.attachments = {
+      r1: { id: 'r1', target: { type: 'entity', entityId: 'e1' }, presetId: 'Repeat', children: ['a1'] },
+      a1: { id: 'a1', target: { type: 'entity', entityId: 'e1' }, presetId: 'Wait', parentAttachmentId: 'r1' },
+    };
+    expect(() => validateSceneSpec(scene)).not.toThrow();
+    scene.attachments.r1.children = ['a1', 'a1'];
+    expect(() => validateSceneSpec(scene)).toThrow(/duplicates/i);
+    scene.attachments.r1.children = [];
+    scene.attachments.a1.parentAttachmentId = 'missing';
+    expect(() => validateSceneSpec(scene)).toThrow(/unknown parent/i);
+    scene.attachments.a1.parentAttachmentId = 'r1';
+    scene.attachments.r1.children = [];
+    expect(() => validateSceneSpec(scene)).toThrow(/must include/i);
+    scene.attachments.r1.children = ['a1'];
+    scene.attachments.a1.parentAttachmentId = undefined;
+    expect(() => validateSceneSpec(scene)).toThrow(/parentAttachmentId/i);
+  });
 });

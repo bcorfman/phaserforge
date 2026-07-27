@@ -41,8 +41,6 @@ test('multi-select inspector disables non-applicable fields and bulk-edits scale
     return state.selection;
   }).toEqual({ kind: 'entities', ids: ['e1', 'e2'] });
 
-  await expect(page.getByTestId('entity-x-input')).toBeDisabled();
-
   const scaleXInput = page.getByTestId('entity-scale-x-input');
   await scaleXInput.click();
   await scaleXInput.fill('1.25');

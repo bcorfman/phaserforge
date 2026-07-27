@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { inlinePreviewUrlForAssetSource, resolveAssetSourceUrl } from '../../src/cloud/assetUrls';
+import { assetSourceKey, inlinePreviewUrlForAssetSource, resolveAssetSourceUrl } from '../../src/cloud/assetUrls';
 
 describe('asset URL helpers', () => {
   afterEach(() => {
@@ -45,5 +45,38 @@ describe('asset URL helpers', () => {
     });
 
     expect(resolvedUrl).toBe('assets/demo-pack/audio/Simulacra-chosic.com_.mp3');
+  });
+
+  it('builds stable source keys and resolves embedded data URLs inline', async () => {
+    const source = {
+      kind: 'embedded' as const,
+      dataUrl: 'data:image/png;base64,abc',
+      originalName: 'hero.png',
+      mimeType: 'image/png',
+    };
+    expect(assetSourceKey(source)).toBe('embedded:hero.png:image/png:25');
+    expect(inlinePreviewUrlForAssetSource(source)).toBe(source.dataUrl);
+    expect(await resolveAssetSourceUrl(source)).toBe(source.dataUrl);
+    expect(assetSourceKey({ kind: 'path', path: 'hero.png' })).toBe('path:hero.png::');
+    expect(assetSourceKey({ kind: 'cloud', assetId: 'asset/1' })).toBe('cloud:asset/1::');
+  });
+
+  it('fetches cloud content once, caches the promise, and creates an object URL', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(new Blob(['image'])) });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:hero') });
+    const source = { kind: 'cloud' as const, assetId: 'asset-success-coverage' };
+
+    const [first, second] = await Promise.all([resolveAssetSourceUrl(source), resolveAssetSourceUrl(source)]);
+
+    expect(first).toBe('blob:hero');
+    expect(second).toBe(first);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/assets/asset-success-coverage/content', { credentials: 'include' });
+  });
+
+  it('returns null for a failed cloud asset response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    await expect(resolveAssetSourceUrl({ kind: 'cloud', assetId: 'asset-failure-coverage' })).resolves.toBeNull();
   });
 });
