@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 import {
   getWorkflowCatalog,
   extractWorkflowRunCommands,
   validateWorkflowCatalog,
 } from '../../scripts/repair-harness/workflowCatalog';
+
+const repositoryRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 
 describe('repair harness workflow catalog', () => {
   it('extracts single-line and block run commands from workflow YAML', () => {
@@ -41,7 +45,7 @@ describe('repair harness workflow catalog', () => {
   });
 
   it('validates catalog commands against the workflow sources', () => {
-    expect(validateWorkflowCatalog('/home/bcorfman/dev/phaserforge')).toEqual({
+    expect(validateWorkflowCatalog(repositoryRoot)).toEqual({
       valid: true,
       errors: [],
     });
@@ -53,7 +57,7 @@ describe('repair harness workflow catalog', () => {
       sourceCommands: entry.scope === 'build' ? ['npm run build --stale'] : entry.sourceCommands,
     }));
 
-    const result = validateWorkflowCatalog('/home/bcorfman/dev/phaserforge', catalog);
+    const result = validateWorkflowCatalog(repositoryRoot, catalog);
 
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('build: missing workflow command "npm run build --stale"');
