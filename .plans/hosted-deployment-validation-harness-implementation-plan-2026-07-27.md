@@ -150,21 +150,21 @@ Timing policy:
 - The thresholds apply to individual test durations, not the total suite or
   browser startup time.
 
-- [ ] Add a parser for Playwright JSON results that extracts test title,
+- [x] Add a parser for Playwright JSON results that extracts test title,
   project, file, retry/index, duration, and outcome without persisting raw
   stdout, cookies, headers, or test attachments.
-- [ ] Add a timing-policy helper with the 7-second target and 10-second hard
+- [x] Add a timing-policy helper with the 7-second target and 10-second hard
   ceiling, including explicit handling for missing or invalid durations.
-- [ ] Add a CLI command such as:
+- [x] Add a CLI command such as:
   `npm run repair:ci -- e2e-timing --report <playwright-report.json>`.
-- [ ] Emit normalized slow-test evidence and a summary grouped by project and
+- [x] Emit normalized slow-test evidence and a summary grouped by project and
   test file; preserve the fastest/slowest duration and threshold category.
-- [ ] Make the command return a non-zero status for tests over 10 seconds,
+- [x] Make the command return a non-zero status for tests over 10 seconds,
   while allowing 7–10 second involved-case warnings to be visible without
   failing the run.
-- [ ] Add fixture tests for normal, warning, hard-failure, duplicate-retry,
+- [x] Add fixture tests for normal, warning, hard-failure, duplicate-retry,
   missing-duration, and malformed-report cases.
-- [ ] Ensure the check is opt-in from ordinary repair execution and cannot
+- [x] Ensure the check is opt-in from ordinary repair execution and cannot
   modify Playwright configuration, retries, worker count, or test source.
 
 Timing diagnostics exit criteria:
