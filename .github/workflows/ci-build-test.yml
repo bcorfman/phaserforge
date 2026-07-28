@@ -22,15 +22,8 @@ jobs:
   unit-tests-node:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Git LFS
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git-lfs
-
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          lfs: true
 
       - name: Setup Node
         uses: actions/setup-node@v7
