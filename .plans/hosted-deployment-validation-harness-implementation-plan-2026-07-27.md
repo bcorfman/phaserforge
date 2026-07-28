@@ -1,6 +1,6 @@
 # Hosted Deployment Validation Harness Implementation Plan
 
-Status: Phase 2 complete
+Status: Phase 3 complete
 
 Date: 2026-07-27
 
@@ -197,18 +197,18 @@ Exit criteria:
 
 ## Phase 3 — Security and lifecycle assertions
 
-- [ ] Assert that the CSRF request sets the expected cookie name without
+- [x] Assert that the CSRF request sets the expected cookie name without
   recording its value.
-- [ ] Assert that authenticated writes send the CSRF header while omitting the
+- [x] Assert that authenticated writes send the CSRF header while omitting the
   header value from evidence.
-- [ ] Assert CORS allows the configured Pages origin and does not silently
+- [x] Assert CORS allows the configured Pages origin and does not silently
   broaden to an unsafe wildcard for credentialed requests.
-- [ ] Assert session and CSRF cookies have `Secure` and the configured
+- [x] Assert session and CSRF cookies have `Secure` and the configured
   cross-site policy in hosted mode.
-- [ ] Verify create, update, reload, list, and delete behavior with a
+- [x] Verify create, update, reload, list, and delete behavior with a
   disposable account.
-- [ ] Make cleanup run in a `finally` path and record cleanup success/failure.
-- [ ] Stop with `cleanup-required` if deletion cannot be confirmed.
+- [x] Make cleanup run in a `finally` path and record cleanup success/failure.
+- [x] Stop with `cleanup-required` if deletion cannot be confirmed.
 
 Exit criteria:
 

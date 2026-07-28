@@ -35,7 +35,19 @@ export async function runHostedBrowser(options: { repo: string; config: HostedCo
 export function writeHostedBrowserArtifacts(runDirectory: string, config: HostedConfig, runId: string, result: HostedBrowserSmokeResult | HostedMutationResult): void {
   writeFileSync(path.join(runDirectory, 'hosted-config.json'), `${JSON.stringify({ ...config, expectedDevCommit: config.expectedDevCommit ? '[configured]' : undefined, expectedStableCommit: config.expectedStableCommit ? '[configured]' : undefined }, null, 2)}\n`);
   writeFileSync(path.join(runDirectory, 'hosted-evidence.json'), `${JSON.stringify({ version: 1, kind: 'hosted-browser-validation', runId, status: result.status, result }, null, 2)}\n`);
-  writeFileSync(path.join(runDirectory, 'hosted-events.jsonl'), `${JSON.stringify({ event: 'hosted-browser', status: result.status, runId })}\n`);
+  writeFileSync(path.join(runDirectory, 'hosted-events.jsonl'), `${JSON.stringify({
+    event: 'hosted-browser',
+    status: result.status,
+    runId,
+    ...('cleanupConfirmed' in result ? {
+      projectName: result.projectName,
+      createdProjectId: result.createdProjectId,
+      cleanupConfirmed: result.cleanupConfirmed,
+      cleanupStatus: result.createdProjectId ? (result.cleanupConfirmed ? 'confirmed' : 'cleanup-required') : 'not-needed',
+      updatedProjectFoundAfterReload: result.updatedProjectFoundAfterReload,
+      security: result.security,
+    } : {}),
+  })}\n`);
   writeFileSync(path.join(runDirectory, 'hosted-summary.md'), `# Hosted browser validation\n\nStatus: ${result.status}\n\n${'reasons' in result ? result.reasons.map((reason) => `- ${reason}`).join('\n') : ''}\n`);
 }
 
