@@ -9,6 +9,8 @@ import { runBoundedRepair } from './repair';
 import { appendEvent, readState, resolveResumeDirectory, writeState } from './state';
 import type { EvidenceEnvelope } from './types';
 import { aggregateRepairOutcomes, formatRepairMetrics, readRepairOutcomes, writeRepairMetrics } from './metrics';
+import { loadHostedConfig } from './hosted/config';
+import { runHostedProbe } from './hosted/run';
 
 const repositoryRoot = path.resolve(new URL('../..', import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -22,7 +24,18 @@ const value = (name: string): string | undefined => {
 const has = (name: string): boolean => args.includes(name);
 
 async function main(): Promise<void> {
-if (args[0] === 'metrics') {
+if (args[0] === 'hosted-probe') {
+  try {
+    const configPath = value('--config');
+    if (!configPath) throw new Error('Expected --config <path> for hosted-probe.');
+    const result = await runHostedProbe({ repo: value('--repo') ?? repositoryRoot, config: loadHostedConfig(path.resolve(configPath)), runId: value('--run-id') });
+    console.log(`Hosted probe ${result.status} in ${result.runDirectory}`);
+    if (result.status !== 'passed') process.exitCode = 1;
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (args[0] === 'metrics') {
   try {
     const repo = value('--repo') ?? repositoryRoot;
     const runsRoot = value('--runs-root') ?? path.join(repo, '.repair-harness', 'runs');

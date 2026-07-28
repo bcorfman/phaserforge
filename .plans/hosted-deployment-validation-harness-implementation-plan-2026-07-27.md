@@ -1,6 +1,6 @@
 # Hosted Deployment Validation Harness Implementation Plan
 
-Status: proposed
+Status: Phase 1 complete
 
 Date: 2026-07-27
 
@@ -117,16 +117,16 @@ isolation mutations require an explicit flag such as
 
 ## Phase 1 — Read-only deployment probes
 
-- [ ] Add configuration parsing and safety validation tests.
-- [ ] Implement `GET /api/v1/health` checks with status, JSON shape, and
+- [x] Add configuration parsing and safety validation tests.
+- [x] Implement `GET /api/v1/health` checks with status, JSON shape, and
   bounded response timing.
-- [ ] Implement `GET /api/v1/version` checks for expected channel and optional
+- [x] Implement `GET /api/v1/version` checks for expected channel and optional
   commit.
-- [ ] Record sanitized status, headers, timing, and mismatch reasons.
-- [ ] Redact response bodies to approved fields only.
-- [ ] Add a CLI command such as:
+- [x] Record sanitized status, headers, timing, and mismatch reasons.
+- [x] Redact response bodies to approved fields only.
+- [x] Add a CLI command such as:
   `npm run repair:ci -- hosted-probe --config <path>`.
-- [ ] Classify DNS, TLS, timeout, 5xx, wrong-channel, and wrong-commit cases
+- [x] Classify DNS, TLS, timeout, 5xx, wrong-channel, and wrong-commit cases
   distinctly as deployment/infrastructure evidence.
 
 Exit criteria:
