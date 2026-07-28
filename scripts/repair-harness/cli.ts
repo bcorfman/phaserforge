@@ -11,6 +11,7 @@ import type { EvidenceEnvelope } from './types';
 import { aggregateRepairOutcomes, formatRepairMetrics, readRepairOutcomes, writeRepairMetrics } from './metrics';
 import { loadHostedConfig } from './hosted/config';
 import { runHostedProbe } from './hosted/run';
+import { runE2ETiming } from './e2eTimingRun';
 
 const repositoryRoot = path.resolve(new URL('../..', import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -24,7 +25,18 @@ const value = (name: string): string | undefined => {
 const has = (name: string): boolean => args.includes(name);
 
 async function main(): Promise<void> {
-if (args[0] === 'hosted-probe') {
+if (args[0] === 'e2e-timing') {
+  try {
+    const reportPath = value('--report');
+    if (!reportPath) throw new Error('Expected --report <playwright-report.json> for e2e-timing.');
+    const result = runE2ETiming({ repo: value('--repo') ?? repositoryRoot, reportPath: path.resolve(reportPath), runId: value('--run-id') });
+    console.log(`E2E timing ${result.analysis.status} in ${result.runDirectory}`);
+    if (result.analysis.status === 'failed' || result.analysis.status === 'invalid') process.exitCode = 1;
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (args[0] === 'hosted-probe') {
   try {
     const configPath = value('--config');
     if (!configPath) throw new Error('Expected --config <path> for hosted-probe.');
