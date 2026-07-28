@@ -10,7 +10,7 @@ import { appendEvent, readState, resolveResumeDirectory, writeState } from './st
 import type { EvidenceEnvelope } from './types';
 import { aggregateRepairOutcomes, formatRepairMetrics, readRepairOutcomes, writeRepairMetrics } from './metrics';
 import { loadHostedConfig } from './hosted/config';
-import { runHostedProbe } from './hosted/run';
+import { runHostedBrowser, runHostedMutationCommand, runHostedProbe } from './hosted/run';
 import { runE2ETiming } from './e2eTimingRun';
 
 const repositoryRoot = path.resolve(new URL('../..', import.meta.url).pathname);
@@ -43,6 +43,38 @@ if (args[0] === 'e2e-timing') {
     const result = await runHostedProbe({ repo: value('--repo') ?? repositoryRoot, config: loadHostedConfig(path.resolve(configPath)), runId: value('--run-id') });
     console.log(`Hosted probe ${result.status} in ${result.runDirectory}`);
     if (result.status !== 'passed') process.exitCode = 1;
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (args[0] === 'hosted-browser') {
+  try {
+    const configPath = value('--config');
+    if (!configPath) throw new Error('Expected --config <path> for hosted-browser.');
+    const result = await runHostedBrowser({ repo: value('--repo') ?? repositoryRoot, config: loadHostedConfig(path.resolve(configPath)), runId: value('--run-id') });
+    console.log(`Hosted browser ${result.status} in ${result.runDirectory}`);
+    if (result.status !== 'passed') process.exitCode = 1;
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (args[0] === 'hosted-mutate') {
+  try {
+    const configPath = value('--config');
+    const email = value('--email');
+    const password = value('--password');
+    if (!configPath) throw new Error('Expected --config <path> for hosted-mutate.');
+    if (!email || !password) throw new Error('Hosted mutation requires --email and --password; credentials are used in memory only.');
+    const result = await runHostedMutationCommand({
+      repo: value('--repo') ?? repositoryRoot,
+      config: loadHostedConfig(path.resolve(configPath)),
+      runId: value('--run-id'),
+      account: { email, password, inviteToken: value('--invite-token') },
+      signup: has('--signup'),
+      explicitFlag: has('--allow-hosted-mutations'),
+    });
+    console.log(`Hosted mutation ${result.result.status} in ${result.runDirectory}`);
+    if (result.result.status !== 'passed') process.exitCode = 1;
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

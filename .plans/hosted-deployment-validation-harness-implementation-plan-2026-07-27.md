@@ -1,6 +1,6 @@
 # Hosted Deployment Validation Harness Implementation Plan
 
-Status: Phase 1 complete
+Status: Phase 2 complete
 
 Date: 2026-07-27
 
@@ -176,19 +176,19 @@ Timing diagnostics exit criteria:
 
 ## Phase 2 — Real-origin browser smoke
 
-- [ ] Add a Playwright adapter using the repository's installed Chromium.
-- [ ] Open the configured development Pages frontend, not the local dev
+- [x] Add a Playwright adapter using the repository's installed Chromium.
+- [x] Open the configured development Pages frontend, not the local dev
   server.
-- [ ] Assert that API requests target the configured development API origin.
-- [ ] Capture request failures, console errors, final URL, and approved
+- [x] Assert that API requests target the configured development API origin.
+- [x] Capture request failures, console errors, final URL, and approved
   response metadata without storing cookie values or auth headers.
-- [ ] Add read-only checks for app load, API reachability, and unauthenticated
+- [x] Add read-only checks for app load, API reachability, and unauthenticated
   state.
-- [ ] Add a separate explicit mutation mode for login/signup, project CRUD,
+- [x] Add a separate explicit mutation mode for login/signup, project CRUD,
   and reload persistence.
-- [ ] Use run-specific project names such as
+- [x] Use run-specific project names such as
   `REPAIR-HARNESS-DEV-<run-id>`.
-- [ ] Assert that reload preserves authentication and the updated project.
+- [x] Assert that reload preserves authentication and the updated project.
 
 Exit criteria:
 
