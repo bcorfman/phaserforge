@@ -135,6 +135,45 @@ Exit criteria:
   the wrong channel or commit.
 - No credentials or unrestricted response bodies enter the run directory.
 
+## Cross-cutting repair-harness feature — E2E timing diagnostics
+
+Add a read-only timing check for Playwright E2E results. This belongs in the
+repair/validation harness because it diagnoses slow tests without changing
+test behavior, retries, workers, or deployment state.
+
+Timing policy:
+
+- `<= 7,000ms`: within the normal target.
+- `> 7,000ms` and `<= 10,000ms`: involved-case warning; the test remains
+  acceptable but must be reported with its duration and test identity.
+- `> 10,000ms`: slow-test failure evidence requiring investigation.
+- The thresholds apply to individual test durations, not the total suite or
+  browser startup time.
+
+- [ ] Add a parser for Playwright JSON results that extracts test title,
+  project, file, retry/index, duration, and outcome without persisting raw
+  stdout, cookies, headers, or test attachments.
+- [ ] Add a timing-policy helper with the 7-second target and 10-second hard
+  ceiling, including explicit handling for missing or invalid durations.
+- [ ] Add a CLI command such as:
+  `npm run repair:ci -- e2e-timing --report <playwright-report.json>`.
+- [ ] Emit normalized slow-test evidence and a summary grouped by project and
+  test file; preserve the fastest/slowest duration and threshold category.
+- [ ] Make the command return a non-zero status for tests over 10 seconds,
+  while allowing 7–10 second involved-case warnings to be visible without
+  failing the run.
+- [ ] Add fixture tests for normal, warning, hard-failure, duplicate-retry,
+  missing-duration, and malformed-report cases.
+- [ ] Ensure the check is opt-in from ordinary repair execution and cannot
+  modify Playwright configuration, retries, worker count, or test source.
+
+Timing diagnostics exit criteria:
+
+- A report identifies every test over the target and every test over the hard
+  ceiling with stable, redacted evidence.
+- A test over 10 seconds cannot be mistaken for a clean timing run.
+- The diagnostic does not change how the E2E suite executes.
+
 ## Phase 2 — Real-origin browser smoke
 
 - [ ] Add a Playwright adapter using the repository's installed Chromium.
@@ -238,6 +277,7 @@ Exit criteria:
 
 - `npm run test:unit:node`
 - Focused harness tests for every new helper and policy.
+- E2E timing-policy tests with controlled Playwright JSON fixtures.
 - Browser adapter tests with controlled fixtures.
 - Live read-only probe against configured environments when credentials and
   deployment URLs are available.
