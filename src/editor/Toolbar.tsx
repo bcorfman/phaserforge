@@ -1,13 +1,15 @@
 import { useEditorStore } from './EditorStore';
+import { useCloudAuthStatus, type CloudAuthStatus } from './CloudAccountPanel';
 import { resolveEditorDeployChannel } from './deployChannel';
 
 type ToolbarViewProps = {
   state: Pick<ReturnType<typeof useEditorStore>['state'], 'dirty' | 'uiScale' | 'themeMode' | 'error' | 'statusMessage' | 'syncMode'>;
   dispatch: ReturnType<typeof useEditorStore>['dispatch'];
   onToggleSyncMode: () => void;
+  cloudAuthStatus?: CloudAuthStatus;
 };
 
-export function ToolbarView({ state, dispatch, onToggleSyncMode }: ToolbarViewProps) {
+export function ToolbarView({ state, dispatch, onToggleSyncMode, cloudAuthStatus = 'signed-out' }: ToolbarViewProps) {
   const deployChannel = resolveEditorDeployChannel();
   return (
     <header className="toolbar" data-testid="toolbar">
@@ -19,12 +21,12 @@ export function ToolbarView({ state, dispatch, onToggleSyncMode }: ToolbarViewPr
             <span className="badge toolbar-channel-badge" data-testid="deploy-channel-badge">Dev</span>
           ) : null}
           <button
-            className={`badge toolbar-sync-badge ${state.syncMode === 'offline' ? 'toolbar-sync-badge-offline' : ''}`}
+            className={`badge toolbar-sync-badge ${state.syncMode === 'offline' || cloudAuthStatus !== 'signed-in' ? 'toolbar-sync-badge-offline' : ''}`}
             data-testid="project-sync-badge"
             type="button"
             onClick={onToggleSyncMode}
           >
-            {state.syncMode === 'offline' ? 'Offline' : 'Online'}
+            {state.syncMode === 'online' && cloudAuthStatus === 'signed-in' ? 'Online' : 'Offline'}
           </button>
         </div>
         <p className="toolbar-summary toolbar-summary-single-line">
@@ -117,5 +119,6 @@ export function ToolbarView({ state, dispatch, onToggleSyncMode }: ToolbarViewPr
 
 export function Toolbar() {
   const { state, dispatch, persistence } = useEditorStore();
-  return <ToolbarView state={state} dispatch={dispatch} onToggleSyncMode={() => void persistence.toggleSyncMode()} />;
+  const cloudAuthStatus = useCloudAuthStatus();
+  return <ToolbarView state={state} dispatch={dispatch} cloudAuthStatus={cloudAuthStatus} onToggleSyncMode={() => void persistence.toggleSyncMode()} />;
 }

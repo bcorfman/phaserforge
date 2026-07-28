@@ -67,6 +67,7 @@
         "ci:checks:json": "node --import tsx scripts/inspect-gh-actions-failures.ts --json",
         "repair:ci": "node --import tsx scripts/repair-harness/cli.ts",
         "repair:ci:collect": "node --import tsx scripts/repair-harness/cli.ts collect",
+        "repair:ci:metrics": "node --import tsx scripts/repair-harness/cli.ts metrics",
         "test:all": "npm run test:unit && npm run test:e2e",
         "storybook": "storybook dev -p 6006",
         "build-storybook": "storybook build",

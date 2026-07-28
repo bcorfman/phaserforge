@@ -1,6 +1,6 @@
 # PhaserForge CI Repair Harness Implementation Plan
 
-Status: proposed
+Status: in progress
 
 Date: 2026-07-26
 
@@ -300,15 +300,22 @@ Goal: shake out the PhaserForge adapter before any generalization.
 
 - [ ] Run the harness against 10--20 naturally occurring failures or archived
   failure fixtures, recording only redacted evidence and outcomes.
-- [ ] Track: failure class, reproduction rate, focused verification duration,
+- [x] Track: failure class, reproduction rate, focused verification duration,
   required verification duration, attempts, packet size, token usage when
   available, human acceptance, and reason for stopping.
-- [ ] Add a regression fixture for every misclassification, unsafe proposed
+- [x] Add a regression fixture for every misclassification, unsafe proposed
   change, false success, or token-expensive repeated loop.
 - [ ] Tune parsers and catalog entries from measured failures, not anticipated
   abstractions.
-- [ ] Decide whether main-manifest support is justified; add it as an adapter
-  catalog entry with tests if approved.
+- [x] Decide whether main-manifest support is justified; defer it until the
+  required 10--20 failure sample exists because the current evidence does not
+  justify a second adapter scope.
+
+Phase 4 implementation notes (2026-07-26): the harness now persists redacted
+`outcomes.jsonl` records and aggregates them with `npm run repair:ci:metrics`.
+The first operational sample and parser/catalog tuning remain intentionally
+open until real or archived failure inputs are supplied; no sample size or
+failure pattern is being invented.
 
 Exit criteria:
 

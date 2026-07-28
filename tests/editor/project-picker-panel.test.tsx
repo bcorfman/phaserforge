@@ -52,6 +52,7 @@ describe('ProjectPickerPanel', () => {
     expect(screen.getByTestId('project-picker-filter-local')).toBeTruthy();
     expect(screen.getByTestId('project-picker-filter-templates')).toBeTruthy();
     expect(screen.getByText('Cloud Sync Issues')).toBeTruthy();
+    expect(screen.getByText('Sign in to sync cloud projects')).toBeTruthy();
     expect(screen.getByText('Local Debug Copy')).toBeTruthy();
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0);
     expect(screen.queryByRole('tablist', { name: 'Project filters' })).toBeTruthy();

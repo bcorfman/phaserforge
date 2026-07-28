@@ -5,6 +5,7 @@ import type { StoredProjectRecord } from './projectPersistence';
 export type ProjectPickerFilter = 'all' | 'recent' | 'cloud' | 'local' | 'templates';
 export type ProjectEntrySource = 'local' | 'cloud';
 export type ProjectEntryStatus = 'local' | 'cloud' | 'unsynced';
+export type ProjectCloudAuthStatus = 'checking' | 'signed-out' | 'signed-in';
 
 export type ProjectLibraryEntry = {
   id: string;

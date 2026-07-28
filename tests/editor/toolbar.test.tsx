@@ -51,7 +51,7 @@ describe('Toolbar', () => {
 
     render(<Toolbar />);
 
-    expect(screen.getByTestId('project-sync-badge').textContent).toBe('Online');
+    expect(screen.getByTestId('project-sync-badge').textContent).toBe('Offline');
     expect(screen.getByTestId('toolbar-error').textContent).toBe('Broken');
     expect(screen.getByTestId('toolbar-status').textContent).toBe('Saved');
   });
