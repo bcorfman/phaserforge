@@ -16,6 +16,9 @@ export interface HostedConfig {
   allowOAuth: boolean;
   timeoutMs: number;
   allowedApiHosts: string[];
+  csrfCookieName: string;
+  sessionCookieName: string;
+  expectedCookieSameSite: 'lax' | 'strict' | 'none';
 }
 
 export interface HostedConfigInput {
@@ -32,6 +35,9 @@ export interface HostedConfigInput {
   HOSTED_ALLOW_OAUTH?: string | boolean;
   HOSTED_TIMEOUT_MS?: string | number;
   HOSTED_ALLOWED_API_HOSTS?: string | string[];
+  HOSTED_CSRF_COOKIE_NAME?: string;
+  HOSTED_SESSION_COOKIE_NAME?: string;
+  HOSTED_EXPECTED_COOKIE_SAMESITE?: string;
 }
 
 export function parseHostedConfig(input: HostedConfigInput): HostedConfig {
@@ -49,6 +55,9 @@ export function parseHostedConfig(input: HostedConfigInput): HostedConfig {
     allowOAuth: parseBoolean(input.HOSTED_ALLOW_OAUTH, false),
     timeoutMs: parseTimeout(input.HOSTED_TIMEOUT_MS),
     allowedApiHosts: parseHosts(input.HOSTED_ALLOWED_API_HOSTS),
+    csrfCookieName: input.HOSTED_CSRF_COOKIE_NAME?.trim() || 'pa_csrf',
+    sessionCookieName: input.HOSTED_SESSION_COOKIE_NAME?.trim() || 'pa_session',
+    expectedCookieSameSite: parseSameSite(input.HOSTED_EXPECTED_COOKIE_SAMESITE),
   };
   validateHostedConfig(config);
   return config;
@@ -105,4 +114,12 @@ function parseTimeout(value: string | number | undefined): number { return value
 function parseHosts(value: string | string[] | undefined): string[] {
   const values = Array.isArray(value) ? value : value?.split(',') ?? [];
   return values.map((host) => host.trim().toLowerCase()).filter(Boolean);
+}
+
+function parseSameSite(value: string | undefined): 'lax' | 'strict' | 'none' {
+  const normalized = value?.trim().toLowerCase() || 'none';
+  if (normalized !== 'lax' && normalized !== 'strict' && normalized !== 'none') {
+    throw new Error('HOSTED_EXPECTED_COOKIE_SAMESITE must be lax, strict, or none.');
+  }
+  return normalized;
 }

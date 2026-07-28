@@ -1,5 +1,6 @@
 import { chromium, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import type { HostedConfig } from './config';
+import { assertHostedSecurity, projectHostedSecurityObservation, type HostedSecurityObservation } from './security';
 
 export interface HostedBrowserResponse {
   origin: string;
@@ -28,6 +29,7 @@ export interface HostedMutationResult {
   createdProjectId?: string;
   updatedProjectFoundAfterReload: boolean;
   cleanupConfirmed: boolean;
+  security?: Omit<HostedSecurityObservation, 'csrfTokenValue' | 'csrfHeaderValue' | 'sessionCookieValue'>;
   reasons: string[];
 }
 
@@ -173,6 +175,20 @@ export async function runHostedMutation(options: {
   let createdProjectId: string | undefined;
   let cleanupConfirmed = false;
   let updatedProjectFoundAfterReload = false;
+  let csrfHeaderSent = false;
+  let corsAllowOrigin: string | undefined;
+  let corsAllowCredentials = false;
+  const apiOrigin = new URL(options.config.devApiUrl).origin;
+  options.page.on('request', (request) => {
+    if (request.url().startsWith(apiOrigin) && request.method() !== 'GET' && 'x-csrf-token' in request.headers()) csrfHeaderSent = true;
+  });
+  options.page.on('response', (response) => {
+    if (response.url().startsWith(apiOrigin)) {
+      const headers = response.headers();
+      corsAllowOrigin ??= headers['access-control-allow-origin'];
+      corsAllowCredentials ||= headers['access-control-allow-credentials'] === 'true';
+    }
+  });
   const project = options.project ?? { id: `repair-${options.runId}`, scenes: {}, assets: {}, audio: {}, inputMaps: {}, collections: {}, counters: {}, initialSceneId: null, pixelsPerUnit: 2, renderMode: 'smooth-2d' };
 
   await options.page.goto(options.config.devFrontendUrl, { waitUntil: 'domcontentloaded', timeout: options.config.timeoutMs });
@@ -208,8 +224,19 @@ export async function runHostedMutation(options: {
       }
     }
   }
+  const cookies = await options.page.context().cookies(apiOrigin);
+  const cookie = (name: string) => cookies.find((item) => item.name === name);
+  const securityObservation: HostedSecurityObservation = {
+    csrfCookie: (() => { const item = cookie(options.config.csrfCookieName); return item ? { name: item.name, secure: item.secure, sameSite: item.sameSite?.toLowerCase() as 'lax' | 'strict' | 'none' | undefined } : undefined; })(),
+    sessionCookie: (() => { const item = cookie(options.config.sessionCookieName); return item ? { name: item.name, secure: item.secure, sameSite: item.sameSite?.toLowerCase() as 'lax' | 'strict' | 'none' | undefined } : undefined; })(),
+    csrfHeaderSent,
+    cors: { allowOrigin: corsAllowOrigin, allowCredentials: corsAllowCredentials },
+  };
+  const securityReasons = assertHostedSecurity({ frontendOrigin: new URL(options.config.devFrontendUrl).origin, csrfCookieName: options.config.csrfCookieName, sessionCookieName: options.config.sessionCookieName, expectedSameSite: options.config.expectedCookieSameSite }, securityObservation);
+  reasons.push(...securityReasons);
   if (createdProjectId && !cleanupConfirmed) reasons.push('Created project cleanup could not be confirmed.');
-  return { status: !cleanupConfirmed && createdProjectId ? 'cleanup-required' : reasons.length ? 'failed' : 'passed', projectName, createdProjectId, updatedProjectFoundAfterReload, cleanupConfirmed, reasons };
+  const security = projectHostedSecurityObservation(securityObservation);
+  return { status: !cleanupConfirmed && createdProjectId ? 'cleanup-required' : reasons.length ? 'failed' : 'passed', projectName, createdProjectId, updatedProjectFoundAfterReload, cleanupConfirmed, security, reasons };
 }
 
 async function cloudRequest<T>(page: Page, apiUrl: string, path: string, method: string, body?: unknown): Promise<T> {
