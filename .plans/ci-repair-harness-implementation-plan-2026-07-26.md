@@ -307,7 +307,7 @@ Goal: shake out the PhaserForge adapter before any generalization.
   change, false success, or token-expensive repeated loop.
 - [ ] Tune parsers and catalog entries from measured failures, not anticipated
   abstractions.
-- [x] Decide whether main-manifest support is justified; defer it until the
+- [x] Decide whether main-manifest support is justified; defer it until theHe
   required 10--20 failure sample exists because the current evidence does not
   justify a second adapter scope.
 
