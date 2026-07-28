@@ -251,13 +251,20 @@ async function startManagedExternalWebServer({
   };
 
   child.once('exit', (code, signal) => {
-    const phase = lifecycle.state.readyAt ? 'during the Playwright run' : 'before ready';
-    const exitError = createManagedServerError(
-      `Managed E2E web server exited ${phase} (code=${code ?? 'null'}, signal=${signal ?? 'null'})`,
-      logDir,
-    );
-    recordExit(code, signal);
-    rejectUnexpectedExit(exitError);
+    void (async () => {
+      // The child can emit `exit` before pipe consumers have flushed their final
+      // chunks. Wait for both layers before rejecting so lifecycle diagnostics
+      // never lose the stderr/stdout that explains an early server failure.
+      await recordExit(code, signal);
+      await childOutputStreamsFinished;
+      await logStreamsFinished;
+      const phase = lifecycle.state.readyAt ? 'during the Playwright run' : 'before ready';
+      const exitError = createManagedServerError(
+        `Managed E2E web server exited ${phase} (code=${code ?? 'null'}, signal=${signal ?? 'null'})`,
+        logDir,
+      );
+      rejectUnexpectedExit(exitError);
+    })();
   });
 
   try {
