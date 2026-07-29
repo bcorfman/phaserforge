@@ -6,7 +6,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  HOME: /home/pwuser
+  HOME: /tmp/phaserforge-home
 
 permissions:
   contents: read
@@ -24,6 +24,9 @@ jobs:
         shard: [1, 2]
         shards: [2]
     steps:
+      - name: Prepare writable home
+        run: mkdir -p "$HOME"
+
       - name: Checkout
         uses: actions/checkout@v7
 

@@ -67,7 +67,9 @@ test('Edit and Preview preserve camera view state @critical', async ({ page }) =
   }).toEqual({ sceneKey: 'EditorScene', ready: true, isActive: true });
   await waitForViewportToSettle(page, { stableForMs: 150 });
 
-  const editRestoredSnapshot = await getSceneSnapshot<CameraSnapshot & { ready?: boolean }>(page);
-  expect(editRestoredSnapshot.ready).toBe(true);
-  expect(cameraTransferDifference(transferSnapshot, editRestoredSnapshot)).toBeLessThanOrEqual(1);
+  await expect.poll(async () => {
+    const editRestoredSnapshot = await getSceneSnapshot<CameraSnapshot & { ready?: boolean }>(page);
+    if (!editRestoredSnapshot.ready) return Number.POSITIVE_INFINITY;
+    return cameraTransferDifference(transferSnapshot, editRestoredSnapshot);
+  }).toBeLessThanOrEqual(1);
 });
