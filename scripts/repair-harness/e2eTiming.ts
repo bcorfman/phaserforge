@@ -69,16 +69,51 @@ export interface E2ETimingAnalysis {
 }
 
 export function parsePlaywrightJsonReport(value: unknown): PlaywrightJsonReport {
-  if (!value || typeof value !== 'object' || !Array.isArray((value as { suites?: unknown }).suites)) {
+  if (!value || typeof value !== 'object') {
     throw new Error('Playwright JSON report must contain a suites array.');
   }
-  return value as PlaywrightJsonReport;
+  const report = value as { suites?: unknown; files?: unknown };
+  if (Array.isArray(report.suites)) return value as PlaywrightJsonReport;
+  if (Array.isArray(report.files)) return normalizePlaywrightFilesReport(value as PlaywrightFilesReport);
+  throw new Error('Playwright JSON report must contain a suites array.');
+}
+
+interface PlaywrightFilesReport { files: PlaywrightFile[]; [key: string]: unknown; }
+interface PlaywrightFile { fileName?: string; tests?: PlaywrightFileTest[]; }
+interface PlaywrightFileTest { title?: string; projectName?: string; duration?: number; outcome?: string; results?: PlaywrightJsonResult[]; }
+
+function normalizePlaywrightFilesReport(report: PlaywrightFilesReport): PlaywrightJsonReport {
+  return {
+    suites: report.files.map((file) => ({
+      file: safeText(file.fileName, '[unknown-file]'),
+      specs: (file.tests ?? []).map((test) => ({
+        title: test.title,
+        tests: [{
+          projectName: test.projectName,
+          results: [{ ...(test.results?.[0] ?? {}), duration: test.duration, status: test.outcome }],
+        }],
+      })),
+    })),
+  };
 }
 
 export function analyzeE2ETiming(value: unknown): E2ETimingAnalysis {
   const report = parsePlaywrightJsonReport(value);
   const entries: E2ETimingEntry[] = [];
   for (const suite of report.suites) collectSuite(suite, undefined, entries);
+  return summarizeE2ETiming(entries);
+}
+
+export function analyzeE2ETimingReports(values: unknown[]): E2ETimingAnalysis {
+  const entries: E2ETimingEntry[] = [];
+  for (const value of values) {
+    const report = parsePlaywrightJsonReport(value);
+    for (const suite of report.suites) collectSuite(suite, undefined, entries);
+  }
+  return summarizeE2ETiming(entries);
+}
+
+function summarizeE2ETiming(entries: E2ETimingEntry[]): E2ETimingAnalysis {
   const counts: Record<E2ETimingCategory, number> = { normal: 0, warning: 0, slow: 0, 'missing-duration': 0, 'invalid-duration': 0 };
   for (const entry of entries) counts[entry.category] += 1;
   const valid = entries.filter((entry): entry is E2ETimingEntry & { durationMs: number } => typeof entry.durationMs === 'number');
