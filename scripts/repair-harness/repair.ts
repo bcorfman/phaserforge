@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
+import { isHostedCommand } from './scope';
 import path from 'node:path';
 
 import { runAgent, parseDiagnosis, type AgentResult } from './agent';
@@ -41,6 +42,7 @@ function stateRunId(directory: string): string {
 
 export async function runBoundedRepair(options: RepairOptions): Promise<RepairResult> {
   let state = readState(options.runDirectory);
+  if (isHostedCommand(options.evidence.reproduction.command)) { const reason = 'Hosted validation is outside the Codex repair path; no agent or remote mutation is permitted.'; outcome(options, 'stopped', 0, reason); return stop(options.runDirectory, state, reason); }
   if (options.evidence.failure.class === 'infrastructure') { const reason = 'Infrastructure failure; no model call permitted.'; outcome(options, 'stopped', 0, reason); return stop(options.runDirectory, state, reason); }
   const diff = options.diff ?? currentDiff(options.repo);
   const call = options.callAgent ?? ((kind, packet) => runAgent({ kind, packet, cwd: options.repo, timeoutMs: Math.max(1, PHASE3_BUDGETS.wallTimeMs - (state.budgets.wallTimeMs ?? 0)) }));

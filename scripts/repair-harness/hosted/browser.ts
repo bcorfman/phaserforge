@@ -1,6 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import type { HostedConfig } from './config';
 import { assertHostedSecurity, projectHostedSecurityObservation, type HostedSecurityObservation } from './security';
+import { assertHostedBounds, hostedOperationBudget } from './bounds';
 
 export interface HostedBrowserResponse {
   origin: string;
@@ -77,6 +78,7 @@ export async function runHostedBrowserSmoke(options: {
   launch?: () => Promise<Browser>;
   timeoutMs?: number;
 }): Promise<HostedBrowserSmokeResult> {
+  assertHostedBounds(hostedOperationBudget(options.config), { browserCount: 1, mutationCount: 0, cleanupAttempts: 0, elapsedMs: 0 });
   const browser = options.browser ?? (await (options.launch ?? (() => chromium.launch({ headless: true })))());
   const ownsBrowser = !options.browser;
   const context = await browser.newContext({ serviceWorkers: 'block' });
@@ -170,6 +172,7 @@ export async function runHostedMutation(options: {
   project?: Record<string, unknown>;
 }): Promise<HostedMutationResult> {
   assertHostedMutationAllowed(options.config, options.explicitFlag);
+  assertHostedBounds(hostedOperationBudget(options.config), { browserCount: 1, mutationCount: 1, cleanupAttempts: 1, elapsedMs: 0 });
   const projectName = makeHostedProjectName(options.runId);
   const reasons: string[] = [];
   let createdProjectId: string | undefined;
