@@ -10,8 +10,10 @@ import { appendEvent, readState, resolveResumeDirectory, writeState } from './st
 import type { EvidenceEnvelope } from './types';
 import { aggregateRepairOutcomes, formatRepairMetrics, readRepairOutcomes, writeRepairMetrics } from './metrics';
 import { loadHostedConfig } from './hosted/config';
-import { runHostedBrowser, runHostedMutationCommand, runHostedProbe } from './hosted/run';
+import { runHostedBrowser, runHostedIsolationCommand, runHostedMutationCommand, runHostedProbe } from './hosted/run';
 import { runE2ETiming } from './e2eTimingRun';
+import { runHostedOAuthPreflight } from './hosted/oauth';
+import { assertHostedScope, assertRepairCannotUseHostedScope } from './scope';
 
 const repositoryRoot = path.resolve(new URL('../..', import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -23,6 +25,11 @@ const value = (name: string): string | undefined => {
 };
 
 const has = (name: string): boolean => args.includes(name);
+const prepareHosted = (command: string): boolean => {
+  assertHostedScope(command, value('--scope'));
+  if (value('--agent')) throw new Error('Hosted validation cannot invoke an agent; use --no-agent.');
+  return has('--dry-run');
+};
 
 async function main(): Promise<void> {
 if (args[0] === 'e2e-timing') {
@@ -38,9 +45,12 @@ if (args[0] === 'e2e-timing') {
   }
 } else if (args[0] === 'hosted-probe') {
   try {
+    const dryRun = prepareHosted('hosted-probe');
     const configPath = value('--config');
     if (!configPath) throw new Error('Expected --config <path> for hosted-probe.');
-    const result = await runHostedProbe({ repo: value('--repo') ?? repositoryRoot, config: loadHostedConfig(path.resolve(configPath)), runId: value('--run-id') });
+    const config = loadHostedConfig(path.resolve(configPath));
+    if (dryRun) { console.log('Hosted probe dry-run: configuration validated; no network request will run.'); return; }
+    const result = await runHostedProbe({ repo: value('--repo') ?? repositoryRoot, config, runId: value('--run-id') });
     console.log(`Hosted probe ${result.status} in ${result.runDirectory}`);
     if (result.status !== 'passed') process.exitCode = 1;
   } catch (error) {
@@ -49,9 +59,12 @@ if (args[0] === 'e2e-timing') {
   }
 } else if (args[0] === 'hosted-browser') {
   try {
+    const dryRun = prepareHosted('hosted-browser');
     const configPath = value('--config');
     if (!configPath) throw new Error('Expected --config <path> for hosted-browser.');
-    const result = await runHostedBrowser({ repo: value('--repo') ?? repositoryRoot, config: loadHostedConfig(path.resolve(configPath)), runId: value('--run-id') });
+    const config = loadHostedConfig(path.resolve(configPath));
+    if (dryRun) { console.log('Hosted browser dry-run: configuration validated; no browser or network request will run.'); return; }
+    const result = await runHostedBrowser({ repo: value('--repo') ?? repositoryRoot, config, runId: value('--run-id') });
     console.log(`Hosted browser ${result.status} in ${result.runDirectory}`);
     if (result.status !== 'passed') process.exitCode = 1;
   } catch (error) {
@@ -60,14 +73,17 @@ if (args[0] === 'e2e-timing') {
   }
 } else if (args[0] === 'hosted-mutate') {
   try {
+    const dryRun = prepareHosted('hosted-mutate');
     const configPath = value('--config');
     const email = value('--email');
     const password = value('--password');
     if (!configPath) throw new Error('Expected --config <path> for hosted-mutate.');
     if (!email || !password) throw new Error('Hosted mutation requires --email and --password; credentials are used in memory only.');
+    const config = loadHostedConfig(path.resolve(configPath));
+    if (dryRun) { console.log('Hosted mutation dry-run: configuration and credentials presence validated; no browser or mutation will run.'); return; }
     const result = await runHostedMutationCommand({
       repo: value('--repo') ?? repositoryRoot,
-      config: loadHostedConfig(path.resolve(configPath)),
+      config,
       runId: value('--run-id'),
       account: { email, password, inviteToken: value('--invite-token') },
       signup: has('--signup'),
@@ -75,6 +91,43 @@ if (args[0] === 'e2e-timing') {
     });
     console.log(`Hosted mutation ${result.result.status} in ${result.runDirectory}`);
     if (result.result.status !== 'passed') process.exitCode = 1;
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (args[0] === 'hosted-isolation') {
+  try {
+    const dryRun = prepareHosted('hosted-isolation');
+    const configPath = value('--config');
+    const devEmail = value('--dev-email');
+    const devPassword = value('--dev-password');
+    const stableEmail = value('--stable-email');
+    const stablePassword = value('--stable-password');
+    if (!configPath) throw new Error('Expected --config <path> for hosted-isolation.');
+    if (!devEmail || !devPassword || !stableEmail || !stablePassword) throw new Error('Hosted isolation requires separate --dev-email/--dev-password and --stable-email/--stable-password credentials; credentials are used in memory only.');
+    const config = loadHostedConfig(path.resolve(configPath));
+    if (dryRun) { console.log('Hosted isolation dry-run: configuration and credential presence validated; no browser or mutation will run.'); return; }
+    const result = await runHostedIsolationCommand({
+      repo: value('--repo') ?? repositoryRoot,
+      config,
+      runId: value('--run-id'),
+      accounts: { dev: { email: devEmail, password: devPassword }, stable: { email: stableEmail, password: stablePassword } },
+      explicitFlag: has('--allow-hosted-mutations'),
+    });
+    console.log(`Hosted isolation ${result.status} in ${result.runDirectory}`);
+    if (result.status !== 'passed') process.exitCode = 1;
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (args[0] === 'hosted-oauth-preflight') {
+  try {
+    const dryRun = prepareHosted('hosted-oauth-preflight');
+    const configPath = value('--config');
+    if (!configPath) throw new Error('Expected --config <path> for hosted-oauth-preflight.');
+    const config = loadHostedConfig(path.resolve(configPath));
+    const result = runHostedOAuthPreflight(config, has('--allow-hosted-oauth'));
+    console.log(`Hosted OAuth preflight ${result.status}${dryRun ? ' (dry-run)' : ''}.`);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
@@ -138,6 +191,7 @@ if (args[0] === 'e2e-timing') {
   }
 } else if (args[0] === 'repair') {
   try {
+    assertRepairCannotUseHostedScope(value('--scope'));
     if (has('--no-agent') || value('--agent') !== 'codex') throw new Error('Repair requires explicit --agent=codex; no agent is enabled by default.');
     const repo = value('--repo') ?? repositoryRoot;
     const runDirectory = value('--run-dir') ?? (value('--resume') ? resolveResumeDirectory(repo, value('--resume')!) : undefined);

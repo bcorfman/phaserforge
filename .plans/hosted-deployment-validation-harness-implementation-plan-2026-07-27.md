@@ -1,6 +1,6 @@
 # Hosted Deployment Validation Harness Implementation Plan
 
-Status: Phase 3 complete
+Status: Phase 5 complete
 
 Date: 2026-07-27
 
@@ -217,14 +217,14 @@ Exit criteria:
 
 ## Phase 4 — Dev/stable isolation
 
-- [ ] Require separate explicitly configured dev and stable test accounts.
-- [ ] Create a uniquely marked development project and verify it is absent
+- [x] Require separate explicitly configured dev and stable test accounts.
+- [x] Create a uniquely marked development project and verify it is absent
   from stable.
-- [ ] Create a uniquely marked stable project and verify it is absent from dev.
-- [ ] Delete both records and verify absence after deletion.
-- [ ] Record only project markers, ownership-independent IDs if safe, and
+- [x] Create a uniquely marked stable project and verify it is absent from dev.
+- [x] Delete both records and verify absence after deletion.
+- [x] Record only project markers, ownership-independent IDs if safe, and
   boolean presence results.
-- [ ] Add tests preventing accidental use of the same account or same API
+- [x] Add tests preventing accidental use of the same account or same API
   origin for both sides of the isolation check.
 
 Exit criteria:
@@ -234,16 +234,16 @@ Exit criteria:
 
 ## Phase 5 — Optional OAuth and bounded operations
 
-- [ ] Add an opt-in OAuth preflight that checks the configured callback host
+- [x] Add an opt-in OAuth preflight that checks the configured callback host
   and expected dev/stable redirect configuration without completing a real
   provider authorization.
-- [ ] Require a human-provided/manual OAuth checkpoint for any live login.
-- [ ] Integrate hosted evidence with the existing redaction, state, event,
+- [x] Require a human-provided/manual OAuth checkpoint for any live login.
+- [x] Integrate hosted evidence with the existing redaction, state, event,
   metrics, and summary contracts.
-- [ ] Enforce a separate hosted timeout, browser count, mutation count, and
+- [x] Enforce a separate hosted timeout, browser count, mutation count, and
   cleanup budget.
-- [ ] Add `--dry-run`, `--no-agent`, and explicit hosted-scope validation.
-- [ ] Ensure the Codex repair path cannot invoke hosted mutation commands.
+- [x] Add `--dry-run`, `--no-agent`, and explicit hosted-scope validation.
+- [x] Ensure the Codex repair path cannot invoke hosted mutation commands.
 
 Exit criteria:
 

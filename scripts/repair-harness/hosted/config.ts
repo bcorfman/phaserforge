@@ -19,6 +19,12 @@ export interface HostedConfig {
   csrfCookieName: string;
   sessionCookieName: string;
   expectedCookieSameSite: 'lax' | 'strict' | 'none';
+  oauthCallbackHost?: string;
+  expectedDevOAuthRedirectUri?: string;
+  expectedStableOAuthRedirectUri?: string;
+  maxBrowsers: number;
+  maxMutations: number;
+  maxCleanupAttempts: number;
 }
 
 export interface HostedConfigInput {
@@ -38,6 +44,12 @@ export interface HostedConfigInput {
   HOSTED_CSRF_COOKIE_NAME?: string;
   HOSTED_SESSION_COOKIE_NAME?: string;
   HOSTED_EXPECTED_COOKIE_SAMESITE?: string;
+  HOSTED_OAUTH_CALLBACK_HOST?: string;
+  HOSTED_EXPECTED_DEV_OAUTH_REDIRECT?: string;
+  HOSTED_EXPECTED_STABLE_OAUTH_REDIRECT?: string;
+  HOSTED_MAX_BROWSERS?: string | number;
+  HOSTED_MAX_MUTATIONS?: string | number;
+  HOSTED_MAX_CLEANUP_ATTEMPTS?: string | number;
 }
 
 export function parseHostedConfig(input: HostedConfigInput): HostedConfig {
@@ -58,6 +70,12 @@ export function parseHostedConfig(input: HostedConfigInput): HostedConfig {
     csrfCookieName: input.HOSTED_CSRF_COOKIE_NAME?.trim() || 'pa_csrf',
     sessionCookieName: input.HOSTED_SESSION_COOKIE_NAME?.trim() || 'pa_session',
     expectedCookieSameSite: parseSameSite(input.HOSTED_EXPECTED_COOKIE_SAMESITE),
+    oauthCallbackHost: optional(input.HOSTED_OAUTH_CALLBACK_HOST)?.toLowerCase(),
+    expectedDevOAuthRedirectUri: optional(input.HOSTED_EXPECTED_DEV_OAUTH_REDIRECT),
+    expectedStableOAuthRedirectUri: optional(input.HOSTED_EXPECTED_STABLE_OAUTH_REDIRECT),
+    maxBrowsers: parseBound(input.HOSTED_MAX_BROWSERS, 1, 'HOSTED_MAX_BROWSERS'),
+    maxMutations: parseBound(input.HOSTED_MAX_MUTATIONS, 2, 'HOSTED_MAX_MUTATIONS'),
+    maxCleanupAttempts: parseBound(input.HOSTED_MAX_CLEANUP_ATTEMPTS, 2, 'HOSTED_MAX_CLEANUP_ATTEMPTS'),
   };
   validateHostedConfig(config);
   return config;
@@ -84,6 +102,10 @@ export function validateHostedConfig(config: HostedConfig): void {
   if (!Number.isInteger(config.timeoutMs) || config.timeoutMs < 100 || config.timeoutMs > 120_000) {
     throw new Error('HOSTED_TIMEOUT_MS must be an integer between 100 and 120000.');
   }
+  for (const redirect of [config.expectedDevOAuthRedirectUri, config.expectedStableOAuthRedirectUri]) {
+    if (redirect) parseUrl(redirect);
+  }
+  if (config.oauthCallbackHost?.includes('/') || config.oauthCallbackHost?.includes('://')) throw new Error('HOSTED_OAUTH_CALLBACK_HOST must be a host, not a URL or path.');
 }
 
 function required(value: string | undefined, name: string): string {
@@ -110,6 +132,12 @@ function parseBoolean(value: string | boolean | undefined, fallback: boolean): b
 }
 
 function parseTimeout(value: string | number | undefined): number { return value === undefined ? 15_000 : Number(value); }
+
+function parseBound(value: string | number | undefined, fallback: number, name: string): number {
+  const parsed = value === undefined ? fallback : Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10) throw new Error(`${name} must be an integer between 1 and 10.`);
+  return parsed;
+}
 
 function parseHosts(value: string | string[] | undefined): string[] {
   const values = Array.isArray(value) ? value : value?.split(',') ?? [];
