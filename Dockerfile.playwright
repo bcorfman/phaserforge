@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.61.1-noble
+playwright:FROM mcr.microsoft.com/v1.62.0-resolute
 
 RUN curl -fsSL https://deb.nodesource.com/setup_26.x | bash - \
   && apt-get install -y --no-install-recommends nodejs \
