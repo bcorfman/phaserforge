@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
 
 import { extractFailureSnippet, extractRunIdFromUrl, isFailingCheck, parseAvailableFields } from './ghHelpers';
 
@@ -68,13 +69,19 @@ export function resolveRun(runId: string, repo: string, jobName?: string): Resol
   return { metadata, job, log: logResult.stdout || logResult.stderr || '', artifacts };
 }
 
-export function resolveRunFromPr(pr: string, repo: string): { runId: string; check: JsonRecord } {
-  const check = fetchChecks(pr, repo).find(isFailingCheck);
+export function resolveRunFromPr(pr: string, repo: string, options: { allowPassingE2E?: boolean } = {}): { runId: string; check: JsonRecord } {
+  const checks = fetchChecks(pr, repo);
+  const check = checks.find(isFailingCheck) ?? (options.allowPassingE2E ? checks.find((item) => /e2e|playwright/i.test(String(item.name ?? ''))) : undefined);
   if (!check) throw new Error(`PR #${pr}: no failing GitHub Actions checks detected.`);
   const url = String(check.detailsUrl ?? check.link ?? '');
   const runId = extractRunIdFromUrl(url);
   if (!runId) throw new Error(`Unsupported external check: ${String(check.name ?? 'Unnamed check')}`);
   return { runId, check };
+}
+
+export function downloadRunArtifacts(runId: string, destination: string, repo: string): void {
+  mkdirSync(destination, { recursive: true });
+  runGh(['run', 'download', runId, '--dir', destination], { cwd: repo });
 }
 
 export { extractFailureSnippet, extractRunIdFromUrl, isFailingCheck, parseAvailableFields };

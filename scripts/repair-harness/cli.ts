@@ -12,6 +12,7 @@ import { aggregateRepairOutcomes, formatRepairMetrics, readRepairOutcomes, write
 import { loadHostedConfig } from './hosted/config';
 import { runHostedBrowser, runHostedIsolationCommand, runHostedMutationCommand, runHostedProbe } from './hosted/run';
 import { runE2ETiming } from './e2eTimingRun';
+import { runAutomatedTimingRepair } from './timingRepair';
 import { runHostedOAuthPreflight } from './hosted/oauth';
 import { assertHostedScope, assertRepairCannotUseHostedScope } from './scope';
 
@@ -35,10 +36,28 @@ async function main(): Promise<void> {
 if (args[0] === 'e2e-timing') {
   try {
     const reportPath = value('--report');
-    if (!reportPath) throw new Error('Expected --report <playwright-report.json> for e2e-timing.');
+    if (!reportPath) throw new Error('Expected --report <playwright-report.json|index.html> for e2e-timing.');
     const result = runE2ETiming({ repo: value('--repo') ?? repositoryRoot, reportPath: path.resolve(reportPath), runId: value('--run-id') });
     console.log(`E2E timing ${result.analysis.status} in ${result.runDirectory}`);
     if (result.analysis.status === 'failed' || result.analysis.status === 'invalid') process.exitCode = 1;
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (args[0] === 'e2e-timing-repair') {
+  try {
+    if (!value('--pr') && !value('--run')) throw new Error('Expected --pr <number> or --run <run-id> for e2e-timing-repair.');
+    if (value('--agent') !== 'codex') throw new Error('Automated timing repair requires explicit --agent=codex.');
+    const result = await runAutomatedTimingRepair({
+      repo: value('--repo') ?? repositoryRoot,
+      pr: value('--pr'),
+      run: value('--run'),
+      agent: 'codex',
+      publish: has('--publish'),
+    });
+    console.log(`E2E timing repair ${result.status} in ${result.runDirectory}`);
+    if (result.pullRequestUrl) console.log(`Pull request: ${result.pullRequestUrl}`);
+    if (result.status === 'failed') process.exitCode = 1;
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

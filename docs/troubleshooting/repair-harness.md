@@ -89,18 +89,58 @@ or omit `--agent=codex` when you want to ensure no agent can run.
 
 ## E2E timing diagnostics
 
-The timing diagnostic reads an existing Playwright JSON report. It does not
-change Playwright workers, retries, timeouts, or test source:
+The timing diagnostic accepts either Playwright's JSON report or the `index.html`
+file from the downloaded GitHub Actions HTML report artifact. Playwright embeds
+`report.json` inside that HTML file, so there is no need to find or create a
+separate JSON file:
 
 ```bash
 npm run repair:ci -- e2e-timing \
-  --report playwright-report.json
+  --report .plans/index.html
 ```
+
+Replace `.plans/index.html` with the path where the artifact was downloaded.
+The command extracts only the embedded test results and writes normalized
+output under `.repair-harness/runs/<run-id>/`, including
+`e2e-timing-summary.md`, `e2e-timing-evidence.json`, and
+`e2e-timing-events.jsonl`.
+
+It does not change Playwright workers, retries, timeouts, or test source.
 
 Individual tests at or below 7 seconds are normal, tests above 7 seconds and
 through 10 seconds are reported as warnings, and tests above 10 seconds fail
 the diagnostic. The run directory contains redacted timing evidence grouped
 by project and test file.
+
+### Fully automated GitHub matrix repair
+
+To have the harness resolve the PR's failing Actions run, download every matrix
+artifact, merge the shard reports, ask Codex for a bounded timing repair, and
+independently verify it:
+
+```bash
+PHASERFORGE_CODEX_COMMAND=codex \\
+npm run repair:ci -- e2e-timing-repair \\
+  --pr 123 --agent=codex
+```
+
+Use `--run <run-id>` instead of `--pr` when the Actions run is known. The
+download is automatic; no artifact or `index.html` download is required. `--pr`
+also works when the E2E check passed, because timing failures are distinct from
+test assertion failures. The command stops after verification by default. Add
+`--publish` only when the
+verified change should be committed, pushed on an `agent/*` branch, and opened
+as a draft PR:
+
+```bash
+PHASERFORGE_CODEX_COMMAND=codex \\
+npm run repair:ci -- e2e-timing-repair \\
+  --pr 123 --agent=codex --publish
+```
+
+The command does not repair warnings (7–10 seconds); only tests over the
+10-second hard ceiling are eligible for an agent repair. It never changes
+workflow files, test retries, workers, or timeouts.
 
 ## Measure completed runs
 
