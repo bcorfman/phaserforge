@@ -18,7 +18,7 @@ jobs:
     name: E2E Main Chromium (shard ${{ matrix.shard }}/${{ matrix.shards }})
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.62.0-noble
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
       options: --ipc=host
     strategy:
       fail-fast: false
