@@ -33,6 +33,8 @@ test('edits formation details and layout from the inspector @critical', async ({
   await page.getByTestId('arrange-preset-select').selectOption('grid');
   await page.getByTestId('arrange-param-startX').fill('260');
   await page.getByTestId('arrange-param-spacingX').fill('60');
+  await expect(page.getByTestId('arrange-param-startX')).toHaveValue('260');
+  await expect(page.getByTestId('arrange-param-spacingX')).toHaveValue('60');
   await page.getByTestId('apply-group-layout-button').click();
 
   await expect.poll(async () => {

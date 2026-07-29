@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type SetStateAction } from 'react';
 import { formatActionDisplayName } from './actionFormatting';
 import { useEditorStore } from './EditorStore';
 import { summarizeGridLayout } from './grouping';
@@ -1597,7 +1597,7 @@ export function renderGroupInspector(
     layoutPreset: string;
     setLayoutPreset: (next: string) => void;
     layoutParams: Record<string, string>;
-    setLayoutParams: (next: Record<string, string>) => void;
+    setLayoutParams: (next: SetStateAction<Record<string, string>>) => void;
     applyLayout: () => void;
     convertType: 'freeform' | 'grid' | 'arrange';
     setConvertType: (next: 'freeform' | 'grid' | 'arrange') => void;
@@ -1785,7 +1785,7 @@ export function renderGroupInspector(
                 data-testid={`arrange-param-${param.name}`}
                 value={handlers.layoutParams[param.name] ?? ''}
                 inputMode={(param as any).type === 'number' ? 'numeric' : undefined}
-                onChange={(e) => handlers.setLayoutParams({ ...handlers.layoutParams, [param.name]: e.target.value })}
+                onChange={(e) => handlers.setLayoutParams((current) => ({ ...current, [param.name]: e.target.value }))}
               />
             </label>
           );
