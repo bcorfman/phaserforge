@@ -19,7 +19,8 @@ export interface AutomatedTimingOptions {
 export interface AutomatedTimingResult {
   sourceRunId: string;
   runDirectory: string;
-  status: 'passed' | 'warning' | 'failed' | 'repaired' | 'published';
+  status: 'passed' | 'warning' | 'stopped' | 'failed' | 'repaired' | 'published';
+  reason?: string;
   analysis: ReturnType<typeof runE2ETiming>['analysis'];
   repair?: RepairResult;
   pullRequestUrl?: string;
@@ -66,7 +67,7 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
   appendEvent(timing.runDirectory, { event: 'github-matrix-downloaded', sourceRunId: source.runId, slowTests: slow.length });
   if (!options.agent) throw new Error('Automated timing repair requires --agent=codex.');
   const repair = await runBoundedRepair({ repo: options.repo, runDirectory: timing.runDirectory, evidence });
-  if (repair.status !== 'verified') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis, repair };
+  if (repair.status !== 'verified') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: repair.status === 'stopped' ? 'stopped' : 'failed', analysis, repair, reason: repair.reason };
   if (!options.publish) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'repaired', analysis, repair };
   const pullRequestUrl = publishRepair(options.repo, source.runId);
   return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis, repair, pullRequestUrl };

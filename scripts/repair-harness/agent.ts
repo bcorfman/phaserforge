@@ -72,7 +72,10 @@ export function parseDiagnosis(text: string): RepairDiagnosis {
     throw new Error('Diagnosis response does not match the required contract.');
   }
   if (value.confidence < 0 || value.confidence > 1) throw new Error('Diagnosis confidence must be between 0 and 1.');
-  const failureClass = ({ performance: 'timeout', timing: 'timeout', 'slow-test': 'timeout' } as Record<string, string>)[value.failureClass] ?? value.failureClass;
+  const rawFailureClass = value.failureClass.toLowerCase();
+  const failureClass = rawFailureClass.includes('timing') || rawFailureClass.includes('performance') || rawFailureClass.includes('slow')
+    ? 'timeout'
+    : ({ performance: 'timeout', timing: 'timeout', 'slow-test': 'timeout' } as Record<string, string>)[rawFailureClass] ?? rawFailureClass;
   if (!['assertion', 'compile', 'timeout', 'browser-crash', 'infrastructure', 'unknown'].includes(failureClass)) throw new Error('Diagnosis failure class is unsupported.');
   return { failureClass: failureClass as RepairDiagnosis['failureClass'], likelyCause: value.likelyCause, files: value.files.filter((file): file is string => typeof file === 'string'), symbols: value.symbols.filter((symbol): symbol is string => typeof symbol === 'string'), reproductionCommand: value.reproductionCommand, confidence: value.confidence };
 }
