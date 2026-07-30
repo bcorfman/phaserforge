@@ -53,6 +53,8 @@ if (args[0] === 'e2e-timing') {
 } else if (args[0] === 'e2e-timing-repair') {
   try {
     if (!value('--pr') && !value('--run')) throw new Error('Expected --pr <number> or --run <run-id> for e2e-timing-repair.');
+    const reasoning = value('--reasoning') ?? 'medium';
+    if (!['low', 'medium', 'high', 'xhigh'].includes(reasoning)) throw new Error('--reasoning must be low, medium, high, or xhigh.');
     const repo = value('--repo') ?? repositoryRoot;
     cleanIfRequested(repo);
     const result = await runAutomatedTimingRepair({
@@ -61,6 +63,9 @@ if (args[0] === 'e2e-timing') {
       run: value('--run'),
       agent: 'codex',
       publish: has('--publish'),
+      maxIterations: Number(value('--max-iterations') ?? 3),
+      model: value('--model'),
+      reasoningEffort: reasoning as import('./agent').ReasoningEffort,
       allowTimingConfig: has('--allow-timing-config'),
     });
     console.log(`E2E timing repair ${result.status} in ${result.runDirectory}${result.reason ? `: ${result.reason}` : ''}`);

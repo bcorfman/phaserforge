@@ -84,4 +84,31 @@ export function downloadRunArtifacts(runId: string, destination: string, repo: s
   runGh(['run', 'download', runId, '--dir', destination], { cwd: repo });
 }
 
+export interface GithubWorkflowRun { databaseId?: number; id?: number; headSha?: string; status?: string; conclusion?: string | null; }
+
+export function listGithubWorkflowRuns(repo: string, branch: string): GithubWorkflowRun[] {
+  const result = runGh(['run', 'list', '--branch', branch, '--limit', '30', '--json', 'databaseId,id,headSha,status,conclusion'], { cwd: repo });
+  return JSON.parse(result.stdout) as GithubWorkflowRun[];
+}
+
+export async function waitForCompletedGithubRun(options: {
+  repo: string; branch: string; headSha: string; timeoutMs?: number; pollIntervalMs?: number;
+  listRuns?: () => GithubWorkflowRun[]; sleep?: (ms: number) => Promise<void>;
+}): Promise<{ runId: string; conclusion: string | null }> {
+  const deadline = Date.now() + (options.timeoutMs ?? 30 * 60 * 1000);
+  const listRuns = options.listRuns ?? (() => listGithubWorkflowRuns(options.repo, options.branch));
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  do {
+    const run = listRuns().find((candidate) => candidate.headSha === options.headSha);
+    if (run && run.status === 'completed') {
+      const runId = run.databaseId ?? run.id;
+      if (!runId) throw new Error('Completed GitHub Actions run has no run id.');
+      return { runId: String(runId), conclusion: run.conclusion ?? null };
+    }
+    if (Date.now() >= deadline) break;
+    await sleep(options.pollIntervalMs ?? 15_000);
+  } while (true);
+  throw new Error(`Timed out waiting for GitHub Actions run for ${options.headSha}.`);
+}
+
 export { extractFailureSnippet, extractRunIdFromUrl, isFailingCheck, parseAvailableFields };
