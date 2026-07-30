@@ -86,17 +86,22 @@ export function downloadRunArtifacts(runId: string, destination: string, repo: s
 
 export interface GithubWorkflowRun { databaseId?: number; headSha?: string; status?: string; conclusion?: string | null; }
 
-export function listGithubWorkflowRuns(repo: string, branch: string): GithubWorkflowRun[] {
-  const result = runGh(['run', 'list', '--branch', branch, '--limit', '30', '--json', 'databaseId,headSha,status,conclusion'], { cwd: repo });
+export function triggerGithubWorkflow(repo: string, workflow: string, branch: string): void {
+  runGh(['workflow', 'run', workflow, '--ref', branch], { cwd: repo });
+}
+
+export function listGithubWorkflowRuns(repo: string, branch: string, workflow?: string): GithubWorkflowRun[] {
+  const workflowArgs = workflow ? ['--workflow', workflow] : [];
+  const result = runGh(['run', 'list', ...workflowArgs, '--branch', branch, '--limit', '30', '--json', 'databaseId,headSha,status,conclusion'], { cwd: repo });
   return JSON.parse(result.stdout) as GithubWorkflowRun[];
 }
 
 export async function waitForCompletedGithubRun(options: {
-  repo: string; branch: string; headSha: string; timeoutMs?: number; pollIntervalMs?: number;
+  repo: string; branch: string; headSha: string; workflow?: string; timeoutMs?: number; pollIntervalMs?: number;
   listRuns?: () => GithubWorkflowRun[]; sleep?: (ms: number) => Promise<void>;
 }): Promise<{ runId: string; conclusion: string | null }> {
   const deadline = Date.now() + (options.timeoutMs ?? 30 * 60 * 1000);
-  const listRuns = options.listRuns ?? (() => listGithubWorkflowRuns(options.repo, options.branch));
+  const listRuns = options.listRuns ?? (() => listGithubWorkflowRuns(options.repo, options.branch, options.workflow));
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   do {
     const run = listRuns().find((candidate) => candidate.headSha === options.headSha);

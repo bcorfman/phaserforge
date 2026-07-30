@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { downloadRunArtifacts, resolveRun, resolveRunFromPr, waitForCompletedGithubRun } from './github';
+import { downloadRunArtifacts, resolveRun, resolveRunFromPr, triggerGithubWorkflow, waitForCompletedGithubRun } from './github';
 import { runE2ETiming } from './e2eTimingRun';
 import { runBoundedRepair, type RepairResult } from './repair';
 import { appendEvent, writeState } from './state';
@@ -31,6 +31,18 @@ export interface AutomatedTimingResult {
   pullRequestUrl?: string;
 }
 
+const CONTROLLED_TIMING_WORKFLOW = 'e2e-timing-webkit.yml';
+const BROAD_SLOW_GROUPS = 5;
+
+export function classifyTimingRepairScope(analysis: ReturnType<typeof runE2ETiming>['analysis']): string | undefined {
+  const slowGroups = analysis.groups.filter((group) => group.slowCount > 0);
+  const projects = new Set(slowGroups.map((group) => group.project));
+  if (slowGroups.length >= BROAD_SLOW_GROUPS || projects.size > 1) {
+    return `The ${analysis.counts.slow} hard-ceiling results span ${slowGroups.length} project/file groups. This is broad CI timing telemetry, not a reproducible product-level regression; no source patch was attempted. Run the controlled WebKit timing workflow to establish a p95 regression before repair.`;
+  }
+  return undefined;
+}
+
 export async function runAutomatedTimingRepair(options: AutomatedTimingOptions): Promise<AutomatedTimingResult> {
   if (options.publish && execFileSync('git', ['status', '--porcelain'], { cwd: options.repo, encoding: 'utf8' }).trim()) {
     throw new Error('Refusing --publish with pre-existing working-tree changes; start from a clean checkout.');
@@ -48,6 +60,8 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
   let pullRequestUrl: string | undefined;
   let lastRepair: RepairResult | undefined;
   if (isTimingClean(currentAnalysis)) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: currentAnalysis.status, analysis: currentAnalysis };
+  const scopeReason = classifyTimingRepairScope(currentAnalysis);
+  if (scopeReason) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'stopped', analysis: currentAnalysis, reason: scopeReason };
 
   for (let iteration = 1; iteration <= options.maxIterations; iteration += 1) {
     const cycleDirectory = iteration === 1 ? timing.runDirectory : path.join(timing.runDirectory, `iteration-${iteration}`);
@@ -62,18 +76,32 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
     if (repair.status !== 'verified') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: repair.status === 'stopped' ? 'stopped' : 'failed', analysis: currentAnalysis, repair, pullRequestUrl, reason: repair.reason };
     if (!options.publish) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'repaired', analysis: currentAnalysis, repair };
 
+    if (!hasWorkingTreeChanges(options.repo)) {
+      return {
+        sourceRunId: source.runId,
+        runDirectory: timing.runDirectory,
+        status: 'stopped',
+        analysis: currentAnalysis,
+        repair,
+        pullRequestUrl,
+        reason: 'The focused timing verification passed without a source change. The original broad CI slowdown was not reproduced, so there is no patch to publish.',
+      };
+    }
     const published = publishRepair(options.repo, source.runId, branch);
     branch = published.branch;
     pullRequestUrl ??= published.url;
-    const completed = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha });
+    triggerGithubWorkflow(options.repo, CONTROLLED_TIMING_WORKFLOW, branch);
+    const completed = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: CONTROLLED_TIMING_WORKFLOW });
     const iterationDirectory = path.join(cycleDirectory, 'github');
     const iterationArtifacts = path.join(iterationDirectory, 'artifacts');
     mkdirSync(iterationDirectory, { recursive: true });
     downloadRunArtifacts(completed.runId, iterationArtifacts, options.repo);
     const refreshed = runE2ETiming({ repo: iterationDirectory, reportPath: iterationArtifacts, runId: 'timing' }).analysis;
+    const benchmark = readTimingBenchmark(iterationArtifacts);
     appendEvent(cycleDirectory, { event: 'github-iteration-completed', runId: completed.runId, conclusion: completed.conclusion, slowTests: refreshed.counts.slow, iteration });
     if (completed.conclusion !== 'success') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: refreshed, repair, pullRequestUrl, reason: `GitHub iteration ${completed.runId} concluded ${completed.conclusion ?? 'without a conclusion'}.` };
-    if (isTimingClean(refreshed)) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis: refreshed, repair, pullRequestUrl };
+    if (!benchmark) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: refreshed, repair, pullRequestUrl, reason: `GitHub iteration ${completed.runId} did not upload its controlled timing benchmark.` };
+    if (benchmark.status === 'passed') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis: refreshed, repair, pullRequestUrl };
     if (refreshed.counts.slow >= currentAnalysis.counts.slow) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: refreshed, repair, pullRequestUrl, reason: `GitHub iteration ${completed.runId} did not reduce the slow-test count.` };
     currentRunId = completed.runId;
     currentAnalysis = refreshed;
@@ -83,6 +111,27 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
 
 function isTimingClean(analysis: ReturnType<typeof runE2ETiming>['analysis']): boolean {
   return analysis.status === 'passed' || analysis.status === 'warning';
+}
+
+export function readTimingBenchmark(directory: string): { status: 'passed' | 'failed'; p95Ms: number; maxP95Ms: number } | undefined {
+  const candidates: string[] = [];
+  const visit = (current: string): void => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const child = path.join(current, entry.name);
+      if (entry.isDirectory()) visit(child);
+      else if (entry.name === 'e2e-timing-benchmark-report.json') candidates.push(child);
+    }
+  };
+  visit(directory);
+  for (const candidate of candidates) {
+    try {
+      const data = JSON.parse(readFileSync(candidate, 'utf8')) as Record<string, unknown>;
+      if (data.kind === 'e2e-timing-benchmark' && (data.status === 'passed' || data.status === 'failed') && typeof data.p95Ms === 'number' && typeof data.maxP95Ms === 'number') {
+        return { status: data.status, p95Ms: data.p95Ms, maxP95Ms: data.maxP95Ms };
+      }
+    } catch { /* ignore malformed artifacts and continue searching */ }
+  }
+  return undefined;
 }
 
 function createTimingEvidence(runId: string, resolved: ReturnType<typeof resolveRun>, analysis: ReturnType<typeof runE2ETiming>['analysis']): EvidenceEnvelope {
@@ -135,8 +184,7 @@ export function commandForJob(job: string): string {
 }
 
 function publishRepair(repo: string, sourceRunId: string, existingBranch?: string): { url: string; branch: string; headSha: string } {
-  const status = execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' });
-  if (!status.trim()) throw new Error('Verified timing repair produced no working-tree changes to publish.');
+  if (!hasWorkingTreeChanges(repo)) throw new Error('Verified timing repair produced no working-tree changes to publish.');
   const branch = existingBranch ?? `agent/e2e-timing-${sourceRunId}`;
   if (!existingBranch) execFileSync('git', ['switch', '-c', branch], { cwd: repo, stdio: 'inherit' });
   execFileSync('git', ['add', '-A'], { cwd: repo, stdio: 'inherit' });
@@ -145,4 +193,8 @@ function publishRepair(repo: string, sourceRunId: string, existingBranch?: strin
   const url = existingBranch ? '' : execFileSync('gh', ['pr', 'create', '--draft', '--title', 'Fix slow E2E test', '--body', `Automated repair from GitHub Actions run ${sourceRunId}.\n\nTiming evidence and independent verification are recorded in the repair run.`], { cwd: repo, encoding: 'utf8' }).trim();
   const headSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
   return { url, branch, headSha };
+}
+
+function hasWorkingTreeChanges(repo: string): boolean {
+  return Boolean(execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' }).trim());
 }

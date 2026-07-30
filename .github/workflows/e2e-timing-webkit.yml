@@ -1,0 +1,51 @@
+name: PhaserForge CI / E2E Timing (WebKit)
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  HOME: /tmp/phaserforge-home
+  E2E_TIMING_MAX_P95_MS: 10000
+  E2E_TIMING_REPETITIONS: 20
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-timing-webkit:
+    name: E2E Timing WebKit (single worker, p95)
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-resolute
+      options: --ipc=host
+    steps:
+      - name: Prepare writable home
+        run: mkdir -p "$HOME"
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Install
+        run: npm ci
+
+      - name: Benchmark representative WebKit paths
+        run: >-
+          node --import tsx scripts/e2e-timing-benchmark.ts
+          tests/e2e/pattern-demo-persistence.spec.ts
+          tests/e2e/base-ghost-edit.spec.ts
+
+      - name: Upload timing artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-webkit-timing
+          path: |
+            e2e-timing-benchmark-report.json
+            playwright-report
+            test-results
