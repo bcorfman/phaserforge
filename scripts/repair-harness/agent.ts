@@ -23,8 +23,10 @@ export function runAgent(options: AgentOptions): Promise<AgentResult> {
     try { configuredArgs = JSON.parse(process.env.PHASERFORGE_CODEX_ARGS) as string[]; } catch { return Promise.reject(new Error('PHASERFORGE_CODEX_ARGS must be a JSON string array.')); }
   }
   const started = Date.now();
+  const agentEnv = { ...process.env };
+  for (const key of ['CODEX_CI', 'CODEX_THREAD_ID', 'CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'CODEX_HISTORY_ARCHIVE_ROOT', 'CODEX_HISTORY_HTML_BACKEND']) delete agentEnv[key];
   return new Promise((resolve, reject) => {
-    const child = spawn(command, configuredArgs, { cwd: options.cwd, env: process.env, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(command, configuredArgs, { cwd: options.cwd, env: agentEnv, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = ''; let stderr = ''; let settled = false;
     const finish = (result: AgentResult) => { if (!settled) { settled = true; resolve(result); } };
     const timer = options.timeoutMs === undefined ? undefined : setTimeout(() => child.kill('SIGTERM'), options.timeoutMs);
