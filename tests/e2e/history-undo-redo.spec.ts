@@ -58,7 +58,9 @@ test('Undo/redo works for scene graph member drag/drop @critical @browser', asyn
   // Expand formation members and remove two members (become ungrouped sprites).
   await page.getByTestId('toggle-group-g-enemies').click();
   await page.getByTestId('group-member-remove-g-enemies-e1').click();
+  await expect(page.getByTestId('ungrouped-entity-e1')).toBeVisible();
   await page.getByTestId('group-member-remove-g-enemies-e2').click();
+  await expect(page.getByTestId('ungrouped-entity-e2')).toBeVisible();
 
   // Multi-select in Sprites list via shift-click.
   await page.getByTestId('ungrouped-entity-e1').click();
