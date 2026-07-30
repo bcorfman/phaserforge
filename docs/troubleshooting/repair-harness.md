@@ -139,6 +139,18 @@ npm run repair:ci -- e2e-timing-repair \\
   --pr 123 --publish
 ```
 
+For systemic timing findings where an approved runner/project configuration
+change is appropriate, explicitly enable elevated timing repair:
+
+```bash
+npm run repair:ci -- e2e-timing-repair \\
+  --run 30501317589 --allow-timing-config --publish
+```
+
+This still rejects timeout/retry inflation and worker-count changes. The flag
+only approves review of `playwright.config.ts`; independent verification must
+pass before anything is published.
+
 The command does not repair warnings (7–10 seconds); only tests over the
 10-second hard ceiling are eligible for an agent repair. It never changes
 workflow files, test retries, workers, or timeouts.

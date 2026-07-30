@@ -1,4 +1,4 @@
-export interface PolicyOptions { maxChangedFiles?: number; allowedPaths?: RegExp; }
+export interface PolicyOptions { maxChangedFiles?: number; allowedPaths?: RegExp; allowTimingConfig?: boolean; }
 
 export interface PolicyResult { allowed: boolean; violations: string[]; changedFiles: string[]; }
 export interface StagnationInput { previousFingerprints: string[]; currentFingerprint: string; changedFiles: string[]; allowedProductFiles?: RegExp; }
@@ -15,12 +15,14 @@ export function evaluatePolicy(diff: string, options: PolicyOptions = {}): Polic
   for (const file of changedFiles) {
     if (options.allowedPaths && !options.allowedPaths.test(file)) violations.push(`Path is outside the allowed scope: ${file}`);
     if (/^\.github\/workflows\//.test(file)) violations.push(`Workflow modification is denied: ${file}`);
-    if (/(^|\/)(?:\.env(?:\.|$)|secrets?\b|credentials?\b|config(?:uration)?\b)/i.test(file) || /(?:^|\/)config\//i.test(file)) violations.push(`Secret/config path modification is denied: ${file}`);
+    const timingConfig = options.allowTimingConfig && file === 'playwright.config.ts';
+    if (!timingConfig && (/(^|\/)(?:\.env(?:\.|$)|secrets?\b|credentials?\b|config(?:uration)?\b)/i.test(file) || /(?:^|\/)config\//i.test(file))) violations.push(`Secret/config path modification is denied: ${file}`);
     if (/(?:^|\/)(?:playwright|vitest|vite|tsconfig)\.config\.[^/]+$/.test(file)) violations.push(`Test/build configuration modification is denied: ${file}`);
   }
   const additions = diff.split(/\r?\n/).filter((line) => line.startsWith('+') && !line.startsWith('+++')).join('\n');
   if (changedFiles.some((file) => /(?:^|\/)(?:tests?|__tests__)\//i.test(file) && diff.includes(`D\t${file}`)) || /\b(?:test|it|describe)\.skip\b|\btest\.only\b|\bdescribe\.only\b/i.test(additions)) violations.push('Test removal/skip/selection changes are denied.');
   if (/\b(?:timeout|testTimeout|actionTimeout|navigationTimeout|expect\.configure)\b|\bretries\s*[:=]|--retries\b/i.test(additions)) violations.push('Timeout/retry inflation is denied.');
+  if (/\bworkers\s*[:=]/i.test(additions)) violations.push('Worker-count changes are denied.');
   return { allowed: violations.length === 0, violations, changedFiles };
 }
 
@@ -34,12 +36,13 @@ export function stagnationReasons(input: StagnationInput): string[] {
   return reasons;
 }
 
-export function approveRepairRequest(request: RepairRequest): PolicyResult {
-  const result = evaluatePolicy(request.currentDiff ?? '', { maxChangedFiles: request.maxChangedFiles });
+export function approveRepairRequest(request: RepairRequest & { allowTimingConfig?: boolean }): PolicyResult {
+  const result = evaluatePolicy(request.currentDiff ?? '', { maxChangedFiles: request.maxChangedFiles, allowTimingConfig: request.allowTimingConfig });
   if (request.failureClass === 'infrastructure') result.violations.push('Infrastructure failures cannot be sent for implementation.');
   if (!request.requestedFiles.length) result.violations.push('Diagnosis requested no implementation files.');
   for (const file of request.requestedFiles) {
-    if (/^\.github\/|(?:^|\/)(?:\.env|secrets?|credentials?)(?:\.|\/|$)/i.test(file) || /(?:^|\/)(?:playwright|vitest|vite|tsconfig)\.config\./i.test(file)) result.violations.push(`Requested path is denied: ${file}`);
+    const timingConfig = request.allowTimingConfig && file === 'playwright.config.ts';
+    if (/^\.github\/|(?:^|\/)(?:\.env|secrets?|credentials?)(?:\.|\/|$)/i.test(file) || (!timingConfig && /(?:^|\/)(?:playwright|vitest|vite|tsconfig)\.config\./i.test(file))) result.violations.push(`Requested path is denied: ${file}`);
   }
   if (request.requestedFiles.length > (request.maxChangedFiles ?? DEFAULT_MAX_FILES)) result.violations.push(`Requested file scope exceeds ${request.maxChangedFiles ?? DEFAULT_MAX_FILES} files.`);
   return { ...result, allowed: result.violations.length === 0 };

@@ -53,6 +53,7 @@ if (args[0] === 'e2e-timing') {
       run: value('--run'),
       agent: 'codex',
       publish: has('--publish'),
+      allowTimingConfig: has('--allow-timing-config'),
     });
     console.log(`E2E timing repair ${result.status} in ${result.runDirectory}${result.reason ? `: ${result.reason}` : ''}`);
     if (result.pullRequestUrl) console.log(`Pull request: ${result.pullRequestUrl}`);

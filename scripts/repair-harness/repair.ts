@@ -13,7 +13,7 @@ import { verify, type VerificationResult } from './verify';
 import type { EvidenceEnvelope, RepairDiagnosis } from './types';
 import { appendRepairOutcome } from './metrics';
 
-export interface RepairOptions { repo: string; runDirectory: string; evidence: EvidenceEnvelope; targetedFiles?: string[]; diff?: string; callAgent?: (kind: 'diagnosis' | 'implementation', packet: string) => Promise<AgentResult>; verifyPatch?: () => Promise<VerificationResult>; }
+export interface RepairOptions { repo: string; runDirectory: string; evidence: EvidenceEnvelope; targetedFiles?: string[]; diff?: string; allowTimingConfig?: boolean; callAgent?: (kind: 'diagnosis' | 'implementation', packet: string) => Promise<AgentResult>; verifyPatch?: () => Promise<VerificationResult>; }
 export interface RepairResult { status: 'verified' | 'stopped' | 'failed'; reason?: string; diagnosis?: RepairDiagnosis; verification?: VerificationResult; }
 
 function currentDiff(repo: string): string { try { return execFileSync('git', ['diff', '--no-ext-diff'], { cwd: repo, encoding: 'utf8' }); } catch { return ''; } }
@@ -61,7 +61,7 @@ export async function runBoundedRepair(options: RepairOptions): Promise<RepairRe
   let diagnosis: RepairDiagnosis;
   try { diagnosis = parseDiagnosis(diagnosisResult.stdout); } catch (error) { const reason = error instanceof Error ? error.message : String(error); outcome(options, 'stopped', 0, reason); return stop(options.runDirectory, state, reason); }
   if (diagnosis.reproductionCommand !== options.evidence.reproduction.command) { const reason = 'Diagnosis reproduction command does not match the collected CI command.'; outcome(options, 'stopped', 0, reason); return stop(options.runDirectory, state, reason); }
-  const approval = approveRepairRequest({ failureClass: diagnosis.failureClass, requestedFiles: diagnosis.files, currentDiff: diff });
+  const approval = approveRepairRequest({ failureClass: diagnosis.failureClass, requestedFiles: diagnosis.files, currentDiff: diff, allowTimingConfig: options.allowTimingConfig });
   if (!approval.allowed) { const reason = approval.violations.join(' '); outcome(options, 'stopped', 0, reason); return stop(options.runDirectory, state, reason); }
   const implementationPacket = createImplementationPacket({ repo: options.repo, evidence: options.evidence, diff, targetedFiles: diagnosis.files, diagnosis });
   writePacket(options.runDirectory, 'implementation.md', implementationPacket);
