@@ -119,17 +119,12 @@ artifact, merge the shard reports, ask Codex for a bounded timing repair, and
 independently verify it:
 
 ```bash
-export PHASERFORGE_CODEX_COMMAND="$(command -v codex)"
-export PHASERFORGE_CODEX_ARGS='["exec","--sandbox","workspace-write"]'
-
 npm run repair:ci -- e2e-timing-repair \\
-  --pr 123 --agent=codex
+  --pr 123
 ```
 
-If `command -v codex` prints nothing, use the absolute path to the Codex
-binary installed by your editor, or add its directory to `PATH`. The harness
-passes its diagnosis/implementation packet on stdin, so `codex exec` is
-required for non-interactive operation.
+The harness automatically discovers Codex from `PATH` or the VS Code extension
+installation and invokes `codex exec` non-interactively.
 
 Use `--run <run-id>` instead of `--pr` when the Actions run is known. The
 download is automatic; no artifact or `index.html` download is required. `--pr`
@@ -140,11 +135,8 @@ verified change should be committed, pushed on an `agent/*` branch, and opened
 as a draft PR:
 
 ```bash
-export PHASERFORGE_CODEX_COMMAND="$(command -v codex)"
-export PHASERFORGE_CODEX_ARGS='["exec","--sandbox","workspace-write"]'
-
 npm run repair:ci -- e2e-timing-repair \\
-  --pr 123 --agent=codex --publish
+  --pr 123 --publish
 ```
 
 The command does not repair warnings (7–10 seconds); only tests over the
