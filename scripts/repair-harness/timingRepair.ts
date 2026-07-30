@@ -90,6 +90,7 @@ function createTimingEvidence(runId: string, resolved: ReturnType<typeof resolve
   const first = slow[0];
   if (!first) throw new Error('Timing repair requires at least one slow test.');
   const job = String(resolved.job.name ?? resolved.metadata.workflowName ?? 'GitHub Actions E2E matrix');
+  const command = commandForJob(job);
   return {
     workflow: String(resolved.metadata.workflowName ?? resolved.metadata.name ?? 'GitHub Actions'),
     job,
