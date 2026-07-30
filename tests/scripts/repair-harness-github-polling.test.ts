@@ -30,4 +30,25 @@ describe('repair harness GitHub run polling', () => {
       listRuns: () => [], sleep: async () => {},
     })).rejects.toThrow('Timed out waiting');
   });
+
+  it('accepts a newly dispatched run when the branch tip advanced after the source run', async () => {
+    const snapshots = [
+      [{ databaseId: 20, headSha: 'newer-tip', status: 'in_progress', conclusion: null }],
+      [{ databaseId: 20, headSha: 'newer-tip', status: 'completed', conclusion: 'success' }],
+    ];
+    let index = 0;
+    const result = await waitForCompletedGithubRun({
+      repo: process.cwd(),
+      branch: 'main',
+      headSha: 'source-sha',
+      knownRunIds: new Set(['19']),
+      timeoutMs: 100,
+      pollIntervalMs: 0,
+      listRuns: () => snapshots[index++] ?? [],
+      sleep: async () => {},
+    });
+
+    expect(result).toMatchObject({ runId: '20', conclusion: 'success' });
+    expect(index).toBe(2);
+  });
 });

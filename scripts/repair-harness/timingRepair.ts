@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { downloadRunArtifacts, resolveRun, resolveRunFromPr, triggerGithubWorkflow, waitForCompletedGithubRun } from './github';
+import { downloadRunArtifacts, listGithubWorkflowRuns, resolveRun, resolveRunFromPr, triggerGithubWorkflow, waitForCompletedGithubRun } from './github';
 import { runE2ETiming } from './e2eTimingRun';
 import { runBoundedRepair, type RepairResult } from './repair';
 import { appendEvent, writeState } from './state';
@@ -82,8 +82,9 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
     const sourceBranch = String(sourceResolved.metadata.headBranch ?? '');
     const sourceSha = String(sourceResolved.metadata.headSha ?? '');
     if (!sourceBranch || !sourceSha) throw new Error(`GitHub run ${source.runId} has no branch/commit for WebKit isolation.`);
+    const knownIsolationRunIds = new Set(listGithubWorkflowRuns(options.repo, sourceBranch, WEBKIT_ISOLATION_WORKFLOW).flatMap((run) => run.databaseId === undefined ? [] : [String(run.databaseId)]));
     triggerGithubWorkflow(options.repo, WEBKIT_ISOLATION_WORKFLOW, sourceBranch);
-    const isolatedRun = await waitForCompletedGithubRun({ repo: options.repo, branch: sourceBranch, headSha: sourceSha, workflow: WEBKIT_ISOLATION_WORKFLOW });
+    const isolatedRun = await waitForCompletedGithubRun({ repo: options.repo, branch: sourceBranch, headSha: sourceSha, workflow: WEBKIT_ISOLATION_WORKFLOW, knownRunIds: knownIsolationRunIds });
     const isolationDirectory = path.join(timing.runDirectory, 'webkit-isolation');
     const isolationArtifacts = path.join(isolationDirectory, 'artifacts');
     mkdirSync(isolationDirectory, { recursive: true });
@@ -98,8 +99,9 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
       const published = publishRepair(options.repo, source.runId);
       branch = published.branch;
       pullRequestUrl = published.url;
+      const knownFullMatrixRunIds = new Set(listGithubWorkflowRuns(options.repo, branch, FULL_MATRIX_WORKFLOW).flatMap((run) => run.databaseId === undefined ? [] : [String(run.databaseId)]));
       triggerGithubWorkflow(options.repo, FULL_MATRIX_WORKFLOW, branch);
-      const candidateRun = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: FULL_MATRIX_WORKFLOW });
+      const candidateRun = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: FULL_MATRIX_WORKFLOW, knownRunIds: knownFullMatrixRunIds });
       const candidateDirectory = path.join(timing.runDirectory, 'full-matrix-single-worker');
       const candidateArtifacts = path.join(candidateDirectory, 'artifacts');
       mkdirSync(candidateDirectory, { recursive: true });
@@ -142,8 +144,9 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
     const published = publishRepair(options.repo, source.runId, branch);
     branch = published.branch;
     pullRequestUrl ??= published.url;
+    const knownControlledRunIds = new Set(listGithubWorkflowRuns(options.repo, branch, CONTROLLED_TIMING_WORKFLOW).flatMap((run) => run.databaseId === undefined ? [] : [String(run.databaseId)]));
     triggerGithubWorkflow(options.repo, CONTROLLED_TIMING_WORKFLOW, branch);
-    const completed = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: CONTROLLED_TIMING_WORKFLOW });
+    const completed = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: CONTROLLED_TIMING_WORKFLOW, knownRunIds: knownControlledRunIds });
     const iterationDirectory = path.join(cycleDirectory, 'github');
     const iterationArtifacts = path.join(iterationDirectory, 'artifacts');
     mkdirSync(iterationDirectory, { recursive: true });

@@ -98,13 +98,23 @@ export function listGithubWorkflowRuns(repo: string, branch: string, workflow?: 
 
 export async function waitForCompletedGithubRun(options: {
   repo: string; branch: string; headSha: string; workflow?: string; timeoutMs?: number; pollIntervalMs?: number;
+  knownRunIds?: ReadonlySet<string>;
   listRuns?: () => GithubWorkflowRun[]; sleep?: (ms: number) => Promise<void>;
 }): Promise<{ runId: string; conclusion: string | null }> {
   const deadline = Date.now() + (options.timeoutMs ?? 30 * 60 * 1000);
   const listRuns = options.listRuns ?? (() => listGithubWorkflowRuns(options.repo, options.branch, options.workflow));
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   do {
-    const run = listRuns().find((candidate) => candidate.headSha === options.headSha);
+    const runs = listRuns().filter((candidate) => {
+      const runId = candidate.databaseId === undefined ? undefined : String(candidate.databaseId);
+      return !runId || !options.knownRunIds?.has(runId);
+    });
+    // A workflow dispatched against a branch runs the branch's current tip,
+    // which may have advanced beyond the source run's SHA. When the caller
+    // supplies the pre-dispatch run IDs, the first new run is the dispatched
+    // run even if its SHA differs from the source SHA.
+    const run = runs.find((candidate) => candidate.headSha === options.headSha)
+      ?? (options.knownRunIds ? runs.find((candidate) => candidate.databaseId !== undefined) : undefined);
     if (run && run.status === 'completed') {
       const runId = run.databaseId;
       if (!runId) throw new Error('Completed GitHub Actions run has no run id.');
