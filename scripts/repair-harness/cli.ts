@@ -47,7 +47,6 @@ if (args[0] === 'e2e-timing') {
 } else if (args[0] === 'e2e-timing-repair') {
   try {
     if (!value('--pr') && !value('--run')) throw new Error('Expected --pr <number> or --run <run-id> for e2e-timing-repair.');
-    if (value('--agent') !== 'codex') throw new Error('Automated timing repair requires explicit --agent=codex.');
     const result = await runAutomatedTimingRepair({
       repo: value('--repo') ?? repositoryRoot,
       pr: value('--pr'),

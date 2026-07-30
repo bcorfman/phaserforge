@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 
 import type { RepairDiagnosis } from './types';
 
@@ -8,14 +10,14 @@ export interface AgentOptions { kind: AgentCallKind; packet: string; cwd: string
 export interface AgentResult { kind: AgentCallKind; stdout: string; stderr: string; exitCode: number | null; durationMs: number; packetBytes: number; tokenUsage?: { input?: number; output?: number; total?: number }; }
 
 /**
- * Set PHASERFORGE_CODEX_COMMAND to the local Codex executable (and optionally
- * PHASERFORGE_CODEX_ARGS as a JSON string array). The adapter passes the packet
- * on stdin and never reads, creates, or embeds credentials.
+ * The adapter discovers Codex from PATH or the VS Code extension install. The
+ * environment variables remain available for unusual installations. Packets
+ * are passed on stdin and credentials are never read, created, or embedded.
  */
 export function runAgent(options: AgentOptions): Promise<AgentResult> {
-  const command = options.command ?? process.env.PHASERFORGE_CODEX_COMMAND;
-  if (!command) return Promise.reject(new Error('Codex agent is disabled; set PHASERFORGE_CODEX_COMMAND to opt in.'));
-  let configuredArgs: string[] = [];
+  const command = options.command ?? process.env.PHASERFORGE_CODEX_COMMAND ?? discoverCodexCommand();
+  if (!command) return Promise.reject(new Error('Codex executable not found. Install Codex or add it to PATH.'));
+  let configuredArgs: string[] = ['exec', '--sandbox', 'workspace-write'];
   if (options.args) configuredArgs = options.args;
   else if (process.env.PHASERFORGE_CODEX_ARGS) {
     try { configuredArgs = JSON.parse(process.env.PHASERFORGE_CODEX_ARGS) as string[]; } catch { return Promise.reject(new Error('PHASERFORGE_CODEX_ARGS must be a JSON string array.')); }
@@ -35,6 +37,26 @@ export function runAgent(options: AgentOptions): Promise<AgentResult> {
     });
     child.stdin.end(options.packet);
   });
+}
+
+export function discoverCodexCommand(): string | undefined {
+  const pathResult = spawnSync('which', ['codex'], { encoding: 'utf8' });
+  const fromPath = pathResult.status === 0 ? pathResult.stdout.trim() : '';
+  if (fromPath) return fromPath;
+  const home = process.env.HOME;
+  if (!home) return undefined;
+  const extensions = path.join(home, '.vscode-server', 'extensions');
+  if (!existsSync(extensions)) return undefined;
+  for (const extension of readdirSync(extensions)) {
+    if (!extension.startsWith('openai.chatgpt-')) continue;
+    const binRoot = path.join(extensions, extension, 'bin');
+    if (!existsSync(binRoot)) continue;
+    for (const platform of readdirSync(binRoot)) {
+      const candidate = path.join(binRoot, platform, 'codex');
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return undefined;
 }
 
 function jsonResponse(text: string): unknown {
