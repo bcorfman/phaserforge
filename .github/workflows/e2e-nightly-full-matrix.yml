@@ -47,6 +47,12 @@ jobs:
           PW_PROJECTS: firefox,webkit,msedge
         run: npm run test:e2e -- --project=firefox --project=webkit --project=msedge --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
 
+      - name: Record timing telemetry
+        if: always()
+        run: >-
+          npm run repair:ci -- e2e-timing --report playwright-report
+          --run-id full-matrix-shard-${{ matrix.shard }} || true
+
       - name: Upload Playwright Artifacts
         if: always()
         uses: actions/upload-artifact@v7
@@ -55,3 +61,4 @@ jobs:
           path: |
             playwright-report
             test-results
+            .repair-harness/runs/full-matrix-shard-${{ matrix.shard }}

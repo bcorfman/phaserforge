@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { analyzeE2ETiming, parsePlaywrightJsonReport, type PlaywrightJsonReport } from '../../scripts/repair-harness/e2eTiming';
 import { runE2ETiming } from '../../scripts/repair-harness/e2eTimingRun';
-import { commandForJob, formatSlowTestEvidence } from '../../scripts/repair-harness/timingRepair';
+import { classifyTimingRepairScope, commandForJob, formatSlowTestEvidence, readTimingBenchmark } from '../../scripts/repair-harness/timingRepair';
 
 const report: PlaywrightJsonReport = {
   suites: [{
@@ -51,6 +51,26 @@ describe('repair harness E2E timing diagnostics', () => {
 
   it('enables every browser named by a full-matrix reproduction command', () => {
     expect(commandForJob('E2E Full Matrix (shard 4/8)')).toContain('PW_PROJECTS=firefox,webkit,msedge');
+  });
+
+  it('stops product repair for broad, cross-file CI timing telemetry', () => {
+    const analysis = analyzeE2ETiming({
+      suites: Array.from({ length: 5 }, (_, index) => ({
+        file: `tests/e2e/slow-${index}.spec.ts`,
+        specs: [{ title: `slow ${index}`, tests: [{ projectName: 'webkit', results: [{ duration: 10_001, status: 'passed' }] }] }],
+      })),
+    });
+
+    expect(classifyTimingRepairScope(analysis)).toContain('broad CI timing telemetry');
+  });
+
+  it('reads the controlled timing benchmark from downloaded artifacts', () => {
+    const artifacts = mkdtempSync(path.join(os.tmpdir(), 'phaserforge-timing-benchmark-'));
+    const benchmarkDirectory = path.join(artifacts, 'playwright-webkit-timing');
+    mkdirSync(benchmarkDirectory, { recursive: true });
+    writeFileSync(path.join(benchmarkDirectory, 'e2e-timing-benchmark-report.json'), JSON.stringify({ kind: 'e2e-timing-benchmark', status: 'passed', p95Ms: 4_400, maxP95Ms: 10_000 }));
+
+    expect(readTimingBenchmark(artifacts)).toEqual({ status: 'passed', p95Ms: 4_400, maxP95Ms: 10_000 });
   });
 
   it('groups summary data by project and file without retaining raw report fields', () => {

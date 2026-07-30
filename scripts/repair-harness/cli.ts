@@ -36,6 +36,15 @@ const prepareHosted = (command: string): boolean => {
   return has('--dry-run');
 };
 
+function assertKnownE2ETimingRepairArguments(): void {
+  const known = new Set(['--pr', '--run', '--repo', '--publish', '--max-iterations', '--model', '--reasoning', '--allow-timing-config', '--clean', '--clean-all']);
+  for (const argument of args.slice(1)) {
+    if (!argument.startsWith('--')) continue;
+    const name = argument.includes('=') ? argument.slice(0, argument.indexOf('=')) : argument;
+    if (!known.has(name)) throw new Error(`Unknown e2e-timing-repair option: ${name}. Did you mean --max-iterations?`);
+  }
+}
+
 async function main(): Promise<void> {
 if (args[0] === 'e2e-timing') {
   try {
@@ -52,9 +61,11 @@ if (args[0] === 'e2e-timing') {
   }
 } else if (args[0] === 'e2e-timing-repair') {
   try {
+    assertKnownE2ETimingRepairArguments();
     if (!value('--pr') && !value('--run')) throw new Error('Expected --pr <number> or --run <run-id> for e2e-timing-repair.');
-    const reasoning = value('--reasoning') ?? 'medium';
-    if (!['low', 'medium', 'high', 'xhigh'].includes(reasoning)) throw new Error('--reasoning must be low, medium, high, or xhigh.');
+    const requestedReasoning = value('--reasoning') ?? 'medium';
+    const reasoning = requestedReasoning === 'extra-high' ? 'xhigh' : requestedReasoning;
+    if (!['low', 'medium', 'high', 'xhigh'].includes(reasoning)) throw new Error('--reasoning must be low, medium, high, or extra-high (xhigh is also accepted).');
     const repo = value('--repo') ?? repositoryRoot;
     cleanIfRequested(repo);
     const result = await runAutomatedTimingRepair({
@@ -259,6 +270,7 @@ if (!validation.valid) {
 } else {
   console.log(formatWorkflowCatalog(getWorkflowCatalog()));
 }
+
 }
 
 }
