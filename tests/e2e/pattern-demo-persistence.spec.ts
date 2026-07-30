@@ -1015,18 +1015,18 @@ async function runPatternDemoPersistence(page: Page, options: PatternDemoRunOpti
   }
 }
 
-test('pattern demo persistence survives tab close and reopen after each walkthrough step @slow @regression', async ({ page, browserName }) => {
+test('pattern demo persistence survives tab close and reopen after each walkthrough step @slow @regression', async ({ page }, testInfo) => {
   test.skip(
-    browserName !== 'chromium' && !USE_LIVE_CLOUD,
+    testInfo.project.name !== 'chromium' && !USE_LIVE_CLOUD,
     'The full Pattern Demo walkthrough is covered by Chromium; the browser matrix uses the targeted persistence smoke.'
   );
 
   await runPatternDemoPersistence(page, { undoRedo: false });
 });
 
-test('pattern demo persistence smoke covers browser matrix reopen path @regression @browser', async ({ page, browserName }) => {
+test('pattern demo persistence smoke covers browser matrix reopen path @regression @browser', async ({ page }, testInfo) => {
   test.skip(
-    browserName === 'chromium' || USE_LIVE_CLOUD,
+    testInfo.project.name === 'chromium' || USE_LIVE_CLOUD,
     'Chromium and cloud-live runs cover the full Pattern Demo walkthrough.'
   );
 
@@ -1041,7 +1041,7 @@ test('pattern demo persistence smoke covers browser matrix reopen path @regressi
 });
 
 test.describe('pattern demo undo/redo persistence', () => {
-  test.skip(({ browserName }) => browserName !== 'chromium', 'The full undo/redo walkthrough is covered by Chromium; browser-matrix persistence uses the targeted smoke.');
+  test.skip(({ }, testInfo) => testInfo.project.name !== 'chromium', 'The full undo/redo walkthrough is covered by Chromium; browser-matrix persistence uses the targeted smoke.');
 
   test('pattern demo persistence survives reopen plus undo/redo after each walkthrough step @slow @regression', async ({ page }) => {
     await runPatternDemoPersistence(page, { undoRedo: true });
