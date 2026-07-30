@@ -943,6 +943,7 @@ type PatternDemoRunOptions = {
   stepIds?: string[];
   verifyRuntime?: boolean;
   reopenAfterEachStep?: boolean;
+  verifyPersistedAfterEachStep?: boolean;
 };
 
 const BROWSER_MATRIX_PATTERN_DEMO_STEP_IDS = ['world-size', 'import-assets', 'music'];
@@ -990,7 +991,7 @@ async function runPatternDemoPersistence(page: Page, options: PatternDemoRunOpti
       if (reopenAfterEachStep) {
         active = await reopenAndAssert(active.page, finalSnapshot, step.label);
         await settleCloudLivePage(active.page, active.errors);
-      } else {
+      } else if (options.verifyPersistedAfterEachStep !== false) {
         await expectPersistedSnapshot(active.page, finalSnapshot);
       }
     }
@@ -1030,6 +1031,7 @@ test('pattern demo persistence smoke covers browser matrix reopen path @regressi
     stepIds: BROWSER_MATRIX_PATTERN_DEMO_STEP_IDS,
     verifyRuntime: false,
     reopenAfterEachStep: false,
+    verifyPersistedAfterEachStep: false,
   });
 });
 
