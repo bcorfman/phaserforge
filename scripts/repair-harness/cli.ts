@@ -6,7 +6,7 @@ import { collectEvidence } from './collect';
 import { expectedEvidenceFingerprint, reproduce } from './reproduce';
 import { verify } from './verify';
 import { runBoundedRepair } from './repair';
-import { appendEvent, readState, resolveResumeDirectory, writeState } from './state';
+import { appendEvent, cleanAllHarnessFiles, cleanRunLogs, readState, resolveResumeDirectory, writeState } from './state';
 import type { EvidenceEnvelope } from './types';
 import { aggregateRepairOutcomes, formatRepairMetrics, readRepairOutcomes, writeRepairMetrics } from './metrics';
 import { loadHostedConfig } from './hosted/config';
@@ -26,6 +26,10 @@ const value = (name: string): string | undefined => {
 };
 
 const has = (name: string): boolean => args.includes(name);
+const cleanIfRequested = (repo: string): void => {
+  if (has('--clean-all')) cleanAllHarnessFiles(repo);
+  else if (has('--clean')) cleanRunLogs(repo);
+};
 const prepareHosted = (command: string): boolean => {
   assertHostedScope(command, value('--scope'));
   if (value('--agent')) throw new Error('Hosted validation cannot invoke an agent; use --no-agent.');
@@ -37,7 +41,9 @@ if (args[0] === 'e2e-timing') {
   try {
     const reportPath = value('--report');
     if (!reportPath) throw new Error('Expected --report <playwright-report.json|index.html> for e2e-timing.');
-    const result = runE2ETiming({ repo: value('--repo') ?? repositoryRoot, reportPath: path.resolve(reportPath), runId: value('--run-id') });
+    const repo = value('--repo') ?? repositoryRoot;
+    cleanIfRequested(repo);
+    const result = runE2ETiming({ repo, reportPath: path.resolve(reportPath), runId: value('--run-id') });
     console.log(`E2E timing ${result.analysis.status} in ${result.runDirectory}`);
     if (result.analysis.status === 'failed' || result.analysis.status === 'invalid') process.exitCode = 1;
   } catch (error) {
@@ -47,8 +53,10 @@ if (args[0] === 'e2e-timing') {
 } else if (args[0] === 'e2e-timing-repair') {
   try {
     if (!value('--pr') && !value('--run')) throw new Error('Expected --pr <number> or --run <run-id> for e2e-timing-repair.');
+    const repo = value('--repo') ?? repositoryRoot;
+    cleanIfRequested(repo);
     const result = await runAutomatedTimingRepair({
-      repo: value('--repo') ?? repositoryRoot,
+      repo,
       pr: value('--pr'),
       run: value('--run'),
       agent: 'codex',
@@ -69,7 +77,9 @@ if (args[0] === 'e2e-timing') {
     if (!configPath) throw new Error('Expected --config <path> for hosted-probe.');
     const config = loadHostedConfig(path.resolve(configPath));
     if (dryRun) { console.log('Hosted probe dry-run: configuration validated; no network request will run.'); return; }
-    const result = await runHostedProbe({ repo: value('--repo') ?? repositoryRoot, config, runId: value('--run-id') });
+    const repo = value('--repo') ?? repositoryRoot;
+    cleanIfRequested(repo);
+    const result = await runHostedProbe({ repo, config, runId: value('--run-id') });
     console.log(`Hosted probe ${result.status} in ${result.runDirectory}`);
     if (result.status !== 'passed') process.exitCode = 1;
   } catch (error) {
@@ -83,7 +93,9 @@ if (args[0] === 'e2e-timing') {
     if (!configPath) throw new Error('Expected --config <path> for hosted-browser.');
     const config = loadHostedConfig(path.resolve(configPath));
     if (dryRun) { console.log('Hosted browser dry-run: configuration validated; no browser or network request will run.'); return; }
-    const result = await runHostedBrowser({ repo: value('--repo') ?? repositoryRoot, config, runId: value('--run-id') });
+    const repo = value('--repo') ?? repositoryRoot;
+    cleanIfRequested(repo);
+    const result = await runHostedBrowser({ repo, config, runId: value('--run-id') });
     console.log(`Hosted browser ${result.status} in ${result.runDirectory}`);
     if (result.status !== 'passed') process.exitCode = 1;
   } catch (error) {
@@ -100,8 +112,10 @@ if (args[0] === 'e2e-timing') {
     if (!email || !password) throw new Error('Hosted mutation requires --email and --password; credentials are used in memory only.');
     const config = loadHostedConfig(path.resolve(configPath));
     if (dryRun) { console.log('Hosted mutation dry-run: configuration and credentials presence validated; no browser or mutation will run.'); return; }
+    const repo = value('--repo') ?? repositoryRoot;
+    cleanIfRequested(repo);
     const result = await runHostedMutationCommand({
-      repo: value('--repo') ?? repositoryRoot,
+      repo,
       config,
       runId: value('--run-id'),
       account: { email, password, inviteToken: value('--invite-token') },
@@ -126,8 +140,10 @@ if (args[0] === 'e2e-timing') {
     if (!devEmail || !devPassword || !stableEmail || !stablePassword) throw new Error('Hosted isolation requires separate --dev-email/--dev-password and --stable-email/--stable-password credentials; credentials are used in memory only.');
     const config = loadHostedConfig(path.resolve(configPath));
     if (dryRun) { console.log('Hosted isolation dry-run: configuration and credential presence validated; no browser or mutation will run.'); return; }
+    const repo = value('--repo') ?? repositoryRoot;
+    cleanIfRequested(repo);
     const result = await runHostedIsolationCommand({
-      repo: value('--repo') ?? repositoryRoot,
+      repo,
       config,
       runId: value('--run-id'),
       accounts: { dev: { email: devEmail, password: devPassword }, stable: { email: stableEmail, password: stablePassword } },
@@ -166,7 +182,9 @@ if (args[0] === 'e2e-timing') {
   }
 } else if (args[0] === 'collect') {
   try {
-    const result = collectEvidence({ repo: value('--repo') ?? repositoryRoot, pr: value('--pr'), run: value('--run'), job: value('--job'), outputRoot: value('--output-root') });
+    const repo = value('--repo') ?? repositoryRoot;
+    cleanIfRequested(repo);
+    const result = collectEvidence({ repo, pr: value('--pr'), run: value('--run'), job: value('--job'), outputRoot: value('--output-root') });
     console.log(`Collected ${result.envelope.failure.class} evidence in ${result.runDirectory}`);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));

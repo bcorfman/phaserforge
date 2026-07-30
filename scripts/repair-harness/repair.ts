@@ -73,7 +73,9 @@ export async function runBoundedRepair(options: RepairOptions): Promise<RepairRe
   const implementationBudgetViolation = tokenBudgetViolation('implementation', implementationResult);
   if (implementationBudgetViolation) { const reason = implementationBudgetViolation; outcome(options, 'stopped', 1, reason); return stop(options.runDirectory, state, reason); }
   if (implementationResult.exitCode !== 0) { const reason = 'Implementation command failed.'; outcome(options, 'failed', 1, reason); return { status: 'failed', diagnosis, reason }; }
-  const verification = await (options.verifyPatch ?? (() => verify({ evidence: options.evidence, cwd: options.repo })));
+  const verification = options.verifyPatch
+    ? await options.verifyPatch()
+    : await verify({ evidence: options.evidence, cwd: options.repo });
   if (!verification) {
     const reason = 'Verification adapter returned no result.';
     mkdirSync(path.join(options.runDirectory, 'verification'), { recursive: true });

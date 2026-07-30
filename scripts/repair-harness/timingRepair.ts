@@ -43,7 +43,6 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
 
   const slow = analysis.entries.filter((entry) => entry.category === 'slow');
   const first = slow[0];
-  const boundedSlow = slow.slice(0, 20);
   const job = String(resolved.job.name ?? resolved.metadata.workflowName ?? 'GitHub Actions E2E matrix');
   const command = commandForJob(job);
   const evidence: EvidenceEnvelope = {
@@ -57,8 +56,8 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
       class: 'timeout',
       testFile: first.file,
       testTitle: first.title,
-      message: `${slow.length} tests exceeded the hard ceiling.\n` + boundedSlow.map((entry) => `${entry.title} — ${entry.project} — ${entry.file} — ${entry.durationMs}ms`).join('\n'),
-      stackExcerpt: `Playwright timing diagnostic exceeded the 10,000ms hard ceiling. Showing ${boundedSlow.length} of ${slow.length} slow tests.\n` + boundedSlow.map((entry) => `${entry.file}: ${entry.title} (${entry.durationMs}ms)`).join('\n'),
+      message: formatSlowTestEvidence(slow),
+      stackExcerpt: formatSlowTestEvidence(slow),
     },
     artifacts: { tracePaths: [], screenshotPaths: [] },
     redactionsApplied: ['GitHub artifact contents were reduced to timing fields'],
@@ -74,9 +73,27 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
   return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis, repair, pullRequestUrl };
 }
 
-function commandForJob(job: string): string {
+export function formatSlowTestEvidence(slow: Array<{ title: string; project: string; file: string; durationMs?: number }>): string {
+  const groups = new Map<string, { project: string; file: string; count: number; fastestMs: number; slowestMs: number }>();
+  for (const entry of slow) {
+    const key = `${entry.project}\u0000${entry.file}`;
+    const durationMs = entry.durationMs ?? 0;
+    const group = groups.get(key) ?? { project: entry.project, file: entry.file, count: 0, fastestMs: durationMs, slowestMs: durationMs };
+    group.count += 1;
+    group.fastestMs = Math.min(group.fastestMs, durationMs);
+    group.slowestMs = Math.max(group.slowestMs, durationMs);
+    groups.set(key, group);
+  }
+  const inventory = [...groups.values()]
+    .sort((left, right) => right.slowestMs - left.slowestMs)
+    .map((group) => `- ${group.project} — ${group.file} — ${group.count} slow (${group.fastestMs}-${group.slowestMs}ms)`)
+    .join('\n');
+  return `${slow.length} tests exceeded the hard ceiling across ${groups.size} project/file groups. Full normalized test-level inventory is in e2e-timing-evidence.json.\n${inventory}`;
+}
+
+export function commandForJob(job: string): string {
   const shard = job.match(/shard\s+(\d+)\s*\/\s*(\d+)/i);
-  if (/full matrix/i.test(job)) return 'npm run test:e2e -- --project=firefox --project=webkit --project=msedge --shard={shard}/{shards} --fail-on-flaky-tests'.replace('{shard}', shard?.[1] ?? '1').replace('{shards}', shard?.[2] ?? '1');
+  if (/full matrix/i.test(job)) return 'PW_PROJECTS=firefox,webkit,msedge npm run test:e2e -- --project=firefox --project=webkit --project=msedge --shard={shard}/{shards} --fail-on-flaky-tests'.replace('{shard}', shard?.[1] ?? '1').replace('{shards}', shard?.[2] ?? '1');
   return 'npm run test:e2e -- --project=chromium --grep "@smoke|@critical" --shard={shard}/{shards} --fail-on-flaky-tests'.replace('{shard}', shard?.[1] ?? '1').replace('{shards}', shard?.[2] ?? '1');
 }
 
