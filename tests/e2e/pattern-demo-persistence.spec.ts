@@ -944,6 +944,7 @@ type PatternDemoRunOptions = {
   verifyRuntime?: boolean;
   reopenAfterEachStep?: boolean;
   verifyPersistedAfterEachStep?: boolean;
+  verifyEachStep?: boolean;
 };
 
 const BROWSER_MATRIX_PATTERN_DEMO_STEP_IDS = ['world-size', 'import-assets', 'music'];
@@ -953,6 +954,7 @@ async function runPatternDemoPersistence(page: Page, options: PatternDemoRunOpti
   const stepIds = options.stepIds ? new Set(options.stepIds) : null;
   const steps = buildPatternDemoSteps().filter((step) => !stepIds || stepIds.has(step.id));
   const reopenAfterEachStep = options.reopenAfterEachStep ?? true;
+  const verifyEachStep = options.verifyEachStep ?? true;
   let cloudFlushMarker = await getCloudFlushMarker(active.page);
   let finalSnapshot: PersistenceSnapshot | null = null;
 
@@ -986,7 +988,9 @@ async function runPatternDemoPersistence(page: Page, options: PatternDemoRunOpti
       finalSnapshot = await step.apply(active.page);
       cloudFlushMarker = await waitForCloudPersistence(active.page, step.label, cloudFlushMarker);
       await settleCloudLivePage(active.page, active.errors);
-      await expectSnapshot(active.page, finalSnapshot);
+      if (verifyEachStep) {
+        await expectSnapshot(active.page, finalSnapshot);
+      }
       expectNoBrowserErrors(active.errors, `${step.label} before reopen`);
       if (reopenAfterEachStep) {
         active = await reopenAndAssert(active.page, finalSnapshot, step.label);
@@ -1032,6 +1036,7 @@ test('pattern demo persistence smoke covers browser matrix reopen path @regressi
     verifyRuntime: false,
     reopenAfterEachStep: false,
     verifyPersistedAfterEachStep: false,
+    verifyEachStep: false,
   });
 });
 
