@@ -51,7 +51,9 @@ export function createDiagnosisPacket(options: PacketOptions): string {
 export function createImplementationPacket(options: PacketOptions): string {
   if (!options.diagnosis) throw new Error('Implementation packets require a diagnosis.');
   const files = options.targetedFiles ?? options.diagnosis.files;
-  const diff = (options.diff ?? '').slice(0, options.maxDiffChars ?? 24_000);
+  // Keep the packet within the implementation input budget after adding
+  // repository guidance and timing evidence.
+  const diff = (options.diff ?? '').slice(0, options.maxDiffChars ?? 16_000);
   return redactSecrets([
     '# PhaserForge CI repair implementation',
     'Implement only the approved diagnosis. Do not commit, push, merge, deploy, edit workflows, weaken tests, or change secrets/configuration.',

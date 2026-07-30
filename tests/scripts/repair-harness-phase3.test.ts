@@ -29,6 +29,13 @@ describe('repair harness phase 3 packets and agent', () => {
     expect(implementationPacket).toContain('[REDACTED]');
   });
 
+  it('keeps implementation packets within the bounded input budget', () => {
+    const diagnosis = { failureClass: 'assertion' as const, likelyCause: 'state is not persisted', files: ['src/editor/store.ts'], symbols: ['saveProject'], reproductionCommand: evidence.reproduction.command, confidence: 0.8 };
+    const implementationPacket = createImplementationPacket({ repo: process.cwd(), evidence, diagnosis, diff: 'x'.repeat(24_000) });
+
+    expect(Buffer.byteLength(implementationPacket)).toBeLessThanOrEqual(32_000);
+  });
+
   it('parses the strict diagnosis contract, including fenced JSON', () => {
     expect(parseDiagnosis('```json\n{"failureClass":"assertion","likelyCause":"bad state","files":["src/a.ts"],"symbols":["save"],"reproductionCommand":"npm test","confidence":0.7}\n```')).toMatchObject({ failureClass: 'assertion', confidence: 0.7 });
     expect(() => parseDiagnosis('{"failureClass":"assertion"}')).toThrow('required contract');
@@ -60,6 +67,28 @@ describe('repair harness phase 3 bounds and verification gate', () => {
     expect(result.status).toBe('failed');
     expect(calls).toEqual(['diagnosis', 'implementation']);
     expect(readState(directory).status).toBe('failed');
+  });
+
+  it('runs the default verifier instead of serializing its callback', async () => {
+    const { directory } = createRun(process.cwd(), `phase3-default-verify-${Date.now()}`);
+    const verificationEvidence: EvidenceEnvelope = {
+      ...evidence,
+      scope: 'manual',
+      reproduction: { command: `${process.execPath} -e "process.exit(0)"` },
+      failure: { ...evidence.failure, testFile: undefined, testTitle: undefined },
+    };
+    const diagnosis = JSON.stringify({ failureClass: 'assertion', likelyCause: 'bad state', files: ['src/editor/store.ts'], symbols: ['save'], reproductionCommand: verificationEvidence.reproduction.command, confidence: 0.9 });
+
+    const result = await runBoundedRepair({
+      repo: process.cwd(),
+      runDirectory: directory,
+      evidence: verificationEvidence,
+      diff: '',
+      callAgent: async (kind) => agentResult(kind, kind === 'diagnosis' ? diagnosis : 'model says done'),
+    });
+
+    expect(result).toMatchObject({ status: 'verified', verification: { verified: true, requiredCommand: verificationEvidence.reproduction.command } });
+    expect(readState(directory).status).toBe('verified');
   });
 
   it('stops when the diagnosis or implementation budget is exhausted', () => {

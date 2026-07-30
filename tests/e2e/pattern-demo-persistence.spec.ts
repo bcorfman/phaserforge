@@ -522,7 +522,7 @@ async function expectSnapshot(page: Page, expected: PersistenceSnapshot): Promis
 async function reopenAndAssert(page: Page, expected: PersistenceSnapshot, label: string): Promise<{ page: Page; errors: ErrorCollector }> {
   const context = page.context();
   await expectPersistedSnapshot(page, expected);
-  await page.close({ runBeforeUnload: true });
+  await page.close();
   const reopenedPage = await context.newPage();
   const errors = trackErrors(reopenedPage);
   await bootStudio(reopenedPage, { forceNavigate: true });

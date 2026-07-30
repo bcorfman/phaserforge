@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { analyzeE2ETiming, parsePlaywrightJsonReport, type PlaywrightJsonReport } from '../../scripts/repair-harness/e2eTiming';
 import { runE2ETiming } from '../../scripts/repair-harness/e2eTimingRun';
+import { commandForJob, formatSlowTestEvidence } from '../../scripts/repair-harness/timingRepair';
 
 const report: PlaywrightJsonReport = {
   suites: [{
@@ -25,6 +26,31 @@ describe('repair harness E2E timing diagnostics', () => {
     expect(result.entries.map((entry) => entry.category)).toEqual(['normal', 'warning', 'slow']);
     expect(result.entries[1]).toMatchObject({ title: 'involved test', retry: 1, durationMs: 8_000, project: 'chromium' });
     expect(result.slowest).toMatchObject({ title: 'slow test', durationMs: 10_001 });
+  });
+
+  it('fails a hard-ceiling duration even when Playwright reports the test as passed', () => {
+    const result = analyzeE2ETiming({
+      suites: [{
+        file: 'tests/e2e/editor.spec.ts',
+        specs: [{ title: 'slow but passing test', tests: [{ projectName: 'webkit', results: [{ retry: 0, duration: 10_001, status: 'passed' }] }] }],
+      }],
+    });
+
+    expect(result).toMatchObject({ status: 'failed', counts: { slow: 1 } });
+  });
+
+  it('retains every slow test in repair evidence', () => {
+    const slow = Array.from({ length: 21 }, (_, index) => ({ title: `slow ${index + 1}`, project: 'webkit', file: `tests/e2e/slow-${index + 1}.spec.ts`, durationMs: 10_001 + index }));
+
+    const evidence = formatSlowTestEvidence(slow);
+
+    expect(evidence).toContain('21 tests exceeded the hard ceiling across 21 project/file groups.');
+    expect(evidence).toContain('webkit — tests/e2e/slow-1.spec.ts — 1 slow (10001-10001ms)');
+    expect(evidence).toContain('webkit — tests/e2e/slow-21.spec.ts — 1 slow (10021-10021ms)');
+  });
+
+  it('enables every browser named by a full-matrix reproduction command', () => {
+    expect(commandForJob('E2E Full Matrix (shard 4/8)')).toContain('PW_PROJECTS=firefox,webkit,msedge');
   });
 
   it('groups summary data by project and file without retaining raw report fields', () => {

@@ -16,6 +16,28 @@ change GitHub secrets, or modify hosted databases.
 
 ## Collect a failed PR job
 
+Pass `--clean` when starting a new harness run to remove existing `.log`
+files anywhere under `.repair-harness/runs` before the run begins. Other run
+artifacts, including evidence and state files, are preserved:
+
+```bash
+npm run repair:ci:collect -- --pr 123 --clean
+```
+
+The option is also supported by the timing and hosted run commands. Do not use
+it when resuming a run whose logs you still need.
+
+To remove every file under `.repair-harness` and the complete
+`.repair-harness/runs` directory tree, including evidence, state, metrics, and
+logs, use the stronger `--clean-all` option when starting a new run:
+
+```bash
+npm run repair:ci:collect -- --pr 123 --clean-all
+```
+
+If both flags are supplied, `--clean-all` takes precedence. Do not use either
+cleanup option when resuming a run.
+
 For a pull request, collect the failing GitHub Actions check:
 
 ```bash
