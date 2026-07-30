@@ -942,6 +942,7 @@ type PatternDemoRunOptions = {
   undoRedo: boolean;
   stepIds?: string[];
   verifyRuntime?: boolean;
+  reopenAfterEachStep?: boolean;
 };
 
 const BROWSER_MATRIX_PATTERN_DEMO_STEP_IDS = ['world-size', 'import-assets', 'music'];
@@ -950,6 +951,7 @@ async function runPatternDemoPersistence(page: Page, options: PatternDemoRunOpti
   let active = await initializePatternDemoPage(page);
   const stepIds = options.stepIds ? new Set(options.stepIds) : null;
   const steps = buildPatternDemoSteps().filter((step) => !stepIds || stepIds.has(step.id));
+  const reopenAfterEachStep = options.reopenAfterEachStep ?? true;
   let cloudFlushMarker = await getCloudFlushMarker(active.page);
   let finalSnapshot: PersistenceSnapshot | null = null;
 
@@ -985,12 +987,20 @@ async function runPatternDemoPersistence(page: Page, options: PatternDemoRunOpti
       await settleCloudLivePage(active.page, active.errors);
       await expectSnapshot(active.page, finalSnapshot);
       expectNoBrowserErrors(active.errors, `${step.label} before reopen`);
-      active = await reopenAndAssert(active.page, finalSnapshot, step.label);
-      await settleCloudLivePage(active.page, active.errors);
+      if (reopenAfterEachStep) {
+        active = await reopenAndAssert(active.page, finalSnapshot, step.label);
+        await settleCloudLivePage(active.page, active.errors);
+      } else {
+        await expectPersistedSnapshot(active.page, finalSnapshot);
+      }
     }
   }
 
   if (!finalSnapshot) throw new Error('Pattern demo steps produced no final snapshot');
+
+  if (!options.undoRedo && !reopenAfterEachStep) {
+    active = await reopenAndAssert(active.page, finalSnapshot, 'final matrix verification');
+  }
 
   if (!USE_LIVE_CLOUD && !options.undoRedo && options.verifyRuntime !== false) {
     await verifyPatternDemoRuntime(active.page);
@@ -1019,6 +1029,7 @@ test('pattern demo persistence smoke covers browser matrix reopen path @regressi
     undoRedo: false,
     stepIds: BROWSER_MATRIX_PATTERN_DEMO_STEP_IDS,
     verifyRuntime: false,
+    reopenAfterEachStep: false,
   });
 });
 

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { isHostedCommand } from './scope';
 import path from 'node:path';
 
@@ -74,6 +74,8 @@ export async function runBoundedRepair(options: RepairOptions): Promise<RepairRe
   if (implementationBudgetViolation) { const reason = implementationBudgetViolation; outcome(options, 'stopped', 1, reason); return stop(options.runDirectory, state, reason); }
   if (implementationResult.exitCode !== 0) { const reason = 'Implementation command failed.'; outcome(options, 'failed', 1, reason); return { status: 'failed', diagnosis, reason }; }
   const verification = await (options.verifyPatch ?? (() => verify({ evidence: options.evidence, cwd: options.repo })));
+  mkdirSync(path.join(options.runDirectory, 'verification'), { recursive: true });
+  writeFileSync(path.join(options.runDirectory, 'verification', 'result.json'), `${JSON.stringify(verification, null, 2)}\n`);
   const status = verification.verified ? 'verified' : 'failed';
   outcome(options, status, 1, verification.reason, verification);
   writeState(options.runDirectory, { ...state, phase: 'verify', status });
