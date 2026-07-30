@@ -130,7 +130,8 @@ function summarizeE2ETiming(entries: E2ETimingEntry[]): E2ETimingAnalysis {
     }
     groups.set(key, group);
   }
-  const status: E2ETimingStatus = counts['missing-duration'] || counts['invalid-duration'] ? 'invalid' : counts.slow ? 'failed' : counts.warning ? 'warning' : 'passed';
+  const hasFailedSlowTest = entries.some((entry) => entry.category === 'slow' && entry.outcome !== 'passed');
+  const status: E2ETimingStatus = counts['missing-duration'] || counts['invalid-duration'] ? 'invalid' : hasFailedSlowTest ? 'failed' : counts.slow || counts.warning ? 'warning' : 'passed';
   return { status, targetMs: E2E_TIMING_TARGET_MS, hardCeilingMs: E2E_TIMING_HARD_CEILING_MS, entries, groups: [...groups.values()], slowest: valid.sort((a, b) => b.durationMs - a.durationMs)[0], counts };
 }
 
