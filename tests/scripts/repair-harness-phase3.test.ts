@@ -32,6 +32,7 @@ describe('repair harness phase 3 packets and agent', () => {
   it('parses the strict diagnosis contract, including fenced JSON', () => {
     expect(parseDiagnosis('```json\n{"failureClass":"assertion","likelyCause":"bad state","files":["src/a.ts"],"symbols":["save"],"reproductionCommand":"npm test","confidence":0.7}\n```')).toMatchObject({ failureClass: 'assertion', confidence: 0.7 });
     expect(() => parseDiagnosis('{"failureClass":"assertion"}')).toThrow('required contract');
+    expect(parseDiagnosis('{"failureClass":"performance","likelyCause":"slow browser setup","files":["tests/e2e/a.spec.ts"],"symbols":[],"reproductionCommand":"npm test","confidence":0.7}')).toMatchObject({ failureClass: 'timeout' });
   });
 
   it('runs the opt-in adapter with a controlled local command', async () => {

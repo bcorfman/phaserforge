@@ -4,6 +4,7 @@ import { isHostedCommand } from './scope';
 import path from 'node:path';
 
 import { runAgent, parseDiagnosis, type AgentResult } from './agent';
+import { redactSecrets } from './artifacts';
 import { budgetAllows, recordAgentResult, tokenBudgetViolation, PHASE3_BUDGETS } from './budget';
 import { createDiagnosisPacket, createImplementationPacket, writePacket } from './packet';
 import { approveRepairRequest } from './policy';
@@ -52,6 +53,7 @@ export async function runBoundedRepair(options: RepairOptions): Promise<RepairRe
   state = recordAgentResult(state, diagnosisResult);
   writeState(options.runDirectory, { ...state, phase: 'diagnosis' });
   writePacket(options.runDirectory, 'diagnosis.md', diagnosisPacket);
+  writeFileSync(path.join(options.runDirectory, 'packets', 'diagnosis-response.txt'), redactSecrets(diagnosisResult.stdout));
   appendEvent(options.runDirectory, { event: 'diagnosis-completed', exitCode: diagnosisResult.exitCode, packetBytes: diagnosisResult.packetBytes });
   const diagnosisBudgetViolation = tokenBudgetViolation('diagnosis', diagnosisResult);
   if (diagnosisBudgetViolation) { outcome(options, 'stopped', 0, diagnosisBudgetViolation); return stop(options.runDirectory, state, diagnosisBudgetViolation); }
