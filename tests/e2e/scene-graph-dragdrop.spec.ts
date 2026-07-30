@@ -11,7 +11,9 @@ test('Scene Graph: multi-select sprites and drag into a formation to add members
   // Expand formation members and remove two members (become ungrouped sprites).
   await page.getByTestId('toggle-group-g-enemies').click();
   await page.getByTestId('group-member-remove-g-enemies-e1').click();
+  await expect(page.getByTestId('ungrouped-entity-e1')).toBeVisible();
   await page.getByTestId('group-member-remove-g-enemies-e2').click();
+  await expect(page.getByTestId('ungrouped-entity-e2')).toBeVisible();
 
   await expect.poll(async () => {
     const state = await getState<{ scene: { groups: Record<string, { members: string[] }>; entities: Record<string, unknown> } }>(page);
