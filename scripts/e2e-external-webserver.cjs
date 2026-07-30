@@ -222,8 +222,12 @@ async function startManagedExternalWebServer({
   let healthcheckTimer;
   let consecutiveProbeFailures = 0;
   let rejectUnexpectedExit;
+  let resolveChildExit;
   let exitPersistPromise = Promise.resolve();
   let exitRecorded = false;
+  const childExited = new Promise((resolve) => {
+    resolveChildExit = resolve;
+  });
   const unexpectedExit = new Promise((_, reject) => {
     rejectUnexpectedExit = reject;
   });
@@ -252,6 +256,7 @@ async function startManagedExternalWebServer({
 
   child.once('exit', (code, signal) => {
     void (async () => {
+      resolveChildExit();
       // The child can emit `exit` before pipe consumers have flushed their final
       // chunks. Wait for both layers before rejecting so lifecycle diagnostics
       // never lose the stderr/stdout that explains an early server failure.
@@ -279,7 +284,8 @@ async function startManagedExternalWebServer({
     cleanup();
     await exitPersistPromise;
     await lifecycle.waitForPendingWrites();
-    if (child.exitCode != null || child.signalCode != null) {
+    if (child.exitCode != null || child.signalCode != null || /exited before ready/i.test(error?.message ?? '')) {
+      await childExited;
       await childOutputStreamsFinished;
       await logStreamsFinished;
     }
