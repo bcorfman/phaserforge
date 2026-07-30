@@ -26,7 +26,7 @@ function discoverReportPaths(reportPath: string): string[] {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const fullPath = path.join(directory, entry.name);
       if (entry.isDirectory()) visit(fullPath);
-      else if (entry.name === 'index.html' && fullPath.includes(`${path.sep}playwright-report${path.sep}`)) paths.push(fullPath);
+      else if (entry.name === 'index.html' && path.basename(path.dirname(fullPath)) === 'playwright-report') paths.push(fullPath);
       else if (entry.name.endsWith('.json') && entry.name === 'report.json') paths.push(fullPath);
     }
   };

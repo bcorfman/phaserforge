@@ -110,6 +110,18 @@ describe('repair harness E2E timing diagnostics', () => {
 
     expect(result.analysis.entries).toHaveLength(4);
   });
+
+  it('ignores nested trace-viewer HTML files while discovering report roots', () => {
+    const repo = mkdtempSync(path.join(os.tmpdir(), 'phaserforge-e2e-trace-timing-'));
+    const reportRoot = path.join(repo, 'shard-1', 'playwright-report');
+    mkdirSync(path.join(reportRoot, 'trace'), { recursive: true });
+    writeFileSync(path.join(reportRoot, 'index.html'), makePlaywrightHtmlReport(report));
+    writeFileSync(path.join(reportRoot, 'trace', 'index.html'), '<html>trace viewer</html>');
+
+    const result = runE2ETiming({ repo, reportPath: repo, runId: 'trace-timing-test' });
+
+    expect(result.analysis.entries).toHaveLength(3);
+  });
 });
 
 function makePlaywrightHtmlReport(value: PlaywrightJsonReport): string {
