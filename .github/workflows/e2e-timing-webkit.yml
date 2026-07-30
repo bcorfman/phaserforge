@@ -17,7 +17,7 @@ jobs:
     name: E2E Timing WebKit (single worker, p95)
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.61.1-resolute
+      image: mcr.microsoft.com/playwright:v1.62.1-resolute
       options: --ipc=host
     steps:
       - name: Prepare writable home

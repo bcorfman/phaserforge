@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE_TAG="phaserforge-playwright:1.61.1-node26"
+IMAGE_TAG="phaserforge-playwright:1.62.1-node26"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is not installed or not on PATH" >&2
