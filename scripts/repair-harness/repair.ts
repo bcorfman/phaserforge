@@ -74,6 +74,15 @@ export async function runBoundedRepair(options: RepairOptions): Promise<RepairRe
   if (implementationBudgetViolation) { const reason = implementationBudgetViolation; outcome(options, 'stopped', 1, reason); return stop(options.runDirectory, state, reason); }
   if (implementationResult.exitCode !== 0) { const reason = 'Implementation command failed.'; outcome(options, 'failed', 1, reason); return { status: 'failed', diagnosis, reason }; }
   const verification = await (options.verifyPatch ?? (() => verify({ evidence: options.evidence, cwd: options.repo })));
+  if (!verification) {
+    const reason = 'Verification adapter returned no result.';
+    mkdirSync(path.join(options.runDirectory, 'verification'), { recursive: true });
+    writeFileSync(path.join(options.runDirectory, 'verification', 'result.json'), `${JSON.stringify({ verified: false, requiredCommand: options.evidence.reproduction.command, reason }, null, 2)}\n`);
+    outcome(options, 'failed', 1, reason);
+    writeState(options.runDirectory, { ...state, phase: 'verify', status: 'failed' });
+    appendEvent(options.runDirectory, { event: 'repair-verification-completed', verified: false, reason });
+    return { status: 'failed', diagnosis, reason };
+  }
   mkdirSync(path.join(options.runDirectory, 'verification'), { recursive: true });
   writeFileSync(path.join(options.runDirectory, 'verification', 'result.json'), `${JSON.stringify(verification, null, 2)}\n`);
   const status = verification.verified ? 'verified' : 'failed';
