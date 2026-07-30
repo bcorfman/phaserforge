@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissViewHint, getSceneSnapshot, panByScreenDelta, seedProject } from './helpers';
+import { getSceneSnapshot, panByScreenDelta, seedProject } from './helpers';
 
 test('runtime reload preserves editor camera view @regression', async ({ page }) => {
   await seedProject(page, {
@@ -23,8 +23,6 @@ test('runtime reload preserves editor camera view @regression', async ({ page })
     },
     initialSceneId: 'scene-1',
   });
-  await dismissViewHint(page);
-
   await panByScreenDelta(page, { x: 140, y: -90 });
 
   const anchorWorldPoint = { x: 512, y: 384 };

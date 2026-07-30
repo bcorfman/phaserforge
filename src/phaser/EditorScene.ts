@@ -161,7 +161,6 @@ export class EditorScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#0c0f1a');
     applyProjectCanvasRenderMode(this.game.canvas, this.cameras.main, this.project ? getProjectRenderMode(this.project) : 'pixel-art');
     this.bindSceneListeners();
-    EventBus.emit('current-scene-ready', this);
     this.lastViewportSize = { width: this.scale.width, height: this.scale.height };
     this.scale.on(Phaser.Scale.Events.RESIZE, this.handleViewportResize, this);
 
@@ -205,6 +204,10 @@ export class EditorScene extends Phaser.Scene {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.handleViewportResize, this);
       this.unbindSceneListeners();
     });
+
+    // Consumers use this handoff to begin loading project data. Emit only after the scene's
+    // camera lifecycle is initialized so reload view restoration never observes a partial scene.
+    EventBus.emit('current-scene-ready', this);
   }
 
   public loadSceneSpec(sceneSpec: SceneSpec): void;
