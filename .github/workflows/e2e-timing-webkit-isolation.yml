@@ -1,0 +1,53 @@
+name: PhaserForge CI / E2E Timing (WebKit Isolation)
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  HOME: /tmp/phaserforge-home
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-webkit-isolation:
+    name: E2E WebKit Isolation (shard ${{ matrix.shard }}/${{ matrix.shards }})
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-resolute
+      options: --ipc=host
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shards: [8]
+    steps:
+      - name: Prepare writable home
+        run: mkdir -p "$HOME"
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Install
+        run: npm ci
+
+      - name: E2E Tests
+        env:
+          PW_PROJECTS: webkit
+          PW_WORKERS: '1'
+        run: npm run test:e2e -- --project=webkit --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
+
+      - name: Upload Playwright Artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-webkit-isolation-${{ matrix.shard }}-of-${{ matrix.shards }}
+          path: |
+            playwright-report
+            test-results

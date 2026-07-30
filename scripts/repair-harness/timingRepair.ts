@@ -32,6 +32,8 @@ export interface AutomatedTimingResult {
 }
 
 const CONTROLLED_TIMING_WORKFLOW = 'e2e-timing-webkit.yml';
+const WEBKIT_ISOLATION_WORKFLOW = 'e2e-timing-webkit-isolation.yml';
+const FULL_MATRIX_WORKFLOW = 'e2e-nightly-full-matrix.yml';
 const BROAD_SLOW_GROUPS = 5;
 
 export function classifyTimingRepairScope(analysis: ReturnType<typeof runE2ETiming>['analysis']): string | undefined {
@@ -41,6 +43,20 @@ export function classifyTimingRepairScope(analysis: ReturnType<typeof runE2ETimi
     return `The ${analysis.counts.slow} hard-ceiling results span ${slowGroups.length} project/file groups. This is broad CI timing telemetry, not a reproducible product-level regression; no source patch was attempted. Run the controlled WebKit timing workflow to establish a p95 regression before repair.`;
   }
   return undefined;
+}
+
+export function shouldRepairFullMatrixConcurrency(source: ReturnType<typeof runE2ETiming>['analysis'], isolated: ReturnType<typeof runE2ETiming>['analysis']): boolean {
+  return Boolean(classifyTimingRepairScope(source)) && isTimingClean(isolated);
+}
+
+export function applyFullMatrixSingleWorkerRepair(repo: string): boolean {
+  const workflowPath = path.join(repo, '.github', 'workflows', FULL_MATRIX_WORKFLOW);
+  const workflow = readFileSync(workflowPath, 'utf8');
+  if (/^\s*PW_WORKERS:\s*['"]?1['"]?\s*$/m.test(workflow)) return false;
+  const updated = workflow.replace('          PW_PROJECTS: firefox,webkit,msedge', "          PW_PROJECTS: firefox,webkit,msedge\n          # Keep browser processes isolated; the full matrix otherwise produces broad WebKit timing inflation.\n          PW_WORKERS: '1'");
+  if (updated === workflow) throw new Error(`Could not locate the Full Matrix E2E environment in ${workflowPath}.`);
+  writeFileSync(workflowPath, updated);
+  return true;
 }
 
 export async function runAutomatedTimingRepair(options: AutomatedTimingOptions): Promise<AutomatedTimingResult> {
@@ -61,7 +77,43 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
   let lastRepair: RepairResult | undefined;
   if (isTimingClean(currentAnalysis)) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: currentAnalysis.status, analysis: currentAnalysis };
   const scopeReason = classifyTimingRepairScope(currentAnalysis);
-  if (scopeReason) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'stopped', analysis: currentAnalysis, reason: scopeReason };
+  if (scopeReason && currentAnalysis.entries.some((entry) => entry.category === 'slow' && entry.project === 'webkit')) {
+    const sourceResolved = resolveRun(source.runId, options.repo);
+    const sourceBranch = String(sourceResolved.metadata.headBranch ?? '');
+    const sourceSha = String(sourceResolved.metadata.headSha ?? '');
+    if (!sourceBranch || !sourceSha) throw new Error(`GitHub run ${source.runId} has no branch/commit for WebKit isolation.`);
+    triggerGithubWorkflow(options.repo, WEBKIT_ISOLATION_WORKFLOW, sourceBranch);
+    const isolatedRun = await waitForCompletedGithubRun({ repo: options.repo, branch: sourceBranch, headSha: sourceSha, workflow: WEBKIT_ISOLATION_WORKFLOW });
+    const isolationDirectory = path.join(timing.runDirectory, 'webkit-isolation');
+    const isolationArtifacts = path.join(isolationDirectory, 'artifacts');
+    mkdirSync(isolationDirectory, { recursive: true });
+    downloadRunArtifacts(isolatedRun.runId, isolationArtifacts, options.repo);
+    const isolated = runE2ETiming({ repo: isolationDirectory, reportPath: isolationArtifacts, runId: 'timing' }).analysis;
+    appendEvent(timing.runDirectory, { event: 'webkit-isolation-completed', sourceRunId: source.runId, runId: isolatedRun.runId, conclusion: isolatedRun.conclusion, slowTests: isolated.counts.slow });
+    if (isolatedRun.conclusion !== 'success') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: isolated, reason: `WebKit isolation run ${isolatedRun.runId} concluded ${isolatedRun.conclusion ?? 'without a conclusion'}.` };
+    if (shouldRepairFullMatrixConcurrency(currentAnalysis, isolated)) {
+      const changed = applyFullMatrixSingleWorkerRepair(options.repo);
+      if (!changed) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'stopped', analysis: isolated, reason: 'The isolated WebKit replay is clean and the Full Matrix is already configured with PW_WORKERS=1.' };
+      if (!options.publish) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'repaired', analysis: isolated, reason: 'The isolated WebKit replay is clean; applied PW_WORKERS=1 to the Full Matrix workflow locally.' };
+      const published = publishRepair(options.repo, source.runId);
+      branch = published.branch;
+      pullRequestUrl = published.url;
+      triggerGithubWorkflow(options.repo, FULL_MATRIX_WORKFLOW, branch);
+      const candidateRun = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: FULL_MATRIX_WORKFLOW });
+      const candidateDirectory = path.join(timing.runDirectory, 'full-matrix-single-worker');
+      const candidateArtifacts = path.join(candidateDirectory, 'artifacts');
+      mkdirSync(candidateDirectory, { recursive: true });
+      downloadRunArtifacts(candidateRun.runId, candidateArtifacts, options.repo);
+      const candidate = runE2ETiming({ repo: candidateDirectory, reportPath: candidateArtifacts, runId: 'timing' }).analysis;
+      appendEvent(timing.runDirectory, { event: 'full-matrix-concurrency-repair-completed', runId: candidateRun.runId, conclusion: candidateRun.conclusion, slowTests: candidate.counts.slow });
+      if (candidateRun.conclusion === 'success' && isTimingClean(candidate)) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis: candidate, pullRequestUrl };
+      currentRunId = candidateRun.runId;
+      currentAnalysis = candidate;
+    } else {
+      currentRunId = isolatedRun.runId;
+      currentAnalysis = isolated;
+    }
+  }
 
   for (let iteration = 1; iteration <= options.maxIterations; iteration += 1) {
     const cycleDirectory = iteration === 1 ? timing.runDirectory : path.join(timing.runDirectory, `iteration-${iteration}`);
@@ -180,6 +232,7 @@ export function formatSlowTestEvidence(slow: Array<{ title: string; project: str
 export function commandForJob(job: string): string {
   const shard = job.match(/shard\s+(\d+)\s*\/\s*(\d+)/i);
   if (/full matrix/i.test(job)) return 'PW_PROJECTS=firefox,webkit,msedge npm run test:e2e -- --project=firefox --project=webkit --project=msedge --shard={shard}/{shards} --fail-on-flaky-tests'.replace('{shard}', shard?.[1] ?? '1').replace('{shards}', shard?.[2] ?? '1');
+  if (/webkit isolation/i.test(job)) return 'PW_PROJECTS=webkit PW_WORKERS=1 npm run test:e2e -- --project=webkit --shard={shard}/{shards} --fail-on-flaky-tests'.replace('{shard}', shard?.[1] ?? '1').replace('{shards}', shard?.[2] ?? '1');
   return 'npm run test:e2e -- --project=chromium --grep "@smoke|@critical" --shard={shard}/{shards} --fail-on-flaky-tests'.replace('{shard}', shard?.[1] ?? '1').replace('{shards}', shard?.[2] ?? '1');
 }
 
