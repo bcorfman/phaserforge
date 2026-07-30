@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { sampleProject } from '../../src/model/sampleProject';
 import { buildStoredProjectRecord } from '../../src/editor/projectPersistence';
-import { dismissViewHint, waitForSampleScene, waitForSceneReady } from './helpers';
+import { dismissViewHint, waitForSceneReady } from './helpers';
 
 async function readStoredActiveProject(page: Parameters<typeof test>[0]['page']) {
   return page.evaluate(async () => {
@@ -141,7 +141,6 @@ test('rename + publish repo + history + close/reopen persists latest head locall
   });
 
   await gotoStudioWithoutDefaultApiStub(page);
-  await waitForSampleScene(page);
   await dismissViewHint(page);
 
   await page.getByTestId('inspector-pane-tab-cloud').click();
@@ -220,7 +219,6 @@ test('rename + publish repo + history + close/reopen persists latest head locall
       window.sessionStorage.setItem('phaserforge.testForceCloudEnabled.v1', '1');
     });
     await gotoStudioWithoutDefaultApiStub(reopenedPage);
-    await waitForSampleScene(reopenedPage);
     await dismissViewHint(reopenedPage);
 
     await expect(reopenedPage.getByTestId('project-tree-root-button')).toContainText('Pattern Demo');
