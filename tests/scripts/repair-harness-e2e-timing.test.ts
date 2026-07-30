@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { analyzeE2ETiming, parsePlaywrightJsonReport, type PlaywrightJsonReport } from '../../scripts/repair-harness/e2eTiming';
 import { runE2ETiming } from '../../scripts/repair-harness/e2eTimingRun';
-import { classifyTimingRepairScope, commandForJob, formatSlowTestEvidence, readTimingBenchmark } from '../../scripts/repair-harness/timingRepair';
+import { applyFullMatrixSingleWorkerRepair, classifyTimingRepairScope, commandForJob, formatSlowTestEvidence, readTimingBenchmark, shouldRepairFullMatrixConcurrency } from '../../scripts/repair-harness/timingRepair';
 
 const report: PlaywrightJsonReport = {
   suites: [{
@@ -53,6 +53,10 @@ describe('repair harness E2E timing diagnostics', () => {
     expect(commandForJob('E2E Full Matrix (shard 4/8)')).toContain('PW_PROJECTS=firefox,webkit,msedge');
   });
 
+  it('reproduces an isolated WebKit shard with one worker', () => {
+    expect(commandForJob('E2E WebKit Isolation (shard 4/8)')).toBe('PW_PROJECTS=webkit PW_WORKERS=1 npm run test:e2e -- --project=webkit --shard=4/8 --fail-on-flaky-tests');
+  });
+
   it('stops product repair for broad, cross-file CI timing telemetry', () => {
     const analysis = analyzeE2ETiming({
       suites: Array.from({ length: 5 }, (_, index) => ({
@@ -62,6 +66,26 @@ describe('repair harness E2E timing diagnostics', () => {
     });
 
     expect(classifyTimingRepairScope(analysis)).toContain('broad CI timing telemetry');
+  });
+
+  it('recognizes a clean single-worker replay as a Full Matrix concurrency repair', () => {
+    const broad = analyzeE2ETiming({
+      suites: Array.from({ length: 5 }, (_, index) => ({ file: `tests/e2e/slow-${index}.spec.ts`, specs: [{ title: `slow ${index}`, tests: [{ projectName: 'webkit', results: [{ duration: 10_001, status: 'passed' }] }] }] })),
+    });
+    const isolated = analyzeE2ETiming({ suites: [{ file: 'tests/e2e/slow-0.spec.ts', specs: [{ title: 'stable when isolated', tests: [{ projectName: 'webkit', results: [{ duration: 4_000, status: 'passed' }] }] }] }] });
+
+    expect(shouldRepairFullMatrixConcurrency(broad, isolated)).toBe(true);
+  });
+
+  it('adds a single-worker setting only to the Full Matrix workflow', () => {
+    const repo = mkdtempSync(path.join(os.tmpdir(), 'phaserforge-full-matrix-repair-'));
+    const workflow = path.join(repo, '.github', 'workflows', 'e2e-nightly-full-matrix.yml');
+    mkdirSync(path.dirname(workflow), { recursive: true });
+    writeFileSync(workflow, '      - name: E2E Tests\n        env:\n          PW_PROJECTS: firefox,webkit,msedge\n');
+
+    expect(applyFullMatrixSingleWorkerRepair(repo)).toBe(true);
+    expect(readFileSync(workflow, 'utf8')).toContain("PW_WORKERS: '1'");
+    expect(applyFullMatrixSingleWorkerRepair(repo)).toBe(false);
   });
 
   it('reads the controlled timing benchmark from downloaded artifacts', () => {
