@@ -84,10 +84,10 @@ export function downloadRunArtifacts(runId: string, destination: string, repo: s
   runGh(['run', 'download', runId, '--dir', destination], { cwd: repo });
 }
 
-export interface GithubWorkflowRun { databaseId?: number; id?: number; headSha?: string; status?: string; conclusion?: string | null; }
+export interface GithubWorkflowRun { databaseId?: number; headSha?: string; status?: string; conclusion?: string | null; }
 
 export function listGithubWorkflowRuns(repo: string, branch: string): GithubWorkflowRun[] {
-  const result = runGh(['run', 'list', '--branch', branch, '--limit', '30', '--json', 'databaseId,id,headSha,status,conclusion'], { cwd: repo });
+  const result = runGh(['run', 'list', '--branch', branch, '--limit', '30', '--json', 'databaseId,headSha,status,conclusion'], { cwd: repo });
   return JSON.parse(result.stdout) as GithubWorkflowRun[];
 }
 
@@ -101,7 +101,7 @@ export async function waitForCompletedGithubRun(options: {
   do {
     const run = listRuns().find((candidate) => candidate.headSha === options.headSha);
     if (run && run.status === 'completed') {
-      const runId = run.databaseId ?? run.id;
+      const runId = run.databaseId;
       if (!runId) throw new Error('Completed GitHub Actions run has no run id.');
       return { runId: String(runId), conclusion: run.conclusion ?? null };
     }
