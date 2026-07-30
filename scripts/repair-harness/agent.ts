@@ -6,7 +6,8 @@ import type { RepairDiagnosis } from './types';
 
 export type AgentCallKind = 'diagnosis' | 'implementation';
 
-export interface AgentOptions { kind: AgentCallKind; packet: string; cwd: string; timeoutMs?: number; command?: string; args?: string[]; }
+export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+export interface AgentOptions { kind: AgentCallKind; packet: string; cwd: string; timeoutMs?: number; command?: string; args?: string[]; model?: string; reasoningEffort?: ReasoningEffort; }
 export interface AgentResult { kind: AgentCallKind; stdout: string; stderr: string; exitCode: number | null; durationMs: number; packetBytes: number; tokenUsage?: { input?: number; output?: number; total?: number }; }
 
 /**
@@ -21,6 +22,10 @@ export function runAgent(options: AgentOptions): Promise<AgentResult> {
   if (options.args) configuredArgs = options.args;
   else if (process.env.PHASERFORGE_CODEX_ARGS) {
     try { configuredArgs = JSON.parse(process.env.PHASERFORGE_CODEX_ARGS) as string[]; } catch { return Promise.reject(new Error('PHASERFORGE_CODEX_ARGS must be a JSON string array.')); }
+  }
+  else {
+    if (options.model) configuredArgs.push('--model', options.model);
+    configuredArgs.push('--config', `model_reasoning_effort=${JSON.stringify(options.reasoningEffort ?? 'medium')}`);
   }
   const started = Date.now();
   const agentEnv = { ...process.env };

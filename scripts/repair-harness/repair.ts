@@ -13,7 +13,7 @@ import { verify, type VerificationResult } from './verify';
 import type { EvidenceEnvelope, RepairDiagnosis } from './types';
 import { appendRepairOutcome } from './metrics';
 
-export interface RepairOptions { repo: string; runDirectory: string; evidence: EvidenceEnvelope; targetedFiles?: string[]; diff?: string; allowTimingConfig?: boolean; callAgent?: (kind: 'diagnosis' | 'implementation', packet: string) => Promise<AgentResult>; verifyPatch?: () => Promise<VerificationResult>; }
+export interface RepairOptions { repo: string; runDirectory: string; evidence: EvidenceEnvelope; targetedFiles?: string[]; diff?: string; allowTimingConfig?: boolean; model?: string; reasoningEffort?: import('./agent').ReasoningEffort; callAgent?: (kind: 'diagnosis' | 'implementation', packet: string) => Promise<AgentResult>; verifyPatch?: () => Promise<VerificationResult>; }
 export interface RepairResult { status: 'verified' | 'stopped' | 'failed'; reason?: string; diagnosis?: RepairDiagnosis; verification?: VerificationResult; }
 
 function currentDiff(repo: string): string { try { return execFileSync('git', ['diff', '--no-ext-diff'], { cwd: repo, encoding: 'utf8' }); } catch { return ''; } }
@@ -46,7 +46,7 @@ export async function runBoundedRepair(options: RepairOptions): Promise<RepairRe
   if (isHostedCommand(options.evidence.reproduction.command)) { const reason = 'Hosted validation is outside the Codex repair path; no agent or remote mutation is permitted.'; outcome(options, 'stopped', 0, reason); return stop(options.runDirectory, state, reason); }
   if (options.evidence.failure.class === 'infrastructure') { const reason = 'Infrastructure failure; no model call permitted.'; outcome(options, 'stopped', 0, reason); return stop(options.runDirectory, state, reason); }
   const diff = options.diff ?? currentDiff(options.repo);
-  const call = options.callAgent ?? ((kind, packet) => runAgent({ kind, packet, cwd: options.repo, timeoutMs: Math.max(1, PHASE3_BUDGETS.wallTimeMs - (state.budgets.wallTimeMs ?? 0)) }));
+  const call = options.callAgent ?? ((kind, packet) => runAgent({ kind, packet, cwd: options.repo, model: options.model, reasoningEffort: options.reasoningEffort, timeoutMs: Math.max(1, PHASE3_BUDGETS.wallTimeMs - (state.budgets.wallTimeMs ?? 0)) }));
   const diagnosisPacket = createDiagnosisPacket({ repo: options.repo, evidence: options.evidence, diff, targetedFiles: options.targetedFiles });
   if (!budgetAllows(state, 'diagnosis', state.budgets.wallTimeMs ?? 0, Buffer.byteLength(diagnosisPacket))) { const reason = 'Diagnosis budget exhausted.'; outcome(options, 'stopped', 0, reason); return stop(options.runDirectory, state, reason); }
   const diagnosisResult = await call('diagnosis', diagnosisPacket);

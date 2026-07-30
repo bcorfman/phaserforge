@@ -2,11 +2,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { downloadRunArtifacts, resolveRun, resolveRunFromPr } from './github';
+import { downloadRunArtifacts, resolveRun, resolveRunFromPr, waitForCompletedGithubRun } from './github';
 import { runE2ETiming } from './e2eTimingRun';
 import { runBoundedRepair, type RepairResult } from './repair';
 import { appendEvent, writeState } from './state';
 import type { EvidenceEnvelope } from './types';
+import type { ReasoningEffort } from './agent';
 
 export interface AutomatedTimingOptions {
   repo: string;
@@ -14,6 +15,9 @@ export interface AutomatedTimingOptions {
   run?: string;
   agent: 'codex';
   publish: boolean;
+  maxIterations: number;
+  model?: string;
+  reasoningEffort: ReasoningEffort;
   allowTimingConfig: boolean;
 }
 
@@ -31,24 +35,65 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
   if (options.publish && execFileSync('git', ['status', '--porcelain'], { cwd: options.repo, encoding: 'utf8' }).trim()) {
     throw new Error('Refusing --publish with pre-existing working-tree changes; start from a clean checkout.');
   }
+  if (!Number.isInteger(options.maxIterations) || options.maxIterations < 1) throw new Error('--max-iterations must be a positive integer.');
   const source = options.run ? { runId: options.run } : resolveRunFromPr(options.pr!, options.repo, { allowPassingE2E: true });
-  const resolved = resolveRun(source.runId, options.repo);
   const runDirectory = path.resolve(options.repo, '.repair-harness', 'runs', `timing-repair-${source.runId}-${Date.now()}`);
   const artifactDirectory = path.join(runDirectory, 'github-artifacts');
   mkdirSync(runDirectory, { recursive: true });
   downloadRunArtifacts(source.runId, artifactDirectory, options.repo);
   const timing = runE2ETiming({ repo: options.repo, reportPath: artifactDirectory, runId: path.basename(runDirectory) });
-  const analysis = timing.analysis;
-  if (analysis.status === 'warning' || analysis.status === 'passed') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: analysis.status, analysis };
+  let currentRunId = source.runId;
+  let currentAnalysis = timing.analysis;
+  let branch: string | undefined;
+  let pullRequestUrl: string | undefined;
+  let lastRepair: RepairResult | undefined;
+  if (isTimingClean(currentAnalysis)) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: currentAnalysis.status, analysis: currentAnalysis };
 
+  for (let iteration = 1; iteration <= options.maxIterations; iteration += 1) {
+    const cycleDirectory = iteration === 1 ? timing.runDirectory : path.join(timing.runDirectory, `iteration-${iteration}`);
+    mkdirSync(cycleDirectory, { recursive: true });
+    const resolved = resolveRun(currentRunId, options.repo);
+    const evidence = createTimingEvidence(currentRunId, resolved, currentAnalysis);
+    writeFileSync(path.join(cycleDirectory, 'evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`);
+    writeState(cycleDirectory, { runId: path.basename(cycleDirectory), phase: 'timing', status: 'active', budgets: { diagnosisCalls: 0, implementationAttempts: 0 }, scope: 'e2e-timing-repair', updatedAt: new Date().toISOString() });
+    appendEvent(cycleDirectory, { event: 'github-matrix-downloaded', sourceRunId: currentRunId, slowTests: currentAnalysis.counts.slow, iteration });
+    const repair = await runBoundedRepair({ repo: options.repo, runDirectory: cycleDirectory, evidence, allowTimingConfig: options.allowTimingConfig, model: options.model, reasoningEffort: options.reasoningEffort });
+    lastRepair = repair;
+    if (repair.status !== 'verified') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: repair.status === 'stopped' ? 'stopped' : 'failed', analysis: currentAnalysis, repair, pullRequestUrl, reason: repair.reason };
+    if (!options.publish) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'repaired', analysis: currentAnalysis, repair };
+
+    const published = publishRepair(options.repo, source.runId, branch);
+    branch = published.branch;
+    pullRequestUrl ??= published.url;
+    const completed = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha });
+    const iterationDirectory = path.join(cycleDirectory, 'github');
+    const iterationArtifacts = path.join(iterationDirectory, 'artifacts');
+    mkdirSync(iterationDirectory, { recursive: true });
+    downloadRunArtifacts(completed.runId, iterationArtifacts, options.repo);
+    const refreshed = runE2ETiming({ repo: iterationDirectory, reportPath: iterationArtifacts, runId: 'timing' }).analysis;
+    appendEvent(cycleDirectory, { event: 'github-iteration-completed', runId: completed.runId, conclusion: completed.conclusion, slowTests: refreshed.counts.slow, iteration });
+    if (completed.conclusion !== 'success') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: refreshed, repair, pullRequestUrl, reason: `GitHub iteration ${completed.runId} concluded ${completed.conclusion ?? 'without a conclusion'}.` };
+    if (isTimingClean(refreshed)) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis: refreshed, repair, pullRequestUrl };
+    if (refreshed.counts.slow >= currentAnalysis.counts.slow) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: refreshed, repair, pullRequestUrl, reason: `GitHub iteration ${completed.runId} did not reduce the slow-test count.` };
+    currentRunId = completed.runId;
+    currentAnalysis = refreshed;
+  }
+  return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: currentAnalysis, repair: lastRepair, pullRequestUrl, reason: `Timing repair exhausted its ${options.maxIterations}-iteration budget.` };
+}
+
+function isTimingClean(analysis: ReturnType<typeof runE2ETiming>['analysis']): boolean {
+  return analysis.status === 'passed' || analysis.status === 'warning';
+}
+
+function createTimingEvidence(runId: string, resolved: ReturnType<typeof resolveRun>, analysis: ReturnType<typeof runE2ETiming>['analysis']): EvidenceEnvelope {
   const slow = analysis.entries.filter((entry) => entry.category === 'slow');
   const first = slow[0];
+  if (!first) throw new Error('Timing repair requires at least one slow test.');
   const job = String(resolved.job.name ?? resolved.metadata.workflowName ?? 'GitHub Actions E2E matrix');
-  const command = commandForJob(job);
-  const evidence: EvidenceEnvelope = {
+  return {
     workflow: String(resolved.metadata.workflowName ?? resolved.metadata.name ?? 'GitHub Actions'),
     job,
-    runId: source.runId,
+    runId,
     commit: String(resolved.metadata.headSha ?? ''),
     scope: 'e2e-timing-repair',
     reproduction: { command },
@@ -62,15 +107,6 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
     artifacts: { tracePaths: [], screenshotPaths: [] },
     redactionsApplied: ['GitHub artifact contents were reduced to timing fields'],
   };
-  writeFileSync(path.join(timing.runDirectory, 'evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-  writeState(timing.runDirectory, { runId: path.basename(timing.runDirectory), phase: 'timing', status: 'active', budgets: { diagnosisCalls: 0, implementationAttempts: 0 }, scope: 'e2e-timing-repair', updatedAt: new Date().toISOString() });
-  appendEvent(timing.runDirectory, { event: 'github-matrix-downloaded', sourceRunId: source.runId, slowTests: slow.length });
-  if (!options.agent) throw new Error('Automated timing repair requires --agent=codex.');
-  const repair = await runBoundedRepair({ repo: options.repo, runDirectory: timing.runDirectory, evidence, allowTimingConfig: options.allowTimingConfig });
-  if (repair.status !== 'verified') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: repair.status === 'stopped' ? 'stopped' : 'failed', analysis, repair, reason: repair.reason };
-  if (!options.publish) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'repaired', analysis, repair };
-  const pullRequestUrl = publishRepair(options.repo, source.runId);
-  return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis, repair, pullRequestUrl };
 }
 
 export function formatSlowTestEvidence(slow: Array<{ title: string; project: string; file: string; durationMs?: number }>): string {
@@ -97,13 +133,15 @@ export function commandForJob(job: string): string {
   return 'npm run test:e2e -- --project=chromium --grep "@smoke|@critical" --shard={shard}/{shards} --fail-on-flaky-tests'.replace('{shard}', shard?.[1] ?? '1').replace('{shards}', shard?.[2] ?? '1');
 }
 
-function publishRepair(repo: string, sourceRunId: string): string {
+function publishRepair(repo: string, sourceRunId: string, existingBranch?: string): { url: string; branch: string; headSha: string } {
   const status = execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' });
   if (!status.trim()) throw new Error('Verified timing repair produced no working-tree changes to publish.');
-  const branch = `agent/e2e-timing-${sourceRunId}`;
-  execFileSync('git', ['switch', '-c', branch], { cwd: repo, stdio: 'inherit' });
+  const branch = existingBranch ?? `agent/e2e-timing-${sourceRunId}`;
+  if (!existingBranch) execFileSync('git', ['switch', '-c', branch], { cwd: repo, stdio: 'inherit' });
   execFileSync('git', ['add', '-A'], { cwd: repo, stdio: 'inherit' });
   execFileSync('git', ['commit', '-m', 'Fix slow E2E test'], { cwd: repo, stdio: 'inherit' });
   execFileSync('git', ['push', '--set-upstream', 'origin', branch], { cwd: repo, stdio: 'inherit' });
-  return execFileSync('gh', ['pr', 'create', '--draft', '--title', 'Fix slow E2E test', '--body', `Automated repair from GitHub Actions run ${sourceRunId}.\n\nTiming evidence and independent verification are recorded in the repair run.`], { cwd: repo, encoding: 'utf8' }).trim();
+  const url = existingBranch ? '' : execFileSync('gh', ['pr', 'create', '--draft', '--title', 'Fix slow E2E test', '--body', `Automated repair from GitHub Actions run ${sourceRunId}.\n\nTiming evidence and independent verification are recorded in the repair run.`], { cwd: repo, encoding: 'utf8' }).trim();
+  const headSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
+  return { url, branch, headSha };
 }
