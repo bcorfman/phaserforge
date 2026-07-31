@@ -19,6 +19,7 @@ export interface AutomatedTimingOptions {
   model?: string;
   reasoningEffort: ReasoningEffort;
   allowTimingConfig: boolean;
+  onStatus?: (message: string) => void;
 }
 
 export interface AutomatedTimingResult {
@@ -83,8 +84,9 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
     const sourceSha = String(sourceResolved.metadata.headSha ?? '');
     if (!sourceBranch || !sourceSha) throw new Error(`GitHub run ${source.runId} has no branch/commit for WebKit isolation.`);
     const knownIsolationRunIds = new Set(listGithubWorkflowRuns(options.repo, sourceBranch, WEBKIT_ISOLATION_WORKFLOW).flatMap((run) => run.databaseId === undefined ? [] : [String(run.databaseId)]));
+    options.onStatus?.(`Starting WebKit isolation workflow on ${sourceBranch}.`);
     triggerGithubWorkflow(options.repo, WEBKIT_ISOLATION_WORKFLOW, sourceBranch);
-    const isolatedRun = await waitForCompletedGithubRun({ repo: options.repo, branch: sourceBranch, headSha: sourceSha, workflow: WEBKIT_ISOLATION_WORKFLOW, knownRunIds: knownIsolationRunIds });
+    const isolatedRun = await waitForCompletedGithubRun({ repo: options.repo, branch: sourceBranch, headSha: sourceSha, workflow: WEBKIT_ISOLATION_WORKFLOW, knownRunIds: knownIsolationRunIds, onStatus: options.onStatus });
     const isolationDirectory = path.join(timing.runDirectory, 'webkit-isolation');
     const isolationArtifacts = path.join(isolationDirectory, 'artifacts');
     mkdirSync(isolationDirectory, { recursive: true });
@@ -99,16 +101,20 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
       const published = publishRepair(options.repo, source.runId);
       branch = published.branch;
       pullRequestUrl = published.url;
+      options.onStatus?.(`Published pull request${published.url ? `: ${published.url}` : ''}; human review is required before it can proceed.`);
       const knownFullMatrixRunIds = new Set(listGithubWorkflowRuns(options.repo, branch, FULL_MATRIX_WORKFLOW).flatMap((run) => run.databaseId === undefined ? [] : [String(run.databaseId)]));
       triggerGithubWorkflow(options.repo, FULL_MATRIX_WORKFLOW, branch);
-      const candidateRun = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: FULL_MATRIX_WORKFLOW, knownRunIds: knownFullMatrixRunIds });
+      const candidateRun = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: FULL_MATRIX_WORKFLOW, knownRunIds: knownFullMatrixRunIds, onStatus: options.onStatus });
       const candidateDirectory = path.join(timing.runDirectory, 'full-matrix-single-worker');
       const candidateArtifacts = path.join(candidateDirectory, 'artifacts');
       mkdirSync(candidateDirectory, { recursive: true });
       downloadRunArtifacts(candidateRun.runId, candidateArtifacts, options.repo);
       const candidate = runE2ETiming({ repo: candidateDirectory, reportPath: candidateArtifacts, runId: 'timing' }).analysis;
       appendEvent(timing.runDirectory, { event: 'full-matrix-concurrency-repair-completed', runId: candidateRun.runId, conclusion: candidateRun.conclusion, slowTests: candidate.counts.slow });
-      if (candidateRun.conclusion === 'success' && isTimingClean(candidate)) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis: candidate, pullRequestUrl };
+      if (candidateRun.conclusion === 'success' && isTimingClean(candidate)) {
+        options.onStatus?.('Full Matrix verification passed; pull request requires human review before it can proceed.');
+        return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis: candidate, pullRequestUrl };
+      }
       currentRunId = candidateRun.runId;
       currentAnalysis = candidate;
     } else {
@@ -144,9 +150,10 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
     const published = publishRepair(options.repo, source.runId, branch);
     branch = published.branch;
     pullRequestUrl ??= published.url;
+    options.onStatus?.(`Published${published.url ? ` pull request: ${published.url}` : ' repair branch'}; human review is required before it can proceed.`);
     const knownControlledRunIds = new Set(listGithubWorkflowRuns(options.repo, branch, CONTROLLED_TIMING_WORKFLOW).flatMap((run) => run.databaseId === undefined ? [] : [String(run.databaseId)]));
     triggerGithubWorkflow(options.repo, CONTROLLED_TIMING_WORKFLOW, branch);
-    const completed = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: CONTROLLED_TIMING_WORKFLOW, knownRunIds: knownControlledRunIds });
+    const completed = await waitForCompletedGithubRun({ repo: options.repo, branch, headSha: published.headSha, workflow: CONTROLLED_TIMING_WORKFLOW, knownRunIds: knownControlledRunIds, onStatus: options.onStatus });
     const iterationDirectory = path.join(cycleDirectory, 'github');
     const iterationArtifacts = path.join(iterationDirectory, 'artifacts');
     mkdirSync(iterationDirectory, { recursive: true });
@@ -156,7 +163,10 @@ export async function runAutomatedTimingRepair(options: AutomatedTimingOptions):
     appendEvent(cycleDirectory, { event: 'github-iteration-completed', runId: completed.runId, conclusion: completed.conclusion, slowTests: refreshed.counts.slow, iteration });
     if (completed.conclusion !== 'success') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: refreshed, repair, pullRequestUrl, reason: `GitHub iteration ${completed.runId} concluded ${completed.conclusion ?? 'without a conclusion'}.` };
     if (!benchmark) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: refreshed, repair, pullRequestUrl, reason: `GitHub iteration ${completed.runId} did not upload its controlled timing benchmark.` };
-    if (benchmark.status === 'passed') return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis: refreshed, repair, pullRequestUrl };
+    if (benchmark.status === 'passed') {
+      options.onStatus?.('Controlled WebKit timing verification passed; pull request requires human review before it can proceed.');
+      return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'published', analysis: refreshed, repair, pullRequestUrl };
+    }
     if (refreshed.counts.slow >= currentAnalysis.counts.slow) return { sourceRunId: source.runId, runDirectory: timing.runDirectory, status: 'failed', analysis: refreshed, repair, pullRequestUrl, reason: `GitHub iteration ${completed.runId} did not reduce the slow-test count.` };
     currentRunId = completed.runId;
     currentAnalysis = refreshed;
@@ -246,7 +256,7 @@ function publishRepair(repo: string, sourceRunId: string, existingBranch?: strin
   execFileSync('git', ['add', '-A'], { cwd: repo, stdio: 'inherit' });
   execFileSync('git', ['commit', '-m', 'Fix slow E2E test'], { cwd: repo, stdio: 'inherit' });
   execFileSync('git', ['push', '--set-upstream', 'origin', branch], { cwd: repo, stdio: 'inherit' });
-  const url = existingBranch ? '' : execFileSync('gh', ['pr', 'create', '--draft', '--title', 'Fix slow E2E test', '--body', `Automated repair from GitHub Actions run ${sourceRunId}.\n\nTiming evidence and independent verification are recorded in the repair run.`], { cwd: repo, encoding: 'utf8' }).trim();
+  const url = existingBranch ? '' : execFileSync('gh', ['pr', 'create', '--title', 'Fix slow E2E test', '--body', `Automated repair from GitHub Actions run ${sourceRunId}.\n\nTiming evidence and independent verification are recorded in the repair run.`], { cwd: repo, encoding: 'utf8' }).trim();
   const headSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
   return { url, branch, headSha };
 }

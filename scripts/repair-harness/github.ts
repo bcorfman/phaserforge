@@ -99,6 +99,7 @@ export function listGithubWorkflowRuns(repo: string, branch: string, workflow?: 
 export async function waitForCompletedGithubRun(options: {
   repo: string; branch: string; headSha: string; workflow?: string; timeoutMs?: number; pollIntervalMs?: number;
   knownRunIds?: ReadonlySet<string>;
+  onStatus?: (message: string) => void;
   listRuns?: () => GithubWorkflowRun[]; sleep?: (ms: number) => Promise<void>;
 }): Promise<{ runId: string; conclusion: string | null }> {
   const deadline = Date.now() + (options.timeoutMs ?? 30 * 60 * 1000);
@@ -118,8 +119,12 @@ export async function waitForCompletedGithubRun(options: {
     if (run && run.status === 'completed') {
       const runId = run.databaseId;
       if (!runId) throw new Error('Completed GitHub Actions run has no run id.');
+      options.onStatus?.(`GitHub Actions run ${runId} completed with ${run.conclusion ?? 'no conclusion'}.`);
       return { runId: String(runId), conclusion: run.conclusion ?? null };
     }
+    options.onStatus?.(run?.databaseId
+      ? `Waiting for GitHub Actions run ${run.databaseId} (${run.status ?? 'pending'}).`
+      : `Waiting for GitHub Actions run for ${options.headSha}.`);
     if (Date.now() >= deadline) break;
     await sleep(options.pollIntervalMs ?? 15_000);
   } while (true);
