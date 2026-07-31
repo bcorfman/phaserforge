@@ -59,7 +59,7 @@ async function ensureDocsBuild(): Promise<void> {
   const donePath = pathMod.join(osMod.tmpdir(), `${runKey}.docs-build.done`);
   const staleMs = 60_000;
 
-  const hasBuiltDocs = () => fsMod.existsSync(donePath) && fsMod.existsSync(docsDistRoot);
+  const hasBuiltDocs = () => fsMod.existsSync(docsDistRoot) && (fsMod.existsSync(donePath) || process.env.PHASERFORGE_DOCS_PREBUILT === '1');
 
   if (hasBuiltDocs()) return;
 

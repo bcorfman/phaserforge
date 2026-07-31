@@ -54,7 +54,20 @@ describe('repair harness E2E timing diagnostics', () => {
   });
 
   it('runs the Full Matrix with one worker to prevent cross-browser WebKit contention', () => {
-    expect(readFileSync('.github/workflows/e2e-nightly-full-matrix.yml', 'utf8')).toContain("PW_WORKERS: '1'");
+    const workflow = readFileSync('.github/workflows/e2e-nightly-full-matrix.yml', 'utf8');
+    expect(workflow).toContain("PW_WORKERS: '1'");
+    expect(workflow).toContain('shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]');
+    expect(workflow).toContain('shards: [12]');
+  });
+
+  it('builds docs before the Full Matrix and marks them prebuilt for the docs E2E', () => {
+    const workflow = readFileSync('.github/workflows/e2e-nightly-full-matrix.yml', 'utf8');
+    const docsBuildIndex = workflow.indexOf('- name: Build docs for E2E');
+    const e2eIndex = workflow.indexOf('- name: E2E Tests');
+
+    expect(docsBuildIndex).toBeGreaterThan(-1);
+    expect(docsBuildIndex).toBeLessThan(e2eIndex);
+    expect(workflow).toContain('PHASERFORGE_DOCS_PREBUILT: \'1\'');
   });
 
   it('reproduces an isolated WebKit shard with one worker', () => {
