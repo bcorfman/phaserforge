@@ -78,9 +78,13 @@ if (args[0] === 'e2e-timing') {
       model: value('--model'),
       reasoningEffort: reasoning as import('./agent').ReasoningEffort,
       allowTimingConfig: has('--allow-timing-config'),
+      onStatus: (message) => console.log(`[repair] ${message}`),
     });
     console.log(`E2E timing repair ${result.status} in ${result.runDirectory}${result.reason ? `: ${result.reason}` : ''}`);
-    if (result.pullRequestUrl) console.log(`Pull request: ${result.pullRequestUrl}`);
+    if (result.pullRequestUrl) {
+      console.log(`Pull request: ${result.pullRequestUrl}`);
+      console.log('Human review is required before this pull request can proceed.');
+    }
     if (result.status === 'failed') process.exitCode = 1;
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));

@@ -10,6 +10,7 @@ describe('repair harness GitHub run polling', () => {
       [{ databaseId: 11, headSha: 'candidate', status: 'completed', conclusion: 'success' }],
     ];
     let index = 0;
+    const statuses: string[] = [];
     const result = await waitForCompletedGithubRun({
       repo: process.cwd(),
       branch: 'agent/timing',
@@ -18,10 +19,16 @@ describe('repair harness GitHub run polling', () => {
       pollIntervalMs: 0,
       listRuns: () => snapshots[index++] ?? [],
       sleep: async () => {},
+      onStatus: (message) => statuses.push(message),
     });
 
     expect(result).toMatchObject({ runId: '11', conclusion: 'success' });
     expect(index).toBe(3);
+    expect(statuses).toEqual([
+      'Waiting for GitHub Actions run for candidate.',
+      'Waiting for GitHub Actions run 11 (in_progress).',
+      'GitHub Actions run 11 completed with success.',
+    ]);
   });
 
   it('times out when GitHub never exposes a completed matching run', async () => {
