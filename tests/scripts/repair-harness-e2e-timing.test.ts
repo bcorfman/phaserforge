@@ -53,6 +53,10 @@ describe('repair harness E2E timing diagnostics', () => {
     expect(commandForJob('E2E Full Matrix (shard 4/8)')).toContain('PW_PROJECTS=firefox,webkit,msedge');
   });
 
+  it('runs the Full Matrix with one worker to prevent cross-browser WebKit contention', () => {
+    expect(readFileSync('.github/workflows/e2e-nightly-full-matrix.yml', 'utf8')).toContain("PW_WORKERS: '1'");
+  });
+
   it('reproduces an isolated WebKit shard with one worker', () => {
     expect(commandForJob('E2E WebKit Isolation (shard 4/8)')).toBe('PW_PROJECTS=webkit PW_WORKERS=1 npm run test:e2e -- --project=webkit --shard=4/8 --fail-on-flaky-tests');
   });
