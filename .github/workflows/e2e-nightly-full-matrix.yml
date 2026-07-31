@@ -25,8 +25,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
-        shards: [8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        shards: [12]
     steps:
       - name: Prepare writable home
         run: mkdir -p "$HOME"
@@ -42,11 +42,15 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Build docs for E2E
+        run: npm run docs:build
+
       - name: E2E Tests
         env:
           PW_PROJECTS: firefox,webkit,msedge
           # Keep browser processes isolated; concurrent workers cause broad WebKit timing inflation.
           PW_WORKERS: '1'
+          PHASERFORGE_DOCS_PREBUILT: '1'
         run: npm run test:e2e -- --project=firefox --project=webkit --project=msedge --shard=${{ matrix.shard }}/${{ matrix.shards }} --fail-on-flaky-tests
 
       - name: Record timing telemetry
