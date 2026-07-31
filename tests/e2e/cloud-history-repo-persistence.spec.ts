@@ -37,11 +37,16 @@ async function readStoredActiveProject(page: Parameters<typeof test>[0]['page'])
   });
 }
 
-async function gotoStudioWithoutDefaultApiStub(page: Parameters<typeof test>[0]['page']) {
+async function gotoStudioWithoutDefaultApiStub(
+  page: Parameters<typeof test>[0]['page'],
+  options: { waitForScene?: boolean } = {},
+) {
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 10000 });
   await page.waitForFunction(() => Boolean(window.__PHASER_FORGE_TEST__?.isEnabled), { timeout: 10000 });
   await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 10000 });
-  await waitForSceneReady(page);
+  if (options.waitForScene ?? true) {
+    await waitForSceneReady(page);
+  }
 }
 
 test('rename + publish repo + history + close/reopen persists latest head locally and to cloud @regression', async ({ page }) => {
@@ -218,7 +223,9 @@ test('rename + publish repo + history + close/reopen persists latest head locall
     await reopenedPage.addInitScript(() => {
       window.sessionStorage.setItem('phaserforge.testForceCloudEnabled.v1', '1');
     });
-    await gotoStudioWithoutDefaultApiStub(reopenedPage);
+    // Reopen assertions only exercise hydrated editor state and wait for each asserted UI surface;
+    // waiting for the independent Phaser canvas here adds WebKit latency without increasing coverage.
+    await gotoStudioWithoutDefaultApiStub(reopenedPage, { waitForScene: false });
     await dismissViewHint(reopenedPage);
 
     await expect(reopenedPage.getByTestId('project-tree-root-button')).toContainText('Pattern Demo');
