@@ -1,9 +1,14 @@
 # CI Repair Harness Quick Start
 
-The repair harness is a local, bounded workflow for investigating PhaserForge
-CI failures. It collects redacted evidence, reproduces the relevant command,
-and independently verifies a patch. It does not commit, push, merge, deploy,
-change GitHub secrets, or modify hosted databases.
+The repair harness is a local, bounded workflow for collecting PhaserForge CI
+evidence, reproducing failures, verifying changes, diagnosing E2E timing
+telemetry, and (only when explicitly requested) invoking Codex for a narrowly
+scoped repair.
+
+It can commit, push, and open a ready-for-review pull request when invoked with
+`--publish`. It never merges a pull request, deploys, changes GitHub secrets or
+configuration, or performs an unapproved hosted mutation. Published pull
+requests still require human review before they can proceed.
 
 ## Prerequisites
 
@@ -13,6 +18,42 @@ change GitHub secrets, or modify hosted databases.
 - Have the repository's required browsers installed for E2E reproduction.
 - For hosted validation, have Chromium installed and use only disposable,
   explicitly approved test accounts and records.
+
+The CLI is exposed through:
+
+```bash
+npm run repair:ci -- <command> [options]
+```
+
+The convenience scripts `repair:ci:collect` and `repair:ci:metrics` invoke the
+same CLI.
+
+## Safety and bounded behavior
+
+The harness separates evidence collection, reproduction, verification, agent
+repair, and hosted validation. A successful model response is never sufficient
+to call a repair verified: independent verification must pass.
+
+The local Codex repair path:
+
+- does not run for infrastructure failures;
+- rejects hosted reproduction commands and hosted scope;
+- requires an explicit `--agent=codex`;
+- makes separate diagnosis and implementation calls;
+- enforces wall-time, packet, implementation, and token budgets;
+- redacts secrets before persisting evidence, packets, events, and summaries;
+- rejects workflow changes, test removal/skips/`.only`, timeout or retry
+  inflation, worker-count changes, secret/config changes, and excessive file
+  scope by default;
+- requires the diagnosis reproduction command to match collected CI evidence;
+- records independent focused and required verification results.
+
+The `--allow-timing-config` option only allows the agent policy to consider
+`playwright.config.ts` for a timing repair. It does not permit workflow,
+timeout, retry, or worker-count edits by the agent. The automated E2E timing
+repair has a separate, explicit concurrency path that can apply
+`PW_WORKERS=1` to the Full Matrix workflow when isolated WebKit evidence
+demonstrates broad runner contention.
 
 ## Collect a failed PR job
 
@@ -106,8 +147,10 @@ allows at most the configured implementation attempts before independent
 verification. It denies workflow edits, test skips/removal, retry or timeout
 inflation, secret/config changes, and excessive file scope by default.
 
-Use `--dry-run` to prepare packets without invoking an agent. Use `--no-agent`
-or omit `--agent=codex` when you want to ensure no agent can run.
+Use `--dry-run` to prepare packets without invoking an agent. Do not use
+`--no-agent` with this command: the repair command intentionally fails unless
+`--agent=codex` is explicitly supplied. Hosted commands are the separate
+no-agent path.
 
 ## E2E timing diagnostics
 
@@ -154,12 +197,17 @@ also works when the E2E check passed, because timing failures are distinct from
 test assertion failures. The command stops after verification by default. Add
 `--publish` only when the
 verified change should be committed, pushed on an `agent/*` branch, and opened
-as a draft PR:
+as a ready-for-review PR:
 
 ```bash
 npm run repair:ci -- e2e-timing-repair \\
   --pr 123 --publish
 ```
+
+Publication stages all verified changes, commits them with the harness repair
+commit message, pushes `agent/e2e-timing-<source-run>`, and opens a non-draft
+PR. The CLI reports the PR URL and explicitly says that human review is
+required; it does not merge or approve the PR.
 
 For systemic timing findings where an approved runner/project configuration
 change is appropriate, explicitly enable elevated timing repair:
@@ -174,8 +222,16 @@ only approves review of `playwright.config.ts`; independent verification must
 pass before anything is published.
 
 The command does not repair warnings (7–10 seconds); only tests over the
-10-second hard ceiling are eligible for an agent repair. It never changes
-workflow files, test retries, workers, or timeouts.
+10-second hard ceiling are eligible for an agent repair. The automated broad
+timing path may update the Full Matrix workflow to `PW_WORKERS=1` after a clean
+single-worker WebKit isolation replay. Agent implementation policy still
+rejects arbitrary workflow, retry, worker, and timeout changes.
+
+Supported timing-repair options are `--pr <number>` or `--run <run-id>`,
+`--repo`, `--publish`, `--max-iterations`, `--model`, `--reasoning`,
+`--allow-timing-config`, `--clean`, and `--clean-all`. While waiting for a
+dispatched workflow, the harness prints the workflow run ID and current status
+instead of remaining silent.
 
 ## Measure completed runs
 
@@ -189,7 +245,8 @@ This reports failure classes, reproduction rate, focused and required
 verification durations, attempts, packet size, known token usage, human
 acceptance, and stop reasons. Token usage is shown as unavailable when the
 selected Codex interface does not return it. Add `--dry-run` to avoid writing
-the aggregate `metrics.json` file.
+the aggregate `metrics.json` file. Use `--repo <path>` and `--runs-root <path>`
+to select the source directory.
 
 ## Inspect the supported catalog
 
@@ -200,15 +257,19 @@ commands against the workflow files:
 npm run repair:ci
 ```
 
-The first supported E2E scope is PR Chromium. Unit Node, unit jsdom, Storybook,
-and build scopes are also cataloged. Hosted validation is a separate, explicit
-workflow described below; it is never added to the local Codex repair path.
+The supported generic repair scopes are PR Chromium, Node unit, jsdom unit,
+Storybook, and build. Main Chromium, Full Matrix, docs build, frontend deploy,
+and Railway deploy are cataloged but unsupported for generic local repair.
+Hosted validation is a separate, explicit workflow described below; it is never
+added to the local Codex repair path.
 
 ## Clean handoff
 
-Review `summary.md`, `evidence.json`, `events.jsonl`, and the verification
-result before accepting a patch. The harness never publishes changes; a human
-must review, commit, and push any repair separately.
+Review `summary.md`, `evidence.json`, `events.jsonl`, `state.json`, and the
+verification result before accepting a patch. If Codex was used, also review
+the diagnosis and implementation packets. With `--publish`, the harness
+commits, pushes, and opens a ready-for-review PR, but a human must still review
+and approve it before merge.
 
 ## Hosted deployment validation
 
@@ -242,7 +303,13 @@ URLs must be HTTPS and both API hosts must be listed in the allowlist:
 `HOSTED_ALLOW_MUTATIONS` defaults to false. Hosted limits are separate from
 local repair limits: `HOSTED_TIMEOUT_MS` defaults to 15 seconds,
 `HOSTED_MAX_BROWSERS` to 1, `HOSTED_MAX_MUTATIONS` to 2, and
-`HOSTED_MAX_CLEANUP_ATTEMPTS` to 2. Keep these bounds low and run-specific.
+`HOSTED_MAX_CLEANUP_ATTEMPTS` to 2. `HOSTED_ALLOW_OAUTH` defaults to false;
+the account provider must be `external`, `manual`, or `fixture`. Optional
+configuration includes expected dev/stable commits, custom CSRF/session cookie
+names, expected cookie SameSite mode (`lax`, `strict`, or `none`), and OAuth
+callback/redirect metadata. Numeric hosted bounds must be integers from 1 to
+10; the timeout must be between 100 and 120000 milliseconds. Keep these
+bounds low and run-specific.
 
 ### Read-only probes and browser smoke
 
@@ -255,7 +322,6 @@ npm run repair:ci -- hosted-probe \
 ```
 
 The real-origin browser smoke opens the configured Pages URL and verifies API
-routing, reachability, and unauthenticated state:
 
 ```bash
 npm run repair:ci -- hosted-browser \
@@ -263,7 +329,10 @@ npm run repair:ci -- hosted-browser \
 ```
 
 Use `--dry-run` with either command to validate configuration without making a
-network request or launching a browser.
+network request or launching a browser. `--repo`, `--run-id`, `--clean`, and
+`--clean-all` are also accepted. The smoke check also records
+unexpected API origins, failed requests, browser console errors, and projected
+API response metadata.
 
 ### Disposable lifecycle and isolation checks
 
@@ -277,6 +346,10 @@ npm run repair:ci -- hosted-mutate \
   --allow-hosted-mutations \
   --email disposable@example.test --password '<password>'
 ```
+
+Use `--signup` and optional `--invite-token` when the disposable account must
+be created. `--repo`, `--run-id`, `--clean`, and `--clean-all` are also
+accepted.
 
 The two-sided isolation check requires separate disposable accounts and
 creates one uniquely marked project in each environment:
@@ -296,6 +369,10 @@ confirms absence afterward. If deletion cannot be confirmed, the result is
 `cleanup-required`; do not start another mutation run until the remote record
 has been handled by the designated operator.
 
+The mutation path also verifies the updated project after reload and checks
+hosted security invariants: CSRF header use, exact CORS origin and credentials,
+and Secure/SameSite session and CSRF cookies.
+
 ### OAuth preflight
 
 OAuth preflight is opt-in and checks only configured callback/redirect metadata;
@@ -312,6 +389,21 @@ npm run repair:ci -- hosted-oauth-preflight \
 
 Any future live provider login requires a human-provided manual checkpoint;
 the harness must not automate provider authorization.
+
+## Run artifacts and handoff
+
+Local runs are stored under `.repair-harness/runs/<run-id>/`. Review
+`summary.md`, `evidence.json`, `events.jsonl`, `state.json`, and any
+`reproduce/` or `verification/` result. Codex runs also store redacted
+diagnosis and implementation packets. State phases include collection,
+reproduction, diagnosis, implementation, verification, and hosted validation;
+statuses include `active`, `verified`, `failed`, and `stopped` as applicable.
+
+Hosted runs additionally write `hosted-config.json`, `hosted-evidence.json`,
+`hosted-events.jsonl`, `hosted-metrics.json`, and `hosted-summary.md`.
+
+For a published timing repair, review the ready-for-review PR and the
+independent verification result before approving or merging it.
 
 ### Hosted run artifacts and failure handling
 
