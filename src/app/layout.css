@@ -648,6 +648,17 @@ html[data-theme='dark'] .phaser-frame {
     #0f1418;
 }
 
+.phaser-frame-play {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #000;
+}
+
+.phaser-frame-play::before {
+  display: none;
+}
+
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) .phaser-frame {
     background:

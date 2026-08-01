@@ -14,7 +14,12 @@ test('the offline Stars sample renders its members in Play Mode', async ({ page 
   }, { timeout: 15000 }).toBe(401);
   await waitForSceneReady(page);
 
-  await page.evaluate(() => window.__PHASER_FORGE_TEST__?.setMode?.('play'));
+  await page.getByTestId('toggle-mode-button').click();
+  await expect(page.getByTestId('phaser-frame')).toHaveClass(/phaser-frame-play/);
+  await expect.poll(async () => page.getByTestId('phaser-frame').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { border: style.borderWidth, radius: style.borderRadius };
+  })).toEqual({ border: '0px', radius: '0px' });
   await expect.poll(async () => {
     const snapshot = await page.evaluate(() => window.__PHASER_FORGE_TEST__?.getSceneSnapshot?.());
     return snapshot?.sceneKey;
