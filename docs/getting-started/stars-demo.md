@@ -14,6 +14,9 @@ It assumes you already completed [Cloud Account Setup](./cloud-account-setup) an
 - a repeating vertical velocity cycle matching `stars.py`
 - vertical wrapping with a new random X position for each wrapped star
 
+If you want to open the completed project directly, download [the offline Stars
+sample](../../samples/stars-demo.yaml) and import it with `Manage -> Import YAML`.
+
 ## Before You Start
 
 - Open PhaserForge and sign in if needed.

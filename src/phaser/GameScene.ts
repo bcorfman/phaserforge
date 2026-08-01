@@ -72,7 +72,6 @@ export class GameScene extends Phaser.Scene {
   private physicsVelocityCache = new Map<string, { vx: number; vy: number }>();
   private basePhysicsSizeCache = new Map<string, { w: number; h: number }>();
   private physicsSizeCache = new Map<string, { w: number; h: number }>();
-  private worldFrameGraphics?: Phaser.GameObjects.Graphics;
   private loadVersion = 0;
   private spawnCounter = 0;
   private lastSpawnedEntityId?: string;
@@ -420,7 +419,6 @@ export class GameScene extends Phaser.Scene {
       });
       this.buildFormationPhysicsGroupsForLayer(this.compiled, sceneSpec, this.physicsObjects, this.formationPhysicsGroups);
       this.applyPendingViewState(sceneSpec);
-      this.drawWorldFrame(sceneSpec);
     });
   }
 
@@ -1083,8 +1081,6 @@ export class GameScene extends Phaser.Scene {
     this.physicsSizeCache.clear();
     this.sprites.forEach(sprite => sprite.destroy());
     this.sprites.clear();
-    this.worldFrameGraphics?.destroy();
-    this.worldFrameGraphics = undefined;
     this.lastEntityPointerDown = undefined;
   }
 
@@ -1115,17 +1111,6 @@ export class GameScene extends Phaser.Scene {
     this.lastProcessedTriggerEventCount = 0;
     this.baseLastProcessedCollisionEventCount = 0;
     this.lastProcessedCollisionEventCount = 0;
-  }
-
-  private drawWorldFrame(scene: SceneSpec): void {
-    const world = getSceneWorld(scene);
-    const graphics = this.add.graphics();
-    graphics.lineStyle(2, 0x445d8f, 0.95);
-    graphics.strokeRect(0, 0, world.width, world.height);
-    graphics.lineStyle(1, 0x27324d, 0.85);
-    graphics.strokeRect(-1, -1, world.width + 2, world.height + 2);
-    graphics.setDepth(10);
-    this.worldFrameGraphics = graphics;
   }
 
   private syncPhysicsState(
