@@ -1031,7 +1031,7 @@ function AppShell() {
 		              </div>
 		            </div>
 		          </section>
-		          <div className="phaser-frame" data-testid="phaser-frame">
+		          <div className={`phaser-frame ${state.mode === 'play' ? 'phaser-frame-play' : ''}`} data-testid="phaser-frame">
 		            <CanvasOverlay gridSnapEnabled={gridSnapEnabled} onToggleMode={toggleMode} />
 		            {!state.hasSeenViewHint && (
 	              <div className="view-hint" data-testid="view-hint">
