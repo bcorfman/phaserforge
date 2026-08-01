@@ -96,9 +96,9 @@ function addVelocityRecipe(state: any, groupId: string, index: number) {
     children.push(created.attachmentId);
   };
   child('Wait', 0, { durationMs: 1000 });
-  child('TweenUntil', 1, { property: 'vy', from: 'current', endValue: -240, durationMs: 2000, easing: 'easeIn' });
+  child('TweenUntil', 1, { property: 'vy', from: 'current', endValue: 240, durationMs: 2000, easing: 'easeIn' });
   child('Wait', 2, { durationMs: 5000 });
-  child('TweenUntil', 3, { property: 'vy', from: 'current', endValue: 840, durationMs: 500, easing: 'easeOut' });
+  child('TweenUntil', 3, { property: 'vy', from: 'current', endValue: -840, durationMs: 500, easing: 'easeOut' });
   child('Wait', 4, { durationMs: 1500 });
   child('TweenUntil', 5, { property: 'vy', from: 'current', endValue: 0, durationMs: 2000, easing: 'easeOut' });
   state = reducer(state, {
@@ -152,7 +152,7 @@ describe('stars demo command integration', () => {
     expect(attachmentList.filter((a) => a.presetId === 'SetProperty').every((a) => a.targetMode === 'event-source')).toBe(true);
     expect(attachmentList.filter((a) => a.presetId === 'Repeat')).toHaveLength(5);
     expect(attachmentList.filter((a) => a.presetId === 'TweenUntil').map((a) => [a.params.endValue, a.params.durationMs])).toEqual([
-      [-240, 2000], [840, 500], [0, 2000], [-240, 2000], [840, 500], [0, 2000], [-240, 2000], [840, 500], [0, 2000], [-240, 2000], [840, 500], [0, 2000], [-240, 2000], [840, 500], [0, 2000],
+      [240, 2000], [-840, 500], [0, 2000], [240, 2000], [-840, 500], [0, 2000], [240, 2000], [-840, 500], [0, 2000], [240, 2000], [-840, 500], [0, 2000], [240, 2000], [-840, 500], [0, 2000],
     ]);
 
     const yaml = serializeProjectToYaml(JSON.parse(JSON.stringify(fixture.state.project)));

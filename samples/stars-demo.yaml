@@ -10554,8 +10554,8 @@ scenes:
             tintMinB: 20
             tintMaxB: 255
     attachments:
-      att-1785551593524:
-        id: att-1785551593524
+      att-1785623102561:
+        id: att-1785623102561
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10566,8 +10566,8 @@ scenes:
         tag: pargrp:stars-velocity-1:blink
         params:
           secondsUntilChange: 0.2
-      att-1785551593524-2:
-        id: att-1785551593524-2
+      att-1785623102562:
+        id: att-1785623102562
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10589,8 +10589,8 @@ scenes:
           scope: member-any
           behavior: wrap
         tag: pargrp:stars-velocity-1:move
-      att-1785551593524-3:
-        id: att-1785551593524-3
+      att-1785623102562-2:
+        id: att-1785623102562-2
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10601,14 +10601,14 @@ scenes:
         params: {}
         tag: pargrp:stars-velocity-1:sequence
         children:
-          - att-1785551593525
-          - att-1785551593525-2
-          - att-1785551593525-3
-          - att-1785551593525-4
-          - att-1785551593525-5
-          - att-1785551593525-6
-      att-1785551593525:
-        id: att-1785551593525
+          - att-1785623102562-3
+          - att-1785623102562-4
+          - att-1785623102562-5
+          - att-1785623102562-6
+          - att-1785623102563
+          - att-1785623102563-2
+      att-1785623102562-3:
+        id: att-1785623102562-3
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10618,9 +10618,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1000
-        parentAttachmentId: att-1785551593524-3
-      att-1785551593525-2:
-        id: att-1785551593525-2
+        parentAttachmentId: att-1785623102562-2
+      att-1785623102562-4:
+        id: att-1785623102562-4
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10631,12 +10631,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: -240
+          endValue: 240
           durationMs: 2000
           easing: easeIn
-        parentAttachmentId: att-1785551593524-3
-      att-1785551593525-3:
-        id: att-1785551593525-3
+        parentAttachmentId: att-1785623102562-2
+      att-1785623102562-5:
+        id: att-1785623102562-5
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10646,9 +10646,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 5000
-        parentAttachmentId: att-1785551593524-3
-      att-1785551593525-4:
-        id: att-1785551593525-4
+        parentAttachmentId: att-1785623102562-2
+      att-1785623102562-6:
+        id: att-1785623102562-6
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10659,12 +10659,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: 840
+          endValue: -840
           durationMs: 500
           easing: easeOut
-        parentAttachmentId: att-1785551593524-3
-      att-1785551593525-5:
-        id: att-1785551593525-5
+        parentAttachmentId: att-1785623102562-2
+      att-1785623102563:
+        id: att-1785623102563
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10674,9 +10674,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1500
-        parentAttachmentId: att-1785551593524-3
-      att-1785551593525-6:
-        id: att-1785551593525-6
+        parentAttachmentId: att-1785623102562-2
+      att-1785623102563-2:
+        id: att-1785623102563-2
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10690,9 +10690,9 @@ scenes:
           endValue: 0
           durationMs: 2000
           easing: easeOut
-        parentAttachmentId: att-1785551593524-3
-      att-1785551593526:
-        id: att-1785551593526
+        parentAttachmentId: att-1785623102562-2
+      att-1785623102563-3:
+        id: att-1785623102563-3
         target:
           type: group
           groupId: g-stars-blink-1
@@ -10700,7 +10700,7 @@ scenes:
         enabled: true
         order: 0
         applyTo: group
-        eventId: ev-1785551593525
+        eventId: ev-1785623102563
         targetMode: event-source
         params:
           property: x
@@ -10709,8 +10709,8 @@ scenes:
             min: 0
             max: 720
             seed: wrap-1
-      att-1785551593527:
-        id: att-1785551593527
+      att-1785623102564:
+        id: att-1785623102564
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10721,8 +10721,8 @@ scenes:
         tag: pargrp:stars-velocity-2:blink
         params:
           secondsUntilChange: 0.25
-      att-1785551593527-2:
-        id: att-1785551593527-2
+      att-1785623102564-2:
+        id: att-1785623102564-2
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10744,8 +10744,8 @@ scenes:
           scope: member-any
           behavior: wrap
         tag: pargrp:stars-velocity-2:move
-      att-1785551593527-3:
-        id: att-1785551593527-3
+      att-1785623102564-3:
+        id: att-1785623102564-3
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10756,14 +10756,14 @@ scenes:
         params: {}
         tag: pargrp:stars-velocity-2:sequence
         children:
-          - att-1785551593527-4
-          - att-1785551593527-5
-          - att-1785551593527-6
-          - att-1785551593527-7
-          - att-1785551593527-8
-          - att-1785551593527-9
-      att-1785551593527-4:
-        id: att-1785551593527-4
+          - att-1785623102564-4
+          - att-1785623102564-5
+          - att-1785623102564-6
+          - att-1785623102564-7
+          - att-1785623102565
+          - att-1785623102565-2
+      att-1785623102564-4:
+        id: att-1785623102564-4
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10773,9 +10773,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1000
-        parentAttachmentId: att-1785551593527-3
-      att-1785551593527-5:
-        id: att-1785551593527-5
+        parentAttachmentId: att-1785623102564-3
+      att-1785623102564-5:
+        id: att-1785623102564-5
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10786,12 +10786,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: -240
+          endValue: 240
           durationMs: 2000
           easing: easeIn
-        parentAttachmentId: att-1785551593527-3
-      att-1785551593527-6:
-        id: att-1785551593527-6
+        parentAttachmentId: att-1785623102564-3
+      att-1785623102564-6:
+        id: att-1785623102564-6
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10801,9 +10801,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 5000
-        parentAttachmentId: att-1785551593527-3
-      att-1785551593527-7:
-        id: att-1785551593527-7
+        parentAttachmentId: att-1785623102564-3
+      att-1785623102564-7:
+        id: att-1785623102564-7
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10814,12 +10814,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: 840
+          endValue: -840
           durationMs: 500
           easing: easeOut
-        parentAttachmentId: att-1785551593527-3
-      att-1785551593527-8:
-        id: att-1785551593527-8
+        parentAttachmentId: att-1785623102564-3
+      att-1785623102565:
+        id: att-1785623102565
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10829,9 +10829,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1500
-        parentAttachmentId: att-1785551593527-3
-      att-1785551593527-9:
-        id: att-1785551593527-9
+        parentAttachmentId: att-1785623102564-3
+      att-1785623102565-2:
+        id: att-1785623102565-2
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10845,9 +10845,9 @@ scenes:
           endValue: 0
           durationMs: 2000
           easing: easeOut
-        parentAttachmentId: att-1785551593527-3
-      att-1785551593527-10:
-        id: att-1785551593527-10
+        parentAttachmentId: att-1785623102564-3
+      att-1785623102565-3:
+        id: att-1785623102565-3
         target:
           type: group
           groupId: g-stars-blink-2
@@ -10855,7 +10855,7 @@ scenes:
         enabled: true
         order: 0
         applyTo: group
-        eventId: ev-1785551593527
+        eventId: ev-1785623102565
         targetMode: event-source
         params:
           property: x
@@ -10864,8 +10864,8 @@ scenes:
             min: 0
             max: 720
             seed: wrap-2
-      att-1785551593528:
-        id: att-1785551593528
+      att-1785623102567:
+        id: att-1785623102567
         target:
           type: group
           groupId: g-stars-blink-3
@@ -10876,8 +10876,8 @@ scenes:
         tag: pargrp:stars-velocity-3:blink
         params:
           secondsUntilChange: 0.3
-      att-1785551593528-2:
-        id: att-1785551593528-2
+      att-1785623102567-2:
+        id: att-1785623102567-2
         target:
           type: group
           groupId: g-stars-blink-3
@@ -10899,8 +10899,8 @@ scenes:
           scope: member-any
           behavior: wrap
         tag: pargrp:stars-velocity-3:move
-      att-1785551593528-3:
-        id: att-1785551593528-3
+      att-1785623102567-3:
+        id: att-1785623102567-3
         target:
           type: group
           groupId: g-stars-blink-3
@@ -10911,14 +10911,14 @@ scenes:
         params: {}
         tag: pargrp:stars-velocity-3:sequence
         children:
-          - att-1785551593529
-          - att-1785551593529-2
-          - att-1785551593529-3
-          - att-1785551593529-4
-          - att-1785551593529-5
-          - att-1785551593529-6
-      att-1785551593529:
-        id: att-1785551593529
+          - att-1785623102567-4
+          - att-1785623102567-5
+          - att-1785623102567-6
+          - att-1785623102567-7
+          - att-1785623102567-8
+          - att-1785623102567-9
+      att-1785623102567-4:
+        id: att-1785623102567-4
         target:
           type: group
           groupId: g-stars-blink-3
@@ -10928,9 +10928,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1000
-        parentAttachmentId: att-1785551593528-3
-      att-1785551593529-2:
-        id: att-1785551593529-2
+        parentAttachmentId: att-1785623102567-3
+      att-1785623102567-5:
+        id: att-1785623102567-5
         target:
           type: group
           groupId: g-stars-blink-3
@@ -10941,12 +10941,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: -240
+          endValue: 240
           durationMs: 2000
           easing: easeIn
-        parentAttachmentId: att-1785551593528-3
-      att-1785551593529-3:
-        id: att-1785551593529-3
+        parentAttachmentId: att-1785623102567-3
+      att-1785623102567-6:
+        id: att-1785623102567-6
         target:
           type: group
           groupId: g-stars-blink-3
@@ -10956,9 +10956,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 5000
-        parentAttachmentId: att-1785551593528-3
-      att-1785551593529-4:
-        id: att-1785551593529-4
+        parentAttachmentId: att-1785623102567-3
+      att-1785623102567-7:
+        id: att-1785623102567-7
         target:
           type: group
           groupId: g-stars-blink-3
@@ -10969,12 +10969,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: 840
+          endValue: -840
           durationMs: 500
           easing: easeOut
-        parentAttachmentId: att-1785551593528-3
-      att-1785551593529-5:
-        id: att-1785551593529-5
+        parentAttachmentId: att-1785623102567-3
+      att-1785623102567-8:
+        id: att-1785623102567-8
         target:
           type: group
           groupId: g-stars-blink-3
@@ -10984,9 +10984,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1500
-        parentAttachmentId: att-1785551593528-3
-      att-1785551593529-6:
-        id: att-1785551593529-6
+        parentAttachmentId: att-1785623102567-3
+      att-1785623102567-9:
+        id: att-1785623102567-9
         target:
           type: group
           groupId: g-stars-blink-3
@@ -11000,9 +11000,9 @@ scenes:
           endValue: 0
           durationMs: 2000
           easing: easeOut
-        parentAttachmentId: att-1785551593528-3
-      att-1785551593529-7:
-        id: att-1785551593529-7
+        parentAttachmentId: att-1785623102567-3
+      att-1785623102568:
+        id: att-1785623102568
         target:
           type: group
           groupId: g-stars-blink-3
@@ -11010,7 +11010,7 @@ scenes:
         enabled: true
         order: 0
         applyTo: group
-        eventId: ev-1785551593529
+        eventId: ev-1785623102568
         targetMode: event-source
         params:
           property: x
@@ -11019,8 +11019,8 @@ scenes:
             min: 0
             max: 720
             seed: wrap-3
-      att-1785551593531:
-        id: att-1785551593531
+      att-1785623102569:
+        id: att-1785623102569
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11031,8 +11031,8 @@ scenes:
         tag: pargrp:stars-velocity-4:blink
         params:
           secondsUntilChange: 0.35
-      att-1785551593531-2:
-        id: att-1785551593531-2
+      att-1785623102569-2:
+        id: att-1785623102569-2
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11054,8 +11054,8 @@ scenes:
           scope: member-any
           behavior: wrap
         tag: pargrp:stars-velocity-4:move
-      att-1785551593532:
-        id: att-1785551593532
+      att-1785623102569-3:
+        id: att-1785623102569-3
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11066,14 +11066,14 @@ scenes:
         params: {}
         tag: pargrp:stars-velocity-4:sequence
         children:
-          - att-1785551593532-2
-          - att-1785551593532-3
-          - att-1785551593532-4
-          - att-1785551593532-5
-          - att-1785551593532-6
-          - att-1785551593532-7
-      att-1785551593532-2:
-        id: att-1785551593532-2
+          - att-1785623102569-4
+          - att-1785623102569-5
+          - att-1785623102569-6
+          - att-1785623102569-7
+          - att-1785623102569-8
+          - att-1785623102569-9
+      att-1785623102569-4:
+        id: att-1785623102569-4
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11083,9 +11083,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1000
-        parentAttachmentId: att-1785551593532
-      att-1785551593532-3:
-        id: att-1785551593532-3
+        parentAttachmentId: att-1785623102569-3
+      att-1785623102569-5:
+        id: att-1785623102569-5
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11096,12 +11096,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: -240
+          endValue: 240
           durationMs: 2000
           easing: easeIn
-        parentAttachmentId: att-1785551593532
-      att-1785551593532-4:
-        id: att-1785551593532-4
+        parentAttachmentId: att-1785623102569-3
+      att-1785623102569-6:
+        id: att-1785623102569-6
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11111,9 +11111,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 5000
-        parentAttachmentId: att-1785551593532
-      att-1785551593532-5:
-        id: att-1785551593532-5
+        parentAttachmentId: att-1785623102569-3
+      att-1785623102569-7:
+        id: att-1785623102569-7
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11124,12 +11124,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: 840
+          endValue: -840
           durationMs: 500
           easing: easeOut
-        parentAttachmentId: att-1785551593532
-      att-1785551593532-6:
-        id: att-1785551593532-6
+        parentAttachmentId: att-1785623102569-3
+      att-1785623102569-8:
+        id: att-1785623102569-8
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11139,9 +11139,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1500
-        parentAttachmentId: att-1785551593532
-      att-1785551593532-7:
-        id: att-1785551593532-7
+        parentAttachmentId: att-1785623102569-3
+      att-1785623102569-9:
+        id: att-1785623102569-9
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11155,9 +11155,9 @@ scenes:
           endValue: 0
           durationMs: 2000
           easing: easeOut
-        parentAttachmentId: att-1785551593532
-      att-1785551593532-8:
-        id: att-1785551593532-8
+        parentAttachmentId: att-1785623102569-3
+      att-1785623102569-10:
+        id: att-1785623102569-10
         target:
           type: group
           groupId: g-stars-blink-4
@@ -11165,7 +11165,7 @@ scenes:
         enabled: true
         order: 0
         applyTo: group
-        eventId: ev-1785551593532
+        eventId: ev-1785623102569
         targetMode: event-source
         params:
           property: x
@@ -11174,8 +11174,8 @@ scenes:
             min: 0
             max: 720
             seed: wrap-4
-      att-1785551593533:
-        id: att-1785551593533
+      att-1785623102570:
+        id: att-1785623102570
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11186,8 +11186,8 @@ scenes:
         tag: pargrp:stars-velocity-5:blink
         params:
           secondsUntilChange: 0.4
-      att-1785551593533-2:
-        id: att-1785551593533-2
+      att-1785623102571:
+        id: att-1785623102571
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11209,8 +11209,8 @@ scenes:
           scope: member-any
           behavior: wrap
         tag: pargrp:stars-velocity-5:move
-      att-1785551593533-3:
-        id: att-1785551593533-3
+      att-1785623102571-2:
+        id: att-1785623102571-2
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11221,14 +11221,14 @@ scenes:
         params: {}
         tag: pargrp:stars-velocity-5:sequence
         children:
-          - att-1785551593534
-          - att-1785551593534-2
-          - att-1785551593534-3
-          - att-1785551593534-4
-          - att-1785551593534-5
-          - att-1785551593534-6
-      att-1785551593534:
-        id: att-1785551593534
+          - att-1785623102571-3
+          - att-1785623102571-4
+          - att-1785623102571-5
+          - att-1785623102571-6
+          - att-1785623102571-7
+          - att-1785623102571-8
+      att-1785623102571-3:
+        id: att-1785623102571-3
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11238,9 +11238,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1000
-        parentAttachmentId: att-1785551593533-3
-      att-1785551593534-2:
-        id: att-1785551593534-2
+        parentAttachmentId: att-1785623102571-2
+      att-1785623102571-4:
+        id: att-1785623102571-4
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11251,12 +11251,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: -240
+          endValue: 240
           durationMs: 2000
           easing: easeIn
-        parentAttachmentId: att-1785551593533-3
-      att-1785551593534-3:
-        id: att-1785551593534-3
+        parentAttachmentId: att-1785623102571-2
+      att-1785623102571-5:
+        id: att-1785623102571-5
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11266,9 +11266,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 5000
-        parentAttachmentId: att-1785551593533-3
-      att-1785551593534-4:
-        id: att-1785551593534-4
+        parentAttachmentId: att-1785623102571-2
+      att-1785623102571-6:
+        id: att-1785623102571-6
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11279,12 +11279,12 @@ scenes:
         params:
           property: vy
           from: current
-          endValue: 840
+          endValue: -840
           durationMs: 500
           easing: easeOut
-        parentAttachmentId: att-1785551593533-3
-      att-1785551593534-5:
-        id: att-1785551593534-5
+        parentAttachmentId: att-1785623102571-2
+      att-1785623102571-7:
+        id: att-1785623102571-7
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11294,9 +11294,9 @@ scenes:
         applyTo: members
         params:
           durationMs: 1500
-        parentAttachmentId: att-1785551593533-3
-      att-1785551593534-6:
-        id: att-1785551593534-6
+        parentAttachmentId: att-1785623102571-2
+      att-1785623102571-8:
+        id: att-1785623102571-8
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11310,9 +11310,9 @@ scenes:
           endValue: 0
           durationMs: 2000
           easing: easeOut
-        parentAttachmentId: att-1785551593533-3
-      att-1785551593534-7:
-        id: att-1785551593534-7
+        parentAttachmentId: att-1785623102571-2
+      att-1785623102571-9:
+        id: att-1785623102571-9
         target:
           type: group
           groupId: g-stars-blink-5
@@ -11320,7 +11320,7 @@ scenes:
         enabled: true
         order: 0
         applyTo: group
-        eventId: ev-1785551593534
+        eventId: ev-1785623102571
         targetMode: event-source
         params:
           property: x
@@ -11330,8 +11330,8 @@ scenes:
             max: 720
             seed: wrap-5
     eventBlocks:
-      ev-1785551593525:
-        id: ev-1785551593525
+      ev-1785623102563:
+        id: ev-1785623102563
         name: When Stars Wrap
         target:
           type: group
@@ -11341,8 +11341,8 @@ scenes:
           boundsEvent: wrapped
           axis: y
           side: any
-      ev-1785551593527:
-        id: ev-1785551593527
+      ev-1785623102565:
+        id: ev-1785623102565
         name: When Stars Wrap
         target:
           type: group
@@ -11352,8 +11352,8 @@ scenes:
           boundsEvent: wrapped
           axis: y
           side: any
-      ev-1785551593529:
-        id: ev-1785551593529
+      ev-1785623102568:
+        id: ev-1785623102568
         name: When Stars Wrap
         target:
           type: group
@@ -11363,8 +11363,8 @@ scenes:
           boundsEvent: wrapped
           axis: y
           side: any
-      ev-1785551593532:
-        id: ev-1785551593532
+      ev-1785623102569:
+        id: ev-1785623102569
         name: When Stars Wrap
         target:
           type: group
@@ -11374,8 +11374,8 @@ scenes:
           boundsEvent: wrapped
           axis: y
           side: any
-      ev-1785551593534:
-        id: ev-1785551593534
+      ev-1785623102571:
+        id: ev-1785623102571
         name: When Stars Wrap
         target:
           type: group
