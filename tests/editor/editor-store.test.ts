@@ -961,6 +961,15 @@ describe('EditorStore reducer', () => {
 
   it('ungroups a formation without deleting its member sprites, and can regroup back to the same formation', () => {
     const state = { ...seededState(), selection: { kind: 'group' as const, id: 'g-enemies' } };
+    const scene = sceneOf(state);
+    scene.eventBlocks = {
+      'ev-enemies': {
+        id: 'ev-enemies',
+        name: 'When enemies wrap',
+        target: { type: 'group', groupId: 'g-enemies' },
+        trigger: { type: 'start' },
+      },
+    } as any;
     const members = sceneOf(state).groups['g-enemies'].members;
     const attachmentIds = Object.keys(sceneOf(state).attachments);
 
@@ -969,13 +978,16 @@ describe('EditorStore reducer', () => {
     expect(ungrouped.selection).toEqual({ kind: 'entities', ids: members });
     expect(Object.keys(sceneOf(ungrouped).entities)).toEqual(Object.keys(sceneOf(state).entities));
     expect(Object.keys(sceneOf(ungrouped).attachments)).toHaveLength(0);
+    expect(sceneOf(ungrouped).eventBlocks).toEqual({});
     expect(Object.keys(ungrouped.pendingGroupRestore?.attachments ?? {})).toEqual(attachmentIds);
+    expect(Object.keys(ungrouped.pendingGroupRestore?.eventBlocks ?? {})).toEqual(['ev-enemies']);
     expect(ungrouped.pendingGroupRestore?.group.id).toBe('g-enemies');
 
     const regrouped = reducer(ungrouped, { type: 'group-selection', name: 'ignored' } as any);
     expect(sceneOf(regrouped).groups['g-enemies']).toBeDefined();
     expect(regrouped.selection).toEqual({ kind: 'group', id: 'g-enemies' });
     expect(Object.keys(sceneOf(regrouped).attachments)).toEqual(attachmentIds);
+    expect(sceneOf(regrouped).eventBlocks?.['ev-enemies']).toBeDefined();
     expect(regrouped.pendingGroupRestore).toBeUndefined();
   });
 

@@ -207,7 +207,7 @@ export interface EditorState {
   initialized: boolean;
   lastProjectChangeSummary?: string;
   lastProjectHistoryEventDrafts?: ProjectHistoryEventDraft[];
-  pendingGroupRestore?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec> };
+  pendingGroupRestore?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec>; eventBlocks: Record<Id, EventBlockSpec> };
   formationDraft?: FormationDraftSpec;
 }
 
@@ -579,7 +579,7 @@ function importDemoPackAssets(state: EditorState, entries: DemoPackAssetManifest
 function removeGroupKeepMembers(
   scene: SceneSpec,
   groupId: Id
-): { scene: SceneSpec; removed?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec> } } {
+): { scene: SceneSpec; removed?: { group: GroupSpec; attachments: Record<Id, AttachmentSpec>; eventBlocks: Record<Id, EventBlockSpec> } } {
   const group = scene.groups[groupId];
   if (!group) return { scene };
 
@@ -593,12 +593,22 @@ function removeGroupKeepMembers(
     }
   }
 
+  const removedEventBlocks: Record<Id, EventBlockSpec> = {};
+  const remainingEventBlocks: Record<Id, EventBlockSpec> = {};
+  for (const [id, eventBlock] of Object.entries(scene.eventBlocks ?? {})) {
+    if (eventBlock.target.type === 'group' && eventBlock.target.groupId === groupId) {
+      removedEventBlocks[id] = eventBlock;
+    } else {
+      remainingEventBlocks[id] = eventBlock;
+    }
+  }
+
   const { [groupId]: _removedGroup, ...remainingGroups } = scene.groups;
   void _removedGroup;
 
   return {
-    scene: { ...scene, groups: remainingGroups, attachments: remainingAttachments },
-    removed: { group, attachments: removedAttachments },
+    scene: { ...scene, groups: remainingGroups, attachments: remainingAttachments, eventBlocks: remainingEventBlocks },
+    removed: { group, attachments: removedAttachments, eventBlocks: removedEventBlocks },
   };
 }
 
@@ -4395,7 +4405,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
       const removed = removeGroupKeepMembers(scene, action.id);
       if (!removed.removed) return state;
 
-      const { group, attachments } = removed.removed;
+      const { group, attachments, eventBlocks } = removed.removed;
       const { [group.id]: _removedExpanded, ...expandedGroups } = state.expandedGroups;
       void _removedExpanded;
 
@@ -4403,7 +4413,7 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
         ...withScene(state, removed.scene as GameSceneSpec, true, { kind: 'entities', ids: group.members }, syncExpandedGroupsToScene(expandedGroups, removed.scene)),
         selection: { kind: 'entities', ids: group.members },
         expandedGroups: syncExpandedGroupsToScene(expandedGroups, removed.scene),
-        pendingGroupRestore: { group, attachments },
+        pendingGroupRestore: { group, attachments, eventBlocks },
       };
     }
     case 'group-selection': {
@@ -4426,6 +4436,10 @@ function applyAction(state: EditorState, action: EditorAction): EditorState {
             attachments: {
               ...scene.attachments,
               ...restore.attachments,
+            },
+            eventBlocks: {
+              ...scene.eventBlocks,
+              ...restore.eventBlocks,
             },
           } as GameSceneSpec, true, { kind: 'group', id: restore.group.id }),
           selection: { kind: 'group', id: restore.group.id },
