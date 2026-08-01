@@ -206,7 +206,6 @@ async function startManagedExternalWebServer({
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: process.platform !== 'win32',
   });
-  await lifecycle.markPid(child.pid ?? null);
   child.stdout?.pipe(stdout);
   child.stderr?.pipe(stderr);
   const childOutputStreamsFinished = Promise.all([
@@ -271,6 +270,11 @@ async function startManagedExternalWebServer({
       rejectUnexpectedExit(exitError);
     })();
   });
+
+  // Register the exit listener before the first awaited lifecycle write. A
+  // failing command can exit immediately, and missing that event leaves the
+  // readiness race waiting until its full timeout.
+  await lifecycle.markPid(child.pid ?? null);
 
   try {
     await Promise.race([
