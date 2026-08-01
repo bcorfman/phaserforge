@@ -32,7 +32,7 @@ After this plan is complete, a user can reproduce the visible and timed behavior
 - the existing parallel `Move Until` plus repeating `Wait`/`Tween Until` velocity sequence;
 - a typed Bounds/Wrapped event whose no-code action sequence rerolls the wrapped member's X coordinate in `[0,720]`.
 
-The velocity values in PhaserForge are pixels/second, while `stars.py` sets Arcade velocity in pixels/frame at 60 FPS. The faithful editor values are therefore `-240 px/s` for `-4` and `+840 px/s` for `+14`.
+The velocity values in PhaserForge are pixels/second, while `stars.py` sets Arcade velocity in pixels/frame at 60 FPS. Arcade's positive Y direction is upward; Phaser's screen-coordinate positive Y direction is downward. The faithful editor values are therefore `+240 px/s` for Arcade `-4` (downward) and `-840 px/s` for Arcade `+14` (upward).
 
 ## Implemented Baseline
 
@@ -101,9 +101,9 @@ Mockups: `.plans/mockups/stars-bounds-event-no-code-actions.svg` and `.plans/moc
 - [x] Add the same group-owned Event Block to each formation with Trigger `Bounds`, Event `Wrapped`, Axis `Y`, then add `Set Property` targeting `Event source`, Property `X`, Value `Random Range 0..720`; give each formation a distinct recorded wrap seed.
 - [x] In parallel on each formation, apply the same infinite Repeat velocity sequence:
   - Wait 1000 ms at `vy=0`;
-  - Tween `vy` to `-240` over 2000 ms with ease-in;
+  - Tween `vy` to `+240` over 2000 ms with ease-in;
   - Wait 5000 ms;
-  - Tween `vy` to `+840` over 500 ms with ease-out;
+  - Tween `vy` to `-840` over 500 ms with ease-out;
   - Wait 1500 ms;
   - Tween `vy` to `0` over 2000 ms with ease-out;
   - repeat.

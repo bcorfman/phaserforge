@@ -138,16 +138,16 @@ Success check: each formation has one Bounds/Wrapped event block and one `Set Pr
 
 ## Add the Shared Velocity Cycle
 
-The reference uses Arcade velocity values per frame. PhaserForge authors velocity in pixels per second, so use `-240` instead of `-4`, and `840` instead of `14`.
+The reference uses Arcade velocity values per frame, where positive Y is upward. PhaserForge uses screen coordinates, where positive Y is downward, and authors velocity in pixels per second. Convert `-4` to `+240` for the initial downward phase and `+14` to `-840` for the rapid upward phase.
 
 Create one infinite `Repeat` action on each formation, with `Apply To = Members`. Leave its `Count` blank. Add these six actions as children of the Repeat, in this order:
 
 | Child | Action and values |
 | ---: | --- |
 | 1 | `Wait`, `Duration = 1000 ms` |
-| 2 | `Tween Until`, `Property = vy`, `From = Current value`, `End value = -240`, `Duration = 2000 ms`, `Easing = ease-in` |
+| 2 | `Tween Until`, `Property = vy`, `From = Current value`, `End value = 240`, `Duration = 2000 ms`, `Easing = ease-in` |
 | 3 | `Wait`, `Duration = 5000 ms` |
-| 4 | `Tween Until`, `Property = vy`, `From = Current value`, `End value = 840`, `Duration = 500 ms`, `Easing = ease-out` |
+| 4 | `Tween Until`, `Property = vy`, `From = Current value`, `End value = -840`, `Duration = 500 ms`, `Easing = ease-out` |
 | 5 | `Wait`, `Duration = 1500 ms` |
 | 6 | `Tween Until`, `Property = vy`, `From = Current value`, `End value = 0`, `Duration = 2000 ms`, `Easing = ease-out` |
 
@@ -158,7 +158,7 @@ Repeat the same six-child sequence for all five formations. The complete cycle i
 Success check:
 
 - Each formation has three parallel top-level behaviors: Blink, Move, and Repeat.
-- The velocity is `0` for the first second, eases to `-240` over two seconds, holds for five seconds, eases to `840` over 500 ms, holds for 1.5 seconds, then eases back to `0` over two seconds.
+- The velocity is `0` for the first second, eases to `+240` (downward) over two seconds, holds for five seconds, eases to `-840` (upward) over 500 ms, holds for 1.5 seconds, then eases back to `0` over two seconds.
 
 ## Verify the Finished Starfield
 
