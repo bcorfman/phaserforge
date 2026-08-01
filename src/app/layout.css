@@ -1210,6 +1210,7 @@ html[data-theme='dark'] .phaser-frame {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+  min-height: 0;
   overflow: auto;
 }
 
