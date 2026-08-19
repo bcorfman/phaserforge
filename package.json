@@ -129,7 +129,7 @@
         "@vitejs/plugin-vue": "6.0.7",
         "esbuild": "0.28.1",
         "express-rate-limit": {
-            "ip-address": "10.1.1"
+            "ip-address": "10.3.1"
         },
         "vite": "$vite",
         "valibot": "1.4.2"
