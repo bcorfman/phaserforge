@@ -114,7 +114,7 @@
         "msw": "^2.15.0",
         "msw-storybook-addon": "^2.0.7",
         "prisma": "7.8.0",
-        "storybook": "^10.4.6",
+        "storybook": "^10.6.0",
         "supertest": "^7.1.4",
         "terser": "^5.49.0",
         "typescript": "~6.0.3",
